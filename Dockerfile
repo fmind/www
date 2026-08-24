@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM --platform=$BUILDPLATFORM golang:1.26.6 AS css
+FROM --platform=$BUILDPLATFORM golang:1.27.0 AS css
 ARG BUILDARCH
 ADD --chmod=0755 --checksum=sha256:29bd5364e7796d4b43a6d429801fc2d92223bd32a5385883674872fa855c0471 \
   https://github.com/dobicinaitis/tailwind-cli-extra/releases/download/v2.10.10/tailwindcss-extra-linux-x64 \
@@ -12,7 +12,7 @@ COPY assets/css/input.css assets/css/input.css
 COPY templates templates
 RUN /usr/local/lib/tailwindcss-extra-${BUILDARCH} -i assets/css/input.css -o static/dist/styles.css --minify
 
-FROM --platform=$BUILDPLATFORM golang:1.26.6 AS builder
+FROM --platform=$BUILDPLATFORM golang:1.27.0 AS builder
 ARG TARGETARCH
 ARG TARGETOS
 WORKDIR /app
