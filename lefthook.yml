@@ -3,7 +3,7 @@ pre-commit:
   parallel: false
   commands:
     format:dprint:
-      glob: "**/*.{json,md,toml,yaml,yml}"
+      glob: "**/*.{cjs,json,md,toml,yaml,yml}"
       priority: 10
       run: mise run format:dprint {staged_files}
       stage_fixed: true

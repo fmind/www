@@ -86,8 +86,8 @@ depends = [
 [tasks."check:actions"]
 alias = "ca"
 description = "Lint and audit GitHub Actions workflows (actionlint + zizmor)"
-# zizmor runs offline by default, so this stays a credential-free static check.
-run = ["actionlint", "zizmor .github/workflows/"]
+# Select offline mode explicitly: the workflow audit requires no credentials.
+run = ["actionlint", "zizmor --offline .github/workflows/"]
 
 [tasks."check:dockerfile"]
 alias = "cd"
