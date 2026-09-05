@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file.
 
+## [1.3.0] - 2026-09-05
+
+### 🚀 Features
+
+- _(sites)_ Add LLM hosting calculator and browser regression checks
+
 ## [1.2.0] - 2026-08-16
 
 ### 🚀 Features
