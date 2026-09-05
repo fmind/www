@@ -1,4 +1,5 @@
 const { test, expect } = require("playwright/test");
+const { setTimeout: delay } = require("node:timers/promises");
 
 const calculator = "/sites/llm-self-hosting/";
 
@@ -56,6 +57,27 @@ test("theme and menu remain usable when storage is blocked", async ({ page }) =>
   await page.keyboard.press("Escape");
   await expect(page.locator("#mobile-menu")).toBeHidden();
   await expect(page.locator("#menu-toggle")).toBeFocused();
+});
+
+test("late font downloads keep the article layout stable", async ({ page }) => {
+  await page.addInitScript(() => {
+    window.layoutShifts = [];
+    new PerformanceObserver((list) => {
+      for (const entry of list.getEntries()) {
+        if (!entry.hadRecentInput) window.layoutShifts.push(entry.value);
+      }
+    }).observe({ type: "layout-shift", buffered: true });
+  });
+  await page.route("**/static/fonts/*.woff2", async (route) => {
+    // A cold connection delivers fonts after the initial font-display window.
+    await delay(600);
+    await route.continue();
+  });
+  await page.goto("/articles/agentgateway-vs-litellm/");
+  await page.evaluate(() => document.fonts.ready);
+  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  const shift = await page.evaluate(() => window.layoutShifts.reduce((sum, value) => sum + value, 0));
+  expect(shift).toBeLessThan(0.001);
 });
 
 test("theme choice persists and keyboard skip link reaches main content", async ({ page }) => {

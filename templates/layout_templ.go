@@ -744,7 +744,7 @@ func Layout(body templ.Component, page PageMetadata) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 63, "\">\n\t\t\t\t(function () {\n\t\t\t\t  function setTheme(isDark) {\n\t\t\t\t    var root = document.documentElement;\n\t\t\t\t    // Colors transition for hover feedback; letting those same transitions\n\t\t\t\t    // run on a theme swap makes every link and surface cross-fade and lag.\n\t\t\t\t    // Suppressing them for one frame keeps the swap instant.\n\t\t\t\t    root.classList.add('theme-switching');\n\t\t\t\t    try {\n\t\t\t\t      localStorage.setItem('theme', isDark ? 'dark' : 'light');\n\t\t\t\t    } catch (error) {\n\t\t\t\t      // Storage is optional: privacy settings and full quotas must not break controls.\n\t\t\t\t      if (error.name !== 'SecurityError' && error.name !== 'QuotaExceededError') throw error;\n\t\t\t\t    }\n\t\t\t\t    root.classList.toggle('dark', isDark);\n\t\t\t\t    root.setAttribute('data-theme', isDark ? 'dark' : 'light');\n\t\t\t\t    document.querySelectorAll('meta[name=\"theme-color\"]').forEach((meta) => {\n\t\t\t\t      meta.setAttribute('content', isDark ? '#1d232a' : '#ffffff');\n\t\t\t\t    });\n\t\t\t\t    requestAnimationFrame(function () {\n\t\t\t\t      requestAnimationFrame(function () { root.classList.remove('theme-switching'); });\n\t\t\t\t    });\n\t\t\t\t  }\n\t\t\t\t  var savedTheme = null;\n\t\t\t\t  try {\n\t\t\t\t    savedTheme = localStorage.getItem('theme');\n\t\t\t\t  } catch (error) {\n\t\t\t\t    // Use the system preference when browser policy prevents reading storage.\n\t\t\t\t    if (error.name !== 'SecurityError') throw error;\n\t\t\t\t  }\n\t\t\t\t  var isDark = savedTheme === 'dark' ||\n\t\t\t\t    (savedTheme !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);\n\t\t\t\t  setTheme(isDark);\n\t\t\t\t  window.setTheme = setTheme;\n\t\t\t\t\t\t\t\t})();\n\t\t\t</script><link rel=\"preload\" href=\"/static/fonts/Outfit-Variable.woff2\" crossorigin=\"anonymous\" as=\"font\" type=\"font/woff2\"><link rel=\"preload\" href=\"/static/fonts/Inter-Variable.woff2\" crossorigin=\"anonymous\" as=\"font\" type=\"font/woff2\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 63, "\">\n\t\t\t\t(function () {\n\t\t\t\t  function setTheme(isDark) {\n\t\t\t\t    var root = document.documentElement;\n\t\t\t\t    // Only a visible theme swap needs transition suppression. Removing this\n\t\t\t\t    // class during initial load would restyle the entire document again.\n\t\t\t\t    if (document.body) {\n\t\t\t\t      root.classList.add('theme-switching');\n\t\t\t\t      requestAnimationFrame(function () {\n\t\t\t\t        requestAnimationFrame(function () { root.classList.remove('theme-switching'); });\n\t\t\t\t      });\n\t\t\t\t    }\n\t\t\t\t    try {\n\t\t\t\t      localStorage.setItem('theme', isDark ? 'dark' : 'light');\n\t\t\t\t    } catch (error) {\n\t\t\t\t      // Storage is optional: privacy settings and full quotas must not break controls.\n\t\t\t\t      if (error.name !== 'SecurityError' && error.name !== 'QuotaExceededError') throw error;\n\t\t\t\t    }\n\t\t\t\t    root.classList.toggle('dark', isDark);\n\t\t\t\t    root.setAttribute('data-theme', isDark ? 'dark' : 'light');\n\t\t\t\t    document.querySelectorAll('meta[name=\"theme-color\"]').forEach((meta) => {\n\t\t\t\t      meta.setAttribute('content', isDark ? '#0f172a' : '#ffffff');\n\t\t\t\t    });\n\t\t\t\t  }\n\t\t\t\t  var savedTheme = null;\n\t\t\t\t  try {\n\t\t\t\t    savedTheme = localStorage.getItem('theme');\n\t\t\t\t  } catch (error) {\n\t\t\t\t    // Use the system preference when browser policy prevents reading storage.\n\t\t\t\t    if (error.name !== 'SecurityError') throw error;\n\t\t\t\t  }\n\t\t\t\t  var isDark = savedTheme === 'dark' ||\n\t\t\t\t    (savedTheme !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);\n\t\t\t\t  setTheme(isDark);\n\t\t\t\t  window.setTheme = setTheme;\n\t\t\t\t\t\t\t\t})();\n\t\t\t</script><link rel=\"preload\" href=\"/static/fonts/Outfit-Variable.woff2\" crossorigin=\"anonymous\" as=\"font\" type=\"font/woff2\"><link rel=\"preload\" href=\"/static/fonts/Inter-Variable.woff2\" crossorigin=\"anonymous\" as=\"font\" type=\"font/woff2\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -761,7 +761,7 @@ func Layout(body templ.Component, page PageMetadata) templ.Component {
 				var templ_7745c5c3_Var41 templ.SafeURL
 				templ_7745c5c3_Var41, templ_7745c5c3_Err = templ.JoinURLErrs(page.PreloadImage)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/layout.templ`, Line: 236, Col: 49}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/layout.templ`, Line: 237, Col: 49}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var41))
 				if templ_7745c5c3_Err != nil {
@@ -774,7 +774,7 @@ func Layout(body templ.Component, page PageMetadata) templ.Component {
 				var templ_7745c5c3_Var42 string
 				templ_7745c5c3_Var42, templ_7745c5c3_Err = templ.ResolveAttributeValue(page.PreloadImageSrcset)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/layout.templ`, Line: 236, Col: 89}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/layout.templ`, Line: 237, Col: 89}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var42)
 				if templ_7745c5c3_Err != nil {
@@ -787,7 +787,7 @@ func Layout(body templ.Component, page PageMetadata) templ.Component {
 				var templ_7745c5c3_Var43 string
 				templ_7745c5c3_Var43, templ_7745c5c3_Err = templ.ResolveAttributeValue(page.PreloadImageSizes)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/layout.templ`, Line: 236, Col: 127}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/layout.templ`, Line: 237, Col: 127}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var43)
 				if templ_7745c5c3_Err != nil {
@@ -805,7 +805,7 @@ func Layout(body templ.Component, page PageMetadata) templ.Component {
 				var templ_7745c5c3_Var44 templ.SafeURL
 				templ_7745c5c3_Var44, templ_7745c5c3_Err = templ.JoinURLErrs(page.PreloadImage)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/layout.templ`, Line: 238, Col: 49}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/layout.templ`, Line: 239, Col: 49}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var44))
 				if templ_7745c5c3_Err != nil {
@@ -825,7 +825,7 @@ func Layout(body templ.Component, page PageMetadata) templ.Component {
 			var templ_7745c5c3_Var45 templ.SafeURL
 			templ_7745c5c3_Var45, templ_7745c5c3_Err = templ.JoinURLErrs(StaticURL("static/img/avatar-192.webp"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/layout.templ`, Line: 242, Col: 70}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/layout.templ`, Line: 243, Col: 70}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var45))
 			if templ_7745c5c3_Err != nil {
@@ -838,7 +838,7 @@ func Layout(body templ.Component, page PageMetadata) templ.Component {
 			var templ_7745c5c3_Var46 string
 			templ_7745c5c3_Var46, templ_7745c5c3_Err = templ.ResolveAttributeValue(fmt.Sprintf("%s 192w, %s 280w, %s 384w", StaticURL("static/img/avatar-192.webp"), StaticURL("static/img/avatar-280.webp"), StaticURL("static/img/avatar.webp")))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/layout.templ`, Line: 242, Col: 246}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/layout.templ`, Line: 243, Col: 246}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var46)
 			if templ_7745c5c3_Err != nil {
@@ -856,7 +856,7 @@ func Layout(body templ.Component, page PageMetadata) templ.Component {
 		var templ_7745c5c3_Var47 templ.SafeURL
 		templ_7745c5c3_Var47, templ_7745c5c3_Err = templ.JoinURLErrs(StaticURL("static/favicon.ico"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/layout.templ`, Line: 244, Col: 78}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/layout.templ`, Line: 245, Col: 78}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var47))
 		if templ_7745c5c3_Err != nil {
@@ -869,7 +869,7 @@ func Layout(body templ.Component, page PageMetadata) templ.Component {
 		var templ_7745c5c3_Var48 templ.SafeURL
 		templ_7745c5c3_Var48, templ_7745c5c3_Err = templ.JoinURLErrs(StaticURL("static/img/favicons/apple-touch-icon.png"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/layout.templ`, Line: 245, Col: 108}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/layout.templ`, Line: 246, Col: 108}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var48))
 		if templ_7745c5c3_Err != nil {
@@ -882,7 +882,7 @@ func Layout(body templ.Component, page PageMetadata) templ.Component {
 		var templ_7745c5c3_Var49 templ.SafeURL
 		templ_7745c5c3_Var49, templ_7745c5c3_Err = templ.JoinURLErrs(StaticURL("static/img/favicons/favicon-32x32.png"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/layout.templ`, Line: 246, Col: 108}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/layout.templ`, Line: 247, Col: 108}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var49))
 		if templ_7745c5c3_Err != nil {
@@ -895,7 +895,7 @@ func Layout(body templ.Component, page PageMetadata) templ.Component {
 		var templ_7745c5c3_Var50 templ.SafeURL
 		templ_7745c5c3_Var50, templ_7745c5c3_Err = templ.JoinURLErrs(StaticURL("static/img/favicons/favicon-16x16.png"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/layout.templ`, Line: 247, Col: 108}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/layout.templ`, Line: 248, Col: 108}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var50))
 		if templ_7745c5c3_Err != nil {
@@ -908,7 +908,7 @@ func Layout(body templ.Component, page PageMetadata) templ.Component {
 		var templ_7745c5c3_Var51 templ.SafeURL
 		templ_7745c5c3_Var51, templ_7745c5c3_Err = templ.JoinURLErrs(StaticURL("static/site.webmanifest"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/layout.templ`, Line: 248, Col: 67}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/layout.templ`, Line: 249, Col: 67}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var51))
 		if templ_7745c5c3_Err != nil {
@@ -957,7 +957,7 @@ func Layout(body templ.Component, page PageMetadata) templ.Component {
 		var templ_7745c5c3_Var52 string
 		templ_7745c5c3_Var52, templ_7745c5c3_Err = templ.ResolveAttributeValue(templ.GetNonce(ctx))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/layout.templ`, Line: 275, Col: 38}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `templates/layout.templ`, Line: 276, Col: 38}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var52)
 		if templ_7745c5c3_Err != nil {

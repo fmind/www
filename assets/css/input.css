@@ -54,18 +54,20 @@
   border-radius: var(--radius-glass);
 }
 
+/* Preloads give the brand fonts an early start. On a slow first visit, keep
+   the fallback for that page instead of moving text after it is readable. */
 @font-face {
   font-family: 'Inter';
   src: url('/static/fonts/Inter-Variable.woff2') format('woff2');
   font-weight: 100 900;
-  font-display: swap;
+  font-display: optional;
 }
 
 @font-face {
   font-family: 'Outfit';
   src: url('/static/fonts/Outfit-Variable.woff2') format('woff2');
   font-weight: 100 900;
-  font-display: swap;
+  font-display: optional;
 }
 
 /* A theme swap repaints every color at once: animating it makes the navbar and
