@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file.
 
+## [1.3.1] - 2026-09-05
+
+### 🐛 Bug Fixes
+
+- _(web)_ Prevent late font shifts and redundant theme rendering
+
 ## [1.3.0] - 2026-09-05
 
 ### 🚀 Features
