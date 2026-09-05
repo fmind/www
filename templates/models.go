@@ -265,6 +265,7 @@ type PageMetadata struct {
 	PreloadImageSizes  string
 	NoIndex            bool
 	IsHome             bool
+	InstantScroll      bool
 }
 
 type Service struct {

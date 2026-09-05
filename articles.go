@@ -33,7 +33,7 @@ import (
 	"github.com/yuin/goldmark/text"
 	"github.com/yuin/goldmark/util"
 
-	"github.com/fmind/www-fmind-dev/templates"
+	"github.com/fmind/www/templates"
 )
 
 const (

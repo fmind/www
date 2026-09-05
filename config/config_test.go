@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"testing"
 
-	"github.com/fmind/www-fmind-dev/config"
+	"github.com/fmind/www/config"
 )
 
 func TestLoadDefaults(t *testing.T) {

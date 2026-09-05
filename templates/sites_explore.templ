@@ -1,0 +1,261 @@
+package templates
+
+import "fmt"
+
+templ HostingAPIOptions(view LLMSelfHostingView) {
+	<div class="rounded-2xl border border-base-300 bg-base-100 p-6 md:p-8">
+		<fieldset class="min-w-0">
+			<legend class="font-heading text-2xl font-bold">API delivery and reuse</legend>
+			<label class="block font-semibold mt-4 mb-2" for="api-mode">API pricing mode</label>
+			<select id="api-mode" name="api-mode" class="select select-bordered w-full" aria-describedby="api-mode-help">
+				<option value="standard" selected?={ view.Inputs.APIMode == "standard" }>Standard · interactive requests</option>
+				<option value="batch" selected?={ view.Inputs.APIMode == "batch" }>Batch · flexible deadlines</option>
+				<option value="cached" selected?={ view.Inputs.APIMode == "cached" }>Cached prefix · repeated context</option>
+			</select>
+			<p id="api-mode-help" class="text-sm text-base-content/75 leading-relaxed mt-3">Batch: 50% off, with up to 24-hour completion. Caching: reuse an exact prefix. Discounts are not stacked.</p>
+			<div class="grid grid-cols-1 sm:grid-cols-2 gap-5 mt-5">
+				@HostingNumberInput("cache-prefix", "Shared prefix tokens (cached mode)", view.Inputs.CachePrefixTokens, "0", "1000000", "1", "Minimum: 4,096 for Gemini; 1,024 for Claude and Astra. Ineligible requests use standard rates.")
+				@HostingNumberInput("cache-requests", "Calls per cache group (cached mode)", float64(view.Inputs.CacheRequests), "1", "1000000", "1", "Calls sharing an exact prefix within five minutes, including the first. Each group pays write or storage fees.")
+			</div>
+			<p class="text-sm text-base-content/75 leading-relaxed mt-4">Assumes no misses within each group: Gemini five-minute storage, Claude five-minute writes, and Astra 30-minute retention.</p>
+		</fieldset>
+	</div>
+}
+
+templ HostingAPICards(view LLMSelfHostingView) {
+	<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 md:hidden" aria-label="API monthly cost cards">
+		for _, row := range view.APIs {
+			<article class="rounded-2xl border border-base-300 bg-base-100 p-5">
+				<h4 class="font-heading font-bold"><a class="link link-primary" href={ templ.SafeURL(row.Baseline.SourceURL) }>{ row.Baseline.Name }</a></h4>
+				<p class="font-heading font-black text-3xl mt-3">{ FormatUSD2(row.MonthlyUSD) }<span class="text-sm font-body font-normal">/ month</span></p>
+				<dl class="text-sm mt-4 space-y-3">
+					<div><dt class="text-base-content/70">Per 1,000 requests</dt><dd class="font-semibold">{ FormatUSD2(row.PerThousandRequestsUSD) }</dd></div>
+					<div><dt class="text-base-content/70">Self-hosting break-even</dt><dd class="font-semibold">{ FormatDecimal(row.BreakEvenRequests,0) } requests/month</dd></div>
+				</dl>
+				if row.BreakEvenFits {
+					<p class="text-sm mt-3">Within modeled capacity; quality still unproved.</p>
+				} else {
+					<p class="text-sm font-semibold mt-3">Beyond this fleet's modeled capacity.</p>
+				}
+			</article>
+		}
+	</div>
+}
+
+templ HostingCostExplorer(view LLMSelfHostingView) {
+	<section aria-labelledby="cost-explorer" class="space-y-5">
+		<h2 id="cost-explorer" class="font-heading text-3xl md:text-4xl font-black scroll-mt-24">Watch demand change the cost case</h2>
+		<p class="text-base-content/75 leading-relaxed max-w-4xl">Explore the API cost curves against your fleet bill and capacity.</p>
+		<figure data-cost-explorer class="rounded-2xl border border-base-300 bg-base-100 p-4 md:p-8">
+			<svg viewBox="0 0 760 395" role="img" aria-labelledby="cost-plot-title cost-plot-desc" class="w-full h-auto text-base-content">
+				<title id="cost-plot-title">Monthly cost versus demand for one fixed GKE fleet and three APIs</title>
+				<desc id="cost-plot-desc">Both axes are logarithmic. The vertical dashed line is the fleet's capacity, when within the plotted range. Circles mark API break-even. The solid cursor marks the explored volume. Exact costs appear below.</desc>
+				if view.CostPlot.CapacityX != "" {
+					<rect x={ view.CostPlot.CapacityX } y="35" width={ view.CostPlot.CapacityWidth } height="265" class="fill-warning/10"></rect>
+				}
+				for _, tick := range view.CostPlot.YTicks {
+					<line x1="130" y1={ tick.Position } x2="720" y2={ tick.Position } stroke="currentColor" opacity="0.12"></line>
+					<text x="120" y={ tick.Position } text-anchor="end" dominant-baseline="middle" fill="currentColor" class="text-[36px] sm:text-[12px]">{ tick.Label }</text>
+				}
+				for i, tick := range view.CostPlot.XTicks {
+					<text x={ tick.Position } y="342" text-anchor={ chartTickAnchor(i, len(view.CostPlot.XTicks)) } fill="currentColor" class={ "text-[36px] sm:text-[12px]", templ.KV("hidden sm:block", i%2 == 1) }>{ tick.Label }</text>
+				}
+				<text x="425" y="387" text-anchor="middle" fill="currentColor" class="text-[36px] sm:text-[12px]">Requests per month</text>
+				<text x="130" y="32" fill="currentColor" class="text-[36px] sm:text-[12px]">USD / month</text>
+				for i, line := range view.CostPlot.Lines {
+					<polyline points={ line.Points } fill="none" stroke-width="3" vector-effect="non-scaling-stroke" class={ templ.KV("stroke-primary", i == 0), templ.KV("stroke-sky-600 dark:stroke-sky-400", i == 1), templ.KV("stroke-amber-700 dark:stroke-amber-400", i == 2), templ.KV("stroke-violet-600 dark:stroke-violet-400", i == 3) } stroke-dasharray={ plotDash(i) }><title>{ line.Name }</title></polyline>
+				}
+				if view.CostPlot.CapacityX != "" {
+					<line x1={ view.CostPlot.CapacityX } x2={ view.CostPlot.CapacityX } y1="30" y2="300" stroke="currentColor" stroke-dasharray="4 4" stroke-width="2"><title>Fleet capacity: { view.CostPlot.CapacityLabel }</title></line>
+				}
+				for _, point := range view.CostPlot.BreakEvens {
+					<circle cx={ point.Position } cy={ view.CostPlot.FleetY } r="5" class="fill-base-100 stroke-primary" stroke-width="2"><title>{ point.Label }</title></circle>
+				}
+				<line data-cost-cursor x1={ view.CostPlot.Frames[view.CostPlot.Selected].X } x2={ view.CostPlot.Frames[view.CostPlot.Selected].X } y1="30" y2="300" stroke="currentColor" opacity="0.5"></line>
+			</svg>
+			<ul class="flex flex-wrap gap-x-6 gap-y-2 text-sm font-semibold mt-3" aria-label="Chart legend">
+				for i, line := range view.CostPlot.Lines {
+					<li class={ templ.KV("text-primary", i == 0), templ.KV("text-sky-700 dark:text-sky-400", i == 1), templ.KV("text-amber-800 dark:text-amber-400", i == 2), templ.KV("text-violet-700 dark:text-violet-400", i == 3) }>{ plotLegend(i) } { line.Name }</li>
+				}
+			</ul>
+			<figcaption class="text-sm text-base-content/75 leading-relaxed mt-4">
+				Logarithmic axes (cost + $1). Circles: break-even.
+				if view.CostPlot.CapacityX != "" {
+					<span>Dashed line: capacity of { view.CostPlot.CapacityLabel }. Shading exceeds fleet capacity.</span>
+				} else {
+					<span>Capacity of { view.CostPlot.CapacityLabel } is outside the plotted range.</span>
+				}
+			</figcaption>
+			<div data-cost-controls class="hidden mt-6">
+				<label for="cost-volume" class="block font-semibold">Explore monthly demand</label>
+				<input id="cost-volume" data-cost-range type="range" min="0" max={ fmt.Sprint(len(view.CostPlot.Frames) - 1) } value={ fmt.Sprint(view.CostPlot.Selected) } disabled class="w-full mt-3 accent-primary" aria-describedby="cost-slider-help" aria-valuetext={ view.CostPlot.Frames[view.CostPlot.Selected].Label }/>
+				<p id="cost-slider-help" class="text-sm text-base-content/70">Drag or use the arrow keys, then apply the volume.</p>
+			</div>
+			<output data-cost-output for="cost-volume" aria-live="polite" aria-atomic="true" class="block rounded-xl bg-base-200 p-4 font-semibold leading-relaxed mt-5">{ view.CostPlot.Frames[view.CostPlot.Selected].Summary }</output>
+			<a id="apply-demand" data-scenario-link data-cost-apply class="btn btn-primary rounded-xl mt-4" href={ templ.SafeURL(view.CostPlot.Frames[view.CostPlot.Selected].URL) }>Apply this demand</a>
+			<div hidden>
+				for _, frame := range view.CostPlot.Frames {
+					<span data-cost-frame data-x={ frame.X } data-label={ frame.Label } data-summary={ frame.Summary } data-url={ frame.URL }></span>
+				}
+			</div>
+			<noscript><p class="text-sm mt-3">The figure shows your current scenario. Use the scenario grid below to explore other volumes without JavaScript.</p></noscript>
+		</figure>
+	</section>
+}
+
+func plotDash(index int) string {
+	switch index {
+	case 1:
+		return "12 3"
+	case 2:
+		return "5 3"
+	case 3:
+		return "2 3"
+	default:
+		return "none"
+	}
+}
+func plotLegend(index int) string {
+	switch index {
+	case 1:
+		return "━ ━"
+	case 2:
+		return "– –"
+	case 3:
+		return "···"
+	default:
+		return "━━"
+	}
+}
+
+templ HostingSensitivity(view LLMSelfHostingView) {
+	<section aria-labelledby="sensitivity" class="space-y-5">
+		<h2 id="sensitivity" class="font-heading text-3xl md:text-4xl font-black scroll-mt-24">What if demand or throughput is wrong?</h2>
+		<p class="text-base-content/75 leading-relaxed max-w-4xl">Try ½× or 2× demand and throughput with the same fleet. Select a scenario to apply it.</p>
+		<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+			for rowIndex, row := range view.Sensitivity {
+				<section class="rounded-2xl border border-base-300 bg-base-100 p-4 md:p-5">
+					<h3 class="font-heading text-lg font-bold">{ row.Label }</h3>
+					<div class="space-y-3 mt-4">
+						for cellIndex, cell := range row.Cells {
+							<a id={ fmt.Sprintf("scenario-%d-%d", rowIndex, cellIndex) } data-scenario-link href={ templ.SafeURL(cell.URL) } class={ "block rounded-xl border p-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary hover:border-primary", templ.KV("border-base-300 bg-primary/5", cell.Fits), templ.KV("border-warning/50 bg-warning/10", !cell.Fits) }>
+								<p class="text-sm font-semibold">{ FormatNumber(cell.Inputs.RequestsPerDay * cell.Inputs.ActiveDays) } requests/mo · { FormatDecimal(cell.Inputs.TokensPerSecond,1) } tokens/s</p>
+								<p class="font-bold mt-2">{ cell.Verdict }</p>
+								<p class="text-sm mt-1">{ FormatDecimal(cell.CapacityPct,1) }% of capacity needed</p>
+								<p class="text-sm text-base-content/75 mt-1">Lowest API: { FormatUSD2(cell.CheapestAPIUSD) }/mo</p>
+								<span class="block text-sm font-semibold text-primary mt-3">Try this scenario →</span>
+							</a>
+						}
+					</div>
+				</section>
+			}
+		</div>
+		<p class="text-sm text-base-content/75">Each column shows lower, current, then higher throughput. These are stress scenarios, not confidence intervals.</p>
+	</section>
+}
+
+templ HostingLatency(view LLMSelfHostingView) {
+	<section aria-labelledby="latency" class="space-y-5">
+		<h2 id="latency" class="font-heading text-3xl md:text-4xl font-black scroll-mt-24">Enough capacity. Fast enough for people?</h2>
+		<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+			@MetricCard("Monthly capacity", fmt.Sprintf("%.1f%% needed", view.Estimate.DemandCapacityPct), "A total-volume check. A month's spare capacity cannot absorb a burst that arrives in a few seconds.")
+			@MetricCard("Peak responsiveness", view.LatencyTitle, view.LatencyDetail)
+		</div>
+		<details id="latency-settings" class="rounded-2xl border border-base-300 bg-base-100 p-6 md:p-8">
+			<summary class="cursor-pointer font-bold focus-visible:outline-2 focus-visible:outline-primary">Enter latency targets and pilot measurements (optional)</summary>
+			<p class="text-base-content/75 leading-relaxed mt-4">Use p95 measurements from the same configuration at peak concurrency. Zero means unmeasured.</p>
+			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mt-5">
+				@HostingNumberInput("concurrency", "Target simultaneous requests", float64(view.Inputs.Concurrency), "1", "100000", "1", "Peak in-flight requests, not total team members.")
+				@HostingNumberInput("target-first", "Target p95 first token (seconds)", view.Inputs.TargetFirstToken, "0.1", "3600", "any", "An editable user-experience target, not a measured benchmark.")
+				@HostingNumberInput("target-complete", "Target p95 completion (seconds)", view.Inputs.TargetCompletion, "0.1", "86400", "any", "Choose a target suitable for the task and answer length.")
+				@HostingNumberInput("measured-concurrency", "Pilot simultaneous requests", float64(view.Inputs.MeasuredConcurrency), "0", "100000", "1", "Record the concurrency actually sustained during the pilot.")
+				@HostingNumberInput("measured-first", "Measured p95 first token (seconds)", view.Inputs.MeasuredFirstToken, "0", "3600", "any", "Use the full workload, including prompt processing and network delay.")
+				@HostingNumberInput("measured-complete", "Measured p95 completion (seconds)", view.Inputs.MeasuredCompletion, "0", "86400", "any", "Measure the whole response; aggregate tokens/s cannot predict this.")
+			</div>
+			<button id="update-latency" type="submit" form="calculator" class="btn btn-primary rounded-xl mt-5">Check recorded latency</button>
+		</details>
+	</section>
+}
+
+templ HostingQuality(view LLMSelfHostingView) {
+	<section aria-labelledby="quality-lab" class="space-y-5">
+		<h2 id="quality-lab" class="font-heading text-3xl md:text-4xl font-black scroll-mt-24">Compare cost per accepted task</h2>
+		<details id="quality-settings" class="rounded-2xl border border-base-300 bg-base-100 p-6 md:p-8" open?={ view.Inputs.QualityEnabled }>
+			<summary class="cursor-pointer font-bold focus-visible:outline-2 focus-visible:outline-primary">Optional quality and human-review experiment</summary>
+			<p class="text-base-content/75 leading-relaxed mt-4">Compare the same tasks and rubric. Starting values are illustrative; replace them with measurements. Calls include retries, and review covers all attempted tasks.</p>
+			<label class="flex items-center gap-3 mt-5 font-semibold"><input type="checkbox" form="calculator" id="quality" name="quality" value="on" checked?={ view.Inputs.QualityEnabled } class="checkbox checkbox-primary"/> Enable the accepted-task comparison</label>
+			<div class="grid grid-cols-1 sm:grid-cols-2 gap-5 mt-5">
+				@HostingNumberInput("tasks", "Attempted tasks per month", view.Inputs.TasksPerMonth, "1", "10000000", "1", "A separate task workload for this experiment. Required calls = tasks × each candidate's calls per task.")
+				@HostingNumberInput("review-rate", "Human review cost ($/hour)", view.Inputs.ReviewHourlyUSD, "0", "10000", "any", "Use a loaded labor cost. Do not count hosting operations labor again here.")
+			</div>
+			<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 mt-6">
+				for _, row := range view.Tasks {
+					<div class="min-w-0 rounded-xl bg-base-200 p-4">
+						<fieldset class="min-w-0 space-y-4">
+							<legend class="font-bold">{ row.Name }</legend>
+							@HostingNumberInput(row.ID+"-acceptance", "Accepted tasks (%)", row.Quality.AcceptancePercent, "0", "100", "any", "Final acceptance after all retries and review.")
+							@HostingNumberInput(row.ID+"-calls", "Average calls per task", row.Quality.CallsPerTask, "1", "100", "any", "Includes every retry and model call in a tool loop.")
+							@HostingNumberInput(row.ID+"-review", "Review minutes per task", row.Quality.ReviewMinutes, "0", "480", "any", "Average across all attempted tasks, including rejected ones.")
+						</fieldset>
+					</div>
+				}
+			</div>
+			<button id="update-quality" form="calculator" type="submit" class="btn btn-primary rounded-xl mt-6">Update accepted-task comparison</button>
+		</details>
+		if view.Inputs.QualityEnabled {
+			<figure class="rounded-2xl border border-base-300 bg-base-100 p-6 md:p-8">
+				<figcaption class="font-bold">Cost per accepted task · your entered assumptions</figcaption>
+				<p class="text-sm text-base-content/75 mt-3">(Model or fleet spend + review) ÷ accepted tasks, across { FormatDecimal(view.Inputs.TasksPerMonth,0) } attempted tasks per candidate.</p>
+				<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+					for _, row := range view.Tasks {
+						<div>
+							<h3 class="font-semibold">{ row.Name }</h3>
+							if row.Accepted == 0 {
+								<p class="font-bold mt-2">No accepted tasks; cost per accepted task is undefined.</p>
+							} else if row.Fits {
+								<p class="font-heading text-2xl font-black text-primary mt-2">{ FormatUSD2(row.PerAcceptedUSD) } / accepted task</p>
+								<svg viewBox="0 0 400 16" preserveAspectRatio="none" aria-hidden="true" class="w-full h-4 mt-3"><rect width="400" height="16" rx="8" class="fill-base-200"></rect><rect width={ fmt.Sprintf("%.2f", 400*row.PerAcceptedUSD/taskCostMax(view.Tasks)) } height="16" rx="8" class="fill-primary"></rect></svg>
+							} else {
+								<p class="font-bold mt-2">Fleet capacity is insufficient for this task workload.</p>
+							}
+							<p class="text-sm text-base-content/75 leading-relaxed mt-3">{ FormatDecimal(row.Requests,0) } calls · { FormatDecimal(row.Accepted,0) } accepted tasks<br/>{ FormatUSD2(row.ModelUSD) } model/fleet + { FormatUSD2(row.ReviewUSD) } human review per month.</p>
+						</div>
+					}
+				</div>
+			</figure>
+		}
+	</section>
+}
+
+func taskCostMax(rows []TaskComparison) float64 {
+	maximum := 0.01
+	for _, row := range rows {
+		if row.Fits {
+			maximum = max(maximum, row.PerAcceptedUSD)
+		}
+	}
+	return maximum
+}
+
+templ HostingRelatedArticles(articles []Article) {
+	if len(articles) > 0 {
+		<section aria-labelledby="hosting-reading" class="space-y-5">
+			<h2 id="hosting-reading" class="font-heading text-2xl font-bold">Go deeper on the trade-offs</h2>
+			<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+				for _, article := range articles {
+					<a class="block rounded-2xl border border-base-300 bg-base-100 p-6 hover:border-primary" href={ templ.SafeURL("/articles/" + article.Slug + "/") }><h3 class="font-heading text-xl font-bold text-primary">{ article.Title } →</h3><p class="text-base-content/75 mt-3">{ article.Description }</p></a>
+				}
+			</div>
+		</section>
+	}
+}
+
+func chartTickAnchor(index, count int) string {
+	if index == 0 {
+		return "start"
+	}
+	if index == count-1 {
+		return "end"
+	}
+	return "middle"
+}

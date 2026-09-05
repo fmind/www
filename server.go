@@ -22,12 +22,12 @@ import (
 	"github.com/klauspost/compress/gzhttp"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 
-	"github.com/fmind/www-fmind-dev/config"
-	"github.com/fmind/www-fmind-dev/templates"
+	"github.com/fmind/www/config"
+	"github.com/fmind/www/templates"
 )
 
 // ServiceName labels the app in traces and the OTel resource.
-const ServiceName = "www-fmind-dev"
+const ServiceName = "www"
 
 // markdownExtension is the suffix that asks for an article's raw Markdown source
 // (`/articles/<slug>.md`) instead of its rendered page.
@@ -92,6 +92,23 @@ func newAppHandler(logger *slog.Logger, cfg config.Config, collection articleCol
 	structuredHome, err := templates.GetStructuredData(nil)
 	if err != nil {
 		return nil, fmt.Errorf("build home structured data: %w", err)
+	}
+	siteIndexPage := templates.SitePage{
+		Title:       "Sites",
+		Description: "Source-backed decision tools for AI architecture, infrastructure, and operating economics.",
+		URL:         templates.METADATA.SiteURL + "/sites/",
+	}
+	structuredSiteIndex, err := templates.GetSiteStructuredData(siteIndexPage)
+	if err != nil {
+		return nil, fmt.Errorf("build site index structured data: %w", err)
+	}
+	structuredSitePages := make(map[string]string, len(templates.SITE_PAGES))
+	for _, page := range templates.SITE_PAGES {
+		structured, structuredErr := templates.GetSiteStructuredData(page)
+		if structuredErr != nil {
+			return nil, fmt.Errorf("build site-page structured data for %q: %w", page.Slug, structuredErr)
+		}
+		structuredSitePages[page.Slug] = structured
 	}
 	articleMetadataBySlug := make(map[string]templates.PageMetadata, len(collection.bySlug))
 	for slug, article := range collection.bySlug {
@@ -188,9 +205,12 @@ func newAppHandler(logger *slog.Logger, cfg config.Config, collection articleCol
 			return
 		}
 		target := "/articles/" + url.PathEscape(slug) + "/"
+		if r.URL.RawQuery != "" {
+			target += "?" + r.URL.RawQuery
+		}
 		http.Redirect(w, r, target, http.StatusMovedPermanently) //nolint:gosec // G710: fixed same-origin route with one escaped segment
 	})
-	mux.HandleFunc("GET /articles/{slug}/", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("GET /articles/{slug}/{$}", func(w http.ResponseWriter, r *http.Request) {
 		article, ok := collection.bySlug[r.PathValue("slug")]
 		if !ok || article.Draft && cfg.Environment == config.Production {
 			renderNotFound(logger, w, r, notFoundPage)
@@ -199,6 +219,43 @@ func newAppHandler(logger *slog.Logger, cfg config.Config, collection articleCol
 		renderPage(logger, w, r, http.StatusOK, templates.Layout(
 			templates.ArticlePage(article, related[article.Slug]),
 			articleMetadataBySlug[article.Slug],
+		))
+	})
+
+	// Site pages share one registry and route family. Each page keeps its domain
+	// calculation in Go and its interface in Templ, so adding one cannot fork the
+	// site's navigation, metadata, styling, or security model.
+	mux.HandleFunc("GET /sites", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/sites/", http.StatusMovedPermanently)
+	})
+	mux.HandleFunc("GET /sites/{$}", func(w http.ResponseWriter, r *http.Request) {
+		renderPage(logger, w, r, http.StatusOK, templates.Layout(
+			templates.SiteIndex(templates.SITE_PAGES),
+			siteIndexMetadata(structuredSiteIndex),
+		))
+	})
+	mux.HandleFunc("GET /sites/{slug}", func(w http.ResponseWriter, r *http.Request) {
+		target := "/sites/" + url.PathEscape(r.PathValue("slug")) + "/"
+		if r.URL.RawQuery != "" {
+			target += "?" + r.URL.RawQuery
+		}
+		http.Redirect(w, r, target, http.StatusMovedPermanently) //nolint:gosec // G710: fixed same-origin route with one escaped segment
+	})
+	mux.HandleFunc("GET /sites/{slug}/{$}", func(w http.ResponseWriter, r *http.Request) {
+		if r.PathValue("slug") != "llm-self-hosting" {
+			renderNotFound(logger, w, r, notFoundPage)
+			return
+		}
+		page := templates.SITE_PAGES[0]
+		view := llmSelfHostingView(r.URL.Query())
+		for _, article := range publicArticles {
+			if page.RelatesTo(article.Slug) {
+				view.RelatedArticles = append(view.RelatedArticles, article)
+			}
+		}
+		renderPage(logger, w, r, http.StatusOK, templates.Layout(
+			templates.LLMSelfHosting(view),
+			sitePageMetadata(page, structuredSitePages[page.Slug]),
 		))
 	})
 
@@ -311,6 +368,31 @@ func articleMetadata(article templates.Article, structured string) templates.Pag
 		PreloadImageSizes:  article.CoverSizes,
 		NoIndex:            article.Draft,
 		Article:            &article,
+	}
+}
+
+func siteIndexMetadata(structured string) templates.PageMetadata {
+	return templates.PageMetadata{
+		Title:          "Sites | " + templates.METADATA.SiteName,
+		Description:    "Source-backed decision tools for AI architecture, infrastructure, and operating economics.",
+		Canonical:      templates.METADATA.SiteURL + "/sites/",
+		ImageURL:       templates.METADATA.SiteURL + "/static/img/og-image.jpg",
+		ImageAlt:       "Fmind Sites",
+		Kind:           "website",
+		StructuredData: structured,
+	}
+}
+
+func sitePageMetadata(page templates.SitePage, structured string) templates.PageMetadata {
+	return templates.PageMetadata{
+		InstantScroll:  true,
+		Title:          page.Title + " | " + templates.METADATA.SiteName,
+		Description:    page.Description,
+		Canonical:      page.URL,
+		ImageURL:       templates.METADATA.SiteURL + "/static/img/og-image.jpg",
+		ImageAlt:       page.Title,
+		Kind:           "website",
+		StructuredData: structured,
 	}
 }
 

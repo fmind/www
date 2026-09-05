@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	site "github.com/fmind/www-fmind-dev"
+	site "github.com/fmind/www"
 )
 
 func TestMCPEndpoint(t *testing.T) {

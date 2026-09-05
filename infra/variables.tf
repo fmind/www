@@ -9,7 +9,7 @@ variable "analytics_location" {
 variable "github_repository" {
   description = "The GitHub repository in the format owner/repo"
   type        = string
-  default     = "fmind/www-fmind-dev"
+  default     = "fmind/www"
 }
 
 variable "image_uri" {

@@ -15,7 +15,7 @@ formatters:
     gofumpt:
       extra-rules: true
     goimports:
-      local-prefixes: ["github.com/fmind/www-fmind-dev"]
+      local-prefixes: ["github.com/fmind/www"]
 linters:
   default: standard
   enable:

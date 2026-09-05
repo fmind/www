@@ -6,7 +6,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/fmind/www-fmind-dev/templates"
+	"github.com/fmind/www/templates"
 )
 
 // Okapi BM25 with its standard parameters. The archive is a few dozen long-form

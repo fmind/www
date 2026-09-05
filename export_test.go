@@ -7,8 +7,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/fmind/www-fmind-dev/config"
-	"github.com/fmind/www-fmind-dev/templates"
+	"github.com/fmind/www/config"
+	"github.com/fmind/www/templates"
 )
 
 var testArticles = sync.OnceValues(loadArticles)

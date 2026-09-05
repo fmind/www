@@ -4,7 +4,7 @@
 @plugin "@tailwindcss/typography";
 @plugin "daisyui" {
   themes: light, dark;
-  include: button, card, navbar, menu, hero, avatar, badge, footer, input, typography;
+  include: button, card, navbar, menu, hero, avatar, badge, footer, input, select, table, alert, typography;
 }
 
 @source "../../templates/**/*.templ";
@@ -243,6 +243,8 @@ a.tag:hover {
   --figure-max-width: 80rem;
 
   container-type: inline-size;
+  /* Long source URLs and table cells must shrink with the reading column. */
+  overflow-wrap: anywhere;
 }
 
 /* A paragraph holding nothing but a video is the same kind of illustration as a

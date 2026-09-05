@@ -1,5 +1,5 @@
 # ==============================================================================
-# www-fmind-dev Infrastructure
+# www Infrastructure
 # ==============================================================================
 # OpenTofu-managed Google Cloud resources for the portfolio site on Cloud Run.
 # Split by concern:

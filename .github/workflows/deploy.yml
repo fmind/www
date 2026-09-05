@@ -2,37 +2,7 @@ name: CI/CD Pipeline
 on:
   push:
     branches: [main]
-    paths:
-      - "**/*.go"
-      - ".dockerignore"
-      - ".github/workflows/deploy.yml"
-      # A release commit touches only the changelog. Without it here, the very
-      # commit a tag points at is the one commit that never runs the gate.
-      - "CHANGELOG.md"
-      - "Dockerfile"
-      - "cmd/**"
-      - "config/**"
-      - "content/**"
-      - "go.mod"
-      - "go.sum"
-      - "mise.toml"
-      - "static/**"
-      - "templates/**"
   pull_request:
-    paths:
-      - "**/*.go"
-      - ".dockerignore"
-      - ".github/workflows/deploy.yml"
-      - "CHANGELOG.md"
-      - "Dockerfile"
-      - "cmd/**"
-      - "config/**"
-      - "content/**"
-      - "go.mod"
-      - "go.sum"
-      - "mise.toml"
-      - "static/**"
-      - "templates/**"
   workflow_dispatch:
 concurrency:
   group: deploy-${{ github.ref }}

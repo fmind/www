@@ -1,4 +1,4 @@
-// Command www-fmind-dev serves the portfolio website of Médéric Hurier (Fmind).
+// Command www serves the portfolio website of Médéric Hurier (Fmind).
 package main
 
 import (
@@ -12,8 +12,8 @@ import (
 	"syscall"
 	"time"
 
-	site "github.com/fmind/www-fmind-dev"
-	"github.com/fmind/www-fmind-dev/config"
+	site "github.com/fmind/www"
+	"github.com/fmind/www/config"
 )
 
 func main() {

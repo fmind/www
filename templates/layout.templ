@@ -6,9 +6,9 @@ import (
 )
 
 // NAV_LINKS holds only same-page section anchors, so every entry behaves
-// identically when clicked. The articles index is a separate destination and is
-// rendered apart from this list (see ArticlesNavLink) instead of being mixed in,
-// where it would look like a section that scrolls but silently leaves the page.
+// identically when clicked. Full-page destinations (Articles, Sites) are
+// rendered apart from this list (see DestinationNavLinks) instead of being mixed in,
+// where they would look like sections that scroll but silently leave the page.
 var NAV_LINKS = []map[string]string{
 	{"href": "/#about", "label": "About"},
 	{"href": "/#work-experience", "label": "Work Experience"},
@@ -17,12 +17,16 @@ var NAV_LINKS = []map[string]string{
 	{"href": "/#services", "label": "Services"},
 }
 
-// ArticlesNavLink marks the articles index as a destination rather than an
-// anchor: it is separated from the section links and styled as a pill.
-templ ArticlesNavLink() {
-	<a class="btn btn-sm btn-outline btn-primary rounded-full font-semibold gap-1.5 px-4" href="/articles/">
+// DestinationNavLinks keeps full pages visually distinct from the homepage's
+// section anchors while giving both desktop destinations the same behavior.
+templ DestinationNavLinks() {
+	<a class="btn btn-sm btn-outline btn-primary rounded-xl font-semibold gap-1.5 px-4" href="/articles/">
 		@Icon("article", "h-4 w-4")
 		Articles
+	</a>
+	<a class="btn btn-sm btn-outline btn-primary rounded-xl font-semibold gap-1.5 px-4" href="/sites/">
+		<span class="text-base leading-none select-none" aria-hidden="true">🌐</span>
+		Sites
 	</a>
 }
 
@@ -32,7 +36,7 @@ templ NavigationBar() {
 			// Start section (Mobile menu toggle + brand)
 			<div class="flex-1 flex items-center gap-1 sm:gap-4">
 				// Mobile menu: toggled by the vanilla script at the end of <body>.
-				<div class="xl:hidden relative">
+				<div class="2xl:hidden relative">
 					<button id="menu-toggle" class="btn btn-ghost btn-circle btn-sm md:btn-md" aria-label="Menu" aria-controls="mobile-menu" aria-expanded="false">
 						@Icon("menu", "h-5 w-5")
 					</button>
@@ -48,13 +52,19 @@ templ NavigationBar() {
 								Articles
 							</a>
 						</li>
+						<li>
+							<a class="font-semibold text-primary py-2" href="/sites/">
+								<span class="text-base leading-none select-none" aria-hidden="true">🌐</span>
+								Sites
+							</a>
+						</li>
 					</ul>
 				</div>
 				<a class="btn btn-ghost text-xl md:text-2xl font-bold font-heading text-primary normal-case gap-2 sm:gap-4 px-1 sm:px-2" href="/">
 					<img class="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-full object-cover" src={ StaticURL("static/img/logo.webp") } alt={ METADATA.SiteName + " logo" } width="48" height="48" decoding="async"/>
 					<span class="hidden sm:inline">{ METADATA.SiteName }</span>
 				</a>
-				<ul class="menu menu-horizontal px-1 hidden xl:flex gap-1">
+				<ul class="menu menu-horizontal px-1 hidden 2xl:flex gap-1">
 					for _, link := range NAV_LINKS {
 						<li>
 							<a class="relative font-medium hover:text-primary transition-colors duration-150 after:content-[''] after:absolute after:w-full after:scale-x-0 after:h-0.5 after:bottom-0 after:left-0 after:bg-primary after:origin-bottom-right after:transition-transform after:duration-300 hover:after:scale-x-100 hover:after:origin-bottom-left py-2 px-3" href={ templ.SafeURL(link["href"]) }>
@@ -65,7 +75,7 @@ templ NavigationBar() {
 				</ul>
 				<div class="hidden xl:flex items-center gap-3">
 					<div class="border-l border-base-content/20 h-6" aria-hidden="true"></div>
-					@ArticlesNavLink()
+					@DestinationNavLinks()
 				</div>
 			</div>
 			// End section (Social icons + theme toggle)
@@ -97,11 +107,11 @@ templ NavigationBar() {
 
 templ PageFooter() {
 	<footer class="footer footer-center px-4 py-8 sm:p-8 bg-slate-950 text-slate-400 border-t border-slate-900">
-		<aside class="space-y-2">
+		<aside class="min-w-0 w-full space-y-2">
 			<p class="font-heading font-semibold text-lg md:text-xl italic text-slate-100">
 				Everyday excellence builds tomorrow's success.
 			</p>
-			<div class="flex flex-nowrap items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm">
+			<div class="flex flex-wrap items-center justify-center gap-2 text-xs sm:text-sm">
 				<nav class="flex shrink-0 gap-0 sm:gap-1" aria-label="Social profiles">
 					for _, social := range METADATA.Socials {
 						if social.Header {
@@ -111,9 +121,11 @@ templ PageFooter() {
 						}
 					}
 				</nav>
-				<div class="border-l border-slate-700 h-4 sm:h-5 shrink-0" aria-hidden="true"></div>
-				<span class="whitespace-nowrap">
+				<div class="hidden sm:block border-l border-slate-700 h-5 shrink-0" aria-hidden="true"></div>
+				<span>
 					<a class="link hover:text-white" href="/llms.txt">For AI agents</a>
+					<span aria-hidden="true">· </span>
+					<a class="link hover:text-white" href="/sites/">Sites</a>
 					<span aria-hidden="true">· </span>
 					<a class="link hover:text-white" href="/api/profile">JSON profile</a>
 					<span aria-hidden="true">· </span>
@@ -131,7 +143,7 @@ templ PageFooter() {
 
 templ Layout(body templ.Component, page PageMetadata) {
 	<!DOCTYPE html>
-	<html lang="en" class="scroll-smooth">
+	<html lang="en" class={ templ.KV("scroll-smooth", !page.InstantScroll) }>
 		<head>
 			<meta charset="utf-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -182,7 +194,12 @@ templ Layout(body templ.Component, page PageMetadata) {
 				    // run on a theme swap makes every link and surface cross-fade and lag.
 				    // Suppressing them for one frame keeps the swap instant.
 				    root.classList.add('theme-switching');
-				    localStorage.theme = isDark ? 'dark' : 'light';
+				    try {
+				      localStorage.setItem('theme', isDark ? 'dark' : 'light');
+				    } catch (error) {
+				      // Storage is optional: privacy settings and full quotas must not break controls.
+				      if (error.name !== 'SecurityError' && error.name !== 'QuotaExceededError') throw error;
+				    }
 				    root.classList.toggle('dark', isDark);
 				    root.setAttribute('data-theme', isDark ? 'dark' : 'light');
 				    document.querySelectorAll('meta[name="theme-color"]').forEach((meta) => {
@@ -192,12 +209,18 @@ templ Layout(body templ.Component, page PageMetadata) {
 				      requestAnimationFrame(function () { root.classList.remove('theme-switching'); });
 				    });
 				  }
-				  var isDark =
-				    localStorage.theme === 'dark' ||
-				    (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
+				  var savedTheme = null;
+				  try {
+				    savedTheme = localStorage.getItem('theme');
+				  } catch (error) {
+				    // Use the system preference when browser policy prevents reading storage.
+				    if (error.name !== 'SecurityError') throw error;
+				  }
+				  var isDark = savedTheme === 'dark' ||
+				    (savedTheme !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
 				  setTheme(isDark);
 				  window.setTheme = setTheme;
-				})();
+								})();
 			</script>
 			// Font & image preloads. The font hrefs must match the unversioned @font-face
 			// URLs in the stylesheet exactly, otherwise the browser downloads each font twice.
@@ -225,7 +248,7 @@ templ Layout(body templ.Component, page PageMetadata) {
 			<link rel="manifest" href={ StaticURL("static/site.webmanifest") }/>
 			// The validated generated stylesheet is inlined to avoid a render-blocking
 			// request. The only scripts are two tiny nonce-authorized inline snippets:
-			// the theme initializer above (pre-paint, no FOUC) and the theme/menu handlers
+			// the theme initializer above (pre-paint, no FOUC) and the theme/menu and chart handlers
 			// at the end of <body>. No framework or external JS is loaded.
 			@templ.Raw("<style nonce=\"" + templ.GetNonce(ctx) + "\">" + InlineStyles + "</style>")
 			@templ.Raw("<script type=\"application/ld+json\">" + page.StructuredData + "</script>")
@@ -247,7 +270,7 @@ templ Layout(body templ.Component, page PageMetadata) {
 			</main>
 			// Footer
 			@PageFooter()
-			// Interactivity: theme toggle + mobile menu. ~30 lines of vanilla JS,
+			// Theme, menu, and progressive chart interaction use native browser controls,
 			// authorized by the CSP nonce, replacing a client-side framework.
 			<script nonce={ templ.GetNonce(ctx) }>
 				(function () {
@@ -287,6 +310,103 @@ templ Layout(body templ.Component, page PageMetadata) {
 				    });
 				    menu.querySelectorAll('a').forEach(function (a) {
 				      a.addEventListener('click', function () { setOpen(false); });
+				    });
+				  }
+				  // Go supplies all prices and scenario URLs; the slider only selects a frame.
+				  function initializeCostCharts(container) {
+				  container.querySelectorAll('[data-cost-explorer]').forEach(function (chart) {
+				    var range = chart.querySelector('[data-cost-range]');
+				    var frames = chart.querySelectorAll('[data-cost-frame]');
+				    var cursor = chart.querySelector('[data-cost-cursor]');
+				    var output = chart.querySelector('[data-cost-output]');
+				    var apply = chart.querySelector('[data-cost-apply]');
+				    var selectFrame = function () {
+				      var frame = frames[Number(range.value)];
+				      cursor.setAttribute('x1', frame.dataset.x);
+				      cursor.setAttribute('x2', frame.dataset.x);
+				      output.textContent = frame.dataset.summary;
+				      apply.setAttribute('href', frame.dataset.url);
+				      range.setAttribute('aria-valuetext', frame.dataset.label);
+				    };
+				    range.addEventListener('input', selectFrame);
+				    range.disabled = false;
+				    chart.querySelector('[data-cost-controls]').classList.remove('hidden');
+				  });
+				  }
+				  initializeCostCharts(document);
+
+				  // Invalid optional controls must be visible before the browser focuses them.
+				  document.addEventListener('invalid', function (event) {
+				    var parent = event.target.parentElement;
+				    while (parent) {
+				      if (parent.tagName === 'DETAILS') parent.open = true;
+				      parent = parent.parentElement;
+				    }
+				  }, true);
+				  if (document.querySelector('[data-hosting-calculator]')) {
+				    var pendingScenario;
+				    async function updateScenario(url, source) {
+				      // Only this same-origin, server-rendered calculator supplies replacement markup.
+				      if (url.origin !== location.origin || url.pathname !== location.pathname) return;
+				      if (pendingScenario) pendingScenario.abort();
+				      var request = new AbortController();
+				      pendingScenario = request;
+				      var current = document.querySelector('[data-hosting-calculator]');
+				      current.setAttribute('aria-busy', 'true');
+				      try {
+				        var response = await fetch(url, { signal: request.signal });
+				        if (!response.ok) throw new Error('Calculator response: ' + response.status);
+				        var html = await response.text();
+				        if (pendingScenario !== request) return;
+				        var next = new DOMParser().parseFromString(html, 'text/html').querySelector('[data-hosting-calculator]');
+				        if (!next) throw new Error('Calculator markup is missing');
+				        // Keep deliberate disclosures and the active control in the same viewport position.
+				        current.querySelectorAll('details[id]').forEach(function (details) {
+				          var replacement = next.querySelector('#' + details.id);
+				          if (replacement) replacement.open = details.open;
+				        });
+				        var top = source.getBoundingClientRect().top;
+				        var sourceID = source.id;
+				        current.replaceWith(next);
+				        initializeCostCharts(next);
+				        var replacement = document.getElementById(sourceID);
+				        if (replacement) {
+				          replacement.focus({ preventScroll: true });
+				          window.scrollBy({ top: replacement.getBoundingClientRect().top - top, behavior: 'instant' });
+				        }
+				        url.hash = '';
+				        history.replaceState(history.state, '', url);
+				        next.querySelector('[data-update-status]').textContent = 'Comparison updated.';
+				      } catch (error) {
+				        if (error.name !== 'AbortError') {
+				          var status = current.querySelector('[data-update-status]');
+				          status.classList.remove('sr-only');
+				          status.setAttribute('role', 'alert');
+				          status.textContent = 'Could not update the comparison. Please try again.';
+				          source.insertAdjacentElement('afterend', status);
+				        }
+				      } finally {
+				        if (pendingScenario === request) {
+				          pendingScenario = null;
+				          document.querySelector('[data-hosting-calculator]').removeAttribute('aria-busy');
+				        }
+				      }
+				    }
+				    document.addEventListener('submit', function (event) {
+				      var form = event.target;
+				      if (form.id !== 'calculator') return;
+				      event.preventDefault();
+				      var url = new URL(form.action);
+				      url.search = new URLSearchParams(new FormData(form, event.submitter || undefined));
+				      var source = event.submitter && !event.submitter.hidden ? event.submitter : document.activeElement;
+				      updateScenario(url, source);
+				    });
+				    document.addEventListener('click', function (event) {
+				      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+				      var link = event.target.closest('a[data-scenario-link]');
+				      if (!link) return;
+				      event.preventDefault();
+				      updateScenario(new URL(link.href), link);
 				    });
 				  }
 				})();

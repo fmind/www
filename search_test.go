@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fmind/www-fmind-dev/templates"
+	"github.com/fmind/www/templates"
 )
 
 func searchArticle(slug, title, description, body string, tags ...string) templates.Article {

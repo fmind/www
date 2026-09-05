@@ -216,6 +216,15 @@ templ ArticlePage(article Article, related []Article) {
 		<div class="prose prose-lg md:prose-xl mx-auto max-w-4xl text-base-content prose-headings:font-heading prose-headings:scroll-mt-24 prose-a:text-primary prose-img:rounded-xl prose-img:shadow-lg prose-pre:bg-slate-800 prose-pre:text-slate-50 prose-pre:border prose-pre:border-slate-700 prose-code:before:content-none prose-code:after:content-none [&_video]:my-10 [&_video]:w-full [&_video]:rounded-xl [&_video]:shadow-lg">
 			@templ.Raw(article.HTML)
 		</div>
+		for _, page := range SITE_PAGES {
+			if page.RelatesTo(article.Slug) {
+				<aside class="max-w-4xl mx-auto rounded-2xl border border-primary/30 bg-primary/5 p-6 my-10">
+					<p class="text-sm font-semibold uppercase tracking-wider">Put the ideas into practice</p>
+					<a class="link link-primary font-heading text-xl font-bold block mt-2" href={ templ.SafeURL("/sites/" + page.Slug + "/") }>{ page.Title } →</a>
+					<p class="text-base-content/75 mt-3">Try the decision tool to compare demand, API bills, hosting capacity, and cost per accepted task.</p>
+				</aside>
+			}
+		}
 		@ArticleFooter(related)
 	</article>
 }

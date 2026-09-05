@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/fmind/www-fmind-dev/templates"
+	"github.com/fmind/www/templates"
 )
 
 type atomFeed struct {
@@ -100,6 +100,10 @@ func renderSitemap(articles []templates.Article) ([]byte, error) {
 	urls := []sitemapURL{
 		{Location: templates.METADATA.SiteURL + "/"},
 		{Location: templates.METADATA.SiteURL + "/articles/"},
+		{Location: templates.METADATA.SiteURL + "/sites/"},
+	}
+	for _, page := range templates.SITE_PAGES {
+		urls = append(urls, sitemapURL{Location: page.URL})
 	}
 	for _, article := range articles {
 		// This site is canonical for everything it publishes, so the whole archive
@@ -123,6 +127,11 @@ func renderLLMSTxt(articles []templates.Article) []byte {
 	fmt.Fprintf(&body, "- Article source: append `.md` to any article slug (%s/articles/<slug>.md) for its raw Markdown.\n", templates.METADATA.SiteURL)
 	fmt.Fprintf(&body, "- [Atom feed](%s/articles/feed.xml): Reverse-chronological publication feed.\n", templates.METADATA.SiteURL)
 	fmt.Fprintf(&body, "- [Sitemap](%s/sitemap.xml): Canonical hosted pages.\n\n", templates.METADATA.SiteURL)
+	body.WriteString("## Sites\n\n")
+	for _, page := range templates.SITE_PAGES {
+		fmt.Fprintf(&body, "- [%s](%s) — %s\n", page.Title, page.URL, page.Description)
+	}
+	body.WriteString("\n")
 	body.WriteString("## Articles\n\n")
 	for _, article := range articles {
 		fmt.Fprintf(&body, "- [%s](%s) — %s ([Markdown](%s))\n", article.Title, article.URL, article.Description, article.MarkdownURL())

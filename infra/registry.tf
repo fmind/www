@@ -3,7 +3,7 @@
 resource "google_artifact_registry_repository" "repo" {
   location      = var.region
   repository_id = var.repository_id
-  description   = "Docker repository for www-fmind-dev"
+  description   = "Docker repository for the www portfolio application"
   format        = "DOCKER"
 
   cleanup_policy_dry_run = false

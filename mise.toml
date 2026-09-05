@@ -1,5 +1,7 @@
 [env]
-APP_NAME = "www-fmind-dev"
+APP_NAME = "www"
+PROJECT_ID = "www-fmind-dev"
+SERVICE_NAME = "www-fmind-dev"
 REGION = "europe-west1"
 
 [settings.task]
@@ -16,6 +18,8 @@ gotestsum = "1.13.0"
 hadolint = "2.15.1"
 lefthook = "2.1.10"
 lychee = "0.24.2"
+node = "24.20.0"
+"npm:playwright" = "1.63.0"
 opentofu = "1.12.5"
 tflint = "0.64.0"
 trivy = "0.73.0"
@@ -25,7 +29,7 @@ zizmor = "1.29.0"
 [tasks.all]
 alias = "a"
 description = "Format, check, test, and build the project"
-run = ["mise run format", "mise run check", "mise run test", "mise run build"]
+run = ["mise run format", "mise run check", "mise run test", "mise run build", "mise run test:browser"]
 
 [tasks.build]
 alias = "b"
@@ -61,7 +65,7 @@ outputs = ["**/*_templ.go"]
 # formatters as the hook so clean installs and staged-file checks are byte-stable.
 run = [
   "go tool templ generate",
-  "go tool goimports -local github.com/fmind/www-fmind-dev -w templates/*_templ.go",
+  "go tool goimports -local github.com/fmind/www -w templates/*_templ.go",
   "go tool gofumpt -w templates/*_templ.go",
 ]
 
@@ -98,7 +102,7 @@ run = "dprint check"
 [tasks."check:leaks"]
 alias = "cs"
 description = "Audit git history for leaked secrets (gitleaks)"
-run = "gitleaks git --log-opts=\"--max-count=100\" --verbose"
+run = "gitleaks git --redact=100 --log-opts=\"--max-count=100\" --verbose"
 
 [tasks."check:links"]
 alias = "ck"
@@ -113,7 +117,9 @@ run = "typos content/articles"
 alias = "cl"
 description = "Lint Go sources (golangci-lint)"
 depends = ["build:templ"]
-run = "golangci-lint run ./..."
+# golangci-lint caches absolute source paths. Keep the cache with this checkout
+# so moving or renaming the repository cannot replay findings for an old path.
+run = "GOLANGCI_LINT_CACHE=\"$PWD/tmp/golangci-lint\" golangci-lint run ./..."
 
 [tasks."check:scan"]
 description = "Scan Dockerfile and infrastructure for misconfigurations (trivy config)"
@@ -148,7 +154,11 @@ run = [
 [tasks."check:vuln"]
 alias = "cv"
 description = "Scan Go code for known vulnerabilities (govulncheck)"
-run = "go tool govulncheck ./..."
+run = [
+  "go tool govulncheck ./...",
+  # Include tool and transitive dependencies even when no vulnerable call is reachable.
+  "trivy fs --exit-code=1 --severity HIGH,CRITICAL --scanners vuln .",
+]
 
 [tasks.clean]
 alias = "n"
@@ -167,7 +177,9 @@ description = "Deploy an image digest to Cloud Run — pass the image ref as the
 # the routine path (push to main); this is for manual rollout and rollback, so
 # it sets only the image — OpenTofu still owns the rest of the service shape.
 # mise appends CLI args to the last command: `mise run deploy <image-ref>`.
-run = "gcloud run deploy $APP_NAME --region=$REGION --image"
+# Update requires the service to exist; the explicit project prevents a shell's
+# unrelated gcloud default from receiving a rollout or accidentally creating one.
+run = "gcloud run services update $SERVICE_NAME --project=$PROJECT_ID --billing-project=$PROJECT_ID --region=$REGION --image"
 
 [tasks.format]
 alias = "f"
@@ -181,7 +193,7 @@ run = "dprint fmt"
 [tasks."format:go"]
 description = "Format Go sources and imports (goimports + gofumpt)"
 run = [
-  "go tool goimports -local github.com/fmind/www-fmind-dev -w .",
+  "go tool goimports -local github.com/fmind/www -w .",
   "go tool gofumpt -w .",
 ]
 
@@ -196,7 +208,7 @@ run = "tofu -chdir=infra fmt -recursive"
 [tasks.install]
 alias = "i"
 description = "Tidy Go modules and download dependencies"
-depends = ["install:go"]
+depends = ["install:go", "install:browser"]
 
 [tasks."install:go"]
 description = "Tidy Go modules and download dependencies"
@@ -227,3 +239,13 @@ run = "go tool air"
 [tasks."watch:css"]
 hide = true
 run = "tailwindcss-extra -i assets/css/input.css -o static/dist/styles.css --watch"
+
+[tasks."install:browser"]
+description = "Install the Chromium version used by the browser regression suite"
+run = "playwright install chromium"
+
+[tasks."test:browser"]
+description = "Exercise navigation, articles, and calculators in Chromium"
+depends = ["build"]
+# Playwright is a pinned mise CLI, keeping browser tooling outside the application.
+run = 'NODE_PATH="$(mise where npm:playwright)/node_modules" env -u NO_COLOR playwright test --config tests/playwright.config.cjs'

@@ -10,7 +10,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"github.com/fmind/www-fmind-dev/templates"
+	"github.com/fmind/www/templates"
 )
 
 // mcpProfileURI is the stable URI of the full-portfolio MCP resource.
@@ -47,6 +47,7 @@ type Portfolio struct {
 	// can filter the article list without inferring the taxonomy from the data.
 	Tags          []templates.Tag            `json:"tags"`
 	Articles      []templates.ArticleSummary `json:"articles"`
+	SitePages     []templates.SitePage       `json:"site_pages"`
 	OpenSource    []templates.Project        `json:"open_source"`
 	YouTubeSeries []templates.Playlist       `json:"youtube_series"`
 	Services      []templates.Service        `json:"services"`
@@ -66,6 +67,7 @@ func snapshot(articles []templates.ArticleSummary) Portfolio {
 		Papers:          templates.PAPERS,
 		Tags:            templates.TAGS,
 		Articles:        articles,
+		SitePages:       templates.SITE_PAGES,
 		OpenSource:      templates.OPEN_SOURCE,
 		YouTubeSeries:   templates.YOUTUBE_SERIES,
 		Services:        templates.GetServices(),
@@ -154,7 +156,7 @@ var mcpCardPrompts = []mcpCardPrimitive{
 func newMCPServer(articles []templates.ArticleSummary, index *searchIndex) *mcp.Server {
 	server := mcp.NewServer(
 		&mcp.Implementation{
-			Name:       "www-fmind-dev",
+			Name:       "www",
 			Version:    buildVersion(),
 			Title:      "Médéric Hurier (Fmind) — AI Architect Portfolio",
 			WebsiteURL: templates.METADATA.SiteURL + "/",
@@ -373,7 +375,7 @@ func renderMCPServerCard() ([]byte, error) {
 		Version:         "1.0",
 		ProtocolVersion: mcpProtocolVersion,
 		ServerInfo: mcp.Implementation{
-			Name:       "www-fmind-dev",
+			Name:       "www",
 			Title:      "Médéric Hurier (Fmind) — AI Architect Portfolio",
 			Version:    buildVersion(),
 			WebsiteURL: templates.METADATA.SiteURL + "/",

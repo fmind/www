@@ -12,8 +12,8 @@ import (
 	"github.com/a-h/templ"
 	"github.com/klauspost/compress/gzhttp"
 
-	"github.com/fmind/www-fmind-dev/config"
-	"github.com/fmind/www-fmind-dev/templates"
+	"github.com/fmind/www/config"
+	"github.com/fmind/www/templates"
 )
 
 // canonicalHost is the production apex domain that 301-redirects to its www host,

@@ -2,7 +2,7 @@ root = "."
 tmp_dir = "tmp"
 
 [build]
-cmd = "mise run build:templ && go build -o ./tmp/main ./cmd/www-fmind-dev"
+cmd = "mise run build:templ && go build -o ./tmp/main ./cmd/www"
 bin = "./tmp/main"
 delay = 1000
 exclude_dir = ["tmp", "vendor"]

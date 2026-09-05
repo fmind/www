@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/fmind/www-fmind-dev/templates"
+	"github.com/fmind/www/templates"
 )
 
 func TestGenerateDerivativesResizesAndIsIdempotent(t *testing.T) {

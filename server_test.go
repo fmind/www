@@ -17,9 +17,9 @@ import (
 
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 
-	site "github.com/fmind/www-fmind-dev"
-	"github.com/fmind/www-fmind-dev/config"
-	"github.com/fmind/www-fmind-dev/templates"
+	site "github.com/fmind/www"
+	"github.com/fmind/www/config"
+	"github.com/fmind/www/templates"
 )
 
 // newServer spins the real application handler in development mode.
@@ -174,8 +174,9 @@ func assertFooter(t *testing.T, body string) {
 	if got := strings.Count(footer, "<p "); got != 2 {
 		t.Errorf("footer paragraph rows = %d, want 2", got)
 	}
-	if got := strings.Count(footer, `class="flex flex-nowrap`); got != 1 {
-		t.Errorf("footer combined icon/link rows = %d, want 1", got)
+	// Keep the combined row, but allow it to wrap on a 320px screen.
+	if got := strings.Count(footer, `class="flex flex-wrap`); got != 1 {
+		t.Errorf("footer wrapping icon/link groups = %d, want 1", got)
 	}
 
 	previous := -1
@@ -231,13 +232,28 @@ func assertArticlesSection(t *testing.T, body string) {
 		}
 	}
 	// Every nav entry must behave the same way: same-page anchors in the list,
-	// with the articles index kept out of it as a separate destination.
+	// with the full-page destinations (Articles, Sites) kept out as buttons.
 	nav := extractRegion(t, body, "navigation", "<nav ", "</nav>")
 	if !strings.Contains(nav, `href="/#`) {
 		t.Error("navigation is missing its section anchors")
 	}
 	if got := strings.Count(nav, `href="/articles/"`); got != 2 {
-		t.Errorf("navigation articles links = %d, want 2 (desktop pill + mobile menu)", got)
+		t.Errorf("navigation articles links = %d, want 2 (desktop button + mobile menu)", got)
+	}
+	if got := strings.Count(nav, `href="/sites/"`); got != 2 {
+		t.Errorf("navigation sites links = %d, want 2 (desktop button + mobile menu)", got)
+	}
+	if strings.Index(nav, `href="/articles/"`) > strings.Index(nav, `href="/sites/"`) {
+		t.Error("navigation articles link should appear before sites link")
+	}
+	if !strings.Contains(nav, "🌐") {
+		t.Error("navigation is missing the www emoji for sites")
+	}
+	if !strings.Contains(nav, `btn btn-sm btn-outline btn-primary rounded-xl font-semibold gap-1.5 px-4" href="/articles/"`) {
+		t.Error("navigation articles button is missing rounded-xl outline styling")
+	}
+	if !strings.Contains(nav, `btn btn-sm btn-outline btn-primary rounded-xl font-semibold gap-1.5 px-4" href="/sites/"`) {
+		t.Error("navigation sites button is missing rounded-xl outline styling")
 	}
 }
 
@@ -560,8 +576,8 @@ func TestArticlePagesAndDiscovery(t *testing.T) {
 		t.Fatalf("sitemap status = %d, want 200", status)
 	}
 	// This site is canonical for everything it publishes, so every public article
-	// belongs in the sitemap beside the two index pages.
-	if got, want := strings.Count(sitemap, "<url>"), site.SitemapArticleCount(t)+2; got != want {
+	// and registered decision tool belongs beside the three index pages.
+	if got, want := strings.Count(sitemap, "<url>"), site.SitemapArticleCount(t)+3+len(templates.SITE_PAGES); got != want {
 		t.Errorf("sitemap URLs = %d, want %d", got, want)
 	}
 	if !strings.Contains(sitemap, "/articles/"+slug+"/") {
@@ -1131,6 +1147,115 @@ func TestArticleMarkdownSource(t *testing.T) {
 	}
 }
 
+func TestSitePagesAndLLMSelfHostingCalculator(t *testing.T) {
+	srv := newServer(t)
+
+	status, _, index := get(t, srv.URL+"/sites/")
+	if status != http.StatusOK {
+		t.Fatalf("site index status = %d, want 200", status)
+	}
+	for _, want := range []string{"Sites", "LLM self-hosting on GKE", `href="/sites/llm-self-hosting/"`} {
+		if !strings.Contains(index, want) {
+			t.Errorf("site index missing %q", want)
+		}
+	}
+
+	status, _, calculator := get(t, srv.URL+"/sites/llm-self-hosting/?model=qwen3-8-27b&node=a2-ultra-1g&quant=fp4&replicas=2")
+	if status != http.StatusOK {
+		t.Fatalf("calculator status = %d, want 200", status)
+	}
+	for _, want := range []string{
+		"When does self-hosting an LLM pay off?",
+		"Gemini 3.8 Flash",
+		"Claude Sonnet 5",
+		"GPT-6 Astra",
+		"Small team · 5–10 people",
+		"4, 8, or 16-bit: what are you trading?",
+		"cost per accepted task",
+		"Top 10 open-weight models",
+		"Qwen3.8 27B (xhigh)",
+		"2 nodes · 2 GPUs",
+		"Artificial Analysis model leaderboard",
+		`<link rel="canonical" href="https://www.fmind.dev/sites/llm-self-hosting/"`,
+		`"@type":"WebApplication"`,
+	} {
+		if !strings.Contains(calculator, want) {
+			t.Errorf("calculator missing %q", want)
+		}
+	}
+	if got := strings.Count(calculator, "https://artificialanalysis.ai/models/"); got != 10 {
+		t.Errorf("ranked model links = %d, want 10", got)
+	}
+
+	if status, _, _ := get(t, srv.URL+"/sites/not-a-tool/"); status != http.StatusNotFound {
+		t.Errorf("unknown site page status = %d, want 404", status)
+	}
+
+	_, _, sitemap := get(t, srv.URL+"/sitemap.xml")
+	_, _, llms := get(t, srv.URL+"/llms.txt")
+	for surface, body := range map[string]string{"sitemap": sitemap, "llms.txt": llms} {
+		if !strings.Contains(body, "https://www.fmind.dev/sites/llm-self-hosting/") {
+			t.Errorf("%s is missing the calculator URL", surface)
+		}
+	}
+}
+
+func TestContentRoutesRejectNestedPaths(t *testing.T) {
+	srv := newServer(t)
+	for _, path := range []string{
+		"/articles/agentgateway-vs-litellm/extra",
+		"/articles/agentgateway-vs-litellm/extra/",
+		"/sites/llm-self-hosting/extra",
+		"/sites/llm-self-hosting/extra/",
+	} {
+		t.Run(path, func(t *testing.T) {
+			status, _, body := get(t, srv.URL+path)
+			if status != http.StatusNotFound || !strings.Contains(body, `content="noindex, follow"`) {
+				t.Errorf("nested content route: status = %d, want a noindex 404", status)
+			}
+		})
+	}
+}
+
+func TestCalculatorRedirectPreservesScenario(t *testing.T) {
+	srv := newServer(t)
+	status, _, body := get(t, srv.URL+"/sites/llm-self-hosting?requests=234&replicas=2")
+	if status != http.StatusOK || !strings.Contains(body, `value="234"`) || !strings.Contains(body, "2 nodes · 2 GPUs") {
+		t.Fatal("canonical redirect lost the shared calculator assumptions")
+	}
+}
+
+func TestHostingDemandAndCapacityStates(t *testing.T) {
+	srv := newServer(t)
+	for _, tc := range []struct {
+		name, query  string
+		want, absent []string
+	}{
+		{name: "small team", query: "preset=small-team", want: []string{"$13.20", "$35.20", "$176.00", "Start with an API on cost grounds", `aria-pressed="true"`, `aria-describedby="input-tokens-help"`}},
+		{name: "one-off job", query: "preset=single-job&replicas=3", want: []string{"$0.68", "3 nodes · 3 GPUs", "Your scenario · Single job"}},
+		{name: "overloaded", query: "preset=service&throughput=0.1", want: []string{"This fleet cannot cover the modeled demand", "Insufficient capacity", "Beyond this fleet"}, absent: []string{"Self-hosting has a cost case to test", "Start with an API on cost grounds"}},
+		{name: "cost case", query: "preset=service&throughput=10000", want: []string{"Self-hosting has a cost case to test", "Within modeled capacity"}},
+		{name: "invalid demand", query: "requests=NaN&days=32", want: []string{`role="alert"`, "Some inputs need attention", "requests must be between", "days must be between", "$13.20"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			status, _, body := get(t, srv.URL+"/sites/llm-self-hosting/?"+tc.query)
+			if status != http.StatusOK {
+				t.Fatalf("status = %d", status)
+			}
+			for _, want := range tc.want {
+				if !strings.Contains(body, want) {
+					t.Errorf("missing %q", want)
+				}
+			}
+			for _, absent := range tc.absent {
+				if strings.Contains(body, absent) {
+					t.Errorf("unexpected %q", absent)
+				}
+			}
+		})
+	}
+}
+
 // attributeValue reads one attribute from the first tag in body that starts with
 // prefix, so a test can compare what two tags actually agreed on rather than
 // asserting the same literal twice.
@@ -1156,4 +1281,47 @@ func attributeValue(t *testing.T, body, prefix, attribute string) string {
 		return ""
 	}
 	return rest[:quote]
+}
+
+func TestHostingExplorersAndArticleConnections(t *testing.T) {
+	srv := newServer(t)
+	_, _, body := get(t, srv.URL+"/sites/llm-self-hosting/")
+	for _, want := range []string{`data-cost-explorer`, `data-cost-frame`, `aria-valuetext="3,520 requests/month"`, `href="#cost-explorer"`, `id="sensitivity"`, `form="calculator"`, `API monthly cost cards`, `Responsiveness is still unproved`, `Verified 2026-09-05`, `Introductory rates through Dec 31, 2026`, `/articles/the-affordable-ai-agents/`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("hosting page missing %q", want)
+		}
+	}
+	if strings.Contains(body, "Cost per accepted task · your entered assumptions") {
+		t.Error("quality results must require opting in")
+	}
+	_, _, quality := get(t, srv.URL+"/sites/llm-self-hosting/?quality=on&quality-0-acceptance=0")
+	if !strings.Contains(quality, "No accepted tasks; cost per accepted task is undefined.") || !strings.Contains(quality, "Cost per accepted task · your entered assumptions") {
+		t.Error("zero acceptance must not produce a misleading zero cost")
+	}
+	_, _, article := get(t, srv.URL+"/articles/the-affordable-ai-agents/")
+	if !strings.Contains(article, "Put the ideas into practice") || !strings.Contains(article, `href="/sites/llm-self-hosting/"`) {
+		t.Error("related article must link to the decision tool")
+	}
+}
+
+func TestHostingPageKeepsSettingsVisibleAndAvoidsForcedAnchors(t *testing.T) {
+	srv := newServer(t)
+	_, _, body := get(t, srv.URL+"/sites/llm-self-hosting/")
+	for _, absent := range []string{"New to tokens?", "Read break-even carefully.", "Adjust model, infrastructure, capacity, and API options (optional)", "The better metric: cost per accepted task", `formaction="/sites/llm-self-hosting/#`, `action="/sites/llm-self-hosting/#`, "Decision tools"} {
+		if strings.Contains(body, absent) {
+			t.Errorf("unexpected content or forced navigation: %q", absent)
+		}
+	}
+	for _, want := range []string{`id="hosting-options"`, `data-hosting-calculator`, `data-scenario-link`, `id="update-comparison"`, `id="model"`, `id="throughput"`, `id="api-mode"`, `id="hosting-method"`, `id="hosting-sources"`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("missing calculator control: %q", want)
+		}
+	}
+	form := extractRegion(t, body, "calculator", `<form id="calculator"`, "</form>")
+	if strings.Contains(form, "<details") {
+		t.Error("main calculator settings must not collapse")
+	}
+	if strings.Contains(body, `<html lang="en" class="scroll-smooth"`) {
+		t.Error("calculator must avoid animated anchor scrolling")
+	}
 }

@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fmind/www-fmind-dev/templates"
+	"github.com/fmind/www/templates"
 )
 
 // article builds a minimal fixture: only the slug, date, and tags drive the

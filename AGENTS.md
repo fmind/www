@@ -1,6 +1,6 @@
-# AGENTS.md — www-fmind-dev
+# AGENTS.md — www
 
-Go 1.26 server-rendered web app (Go + Templ + Tailwind/DaisyUI + a small vanilla JS theme/menu controller). Self-contained: one static binary with `//go:embed`ed assets, no client framework, no database, no Node.js project.
+Go 1.26 server-rendered web app (Go + Templ + Tailwind/DaisyUI + a small vanilla JS theme/menu and calculator controller). Self-contained: one static binary with `//go:embed`ed assets, no client framework, no database, no Node.js application project; pinned Playwright runs browser tests.
 
 ## Commands (mise)
 
@@ -15,18 +15,19 @@ The canonical vocabulary lives in `mise.toml` and is reused by the repo's leftho
 - `mise run check:links` — lychee reachability check for external content links (network-dependent and prone to false reds, so it runs on a weekly schedule, never in the offline `check`/pre-commit or as a merge gate).
 - `mise run check:tofu` — `tofu fmt -check`, backend-free `init`, `tofu validate`, and tflint (network-dependent, since `init` downloads provider schemas; CI runs it on every `infra/` change). It runs under a scratch `TF_DATA_DIR` so it never reads the real `infra/.terraform/` cache — see the note in `mise.toml`.
 - `mise run test` — gotestsum with race + coverage.
-- `mise run build` — generate templates, compile CSS, build `bin/www-fmind-dev`.
+- `mise run test:browser` — Chromium journeys on desktop/light and mobile/dark, including every published page. Set `BROWSER_BASE_URL` to validate a running deployment.
+- `mise run build` — generate templates, compile CSS, build `bin/www`.
 - `mise run deploy <image-ref>` — manual Cloud Run rollout/rollback to an image digest; never wired into a hook or `all`, since it mutates production.
 
 Tooling split: heavy CLIs (golangci-lint, gotestsum, gitleaks, dprint, hadolint, lychee, typos, lefthook, trivy, actionlint, zizmor, opentofu, tflint, tailwindcss-extra) are mise-managed; code generators (`templ`, `goimports`, `gofumpt`, `govulncheck`, `air`) are `go tool` via the `go.mod` tool directive.
 
-Everything `check` fans out to is offline and credential-free — zizmor runs in offline mode, so a commit never needs a token or network. The two network-dependent checks stay out of it and out of the hooks, each with its own workflow: `check:links` (weekly) and `check:tofu` (on `infra/` changes).
+The checks require no cloud credentials; zizmor runs offline. Vulnerability scanners may refresh public databases, so `check` is not guaranteed to work without network access. `check:vuln` combines call-aware govulncheck with a complete dependency scan. The more variable checks stay separate: `check:links` runs weekly and `check:tofu` runs on `infra/` changes.
 
 ## Layout
 
 Entries are in ASCII order — dotfiles, then capitalized files, then the rest — so an agent scanning for a path can stop at the first miss.
 
-- `.agents/` — Portable agent layer: project skills (`release`, `article`, `infra`) shared by every agent CLI.
+- `.agents/` — Portable agent layer: project skills (`article`, `infra`, `release`, `site-page`) shared by every agent CLI.
 - `.air.toml` — Live-reload configuration for the Air Go development server.
 - `.dockerignore` — Specifies file paths that should not be copied into Docker images.
 - `.env.example` — Configuration template containing placeholder environment variables.
@@ -70,9 +71,16 @@ Entries are in ASCII order — dotfiles, then capitalized files, then the rest �
 - `server.json` — Publish-ready metadata for the official MCP Registry; its `version` tracks the released tag.
 - `server_internal_test.go` — Package-internal tests for asset-loading failures and buffered page rendering.
 - `server_test.go` — Integration and request handling tests for HTTP endpoints and middlewares.
+- `sites.go` — Source snapshots, validated inputs, and hosting-economics calculations for decision tools.
+- `sites_charts.go` — Server-computed cost curves and demand/throughput scenarios.
+- `sites_explore_test.go` — Pricing-mode, freshness, scenario, quality, and latency regression tests.
+- `sites_options.go` — Validated optional assumptions and complete shareable scenario URLs.
+- `sites_pricing.go` — API billing modes, dated price snapshots, and accepted-task cost comparisons.
+- `sites_test.go` — Unit tests for site-page input validation and calculation invariants.
 - `static/` — Build output and hand-placed binary assets (fonts, article images, compiled styles); the whole tree is embedded and publicly served.
 - `telemetry.go` — OpenTelemetry trace exporter initialization and structured logging correlation.
 - `templates/` — Portfolio/article data models, layouts, structured metadata, and Templ UI components.
+- `tests/` — Playwright configuration and browser regression journeys; reports and traces go in `tmp/`.
 - `tmp/` — Temporary workspace directory for test logs and compiler outputs.
 - `typos.toml` — Article typo-check configuration and reviewed exceptions.
 
@@ -86,6 +94,7 @@ Entries are in ASCII order — dotfiles, then capitalized files, then the rest �
 - The go-stack's esbuild bundling step is deliberately not adopted here: there is no first-party JavaScript module graph to bundle. The only scripts are the two inline nonce-authorized snippets in `layout.templ`, and the theme initializer has to stay inline because it runs before first paint to prevent a flash of the wrong theme. Adding `assets/js/` plus a bundle would trade a render-blocking request for roughly a kilobyte. Revisit this only if first-party JS grows into real modules.
 - The validated article collection is the only publication source for HTML, Atom, sitemap, llms.txt, JSON, and MCP surfaces; production discovery never includes drafts.
 - New private drafts enter `content/articles/` through `pub export` from the private publications repository, which carries its own authoring instructions. Once it records the live site URL, the private draft is removed and this repository owns the only published body; a substantial generated revision must start from the current site Markdown.
+- Decision tools under `/sites/` share `templates.SITE_PAGES` for routes, metadata, sitemap, `llms.txt`, JSON, and MCP discovery; follow the `site-page` skill for their source and calculation contract.
 - Article tags come from the closed vocabulary in `templates/tags.go`; each needs a matching `[data-tag='…']` color rule in `assets/css/input.css`, must tag at least one article, and anything else fails startup.
 - Code blocks are highlighted at startup by Chroma (`codeTheme` in `highlight.go`) and their stylesheet is generated from that same theme; new articles should use fenced blocks with a language, since unlabeled blocks fall back to the guesser in `languageMarkers`.
 - A new article needs its image derivatives generated (`mise run build:images`) and committed; startup fails without the cover's, and the archive test fails for any other missing rung. The ladder is `templates.DerivativeWidths` — widening it means regenerating with `FORCE=1`. The pinned pure-Go WebP encoder runs with `nodynamic`, so derivatives are reproducible without an external image-processing binary.
@@ -93,5 +102,5 @@ Entries are in ASCII order — dotfiles, then capitalized files, then the rest �
 - The paragraph after a standalone image is folded into the figure as a `<figcaption>` when its text repeats the image's alt (`foldBodyCaptions`); the folded image drops its `alt`, which the caption and the link's accessible name already carry. Compare as text, never as markup — rendering adds links and typographic spaces that change nothing. Position alone is not a caption signal: every article opens with a cover followed by ordinary prose.
 - An illustration too wide to read when fitted to the figure is a diagram laid out wrong at its source, and is fixed there — never compensated for in the layout. What matters is apparent label size, `declared size * 1280 / canvas width`; raising the font loses, because D2 grows every box to fit the text and the canvas grows with it. Fix it in the diagram source and re-import; the layout rules for that live with the diagram sources in the private publications repository. What this repository asserts is only the acceptance bar: labels ≥ ~12px apparent size and a rendered height ≤ ~1300px at 1280 wide.
 - The `templates` coverage percentage is structurally low (~2%) and is not a defect: generated `_templ.go` dominates the statement count, and the components are exercised by the root package's rendering tests, which Go credits to the root package. Cover the hand-written helpers (`tags.go`, `models.go`, `helpers.go`) directly instead. `-coverpkg=./...` does make the merged profile honest, but it rewrites every per-package headline into nonsense (`config` reads 0.3% instead of 90.9%), so the suite deliberately does not use it.
-- Definition of done: `mise run format` clean, `mise run check` no findings, `mise run test` green, new behavior covered by a test.
+- Definition of done: `mise run format` clean, `mise run check` no findings, `mise run test` and `mise run test:browser` green, new behavior covered by a test.
 - Conventional Commits; no attribution.

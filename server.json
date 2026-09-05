@@ -5,7 +5,7 @@
   "description": "Read-only portfolio tools, resources, and prompts for Fmind.",
   "version": "1.2.0",
   "repository": {
-    "url": "https://github.com/fmind/www-fmind-dev",
+    "url": "https://github.com/fmind/www",
     "source": "github",
     "id": "1261133438"
   },

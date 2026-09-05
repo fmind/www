@@ -237,7 +237,7 @@ The plot below shows the final evaluation of the model for my use case. Overall,
 #### Extrapolations (for other use cases):
 
 - **The sweet spot for ChatGPT is chat applications**. [The lack of good batch options was hard to overcome](https://community.openai.com/t/batching-with-chatcompletion-not-possible-like-it-was-in-completion/81647). I think ChatGPT is better suited for interactive use cases, such as [the application provided by default](https://chat.openai.com/chat).
-- **ChatGPT is a great tool for building quick prototypes**. Fine-tuning smaller models might be more efficient at dealing with specific use cases. Thus, I think ChatGPT is analogous to [Auto ML for machine learning](https://www.automl.org/automl/): great for prototyping, but limited in exploring problems in-depth.
+- **ChatGPT is a great tool for building quick prototypes**. Fine-tuning smaller models might be more efficient at dealing with specific use cases. Thus, I think ChatGPT is analogous to [Auto ML for machine learning](https://www.automl.org/book/): great for prototyping, but limited in exploring problems in-depth.
 - **Integration and fine-tuning are important for reliability**. This is good news for our community, as this means ML and MLOps engineers will be key in enabling use cases based on LLMs. Humans are not out of the equation yet!
 
 ![Machine Learning: https://xkcd.com/1838/](/static/img/articles/fixing-the-mlops-survey-on-llms-with-chatgpt-api-lessons-learned/07.webp)
