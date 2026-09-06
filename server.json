@@ -3,7 +3,7 @@
   "name": "dev.fmind/portfolio",
   "title": "Fmind AI Architect Portfolio",
   "description": "Read-only portfolio tools, resources, and prompts for Fmind.",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "repository": {
     "url": "https://github.com/fmind/www",
     "source": "github",
