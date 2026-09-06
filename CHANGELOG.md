@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file.
 
+## [1.4.0] - 2026-09-06
+
+### 🚀 Features
+
+- _(web)_ Migrate runtime to Python
+
 ## [1.3.1] - 2026-09-05
 
 ### 🐛 Bug Fixes
@@ -13,6 +19,10 @@ All notable changes to this project are documented in this file.
 ### 🚀 Features
 
 - _(sites)_ Add LLM hosting calculator and browser regression checks
+
+### 🧹 Miscellaneous
+
+- _(ci)_ Select offline audits and format browser tests
 
 ## [1.2.0] - 2026-08-16
 
