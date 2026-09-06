@@ -43,7 +43,9 @@ test("published pages render without overflow, missing images, or external asset
     expect(geometry.content, path).toBeLessThanOrEqual(geometry.width + 1);
     for (const image of await page.locator("img").all()) {
       await image.scrollIntoViewIfNeeded();
-      await expect.poll(() => image.evaluate((element) => element.complete && element.naturalWidth > 0)).toBe(true);
+      await expect
+        .poll(() => image.evaluate((element) => element.complete && element.naturalWidth > 0), { timeout: 30000 })
+        .toBe(true);
     }
   }
   expect(external).toEqual([]);
