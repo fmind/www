@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file.
 
+## [1.4.3] - 2026-09-07
+
+### 🧪 Testing
+
+- _(browser)_ Allow remote crawl network variance
+
 ## [1.4.2] - 2026-09-07
 
 ### 🐛 Bug Fixes
