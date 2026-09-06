@@ -10,7 +10,9 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("published pages render without overflow, missing images, or external assets", async ({ page, request, baseURL }) => {
-  test.setTimeout(180000);
+  // A remote full-sitemap crawl needs headroom for network variance while each
+  // navigation and image assertion remains independently bounded below.
+  test.setTimeout(360000);
   const profile = await (await request.get("/api/profile")).json();
   const paths = [
     "/",
