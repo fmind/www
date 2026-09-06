@@ -282,7 +282,8 @@ def create_app(
             return _redirect("/static/" + (f"?{query}" if query else ""))
         return _static_response(b"404 page not found\n", "text/plain; charset=utf-8", _NO_CACHE, status_code=404)
 
-    @route(["/health", "/healthz"], http_method=_READ_METHODS, sync_to_thread=False)
+    # Cloud Run reserves some paths ending in "z"; keep one portable probe URL.
+    @route("/health", http_method=_READ_METHODS, sync_to_thread=False)
     def health() -> Response[bytes]:
         return Response(b'{"status":"ok"}', headers={"content-type": "application/json; charset=utf-8"})
 

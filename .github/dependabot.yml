@@ -1,4 +1,6 @@
+# Docs: https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference
 version: 2
+# Wait one week before proposing releases so ecosystem incidents can surface.
 # Minor and patch updates are grouped into one PR per ecosystem to keep the
 # review queue short; majors stay separate so they get read on their own.
 updates:
@@ -7,6 +9,8 @@ updates:
     schedule:
       interval: weekly
       day: monday
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: "chore(deps)"
     groups:
@@ -18,17 +22,21 @@ updates:
     schedule:
       interval: weekly
       day: monday
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: "chore(deps)"
     groups:
       actions:
         patterns: ["*"]
         update-types: [minor, patch]
-  - package-ecosystem: terraform
+  - package-ecosystem: opentofu
     directory: /infra
     schedule:
       interval: weekly
       day: monday
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: "chore(deps)"
     groups:
@@ -40,6 +48,8 @@ updates:
     schedule:
       interval: weekly
       day: monday
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: "chore(deps)"
     groups:

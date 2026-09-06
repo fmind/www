@@ -58,6 +58,7 @@ def test_human_pages_render_complete_no_cache_documents(client: AppClient) -> No
         "/articles/the-affordable-ai-agents/": ("The Affordable AI Agents", 200),
         "/sites/": ("LLM self-hosting on GKE", 200),
         "/sites/llm-self-hosting/?requests=234&replicas=2": ("2 nodes · 2 GPUs", 200),
+        "/healthz": ("Page not found", 404),
         "/does-not-exist": ("Page not found", 404),
         "/articles/the-affordable-ai-agents/extra/": ("Page not found", 404),
     }
@@ -91,7 +92,6 @@ def test_canonical_redirects_preserve_only_the_established_queries(client: AppCl
 def test_machine_surfaces_keep_content_cache_and_cors_contracts(client: AppClient) -> None:
     cases = (
         ("/health", "application/json; charset=utf-8", None, None, b'{"status":"ok"}'),
-        ("/healthz", "application/json; charset=utf-8", None, None, b'{"status":"ok"}'),
         ("/robots.txt", "text/plain; charset=utf-8", "public, max-age=86400, must-revalidate", None, b"User-agent"),
         ("/llms.txt", "text/plain; charset=utf-8", "public, max-age=3600, must-revalidate", None, b"## Articles"),
         (

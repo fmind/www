@@ -31,7 +31,6 @@ _BOT_TOKENS = (
 _SILENT_PATHS = frozenset(
     {
         "/health",
-        "/healthz",
         "/favicon.ico",
         "/robots.txt",
         "/sitemap.xml",
