@@ -10,8 +10,8 @@ resource "google_cloud_run_v2_service" "web" {
     service_account = google_service_account.cloudrun_sa.email
 
     # One CPU sustains near-identical Python throughput at eight rather than 80
-    # concurrent renders, with much lower tail latency and a 198 MiB measured
-    # peak. The platform default pushed the process above the 256 MiB limit.
+    # concurrent renders, with much lower tail latency. Keep the bounded
+    # concurrency even though memory has independent headroom below.
     max_instance_request_concurrency = 8
 
     # No request legitimately runs long, so cap Cloud Run's request timeout well
@@ -32,9 +32,11 @@ resource "google_cloud_run_v2_service" "web" {
       }
       resources {
         limits = {
-          # Eight-way burst tests leave roughly 20% headroom at this limit.
+          # A production browser crawl peaked above 226 MiB and the preceding
+          # revision exhausted 256 MiB. Leave enough headroom for startup and
+          # concurrent rendering instead of operating against a hard ceiling.
           cpu    = "1"
-          memory = "256Mi"
+          memory = "512Mi"
         }
         cpu_idle          = true
         startup_cpu_boost = true
