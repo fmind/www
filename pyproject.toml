@@ -2,7 +2,7 @@
 
 [project]
 name = "www"
-version = "1.4.3"
+version = "1.4.4"
 description = "Server-rendered portfolio and technical publication website"
 readme = "README.md"
 requires-python = ">=3.14"
