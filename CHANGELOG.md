@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file.
 
+## [1.4.2] - 2026-09-07
+
+### 🐛 Bug Fixes
+
+- _(infra)_ Restore runtime memory headroom
+
 ## [1.4.1] - 2026-09-06
 
 ### 🐛 Bug Fixes
