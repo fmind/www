@@ -105,7 +105,7 @@ The productivity gain is massive. For a few minutes of setup — writing a m
 
 If you are tired of fighting your AI to follow your style, stop arguing with it. Give it a Skill.
 
-_Check out the full_ [_**MLOps Coding Skills repository**_](https://github.com/MLOps-Courses/mlops-coding-skills) _to see the library in action._
+_Check out the full_ [***MLOps Coding Skills repository***](https://github.com/MLOps-Courses/mlops-coding-skills) _to see the library in action._
 
 ![Source: Gemini App](/static/img/articles/mlops-coding-skills-bridging-the-gap-between-specs-and-agents/03.webp)
 

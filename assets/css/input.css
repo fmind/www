@@ -1,4 +1,6 @@
-@import "tailwindcss";
+/* Templates are the complete class source. Disable automatic repository scans
+   so Python identifiers such as `rounded` cannot accidentally ship utilities. */
+@import "tailwindcss" source(none);
 /* Structural prose styles (heading margins, list bullets, spacing); daisyUI's
    "typography" include only themes the colors and needs this plugin to work. */
 @plugin "@tailwindcss/typography";
@@ -7,7 +9,7 @@
   include: button, card, navbar, menu, hero, avatar, badge, footer, input, select, table, alert, typography;
 }
 
-@source "../../templates/**/*.templ";
+@source "../../src/www/templates/**/*.html";
 
 @source inline("badge-{warning,info,success,error} text-{warning,info,success,error}-content");
 
@@ -238,7 +240,7 @@ a.tag:hover {
    negative margin re-centres the widened box on the column without moving a
    single line of prose.
 
-   --figure-max-width must stay in step with figureSizes in articles.go: the
+   --figure-max-width must stay in step with FIGURE_SIZES in src/www/content.py: the
    srcset is resolved against that declared width, and a `sizes` attribute that
    disagrees with the layout picks the wrong candidate. */
 .article-page {

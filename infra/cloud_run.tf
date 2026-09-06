@@ -9,8 +9,13 @@ resource "google_cloud_run_v2_service" "web" {
   template {
     service_account = google_service_account.cloudrun_sa.email
 
-    # No request legitimately runs long (the app's own WriteTimeout is 10s), so
-    # cap Cloud Run's request timeout well below the 300s default to fail fast.
+    # One CPU sustains near-identical Python throughput at eight rather than 80
+    # concurrent renders, with much lower tail latency and a 198 MiB measured
+    # peak. The platform default pushed the process above the 256 MiB limit.
+    max_instance_request_concurrency = 8
+
+    # No request legitimately runs long, so cap Cloud Run's request timeout well
+    # below the 300s default to fail fast at the platform boundary.
     timeout = "30s"
 
     scaling {
@@ -27,8 +32,7 @@ resource "google_cloud_run_v2_service" "web" {
       }
       resources {
         limits = {
-          # 256Mi is ample for this static Go server (small binary + embedded
-          # assets, no heavy runtime); leaves comfortable GC headroom under burst.
+          # Eight-way burst tests leave roughly 20% headroom at this limit.
           cpu    = "1"
           memory = "256Mi"
         }
@@ -36,9 +40,9 @@ resource "google_cloud_run_v2_service" "web" {
         startup_cpu_boost = true
       }
 
-      # Runtime configuration for the Go binary (Twelve-Factor env). The image
-      # also defaults ENVIRONMENT=production, but declaring it here keeps the
-      # deployed contract explicit and drift-visible.
+      # Runtime configuration for the ASGI application (Twelve-Factor env). The
+      # image also defaults ENVIRONMENT=production, but declaring it here keeps
+      # the deployed contract explicit and drift-visible.
       env {
         name  = "ENVIRONMENT"
         value = "production"
@@ -47,7 +51,9 @@ resource "google_cloud_run_v2_service" "web" {
         initial_delay_seconds = 0
         timeout_seconds       = 3
         period_seconds        = 5
-        failure_threshold     = 3
+        # Six constrained starts of the already-loaded production candidate
+        # reached /health in 5.7-11.1s. Allow 30s for platform variance.
+        failure_threshold = 6
         http_get {
           path = "/health"
         }

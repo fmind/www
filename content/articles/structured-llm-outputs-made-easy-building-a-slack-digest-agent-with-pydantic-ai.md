@@ -203,8 +203,4 @@ If you’re building applications that consume LLM output, especially for data e
 
 **Link to the GitHub Repository**: [https://github.com/fmind/mlops-digester/tree/main](https://github.com/fmind/mlops-digester/tree/main)
 
-# An error occurred.
-
-Unable to execute JavaScript.
-
 Build a Slack Agent with Pydantic AI \[Step-by-Step Tutorial\]

@@ -112,9 +112,9 @@ I wrote [an article that delves into the design patterns I find most pertinent t
 The [SOLID principles](https://en.wikipedia.org/wiki/SOLID) are fundamental to developing flexible and maintainable object-oriented code bases. These principles encourage the design of software in such a way that it facilitates easy maintenance and extension. Instead of confining your program to a single workflow, applying SOLID principles allows for the creation of modular code components. These components can be easily interchanged and reused throughout your project, enhancing both the scalability and robustness of the code base. SOLID is an acronym that represents five key design principles:
 
 - ***S*ingle Responsibility Principle **— A class should have one, and only one, reason to change.
-- ***O*pen/Closed Principle** — Software entities should be open for extension, but closed for modification.
-- ***L*iskov Substitution Principle** — Objects in a program should be replaceable with instances of their subtypes without altering the correctness of that program.
-- ***I*nterface Segregation Principle** — No client should be forced to depend on methods it does not use.
+- __*O*pen/Closed Principle__ — Software entities should be open for extension, but closed for modification.
+- __*L*iskov Substitution Principle__ — Objects in a program should be replaceable with instances of their subtypes without altering the correctness of that program.
+- __*I*nterface Segregation Principle__ — No client should be forced to depend on methods it does not use.
 - ***D*ependency Inversion Principle **— High-level modules should not depend on low-level modules. Both should depend on abstractions.
 
 ### Solutions

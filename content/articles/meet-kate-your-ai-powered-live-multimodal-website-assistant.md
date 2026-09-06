@@ -44,10 +44,6 @@ Kate is a glimpse into the future of human-computer interaction. Live assistants
 
 Check out this playlist for a demo of Kate on [Open Textbook Library](https://open.umn.edu/opentextbooks):
 
-# An error occurred.
-
-Unable to execute JavaScript.
-
 YouTube Playlist: [https://www.youtube.com/playlist?list=PLPCnNL6Y2PbTzUxmsFICoQj0rx_PmVnk-](https://www.youtube.com/playlist?list=PLPCnNL6Y2PbTzUxmsFICoQj0rx_PmVnk-)
 
 ### Lessons Learned from Building Kate 🎓

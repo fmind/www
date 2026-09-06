@@ -1,84 +1,98 @@
 ---
 name: release
-description: Complete release workflow — local checks, git commit, semver release, GitHub Actions deployment monitoring, and live website health verification.
+description: Cut and verify a www.fmind.dev semver release from local gates through live Cloud Run proof. Use only when the owner explicitly authorizes release.
 license: MIT
 metadata:
   author: Médéric HURIER (Fmind)
 ---
 
-# Release Workflow
+# Release www
 
-This skill defines the end-to-end process for validating, committing, releasing, deploying, and verifying the application in production.
+This workflow contains commits, pushes, a GitHub release, and a production deployment. Run it only after explicit owner authorization. Local readiness never grants publication authority, and already published tags are immutable.
 
 ## Preconditions
 
-1. Working tree is clean or contains reviewed changes on `main`.
-2. Environment tools (`mise`, `go`, `git-cliff`, `gh`, `curl`, `tofu`) are initialized.
-3. Network access to GitHub and production domain (`fmind.dev` / `www.fmind.dev`) is available.
+- Work from `main`; inspect `git status --short --branch`, HEAD, and upstream. Separate unrelated changes and never broad-stage, reset, clean, force-push, or rewrite history.
+- Confirm the release tools target the intended accounts and project. If `infra/` changed, complete the `infra` skill and its explicitly authorized live plan first.
 
 ## Workflow
 
-1. **Local Verification** Run the full suite of local quality gate tasks to guarantee zero lint warnings, formatting drift, or broken tests:
+1. Run the full local delivery gate and the separate network link check:
+
    ```bash
-   mise run all             # format, check (typos included), test, build
+   mise run all
+   mise run check:links
+   git status --short
    ```
-   Fix any failing assertions, formatting mismatches, or typos before proceeding to commit.
 
-1. **Stage and Commit Changes** Stage all modified, added, or deleted files, and commit using Conventional Commits grammar — the subject describes _this_ release's work:
+   `all` includes format, check, offline pytest with coverage, distribution and OCI builds, image scanning and smoke testing, and browser journeys. Resolve every warning, failure, and unexpected generated diff.
+
+1. Stage only reviewed implementation paths and commit them with Conventional Commits:
+
    ```bash
-   git add .
-   git commit -m "<type>(<scope>): <what actually changed>"
+   git add -- <reviewed-path>...
+   git diff --cached --check
+   git diff --cached
+   git commit -m "<type>(<scope>): <change>"
    ```
-   Ensure pre-commit hooks (`lefthook`) pass cleanly without warnings. `git add .` is deliberate and safe only because `.gitignore` blocks the local-only paths (`.agents/prompts/`, `.claude/`) — check `git status` before staging if you have added new scratch files.
 
-1. **Sync the MCP server version** Set `server.json`'s `version` to the tag being cut, without the `v`, so the registry record and the git tag never disagree. Do this before the release commit, not after the tag.
+1. Compute the next semver, synchronize package and MCP Registry metadata, and generate the changelog:
 
-1. **Calculate Version and Update Changelog** Compute the next semver tag using `git-cliff` based on commit grammar since the last tag. Generate `CHANGELOG.md`:
    ```bash
    NEXT_TAG=$(git-cliff --config ~/.config/git-cliff/cliff.toml --bumped-version)
+   uv version "${NEXT_TAG#v}" --no-sync
+   # Set server.json version to ${NEXT_TAG#v} with a reviewed edit.
    git-cliff --config ~/.config/git-cliff/cliff.toml --bump -o CHANGELOG.md
    ```
 
-1. **Release Commit and Git Tag** Commit `CHANGELOG.md` and push commit and annotated tag to `origin/main`:
+   The `pyproject.toml`, `uv.lock`, and `server.json` versions must equal the tag without `v`.
+
+1. Re-run `mise run all`, inspect the exact release diff, then create and tag the release commit:
+
    ```bash
-   git add CHANGELOG.md
+   git add -- pyproject.toml uv.lock server.json CHANGELOG.md
+   git diff --cached --check
+   git diff --cached
    git commit -m "chore(release): ${NEXT_TAG}"
    git tag -a "${NEXT_TAG}" -m "${NEXT_TAG}"
-   git push --follow-tags
+   git push origin main "${NEXT_TAG}"
    ```
 
-1. **Publish GitHub Release** Extract notes for the latest release section into a temporary file and publish the release via `gh`:
+1. Publish release notes and bind monitoring to the release commit rather than the newest unrelated run:
+
    ```bash
    mkdir -p .agents/tmp
    git-cliff --config ~/.config/git-cliff/cliff.toml --latest --strip all > .agents/tmp/release-notes.md
    gh release create "${NEXT_TAG}" --title "${NEXT_TAG}" --notes-file .agents/tmp/release-notes.md
-   rm -rf .agents/tmp
+   RELEASE_SHA=$(git rev-parse HEAD)
+   RUN_ID=$(gh run list --workflow deploy.yml --commit "${RELEASE_SHA}" --limit 1 --json databaseId --jq '.[0].databaseId')
+   gh run watch "${RUN_ID}" --exit-status
    ```
 
-1. **Monitor Deployment Workflow** Track the GitHub Actions CI/CD deployment pipeline until all jobs finish with a successful exit code:
+1. Verify production independently of CI. Tie the ready revision, 100% traffic, and deployed digest to the released SHA; inspect health, discovery, browser journeys, representative Lighthouse modes, and recent error logs:
+
    ```bash
-   RUN_ID=$(gh run list --limit 1 --json databaseId --jq '.[0].databaseId')
-   gh run watch "${RUN_ID}"
+   gcloud run services describe www-fmind-dev --project=www-fmind-dev --region=europe-west1
+   xh --headers --follow https://fmind.dev
+   xh --headers https://www.fmind.dev/health
+   BROWSER_BASE_URL=https://www.fmind.dev mise run test:browser
+   mise run test:lighthouse -- --base-url https://www.fmind.dev
    ```
 
-1. **Verify Production Site Health** Perform thorough HTTP status, TLS/DNS, and content checks against the live production endpoints:
-   ```bash
-   # Primary and apex domain redirects
-   curl -I https://fmind.dev
-   curl -I https://www.fmind.dev/health
-   curl -I https://www.fmind.dev/
+   Check `/articles/`, `/sites/`, `/articles/feed.xml`, `/llms.txt`, `/sitemap.xml`, `/api/profile`, and `/.well-known/mcp/server-card.json`. Preserve exact per-page/per-mode Lighthouse results; one green page is not proof of 100 everywhere. Remove only the release-notes temporary directory after preserving evidence, then report every proof boundary separately.
 
-   # Content & discovery surfaces
-   curl -I https://www.fmind.dev/articles/
-   curl -I https://www.fmind.dev/articles/feed.xml
-   curl -I https://www.fmind.dev/llms.txt
-   curl -I https://www.fmind.dev/sitemap.xml
-   curl -I https://www.fmind.dev/.well-known/mcp/server-card.json
-   ```
+## Gotchas
 
-## Gotchas & Guidelines
+- Preserve the `vX.Y.Z` tag prefix; never delete, overwrite, or force-move a published tag.
+- The runtime is a locked, non-root Python image containing the virtual environment plus the repository's `content/` and `static/` trees; verify both through live journeys.
+- GitHub success does not prove the expected revision has traffic. A healthy endpoint does not prove the expected digest or discovery contract.
+- MCP Registry publication remains a separate owner action; a site release does not authorize `mcp-publisher publish`.
 
-1. **Tag Consistency**: Always preserve the `v` prefix (`vX.Y.Z`) for Go module compatibility and GitHub release formatting.
-2. **Immutable Tags**: Never delete or force-move an already published release tag.
-3. **Network Checks**: Link checking (`mise run check:links`) runs in CI; keep local checks fast and offline-capable.
-4. **Distroless Runtime**: Production container builds are distroless; verify static binary embedding during `mise run build`.
+## Official Skills
+
+- Use [release](~/.agents/skills/release/SKILL.md) for semver and git-cliff mechanics.
+- Use [production-readiness](~/.agents/skills/production-readiness/SKILL.md) when the release changes runtime risk.
+
+## Documentation
+
+- [GitHub CLI releases](https://cli.github.com/manual/gh_release_create)

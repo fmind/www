@@ -190,10 +190,6 @@ bromate "Open the https://MLOps.Community website.
 Click on the 'Join' link. Write the address 'hello@mlops'"
 ```
 
-# An error occurred.
-
-Unable to execute JavaScript.
-
 ```bash
 # Example 2: Summarize the features of the next Python release
 bromate --interaction.stay_open=False \
@@ -202,10 +198,6 @@ bromate --interaction.stay_open=False \
 Click on the PEP link for the future Python release.
 Summarize the release schedule dates."
 ```
-
-# An error occurred.
-
-Unable to execute JavaScript.
 
 You can explore Bromate options on the [project README.md file](https://github.com/fmind/bromate) or by typing `bromate -h` in your shell.
 

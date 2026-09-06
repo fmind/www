@@ -10,7 +10,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("published pages render without overflow, missing images, or external assets", async ({ page, request, baseURL }) => {
-  test.setTimeout(120000);
+  test.setTimeout(180000);
   const profile = await (await request.get("/api/profile")).json();
   const paths = [
     "/",
@@ -19,6 +19,13 @@ test("published pages render without overflow, missing images, or external asset
     calculator,
     ...profile.articles.map((article) => new URL(article.url).pathname),
   ];
+  const sitemapResponse = await request.get("/sitemap.xml");
+  expect(sitemapResponse.status()).toBe(200);
+  const sitemapPaths = [...(await sitemapResponse.text()).matchAll(/<loc>([^<]+)<\/loc>/g)]
+    .map(([, location]) => new URL(location).pathname);
+  // Discovery must stay closed over the same hosted pages the browser crawls.
+  expect([...new Set(sitemapPaths)].sort()).toEqual([...new Set(paths)].sort());
+  expect(sitemapPaths).toHaveLength(paths.length);
   const external = [];
   page.on("request", (request) => {
     if (new URL(request.url()).origin !== new URL(baseURL).origin) external.push(request.url());
@@ -38,6 +45,59 @@ test("published pages render without overflow, missing images, or external asset
     }
   }
   expect(external).toEqual([]);
+});
+
+test("cost chart labels remain legible and contained at the tablet breakpoint", async ({ page }) => {
+  await page.setViewportSize({ width: 640, height: 900 });
+  await page.goto(calculator);
+
+  const geometry = await page.locator("[data-cost-explorer] svg").evaluate((svg) => {
+    const chart = svg.getBoundingClientRect();
+    const labels = [...svg.querySelectorAll("text")]
+      .filter((label) => getComputedStyle(label).display !== "none")
+      .map((label) => {
+        const bounds = label.getBoundingClientRect();
+        return {
+          label: label.textContent.trim(),
+          height: bounds.height,
+          left: bounds.left,
+          right: bounds.right,
+          top: bounds.top,
+          bottom: bounds.bottom,
+        };
+      });
+    const overlaps = [];
+    for (let left = 0; left < labels.length; left += 1) {
+      for (let right = left + 1; right < labels.length; right += 1) {
+        const first = labels[left];
+        const second = labels[right];
+        if (
+          first.left < second.right && first.right > second.left
+          && first.top < second.bottom && first.bottom > second.top
+        ) {
+          overlaps.push(`${first.label} / ${second.label}`);
+        }
+      }
+    }
+    return {
+      chart: { left: chart.left, right: chart.right, top: chart.top, bottom: chart.bottom },
+      labels,
+      overlaps,
+      viewportWidth: document.documentElement.clientWidth,
+      contentWidth: document.documentElement.scrollWidth,
+    };
+  });
+
+  expect(geometry.labels.length).toBeGreaterThan(0);
+  expect(geometry.contentWidth).toBeLessThanOrEqual(geometry.viewportWidth + 1);
+  expect(geometry.overlaps).toEqual([]);
+  for (const label of geometry.labels) {
+    expect(label.height, label.label).toBeGreaterThanOrEqual(12);
+    expect(label.left, label.label).toBeGreaterThanOrEqual(geometry.chart.left - 1);
+    expect(label.right, label.label).toBeLessThanOrEqual(geometry.chart.right + 1);
+    expect(label.top, label.label).toBeGreaterThanOrEqual(geometry.chart.top - 1);
+    expect(label.bottom, label.label).toBeLessThanOrEqual(geometry.chart.bottom + 1);
+  }
 });
 
 test("theme and menu remain usable when storage is blocked", async ({ page }) => {
@@ -75,6 +135,18 @@ test("late font downloads keep the article layout stable", async ({ page }) => {
   });
   await page.goto("/articles/agentgateway-vs-litellm/");
   await page.evaluate(() => document.fonts.ready);
+  const fontLoads = await page.evaluate(async () =>
+    Promise.all(
+      ["Inter", "Outfit"].map(async (family) => {
+        const faces = await document.fonts.load(`16px "${family}"`);
+        return { family, statuses: faces.map((face) => face.status) };
+      }),
+    )
+  );
+  for (const { family, statuses } of fontLoads) {
+    expect(statuses, `${family} font face was not loaded`).not.toHaveLength(0);
+    expect(statuses, `${family} font face was not ready`).toEqual(statuses.map(() => "loaded"));
+  }
   await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   const shift = await page.evaluate(() => window.layoutShifts.reduce((sum, value) => sum + value, 0));
   expect(shift).toBeLessThan(0.001);

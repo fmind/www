@@ -1,15 +1,19 @@
+*.py[co]
 *.tfstate
 *.tfstate.*
 *.tfvars
-# Scratch work orders and per-agent harness settings are local to a machine and
-# often quote the private publications repository. The release skill stages with
-# `git add .`, so this repository blocks them itself rather than relying on a
-# developer's global ignore file, which does not travel.
-.agents/prompts/
+.cache/
 .claude/
+.coverage
 .env
-bin/
-coverage.out
+.pytest_cache/
+.ruff_cache/
+.ty_cache/
+.venv/
+__pycache__/
+dist/
+gha-creds-*.json
+htmlcov/
 infra/.terraform/
 static/dist/styles.css
 tmp/

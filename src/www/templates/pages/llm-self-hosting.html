@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% from "macros/sites.html" import api_options, cost_explorer, demand_form, fleet_form, latency, precision_guide, quality, related_articles as related_articles_section, results, sensitivity %}
+{% block content %}
+  <section data-hosting-calculator class="bg-base-200 min-h-screen px-4 py-10 md:py-16">
+    <p data-update-status class="sr-only" role="status"></p>
+    <div class="container mx-auto max-w-7xl space-y-10 md:space-y-14">
+      <nav aria-label="Breadcrumb" class="text-sm text-base-content/70">
+        <a class="link hover:text-primary" href="/sites/">Sites</a>
+        <span aria-hidden="true">/ </span><span aria-current="page">LLM self-hosting</span>
+      </nav>
+      <header class="max-w-5xl">
+        <p class="text-sm uppercase tracking-[0.18em] text-primary font-semibold mb-4">The economics of AI · GKE Standard</p>
+        <h1 class="text-4xl md:text-6xl font-heading font-black text-balance">When does self-hosting an LLM pay off?</h1>
+        <p class="text-lg md:text-xl text-base-content/80 leading-relaxed mt-5 max-w-4xl">Compare GKE fleet costs, API pricing, and capacity for your workload.</p>
+        <p class="text-sm text-base-content/70 mt-4">USD planning estimates · Source snapshot {{ view.snapshot_date }} · No GPU benchmark is implied.</p>
+        <nav aria-label="On this page" class="flex flex-wrap gap-x-6 gap-y-3 mt-6 text-sm font-semibold">
+          <a class="link link-primary" href="#calculator">Try a scenario</a>
+          <a class="link link-primary" href="#executive-result">Compare costs</a>
+          <a class="link link-primary" href="#cost-explorer">Explore the figures</a>
+          <a class="link link-primary" href="#precision-guide">Understand 4, 8, and 16-bit</a>
+          <a class="link link-primary" href="#quality-lab">Evaluate value</a>
+        </nav>
+      </header>
+      {% if view.validation %}
+        <div class="alert alert-warning" role="alert">
+          <div>
+            <p class="font-bold">Some inputs need attention.</p>
+            <ul class="list-disc ml-5 mt-1">{% for message in view.validation %}<li>{{ message }}</li>{% endfor %}</ul>
+          </div>
+        </div>
+      {% endif %}
+      <form id="calculator" method="get" action="/sites/llm-self-hosting/" class="space-y-6 scroll-mt-24" aria-label="GKE self-hosting scenario"><button type="submit" hidden tabindex="-1" aria-hidden="true">Update comparison</button>{{ demand_form(view) }}<div id="hosting-options" class="space-y-6">{{ fleet_form(view) }}{{ api_options(view) }}</div><div class="flex flex-wrap items-center gap-4"><button id="update-comparison" class="btn btn-primary rounded-xl font-bold min-h-12" type="submit">Update comparison</button> <a class="btn btn-ghost border border-base-300 rounded-xl min-h-12" id="reset-scenario" data-scenario-link href="/sites/llm-self-hosting/">Reset assumptions</a><p class="text-sm text-base-content/70">Share the URL to save this scenario.</p></div></form>
+      {{ results(view) }}
+      {{ cost_explorer(view) }}
+      {{ sensitivity(view) }}
+      {{ latency(view) }}
+      {{ precision_guide(view) }}
+      <section aria-labelledby="frontier-table" class="space-y-5">
+        <div class="max-w-4xl">
+          <p class="text-sm uppercase tracking-[0.18em] text-primary font-semibold">Frontier comparison</p>
+          <h2 id="frontier-table" class="text-3xl md:text-4xl font-heading font-black mt-2">Top 10 open-weight models</h2>
+          <p class="text-base-content/75 leading-relaxed mt-3">Artificial Analysis Intelligence Index v{{ view.index_version }}, ranked by evaluated variant. Costs reuse your fleet settings; speed and quantized quality require measurement.</p>
+        </div>
+        <div class="overflow-x-auto rounded-2xl border border-base-300 bg-base-100 shadow-sm focus-visible:outline-2 focus-visible:outline-primary" role="region" aria-label="Open-weight model comparison, scroll horizontally on small screens" tabindex="0">
+          <table class="table table-zebra w-full">
+            <caption class="sr-only">Top ten open-weight models and modeled GKE footprint and cost</caption>
+            <thead><tr><th scope="col">Rank and model</th><th scope="col">AA index</th><th scope="col">License</th><th scope="col">Memory</th><th scope="col">Fleet</th><th scope="col">Monthly</th><th scope="col">Decision</th></tr></thead>
+            <tbody>
+              {% for row in view.comparison %}
+                <tr>
+                  <th scope="row"><a class="link link-primary font-semibold" href="{{ row.model.analysis_url }}" target="_blank" rel="noopener noreferrer">#{{ row.model.rank }} · {{ row.model.name }}</a><span class="block text-xs font-normal text-base-content/60 mt-1">{{ row.model.creator }} · {{ format_go_float(row.model.parameters_b, 0) }}B parameters</span></th>
+                  <td>{{ format_go_float(row.model.intelligence, 1) }}</td>
+                  <td><a class="link" href="{{ row.model.weights_url }}" target="_blank" rel="noopener noreferrer">{{ row.model.license }}</a><span class="block text-xs text-base-content/60">{{ row.model.license_class }}</span></td>
+                  <td>{{ format_go_float(row.estimate.required_memory_gb, 0) }} GB</td>
+                  <td>{{ format_count(row.estimate.total_nodes, "node") }} / {{ format_count(row.estimate.total_gpus, "GPU") }}</td>
+                  <td>{{ format_usd(row.estimate.total_monthly_usd) }}</td>
+                  <td>{{ row.decision }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+      {{ quality(view) }}
+      {{ related_articles_section(related_articles) }}
+      <details id="hosting-method" class="rounded-2xl border border-base-300 bg-base-100 p-6 md:p-8">
+        <summary class="cursor-pointer font-heading text-xl font-bold">Method and limitations</summary>
+        <ul class="list-disc ml-5 mt-4 space-y-2 text-sm text-base-content/75">
+          <li>Whole GPU nodes, total model weights, and an editable runtime-memory reserve.</li>
+          <li>Fleet cost includes compute, the GKE cluster fee, and your operations budget. Commitments remain billed while idle.</li>
+          <li>Capacity uses output throughput × replicas × usable share × running hours. Validate peak traffic separately.</li>
+          <li>API bills include input, output, and the selected batch or cache mode. Tools, media, taxes, regional premiums, and negotiated rates are excluded.</li>
+          <li>Validate quality, KV-cache memory, multi-node efficiency, regional availability, and model terms in a pilot.</li>
+        </ul>
+      </details>
+      <details id="hosting-sources" class="rounded-2xl border border-base-300 bg-base-100 p-6 md:p-8">
+        <summary class="cursor-pointer font-heading text-xl font-bold">Sources and freshness · {{ view.snapshot_date }}</summary>
+        <p class="text-base-content/70 mt-2">Snapshot checked {{ view.snapshot_date }}. Prices and rankings move; follow the linked authority before committing spend.</p>
+        <ul class="mt-5 space-y-3">
+          <li><a class="link link-primary font-semibold" href="{{ view.model_source_url }}" target="_blank" rel="noopener noreferrer">Artificial Analysis model leaderboard</a><span class="block text-sm text-base-content/65">Independent Intelligence Index v{{ view.index_version }}, open-weight status, model parameters, context, and license links.</span></li>
+          <li><a class="link link-primary font-semibold" href="{{ view.gke_source_url }}" target="_blank" rel="noopener noreferrer">Google Kubernetes Engine pricing</a><span class="block text-sm text-base-content/65">$0.10 per cluster-hour management fee and GKE billing boundaries.</span></li>
+          <li><a class="link link-primary font-semibold" href="{{ view.price_source_url }}" target="_blank" rel="noopener noreferrer">Google Cloud accelerator-optimized VM pricing</a><span class="block text-sm text-base-content/65">A4, A3, and A2 machine composition and list-price options used here.</span></li>
+          <li><a class="link link-primary font-semibold" href="https://cloud.google.com/compute/docs/accelerator-optimized-machines" target="_blank" rel="noopener noreferrer">Google Cloud accelerator-optimized machine specifications</a><span class="block text-sm text-base-content/65">GPU count, GPU memory, host memory, networking, and provisioning constraints.</span></li>
+          <li><a class="link link-primary font-semibold" href="https://docs.cloud.google.com/compute/docs/instances/signing-up-committed-use-discounts" target="_blank" rel="noopener noreferrer">Google Cloud committed-use billing</a><span class="block text-sm text-base-content/75">Committed resources are billed throughout the term, including unused hours.</span></li>
+          {% for baseline in view.apis %}<li><a class="link link-primary font-semibold" href="{{ baseline.baseline.source_url }}" target="_blank" rel="noopener noreferrer">{{ baseline.baseline.name }} pricing</a><span class="block text-sm text-base-content/75">{{ baseline.baseline.note }}</span><span class="block text-sm text-base-content/75 mt-1">{{ baseline.freshness }}</span><a class="link link-primary text-sm" href="{{ baseline.baseline.cache_url }}" target="_blank" rel="noopener noreferrer">Cache fees and requirements</a></li>{% endfor %}
+          <li><a class="link link-primary font-semibold" href="https://docs.vllm.ai/en/latest/features/quantization/" target="_blank" rel="noopener noreferrer">vLLM quantization documentation</a><span class="block text-sm text-base-content/75">Memory trade-offs and format support by GPU and runtime implementation.</span></li>
+        </ul>
+      </details>
+    </div>
+  </section>
+{% endblock %}

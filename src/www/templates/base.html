@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en" class="{{ '' if page.instant_scroll else 'scroll-smooth' }}">
+  <head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>{{ page.title }}</title>
+    {% if not page.no_index %}
+      <link rel="canonical" href="{{ page.canonical }}"/>
+      <link rel="alternate" type="application/json" href="/api/profile" title="Machine-readable portfolio"/>
+      <link rel="alternate" type="text/plain" href="/llms.txt" title="LLM-ready portfolio summary"/>
+      <link rel="alternate" type="text/plain" href="/llms-full.txt" title="Full LLM-ready portfolio context"/>
+      <link rel="alternate" type="application/atom+xml" href="/articles/feed.xml" title="Fmind articles"/>
+      <link rel="alternate" type="application/mcp-server-card+json" href="/mcp/server-card" title="Model Context Protocol server card"/>
+      {% if page.article %}
+        <link rel="alternate" type="text/markdown" href="/articles/{{ page.article.slug }}.md" title="Article source (Markdown)"/>
+      {% endif %}
+    {% endif %}
+    <meta name="theme-color" content="#ffffff"/>
+    <meta name="color-scheme" content="light dark"/>
+    <meta name="author" content="{{ metadata.name }} ({{ metadata.alternate_name }})"/>
+    <meta name="description" content="{{ page.description }}"/>
+    {% if page.no_index %}
+      <meta name="robots" content="noindex, follow"/>
+    {% else %}
+      <meta name="robots" content="index, follow"/>
+    {% endif %}
+    {% for social in metadata.socials %}
+      <link rel="me" href="{{ social.url }}"/>
+    {% endfor %}
+    <meta property="og:type" content="{{ page.kind }}"/>
+    <meta property="og:url" content="{{ page.canonical }}"/>
+    <meta property="og:title" content="{{ page.title }}"/>
+    <meta property="og:site_name" content="{{ metadata.site_name }}"/>
+    <meta property="og:description" content="{{ page.description }}"/>
+    <meta property="og:image" content="{{ page.image_url }}"/>
+    <meta property="og:image:alt" content="{{ page.image_alt }}"/>
+    <meta property="og:locale" content="en_US"/>
+    <meta name="twitter:card" content="summary_large_image"/>
+    <meta name="twitter:site" content="{{ metadata.twitter_handle }}"/>
+    <meta name="twitter:creator" content="{{ metadata.twitter_handle }}"/>
+    <meta name="twitter:title" content="{{ page.title }}"/>
+    <meta name="twitter:description" content="{{ page.description }}"/>
+    <meta name="twitter:image" content="{{ page.image_url }}"/>
+    <meta name="twitter:image:alt" content="{{ page.image_alt }}"/>
+    <script nonce="{{ nonce }}">
+      (function () {
+        function setTheme(isDark) {
+          var root = document.documentElement;
+          // Only a visible theme swap needs transition suppression. Removing this
+          // class during initial load would restyle the entire document again.
+          if (document.body) {
+            root.classList.add('theme-switching');
+            requestAnimationFrame(function () {
+              requestAnimationFrame(function () { root.classList.remove('theme-switching'); });
+            });
+          }
+          try {
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+          } catch (error) {
+            // Storage is optional: privacy settings and full quotas must not break controls.
+            if (error.name !== 'SecurityError' && error.name !== 'QuotaExceededError') throw error;
+          }
+          root.classList.toggle('dark', isDark);
+          root.setAttribute('data-theme', isDark ? 'dark' : 'light');
+          document.querySelectorAll('meta[name="theme-color"]').forEach((meta) => {
+            meta.setAttribute('content', isDark ? '#0f172a' : '#ffffff');
+          });
+        }
+        var savedTheme = null;
+        try {
+          savedTheme = localStorage.getItem('theme');
+        } catch (error) {
+          // Use the system preference when browser policy prevents reading storage.
+          if (error.name !== 'SecurityError') throw error;
+        }
+        var isDark = savedTheme === 'dark' ||
+          (savedTheme !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        setTheme(isDark);
+        window.setTheme = setTheme;
+      })();
+    </script>
+    <link rel="preload" href="/static/fonts/Outfit-Variable.woff2" crossorigin="anonymous" as="font" type="font/woff2"/>
+    <link rel="preload" href="/static/fonts/Inter-Variable.woff2" crossorigin="anonymous" as="font" type="font/woff2"/>
+    {% if page.preload_image %}
+      {% if page.preload_image_srcset %}
+        <link rel="preload" href="{{ page.preload_image }}" imagesrcset="{{ page.preload_image_srcset }}" imagesizes="{{ page.preload_image_sizes }}" fetchpriority="high" as="image"/>
+      {% else %}
+        <link rel="preload" href="{{ page.preload_image }}" fetchpriority="high" as="image"/>
+      {% endif %}
+    {% endif %}
+    {% if page.is_home %}
+      <link rel="preload" href="{{ static_url('static/img/avatar-192.webp') }}" imagesrcset="{{ static_url('static/img/avatar-192.webp') }} 192w, {{ static_url('static/img/avatar-280.webp') }} 280w, {{ static_url('static/img/avatar.webp') }} 384w" imagesizes="(max-width: 639px) 128px, (max-width: 768px) 160px, 192px" fetchpriority="high" as="image"/>
+    {% endif %}
+    <link rel="icon" type="image/x-icon" href="{{ static_url('static/favicon.ico') }}"/>
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ static_url('static/img/favicons/apple-touch-icon.png') }}"/>
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ static_url('static/img/favicons/favicon-32x32.png') }}"/>
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ static_url('static/img/favicons/favicon-16x16.png') }}"/>
+    <link rel="manifest" href="{{ static_url('static/site.webmanifest') }}"/>
+    <style nonce="{{ nonce }}">{{ style_css }}</style>
+    <script type="application/ld+json">{{ page.structured_data }}</script>
+  </head>
+  <body class="min-h-screen bg-base-100 text-base-content font-body antialiased">
+    <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-primary text-primary-content px-4 py-2 rounded-md z-[100]">Skip to content</a>
+    <header class="sticky top-0 z-40">
+      {% include "partials/navigation.html" %}
+    </header>
+    <main class="min-h-screen" id="main-content" tabindex="-1">
+      {% block content %}{% endblock %}
+    </main>
+    {% include "partials/footer.html" %}
+    <script nonce="{{ nonce }}">
+      (function () {
+        var toggle = document.getElementById('theme-toggle');
+        if (toggle) {
+          var syncThemeButton = function () {
+            var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            toggle.setAttribute('aria-pressed', isDark ? 'true' : 'false');
+            toggle.setAttribute('aria-label', isDark ? 'Switch to light theme' : 'Switch to dark theme');
+          };
+          syncThemeButton();
+          toggle.addEventListener('click', function () {
+            var isDark = document.documentElement.getAttribute('data-theme') !== 'dark';
+            window.setTheme(isDark);
+            syncThemeButton();
+          });
+        }
+        var menuBtn = document.getElementById('menu-toggle');
+        var menu = document.getElementById('mobile-menu');
+        if (menuBtn && menu) {
+          var setOpen = function (open) {
+            menu.classList.toggle('hidden', !open);
+            menuBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+          };
+          menuBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            setOpen(menu.classList.contains('hidden'));
+          });
+          document.addEventListener('click', function (e) {
+            if (!menu.contains(e.target) && !menuBtn.contains(e.target)) setOpen(false);
+          });
+          document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && !menu.classList.contains('hidden')) {
+              setOpen(false);
+              menuBtn.focus();
+            }
+          });
+          menu.querySelectorAll('a').forEach(function (a) {
+            a.addEventListener('click', function () { setOpen(false); });
+          });
+        }
+        // The server supplies all prices and scenario URLs; the slider only selects a frame.
+        function initializeCostCharts(container) {
+          container.querySelectorAll('[data-cost-explorer]').forEach(function (chart) {
+            var range = chart.querySelector('[data-cost-range]');
+            var frames = chart.querySelectorAll('[data-cost-frame]');
+            var cursor = chart.querySelector('[data-cost-cursor]');
+            var output = chart.querySelector('[data-cost-output]');
+            var apply = chart.querySelector('[data-cost-apply]');
+            var selectFrame = function () {
+              var frame = frames[Number(range.value)];
+              cursor.setAttribute('x1', frame.dataset.x);
+              cursor.setAttribute('x2', frame.dataset.x);
+              output.textContent = frame.dataset.summary;
+              apply.setAttribute('href', frame.dataset.url);
+              range.setAttribute('aria-valuetext', frame.dataset.label);
+            };
+            range.addEventListener('input', selectFrame);
+            range.disabled = false;
+            chart.querySelector('[data-cost-controls]').classList.remove('hidden');
+          });
+        }
+        initializeCostCharts(document);
+
+        // Invalid optional controls must be visible before the browser focuses them.
+        document.addEventListener('invalid', function (event) {
+          var parent = event.target.parentElement;
+          while (parent) {
+            if (parent.tagName === 'DETAILS') parent.open = true;
+            parent = parent.parentElement;
+          }
+        }, true);
+        if (document.querySelector('[data-hosting-calculator]')) {
+          var pendingScenario;
+          async function updateScenario(url, source) {
+            // Only this same-origin, server-rendered calculator supplies replacement markup.
+            if (url.origin !== location.origin || url.pathname !== location.pathname) return;
+            if (pendingScenario) pendingScenario.abort();
+            var request = new AbortController();
+            pendingScenario = request;
+            var current = document.querySelector('[data-hosting-calculator]');
+            current.setAttribute('aria-busy', 'true');
+            try {
+              var response = await fetch(url, { signal: request.signal });
+              if (!response.ok) throw new Error('Calculator response: ' + response.status);
+              var html = await response.text();
+              if (pendingScenario !== request) return;
+              var next = new DOMParser().parseFromString(html, 'text/html').querySelector('[data-hosting-calculator]');
+              if (!next) throw new Error('Calculator markup is missing');
+              // Keep deliberate disclosures and the active control in the same viewport position.
+              current.querySelectorAll('details[id]').forEach(function (details) {
+                var replacement = next.querySelector('#' + details.id);
+                if (replacement) replacement.open = details.open;
+              });
+              var top = source.getBoundingClientRect().top;
+              var sourceID = source.id;
+              current.replaceWith(next);
+              initializeCostCharts(next);
+              var replacement = document.getElementById(sourceID);
+              if (replacement) {
+                replacement.focus({ preventScroll: true });
+                window.scrollBy({ top: replacement.getBoundingClientRect().top - top, behavior: 'instant' });
+              }
+              url.hash = '';
+              history.replaceState(history.state, '', url);
+              next.querySelector('[data-update-status]').textContent = 'Comparison updated.';
+            } catch (error) {
+              if (error.name !== 'AbortError') {
+                var status = current.querySelector('[data-update-status]');
+                status.classList.remove('sr-only');
+                status.setAttribute('role', 'alert');
+                status.textContent = 'Could not update the comparison. Please try again.';
+                source.insertAdjacentElement('afterend', status);
+              }
+            } finally {
+              if (pendingScenario === request) {
+                pendingScenario = null;
+                document.querySelector('[data-hosting-calculator]').removeAttribute('aria-busy');
+              }
+            }
+          }
+          document.addEventListener('submit', function (event) {
+            var form = event.target;
+            if (form.id !== 'calculator') return;
+            event.preventDefault();
+            var url = new URL(form.action);
+            url.search = new URLSearchParams(new FormData(form, event.submitter || undefined));
+            var source = event.submitter && !event.submitter.hidden ? event.submitter : document.activeElement;
+            updateScenario(url, source);
+          });
+          document.addEventListener('click', function (event) {
+            if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+            var link = event.target.closest('a[data-scenario-link]');
+            if (!link) return;
+            event.preventDefault();
+            updateScenario(new URL(link.href), link);
+          });
+        }
+      })();
+    </script>
+  </body>
+</html>

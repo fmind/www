@@ -1,0 +1,26 @@
+{% from "macros/icons.html" import icon %}
+<footer class="footer footer-center px-4 py-8 sm:p-8 bg-slate-950 text-slate-400 border-t border-slate-900">
+  <aside class="min-w-0 w-full space-y-2">
+    <p class="font-heading font-semibold text-lg md:text-xl italic text-slate-100">Everyday excellence builds tomorrow's success.</p>
+    <div class="flex flex-wrap items-center justify-center gap-2 text-xs sm:text-sm">
+      <nav class="flex shrink-0 gap-0 sm:gap-1" aria-label="Social profiles">
+        {% for social in metadata.socials if social.header %}
+          <a class="btn btn-ghost btn-circle btn-xs sm:btn-sm text-slate-300 hover:text-white" href="{{ social.url }}" target="_blank" rel="noopener noreferrer" aria-label="{{ social.name }}">
+            {{ icon(social.icon, "h-4 w-4 sm:h-5 sm:w-5") }}
+          </a>
+        {% endfor %}
+      </nav>
+      <div class="hidden sm:block border-l border-slate-700 h-5 shrink-0" aria-hidden="true"></div>
+      <span>
+        <a class="link hover:text-white" href="/llms.txt">For AI agents</a>
+        <span aria-hidden="true">· </span>
+        <a class="link hover:text-white" href="/sites/">Sites</a>
+        <span aria-hidden="true">· </span>
+        <a class="link hover:text-white" href="/api/profile">JSON profile</a>
+        <span aria-hidden="true">· </span>
+        <a class="link hover:text-white" href="/mcp/server-card">MCP</a>
+      </span>
+    </div>
+    <p class="text-sm">© {{ current_year }} {{ metadata.name }} ({{ metadata.alternate_name }}). All rights reserved.</p>
+  </aside>
+</footer>

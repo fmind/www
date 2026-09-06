@@ -3,11 +3,8 @@
 # technical debt, and a check silenced without a reason is worse than no check.
 
 # DS-0026 "Add HEALTHCHECK instruction in your Dockerfile".
-# Inapplicable twice over, so satisfying it would add dead metadata rather than
-# health coverage:
-#   - the runtime stage is distroless (no shell, no curl, no wget), so a
-#     HEALTHCHECK command would have nothing to execute;
-#   - the deployment target is Cloud Run, which ignores Docker HEALTHCHECK
-#     entirely and drives health from startup_probe/liveness_probe in
-#     infra/cloud_run.tf — both already probing /health.
+# The deployment target is Cloud Run, which ignores Docker HEALTHCHECK and
+# drives health from startup_probe/liveness_probe in infra/cloud_run.tf — both
+# already probe /health. Duplicating that policy as dead image metadata would
+# create two health contracts while adding no runtime coverage.
 DS-0026

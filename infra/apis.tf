@@ -1,6 +1,7 @@
 # Google Cloud service APIs activation and dependencies.
 #
-# The Go binary embeds its assets and holds no secrets, so Secret Manager is not enabled
+# The application image contains only public assets and holds no secrets, so Secret
+# Manager is not enabled.
 
 resource "google_project_service" "artifactregistry" {
   project            = var.project_id

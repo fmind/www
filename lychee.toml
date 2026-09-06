@@ -31,11 +31,8 @@ exclude_path = [
   "\\.json$",
   "\\.toml$",
   "\\.yml$",
-  "_templ\\.go$",
-  "bin/",
-  "go\\.(mod|sum)$",
   "infra/",
-  "static/css/",
+  "src/www/templates/",
   "static/dist/",
   "tmp/",
 ]

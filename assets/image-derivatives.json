@@ -1,0 +1,1930 @@
+{
+  "recipe": {
+    "algorithm": "pillow-webp-bicubic-no-upscale-v1",
+    "method": 6,
+    "pillow_version": "12.3.0",
+    "quality": 75,
+    "webp_version": "1.6.0"
+  },
+  "sources": {
+    "3p-principle-purpose-productivity-performance/cover.webp": {
+      "sha256": "cc18e2e3c471fbd90c59462a4e693cc15a6e367e2fc3dc36003092edf13e12cf",
+      "targets": {
+        "3p-principle-purpose-productivity-performance/cover-800.webp": "19fb07a08d3039f2a011f1a72104465343d2bccab0b080170a24b1d40c1be3b3"
+      }
+    },
+    "a-great-mlops-project-should-start-with-a-good-python-package/02.webp": {
+      "sha256": "dad467f90b6527eabe80ec5234a7e65e56c054f16a32fa185fbaab63542a7c33",
+      "targets": {}
+    },
+    "a-great-mlops-project-should-start-with-a-good-python-package/03.webp": {
+      "sha256": "fbc0c3788ec58cfa59ec66e4dc4f05094583617311e80b08103de6caf3f0f718",
+      "targets": {}
+    },
+    "a-great-mlops-project-should-start-with-a-good-python-package/04.webp": {
+      "sha256": "2b45bc491f2d4a99b581c56173860223cc02f07978159c0639e7af6efb9c92b0",
+      "targets": {}
+    },
+    "a-great-mlops-project-should-start-with-a-good-python-package/05.webp": {
+      "sha256": "f00c12055bb9ade5c859d89d88ee4d503cdc59d49bd43a02ed357b8bfac03cba",
+      "targets": {}
+    },
+    "a-great-mlops-project-should-start-with-a-good-python-package/cover.webp": {
+      "sha256": "044fa74408659b7393726da2065af7ffacabbc21e23c44db21887bf1ea40e7c2",
+      "targets": {
+        "a-great-mlops-project-should-start-with-a-good-python-package/cover-800.webp": "4f5a4b0be3b87b8c45ed24ac34e0e1b2cab1cb1f2723d95c3ec57a614e4aaf3f"
+      }
+    },
+    "ackgent-rapid-agent-development-on-gcp-with-adk-and-agent-config/02.webp": {
+      "sha256": "a110d157feefd4b1e3010acd98288606be7b42cbdbdb8923f99b5a1d0aff6eab",
+      "targets": {
+        "ackgent-rapid-agent-development-on-gcp-with-adk-and-agent-config/02-1280.webp": "7de8ab1307029dc6621dd7f442cd2963abad14a8a2ddbabe1b97689f316b52a8",
+        "ackgent-rapid-agent-development-on-gcp-with-adk-and-agent-config/02-800.webp": "bebe249cfd805d2570122eec69528d3fe5d81aa58c164d571cb00bdd80ba9861"
+      }
+    },
+    "ackgent-rapid-agent-development-on-gcp-with-adk-and-agent-config/03.webp": {
+      "sha256": "f85229e8930986e2c87f5aa613548bbfac1c7c61bbbaabb6746be1d71999e5a6",
+      "targets": {
+        "ackgent-rapid-agent-development-on-gcp-with-adk-and-agent-config/03-1280.webp": "7fd00ff529aaacd1ae006a1807d66a3a6733206d57db280b72d384be339082bf",
+        "ackgent-rapid-agent-development-on-gcp-with-adk-and-agent-config/03-800.webp": "826fa816a4f9825cb21cd19c613a961c542f94c216ac906b96e26cfdeee73bbf"
+      }
+    },
+    "ackgent-rapid-agent-development-on-gcp-with-adk-and-agent-config/04.webp": {
+      "sha256": "9b1b81736ddec23152e74d827e2b7f6d12d5853f2dc670f18ba665902038d792",
+      "targets": {
+        "ackgent-rapid-agent-development-on-gcp-with-adk-and-agent-config/04-800.webp": "2d85125a800b0fdfb3d6f78abfdcfc7429cc5fd2b8e03ace8d5809d3b5636c00"
+      }
+    },
+    "ackgent-rapid-agent-development-on-gcp-with-adk-and-agent-config/05.webp": {
+      "sha256": "50b701c4bf9c5630c39c93bb6d0e39a5a9daeb0e3fba1f920d59180a167cd212",
+      "targets": {
+        "ackgent-rapid-agent-development-on-gcp-with-adk-and-agent-config/05-1280.webp": "72638ae32ff30ec4dd4a3f6c354a7c4072d859f0d3a9aafa6740c312ab582144",
+        "ackgent-rapid-agent-development-on-gcp-with-adk-and-agent-config/05-800.webp": "edd8d7cd4959f2430555db15bab4143a33655f201b1bf01a3fd01bd90a649631"
+      }
+    },
+    "ackgent-rapid-agent-development-on-gcp-with-adk-and-agent-config/cover.webp": {
+      "sha256": "570c0a0deab386634c632837f2feeab360233d869f25788d7a262df52d8e609b",
+      "targets": {
+        "ackgent-rapid-agent-development-on-gcp-with-adk-and-agent-config/cover-1280.webp": "05133741bb2335c91df78d195bdbbd8a7c1e14617944c75514e96402e1aafb7b",
+        "ackgent-rapid-agent-development-on-gcp-with-adk-and-agent-config/cover-800.webp": "7e2f62d66ce765b9956382328f8abad938590b32d60671e5f3e15e7d5470711e"
+      }
+    },
+    "agent-docs-answer-locally-before-the-web-a-shared-reference-for-every-coding-agent/02.webp": {
+      "sha256": "8f2aaddf3d24c70fc23981fc483ccc64a61ef6edea106ddc6226704be846db49",
+      "targets": {
+        "agent-docs-answer-locally-before-the-web-a-shared-reference-for-every-coding-agent/02-1280.webp": "2e35ed4cf5d488556fc4c212de3fa2a7c58b6befbe4004bc1a4fdaa61903b691",
+        "agent-docs-answer-locally-before-the-web-a-shared-reference-for-every-coding-agent/02-800.webp": "58b06f15357a3cfc6bcb3269d8a62556f2b1f8bde92449e70190e215ecd5e834"
+      }
+    },
+    "agent-docs-answer-locally-before-the-web-a-shared-reference-for-every-coding-agent/cover.webp": {
+      "sha256": "8a0f70e60cd472947efdf5f2afa2e4d90468aa37589da7b47b8b3698c6ce73d5",
+      "targets": {
+        "agent-docs-answer-locally-before-the-web-a-shared-reference-for-every-coding-agent/cover-1280.webp": "a77d245b7d92c3c688ddf111a1f3033bb4beb10f9445fb5d8b66b49c1965a7ad",
+        "agent-docs-answer-locally-before-the-web-a-shared-reference-for-every-coding-agent/cover-800.webp": "2f84caab42059937a165f58965db547d429400c49627842ff1a2ecfb54f22c0c"
+      }
+    },
+    "agent-evolutions-stop-guessing-the-design-evolve-it/02.webp": {
+      "sha256": "41333e5d81b792c2a8076331c8fc3a755419f9a2698edcea1eba163360a5ec7d",
+      "targets": {
+        "agent-evolutions-stop-guessing-the-design-evolve-it/02-1280.webp": "71a2b31ad273051cb70b0df4cee1819688d608a5efaef77b35c28d2d12126411",
+        "agent-evolutions-stop-guessing-the-design-evolve-it/02-800.webp": "25b1b44eb840c036de2d8bcd36e1222871bb70495cb01aa22c8e7bbfe354b0e3"
+      }
+    },
+    "agent-evolutions-stop-guessing-the-design-evolve-it/cover.webp": {
+      "sha256": "0156721b10efac040563bcc64f550fd902327c8f4510212fa6c20b8e7c21495a",
+      "targets": {
+        "agent-evolutions-stop-guessing-the-design-evolve-it/cover-1280.webp": "bd4ce77b2f871b771c8a4de7878a7c758654760a4ab337065f21411564fc0c8b",
+        "agent-evolutions-stop-guessing-the-design-evolve-it/cover-800.webp": "0619c091651a58fbea11daf696b726b4a181560fea9186a5e16aff577b5c5c30"
+      }
+    },
+    "agent-levers-a-plan-do-check-act-loop-that-makes-coding-agents-finish-what-they-start/02.webp": {
+      "sha256": "748f28a94b3087a7c3037d7d5217bb1ae55c035279c0d40bcf1dd20ad1365021",
+      "targets": {
+        "agent-levers-a-plan-do-check-act-loop-that-makes-coding-agents-finish-what-they-start/02-1280.webp": "30152766d5979f59aabc5237498de2cab5841e209467b5805ba58f2f1d777477",
+        "agent-levers-a-plan-do-check-act-loop-that-makes-coding-agents-finish-what-they-start/02-800.webp": "09536abbe55b47ddba6a85050fdeb736451140265c56db548fe5286eea7cc548"
+      }
+    },
+    "agent-levers-a-plan-do-check-act-loop-that-makes-coding-agents-finish-what-they-start/cover.webp": {
+      "sha256": "929147e04697f50cd274da3b5671d757cf885b640bca8da86d14d6216358eb7e",
+      "targets": {
+        "agent-levers-a-plan-do-check-act-loop-that-makes-coding-agents-finish-what-they-start/cover-1280.webp": "020fba064cd1340ee56b5d2db35ae6d33d14ee32bb36b9015133888cad0834dc",
+        "agent-levers-a-plan-do-check-act-loop-that-makes-coding-agents-finish-what-they-start/cover-800.webp": "c6a881cd66cbf890be011b5e2b9df969309c316159d2c35ad42fb0322e74e3b1"
+      }
+    },
+    "agentgateway-vs-litellm/bench-fixed-qps.webp": {
+      "sha256": "3399e038e7819a10fb304e7b9fcb794b0daf6131681f51eee6db732978cec1c9",
+      "targets": {
+        "agentgateway-vs-litellm/bench-fixed-qps-1280.webp": "4a76f6b0635deeac1fafb2b498a1edfdd2acf4b65f197f969eea7e39dd79bdff",
+        "agentgateway-vs-litellm/bench-fixed-qps-800.webp": "d6142c969b4bdcfeecdb8dfb56fca84eb1c7266a6457a5acc0a57a38df7d2be0"
+      }
+    },
+    "agentgateway-vs-litellm/bench-max-qps.webp": {
+      "sha256": "6c385bca2d1ffb9186d1f688a903b27e098c7a8696d7914d9c6ac5485ef7ddca",
+      "targets": {
+        "agentgateway-vs-litellm/bench-max-qps-1280.webp": "38c7c94d31807d9b031385761da3a1b9e1241a491fc91012cb9cfd6677a75829",
+        "agentgateway-vs-litellm/bench-max-qps-800.webp": "38a4df31bfbf8f4b11c3b464c3b03ac0271800af22221b693d8b766179db4c30"
+      }
+    },
+    "agentgateway-vs-litellm/cover.webp": {
+      "sha256": "d27056ed25ebd8460fe05d8b9f42cbd4d52e74c9c17393712bdb62b14a9f4859",
+      "targets": {
+        "agentgateway-vs-litellm/cover-1280.webp": "9be342fd4e70e584219d7c4c755eaf41ed914bab19d51532d71452db632fbf05",
+        "agentgateway-vs-litellm/cover-800.webp": "6e79856e28e0734ad02d8b7d2cb497d61bd1f36f3c8e03cd2ec5af9669397c28"
+      }
+    },
+    "agentgateway-vs-litellm/license-lock.webp": {
+      "sha256": "549c89af9082d796083654da7245ca045423b4d2ecdcaea3ddf9f091bf7018df",
+      "targets": {
+        "agentgateway-vs-litellm/license-lock-1280.webp": "16f8eb18d180aa5bc9882fcdb03320c0bcf0f980833432277828d7f108a638af",
+        "agentgateway-vs-litellm/license-lock-800.webp": "221e4df494377dd3854234fe68317f855f9deb7b8d41fd9809c0c7bb4d35016e"
+      }
+    },
+    "agentgateway-vs-litellm/ops-footprint.webp": {
+      "sha256": "1aa75538680d654ba8602e59d47496a2fc1fb55c4e73bbf3e600b062eb908923",
+      "targets": {
+        "agentgateway-vs-litellm/ops-footprint-1280.webp": "08945401cb8aac2801f61b90e1ac4cd88794f714c2be94739a14449087d8fbbc",
+        "agentgateway-vs-litellm/ops-footprint-800.webp": "00563bec7eb72c3c00006de42f71e059762562ab59bbbfda93721ebac9921b27"
+      }
+    },
+    "agentgateway-vs-litellm/plane-vs-catalog.webp": {
+      "sha256": "4e3e0056751beaa78707194da5062af0bd9145a507b8e51d69243d005f7e1bb3",
+      "targets": {
+        "agentgateway-vs-litellm/plane-vs-catalog-1280.webp": "34d269943d83f6667407649705396569a94843d815723376409bf23db25901b9",
+        "agentgateway-vs-litellm/plane-vs-catalog-800.webp": "e38c652f6d1e84185e9a1325f2e169b874217283ea30e6a968c34293faa6aa78"
+      }
+    },
+    "ai-agents-as-an-operating-system-rediscovering-the-linux-philosophy/02.webp": {
+      "sha256": "03561d0181ec6be8867da98e2cc6d4cf973e0c4c9be1354216f0674c6a5129e9",
+      "targets": {
+        "ai-agents-as-an-operating-system-rediscovering-the-linux-philosophy/02-1280.webp": "2c167220981d42e08056a62b37e012c575f62c918b7ef852072faf6fb22da073",
+        "ai-agents-as-an-operating-system-rediscovering-the-linux-philosophy/02-800.webp": "55472cc963dc5346df09d2731c13e1401c3104b8619c3302460f176159cf2c71"
+      }
+    },
+    "ai-agents-as-an-operating-system-rediscovering-the-linux-philosophy/03.webp": {
+      "sha256": "9d475f48a452c8f9dcf6a939acf5bf04073c795a83160220bcdc8f9178223b74",
+      "targets": {
+        "ai-agents-as-an-operating-system-rediscovering-the-linux-philosophy/03-1280.webp": "686e653b8a4078bb9c7f1b7e66b1772227287bc07071271fca911be2e803506d",
+        "ai-agents-as-an-operating-system-rediscovering-the-linux-philosophy/03-800.webp": "bd65724713001bb93804d875800e3b1c08dcce876d8a900a86f82278cf5ddbe2"
+      }
+    },
+    "ai-agents-as-an-operating-system-rediscovering-the-linux-philosophy/cover.webp": {
+      "sha256": "dc063350431dd4b5bc9281422ba71ba08f8d688b5343ee205b871cc309d69b39",
+      "targets": {
+        "ai-agents-as-an-operating-system-rediscovering-the-linux-philosophy/cover-1280.webp": "41d2b9267c2eb1a1d8dd1965dfcf04ccfb8fca42b1771880789e974a7c2d25b3",
+        "ai-agents-as-an-operating-system-rediscovering-the-linux-philosophy/cover-800.webp": "9508d4760757bf305540b7184ed0908aa30d90518493309031c272da9683f91c"
+      }
+    },
+    "architecting-the-ai-agent-platform-a-definitive-guide/02.webp": {
+      "sha256": "00ee6b27f7b51de0370a4b83dd261cbae5d92281118dbfe479613efa3af476f2",
+      "targets": {
+        "architecting-the-ai-agent-platform-a-definitive-guide/02-1280.webp": "5efec51d3321bb458619a0a41e42ba21138db20a35b7aa35f236bdbe020c1d7f",
+        "architecting-the-ai-agent-platform-a-definitive-guide/02-800.webp": "adbd6560d76b9047557d896d5f5f8bb8f699789ee3749db73855d0f07b2e175c"
+      }
+    },
+    "architecting-the-ai-agent-platform-a-definitive-guide/03.webp": {
+      "sha256": "79c5e2e41b8166aa6a1dfda51a7753ad9532ee605063fa5eb99fee94b9cc39fc",
+      "targets": {
+        "architecting-the-ai-agent-platform-a-definitive-guide/03-1280.webp": "a3a5751c6e08a133cd1041ad4ba2f38c0abbc3939ce9e33066dc2bc717838204",
+        "architecting-the-ai-agent-platform-a-definitive-guide/03-800.webp": "cebbddf2047ea8a01456ccc800eb5326bd3e2625ca275f5b7be78cd80093c46d"
+      }
+    },
+    "architecting-the-ai-agent-platform-a-definitive-guide/04.webp": {
+      "sha256": "3e89a38c0e820db2acf017f21a1c21b1f210ec0e0fe4c4c7008fc1214569f053",
+      "targets": {
+        "architecting-the-ai-agent-platform-a-definitive-guide/04-1280.webp": "6d0bbe12e4023180de88b47fea01537eb143dfb225f1f598dde8a009092f1245",
+        "architecting-the-ai-agent-platform-a-definitive-guide/04-800.webp": "119c39d90875f59e5ecf1f1b1b1936f91a80e411e8a51eb1e424239aec9a359c"
+      }
+    },
+    "architecting-the-ai-agent-platform-a-definitive-guide/05.webp": {
+      "sha256": "f24bf66f27075a448721927099b2ddec30a9da2207b386e7945f534ce51914f0",
+      "targets": {
+        "architecting-the-ai-agent-platform-a-definitive-guide/05-1280.webp": "7322e1de2c800a06193f744cfd1f8df5acb5fed578ad238ac42be7bdf1b241a6",
+        "architecting-the-ai-agent-platform-a-definitive-guide/05-800.webp": "82907ee85478b676d7084227743e5de769bc33b6184b6f9d27f3e8dacddce12d"
+      }
+    },
+    "architecting-the-ai-agent-platform-a-definitive-guide/06.webp": {
+      "sha256": "8304516f0985f199187a925db0228f49c19703ece38acdd7529c61b71f3f32c6",
+      "targets": {
+        "architecting-the-ai-agent-platform-a-definitive-guide/06-1280.webp": "3ff45d1f4937056be7330fd98c43a2229713c6d821745a4ddc5bf017e65c4482",
+        "architecting-the-ai-agent-platform-a-definitive-guide/06-800.webp": "47847f879f50fc2cf7dc44a9333f19b302797a28e212fbdeaa59926ba24c27af"
+      }
+    },
+    "architecting-the-ai-agent-platform-a-definitive-guide/07.webp": {
+      "sha256": "4de8b005bf1d97dd6102e2f4911ed727b1a3dbcebe045e64fc2ec7ed8e39c27b",
+      "targets": {
+        "architecting-the-ai-agent-platform-a-definitive-guide/07-1280.webp": "c970206b757dcf3b3a11eb6c51d2f0801b5c2545c9b3fba439991db257dac9a2",
+        "architecting-the-ai-agent-platform-a-definitive-guide/07-800.webp": "0f3fbd520427a751dd1fc74461c385f966ce601066d04c237878068f736cd38a"
+      }
+    },
+    "architecting-the-ai-agent-platform-a-definitive-guide/08.webp": {
+      "sha256": "b2b42693024510995d611bc530c433ca721d70d8898e4b7e7957c88e7cafe30c",
+      "targets": {
+        "architecting-the-ai-agent-platform-a-definitive-guide/08-1280.webp": "c9004122cdfc23f52cdd2bb81800a397a8c5ffae891b5f8e4d077e7b2a15d929",
+        "architecting-the-ai-agent-platform-a-definitive-guide/08-800.webp": "6813ec77e8ca504739ea58b176712dfd34d54203ed733cb650f2091f03d8c25f"
+      }
+    },
+    "architecting-the-ai-agent-platform-a-definitive-guide/09.webp": {
+      "sha256": "86a0a539a9d4c46d2dd75f4eae0a43ba5760f63cab69cd8b754780834bc52eeb",
+      "targets": {
+        "architecting-the-ai-agent-platform-a-definitive-guide/09-1280.webp": "6f16bad45927162240042da953fdd5a2d25d9300cfbc26dfd9c4e9a9c58ad855",
+        "architecting-the-ai-agent-platform-a-definitive-guide/09-800.webp": "4b320bc5be1a9191ffffb6901346eecdf10de33682bdf3d5a2a92e727a12ff42"
+      }
+    },
+    "architecting-the-ai-agent-platform-a-definitive-guide/10.webp": {
+      "sha256": "297efe3f1de416a36d60c339a48a2b37dea58da27220769ecd0c18971cfb3af5",
+      "targets": {
+        "architecting-the-ai-agent-platform-a-definitive-guide/10-1280.webp": "5f227a1d35a9bdb7c79c0b46412cb497a0713ff68ffec120da0f2929ae0a16fc",
+        "architecting-the-ai-agent-platform-a-definitive-guide/10-800.webp": "5063a0d19adfabf558fbad828d61cf0b9347a5b5da78831993338ea6781650a1"
+      }
+    },
+    "architecting-the-ai-agent-platform-a-definitive-guide/11.webp": {
+      "sha256": "b71b7afdeaefd1804d4b25d435f6f22653208050be8b0e22eb91a2389043235e",
+      "targets": {
+        "architecting-the-ai-agent-platform-a-definitive-guide/11-1280.webp": "d20a893ea8d4d69c75aa47cf37afe65747cf555007c70101d7628a08ea3cc4fc",
+        "architecting-the-ai-agent-platform-a-definitive-guide/11-800.webp": "33ce4a9bb02f0303d7dbb57302a342145c94e133f5de22972fd5362676c6fd77"
+      }
+    },
+    "architecting-the-ai-agent-platform-a-definitive-guide/cover.webp": {
+      "sha256": "0941e8d085fae21afe17f5c252c0758f718aaab036456ef270fb47f211bd68f1",
+      "targets": {
+        "architecting-the-ai-agent-platform-a-definitive-guide/cover-1280.webp": "289577655aea8db866fae5c2f2ca501a26ad50dd24b62d5e162cf1060e6b8468",
+        "architecting-the-ai-agent-platform-a-definitive-guide/cover-800.webp": "86f124f23dcd3987e51bfa7ebd7e312d1f686383b90342accf417a3a92b01203"
+      }
+    },
+    "become-the-maestro-of-your-mlops-abstractions/02.webp": {
+      "sha256": "7b53c470599b3ffe026e6a7d79084ef2a0f99b8dbaf0927968eae7ddbb025d8f",
+      "targets": {
+        "become-the-maestro-of-your-mlops-abstractions/02-1280.webp": "1207d1439651a16d776f40cb08d773142215d0248fe3dfccaa6746ecdaa528f8",
+        "become-the-maestro-of-your-mlops-abstractions/02-800.webp": "76b1f9b392b0527590061b45c0a62189340ab717c528a3b5ec25b4268774c739"
+      }
+    },
+    "become-the-maestro-of-your-mlops-abstractions/03.webp": {
+      "sha256": "8cfef994ad7ae8809538db4d9bd39f2af0c81eef8c15f6c7ab35d8cfebf5c6fa",
+      "targets": {
+        "become-the-maestro-of-your-mlops-abstractions/03-1280.webp": "1a6b26d65686d7947e66573b8bb60c0485446a3ef83ccc56b2d4feefee2dbe55",
+        "become-the-maestro-of-your-mlops-abstractions/03-800.webp": "721d6a4c05fd9436bef26dab9bf3c8418af8d2c6e0af5c30b890e6aceb32101e"
+      }
+    },
+    "become-the-maestro-of-your-mlops-abstractions/04.webp": {
+      "sha256": "614f51b54a3201aadfbce7f2d2a2098c192f4e88369f4138907e7aaaccff868b",
+      "targets": {}
+    },
+    "become-the-maestro-of-your-mlops-abstractions/05.webp": {
+      "sha256": "f7023f882f5ed047739ad0de0f89a0c9de4ad9b2558b4f760107833c682e08cc",
+      "targets": {}
+    },
+    "become-the-maestro-of-your-mlops-abstractions/06.webp": {
+      "sha256": "48a68264bfed9e8a06b7ccc1a24a71e1f922f61682b1621d52ed5b0a87e7fdb6",
+      "targets": {
+        "become-the-maestro-of-your-mlops-abstractions/06-800.webp": "3135ac56c20e8dd7ce1662d939ef1918ea0cce63dffdbd87436788f26302e748"
+      }
+    },
+    "become-the-maestro-of-your-mlops-abstractions/07.webp": {
+      "sha256": "eea8b0cc36762dd9f2a94f8b6297c8628f6ca496927d247b9d41257d3240d7c9",
+      "targets": {
+        "become-the-maestro-of-your-mlops-abstractions/07-800.webp": "5245a3a9a3cd2d19bb557f46394925634a5c844b26a10857c485314f39f83050"
+      }
+    },
+    "become-the-maestro-of-your-mlops-abstractions/08.webp": {
+      "sha256": "c2651a96dc630d2187d00e136601f1f0885843ac14ab758b739f86ef463f5970",
+      "targets": {
+        "become-the-maestro-of-your-mlops-abstractions/08-1280.webp": "bd683c518774202fc4cd2469b4262ba6119ec91af1450df6617792b5ccdb1289",
+        "become-the-maestro-of-your-mlops-abstractions/08-800.webp": "439b92c7461a9b2ae6e60fbd6dcc9e7d544c4eded1e771c0ad2ec924536aa6a2"
+      }
+    },
+    "become-the-maestro-of-your-mlops-abstractions/09.webp": {
+      "sha256": "515c1b2e3b86d891a1da1acee5f96e7b52e1906655d8f030edc6c98383eaf3db",
+      "targets": {}
+    },
+    "become-the-maestro-of-your-mlops-abstractions/cover.webp": {
+      "sha256": "365eb8549841e9808f39ee48c00f551d1a026890a256cdd845c215b83ce6415a",
+      "targets": {
+        "become-the-maestro-of-your-mlops-abstractions/cover-1280.webp": "a70c68c06fe499cdf76c59e05d4d67e6f46a67eca1628b905625bfaabf9c0398",
+        "become-the-maestro-of-your-mlops-abstractions/cover-800.webp": "64c6fc41162f7f7999159ee0c2df6ba66d4a8d1574abf17a377761837a5904ca"
+      }
+    },
+    "bkfc-an-agentic-workflow-for-gathering-knowledge-from-google-chat/02.webp": {
+      "sha256": "9f8d57aa9accf31527c5e9ef8266b4a6f2d3044fbda5c8e5adc1e6fbc5e09227",
+      "targets": {
+        "bkfc-an-agentic-workflow-for-gathering-knowledge-from-google-chat/02-800.webp": "a37519d90184d8631e77aca62bdde28591cf753fdf620b219a0ad3d360e5931d"
+      }
+    },
+    "bkfc-an-agentic-workflow-for-gathering-knowledge-from-google-chat/cover.webp": {
+      "sha256": "b4cbcc569d276fdb3cd0fc743dd0a0d530b2eab44b5413f8d237942130e680c2",
+      "targets": {
+        "bkfc-an-agentic-workflow-for-gathering-knowledge-from-google-chat/cover-800.webp": "00f254a67447e9a4dea49446ef3def7ca938806ba29ba70a5b39c2006a34d100"
+      }
+    },
+    "bromate-automate-your-browser-with-agentic-workflows/02.webp": {
+      "sha256": "61f9a980d9d42410bfe6e3ee4d6d6264b2bbf08496bb8a17af34cc855b44edea",
+      "targets": {
+        "bromate-automate-your-browser-with-agentic-workflows/02-800.webp": "9dd395764fce19a4a41f0d3d9f7cf0d95fb209aeeb2230f02933cc2505ab4e03"
+      }
+    },
+    "bromate-automate-your-browser-with-agentic-workflows/03.webp": {
+      "sha256": "490d1caf932cd088d5d35237e74754d11e05ade019fa2ec6f38bcc01af84397c",
+      "targets": {
+        "bromate-automate-your-browser-with-agentic-workflows/03-1280.webp": "469ad0faaba7a23cb95b3d40243f01f11324d56074c5025f4044d7f6a71b55c5",
+        "bromate-automate-your-browser-with-agentic-workflows/03-800.webp": "4eb625d1cc4d3a74287a9631ddd7515b56754252037a0d6f16573faf4ceba87e"
+      }
+    },
+    "bromate-automate-your-browser-with-agentic-workflows/cover.webp": {
+      "sha256": "f7b0a5ff8cc30c12061e5257fdf49a309599165ab32149b2aaf268b1314c9fc2",
+      "targets": {
+        "bromate-automate-your-browser-with-agentic-workflows/cover-1280.webp": "21cef7666cbf5eac5545918f59ec167634cb38750494d1d8ae87dfaa0fb47aea",
+        "bromate-automate-your-browser-with-agentic-workflows/cover-800.webp": "c06ea35d506d7c04491573ea51b42a73844a24fb9e3028c4696afc11b9015ea3"
+      }
+    },
+    "building-with-a2ui-extending-the-expressiveness-of-ai-agent-interfaces/02.webp": {
+      "sha256": "da544349e12338635f477e6533c931a47e61936c5857222abc9d590b40b167dd",
+      "targets": {
+        "building-with-a2ui-extending-the-expressiveness-of-ai-agent-interfaces/02-1280.webp": "d9533489c329800f839afc1f9353b4a59a8f82c568f35ec05ae830140d31e614",
+        "building-with-a2ui-extending-the-expressiveness-of-ai-agent-interfaces/02-800.webp": "665e7e1d70fc420634be994aa3f1479a5077bdd131884b298ace8c2b7ea62765"
+      }
+    },
+    "building-with-a2ui-extending-the-expressiveness-of-ai-agent-interfaces/03.webp": {
+      "sha256": "2404748b811f14b0b63eacd5f64a78b8d1029a15429d556770197a538f7801cb",
+      "targets": {
+        "building-with-a2ui-extending-the-expressiveness-of-ai-agent-interfaces/03-1280.webp": "a90ef67ccb03c861533e85a4c3d2f64802cb4d1718301dcff01e783b9cd579bb",
+        "building-with-a2ui-extending-the-expressiveness-of-ai-agent-interfaces/03-800.webp": "319203aa315ad2c7f95660ea7fbd0a10db9c07ed8040df02c586a3c357522f12"
+      }
+    },
+    "building-with-a2ui-extending-the-expressiveness-of-ai-agent-interfaces/04.webp": {
+      "sha256": "57d27f52d42dd98e3077c4f3443ecfdddc6f17bc21b908c81de83d9f4fc3ee92",
+      "targets": {
+        "building-with-a2ui-extending-the-expressiveness-of-ai-agent-interfaces/04-1280.webp": "f15bf01f24d586f7fc4479ad6d2635c1823ac86e2285465c4361ef9cf4a41e3c",
+        "building-with-a2ui-extending-the-expressiveness-of-ai-agent-interfaces/04-800.webp": "fc5b51857a8f63dceefabb91f189e7c3b36b62d905fcfb3f2616f9ac7cb37811"
+      }
+    },
+    "building-with-a2ui-extending-the-expressiveness-of-ai-agent-interfaces/05.webp": {
+      "sha256": "01d700f0b2d27a8119da83c41e84f004e091e2a65b8193a89898ade0b5c5ceb7",
+      "targets": {
+        "building-with-a2ui-extending-the-expressiveness-of-ai-agent-interfaces/05-1280.webp": "448f79b493f888c2b3e35ad6a85bb72b526acc5505c9df7992f6e1b2fd20d474",
+        "building-with-a2ui-extending-the-expressiveness-of-ai-agent-interfaces/05-800.webp": "9ad5c9261507e95590db73ea188cac4cc4ce7ceb75d00372f328fa642ee89017"
+      }
+    },
+    "building-with-a2ui-extending-the-expressiveness-of-ai-agent-interfaces/cover.webp": {
+      "sha256": "10db50f5c100ee760f85e9c83642bfc7073350ef9b4c52927bb4d1148ff5716d",
+      "targets": {
+        "building-with-a2ui-extending-the-expressiveness-of-ai-agent-interfaces/cover-1280.webp": "9264d80d39c98970b29af26c60b31b14d690971f9d95f778e74e451a9447776c",
+        "building-with-a2ui-extending-the-expressiveness-of-ai-agent-interfaces/cover-800.webp": "fac48f72c8842596871cfe4c63cb97b1a87af8f66534ba7bce2189ed2533e5ba"
+      }
+    },
+    "cag-vs-rag-choosing-the-right-strategy-for-your-ai-application/02.webp": {
+      "sha256": "123733c2c84e02269127ba271ca99e6ecc493ea409c3b69d39b7c46ac0731248",
+      "targets": {}
+    },
+    "cag-vs-rag-choosing-the-right-strategy-for-your-ai-application/03.webp": {
+      "sha256": "7ecb26add8f56d134a0aae1dcb39b38bcefa9ab69152c1662910877ec5dec8ed",
+      "targets": {}
+    },
+    "cag-vs-rag-choosing-the-right-strategy-for-your-ai-application/04.webp": {
+      "sha256": "61d7d262e469f77019f8a103434b3e22d0b4fb7572f88e8f2b2293bd20f1281c",
+      "targets": {
+        "cag-vs-rag-choosing-the-right-strategy-for-your-ai-application/04-1280.webp": "5506cc22340e81b983b3d1f85be9ece8c5973fe0d89f963d42c2566735fbe7d3",
+        "cag-vs-rag-choosing-the-right-strategy-for-your-ai-application/04-800.webp": "3de3202f09ba57257d8fdcebf790dd54c8f577645f93cdd8528e413096855b1f"
+      }
+    },
+    "cag-vs-rag-choosing-the-right-strategy-for-your-ai-application/05.webp": {
+      "sha256": "9329a5cff80fba6434e0e1426d2374fec66c0e3215e135596d88047c9e29cba5",
+      "targets": {
+        "cag-vs-rag-choosing-the-right-strategy-for-your-ai-application/05-1280.webp": "36e84f65bee52d29431361f390892fe8bf67a085c927401a599a8e1f802f1d1a",
+        "cag-vs-rag-choosing-the-right-strategy-for-your-ai-application/05-800.webp": "efe4769492a08c09427da65d2b7db8e9b01553e5a6c94bace3a3d9b4d2250c95"
+      }
+    },
+    "cag-vs-rag-choosing-the-right-strategy-for-your-ai-application/06.webp": {
+      "sha256": "1aeaf76ee8fe02b31fd997abdfb33d110184016717fa02bc11ef74fbaf7a2d4b",
+      "targets": {
+        "cag-vs-rag-choosing-the-right-strategy-for-your-ai-application/06-1280.webp": "c1c0ec99e5bf796e96a458e96dcc3ebef0b7850391321de7c5e18aaf5bf89a48",
+        "cag-vs-rag-choosing-the-right-strategy-for-your-ai-application/06-800.webp": "04aadd6120117d750896166322a09406b7eaa4e0e701284716f0c9da9b169789"
+      }
+    },
+    "cag-vs-rag-choosing-the-right-strategy-for-your-ai-application/cover.webp": {
+      "sha256": "3cfe0f52caa4fb86e53f685f4e80d108ea4e4311e1a5c87e357c9189cbe7f715",
+      "targets": {
+        "cag-vs-rag-choosing-the-right-strategy-for-your-ai-application/cover-1280.webp": "dba4fc9a1813382f773a7b13c9451c9d8fe71904cab445b92b72b2261f457398",
+        "cag-vs-rag-choosing-the-right-strategy-for-your-ai-application/cover-800.webp": "150a8ff48ab08dcfb87a1e92b80c3ba8d0d2c1952052d00e237d98aea385cf70"
+      }
+    },
+    "chaigent-an-affordable-alternative-to-gemini-enterprise-on-google-cloud/02.webp": {
+      "sha256": "bdea80363fdc4fe93f35db719207847d0d648ad04f8edf1d8ee091957d48e45f",
+      "targets": {
+        "chaigent-an-affordable-alternative-to-gemini-enterprise-on-google-cloud/02-1280.webp": "378d9c8f3720f7a0a93438ab1b1a0ffa41a38f9a8c37aa8d18c0cab231938241",
+        "chaigent-an-affordable-alternative-to-gemini-enterprise-on-google-cloud/02-800.webp": "83574986b1840c8f25a1c46059f8f5b8593fe2b8bce263bd367398946673e559"
+      }
+    },
+    "chaigent-an-affordable-alternative-to-gemini-enterprise-on-google-cloud/03.webp": {
+      "sha256": "180e8a6afe771b88b17f04488eaf4d16891f4aad15a4a4c0f0deefcb5511da33",
+      "targets": {
+        "chaigent-an-affordable-alternative-to-gemini-enterprise-on-google-cloud/03-1280.webp": "b2c3a81bb95a150c116970a7030c1d1f3b7a39f75666fb5ca0082b16b2612579",
+        "chaigent-an-affordable-alternative-to-gemini-enterprise-on-google-cloud/03-800.webp": "5bd72595d31b24b10e7a0f41ae119fb40bfb4a5f3cc2bf4be31d83f77c282a5e"
+      }
+    },
+    "chaigent-an-affordable-alternative-to-gemini-enterprise-on-google-cloud/04.webp": {
+      "sha256": "2ccd2018a80d326a1d954e20c8c7c07730d997431be3f9813e57ea08a532b0e4",
+      "targets": {
+        "chaigent-an-affordable-alternative-to-gemini-enterprise-on-google-cloud/04-1280.webp": "e1e98a075e5d6843da8ad9c8c1740e7c8c8ebf7b57c3575ceadeb48918fc895a",
+        "chaigent-an-affordable-alternative-to-gemini-enterprise-on-google-cloud/04-800.webp": "38664d250691ca4d3ab6d2c28d7bb9b909a5f21187249745d22138adce744f24"
+      }
+    },
+    "chaigent-an-affordable-alternative-to-gemini-enterprise-on-google-cloud/05.webp": {
+      "sha256": "8c6c663263d8df4127f27c3f1a87f41db1f078308d81cf122ac7afa262d7cfeb",
+      "targets": {
+        "chaigent-an-affordable-alternative-to-gemini-enterprise-on-google-cloud/05-1280.webp": "2bbd1458889911be317f030f88e3fd64139592e10f41a0573d36df63c07cdaa3",
+        "chaigent-an-affordable-alternative-to-gemini-enterprise-on-google-cloud/05-800.webp": "56ebcb0c285fc85c59900c3bda89ef85045f448db350276ba08954f5b665dc11"
+      }
+    },
+    "chaigent-an-affordable-alternative-to-gemini-enterprise-on-google-cloud/06.webp": {
+      "sha256": "a82160345c2428ad366cbae605439a640579f4402a48bbc9aa8d82354576dea4",
+      "targets": {
+        "chaigent-an-affordable-alternative-to-gemini-enterprise-on-google-cloud/06-1280.webp": "701dd5932d1e90ec6a544926f8b3972eaa958b06f823d48eb59790839bb639c2",
+        "chaigent-an-affordable-alternative-to-gemini-enterprise-on-google-cloud/06-800.webp": "ed31df4a7c6103d25b99d6f146b81013017679df5579d01767ad473ca73b9866"
+      }
+    },
+    "chaigent-an-affordable-alternative-to-gemini-enterprise-on-google-cloud/cover.webp": {
+      "sha256": "6ac4d87f7ef6c37fc84d30e204c31e31cc3dbcc445ae0600fa66f79afbf9def8",
+      "targets": {
+        "chaigent-an-affordable-alternative-to-gemini-enterprise-on-google-cloud/cover-1280.webp": "bb1543c58e2c6d8303b064ff3f0d7b73442204553f70f807309d085da6472de8",
+        "chaigent-an-affordable-alternative-to-gemini-enterprise-on-google-cloud/cover-800.webp": "efd6f0abb719ffb0d105e2d0946731eecc96c386317ef0aa592fca9d2a9c50f2"
+      }
+    },
+    "combo-banana-building-custom-image-workflows-in-record-time/02.webp": {
+      "sha256": "f9062576e525f9d1a726e991f3687affaa8ff41b9765fc099616620620350da7",
+      "targets": {
+        "combo-banana-building-custom-image-workflows-in-record-time/02-1280.webp": "9864d236fbf7d0e602cad0feec2e6266fab9a11466acba67323e7c2335bbe2b7",
+        "combo-banana-building-custom-image-workflows-in-record-time/02-800.webp": "d83f07099e4a6e4ee2b650a2748e5d6544b3da722242edef9ca7f067d785cb19"
+      }
+    },
+    "combo-banana-building-custom-image-workflows-in-record-time/03.webp": {
+      "sha256": "d5e645ae089e19ea8e57665c919cbbec05eb1eb26a408a159e6e625eb3155495",
+      "targets": {
+        "combo-banana-building-custom-image-workflows-in-record-time/03-1280.webp": "836cc8ae3d19cde8d3c3f0030c71b2db2894823cfcc209c7543b7477ee432a4e",
+        "combo-banana-building-custom-image-workflows-in-record-time/03-800.webp": "2b856f80a9adaad4b7154c3d2246ed57b1e88bd9f7a19079f866c389897f2934"
+      }
+    },
+    "combo-banana-building-custom-image-workflows-in-record-time/04.webp": {
+      "sha256": "13fe5e4a15cddbf156908162c1dc24379ad70aadc1a8a15a046867886ca89bb1",
+      "targets": {
+        "combo-banana-building-custom-image-workflows-in-record-time/04-800.webp": "2871f7effbc592d497254ada8f5247c5cee1ae0356a8cab3afc5c2e265f8631a"
+      }
+    },
+    "combo-banana-building-custom-image-workflows-in-record-time/05.webp": {
+      "sha256": "ca2c5361e52dcb3cd9922f37ed082fcf3839e6fb81f32108ef953b3ce06e0511",
+      "targets": {
+        "combo-banana-building-custom-image-workflows-in-record-time/05-800.webp": "d329e0c10c2295aeb2e50288c9c7f7fd0000975c27045790cddfe370826ad79d"
+      }
+    },
+    "combo-banana-building-custom-image-workflows-in-record-time/06.webp": {
+      "sha256": "780bd5dcf57927e1f7fce696d3768dcf7953a8b4ab1b4fdece35db3d65380dde",
+      "targets": {
+        "combo-banana-building-custom-image-workflows-in-record-time/06-800.webp": "5370bbdfa68ba7163be3415b36249fcf3b9ae5be591ef7937d3601e47f30cb5e"
+      }
+    },
+    "combo-banana-building-custom-image-workflows-in-record-time/cover.webp": {
+      "sha256": "c00fe3455b322bc34686b3035051e14ca9cff9522c7898b53bff41dd4ea9ad71",
+      "targets": {
+        "combo-banana-building-custom-image-workflows-in-record-time/cover-800.webp": "d196f3a7f819bbec4c5f5fb51f407a9112b57e9c581b1df3f062203f2b138e98"
+      }
+    },
+    "da2a-the-future-of-data-platforms-is-agentic-distributed-and-collaborative/02.webp": {
+      "sha256": "d5063abcfcc3a19b6e37976eb17c75ddcdcee13be37fb437e4ae24c45f79f47c",
+      "targets": {
+        "da2a-the-future-of-data-platforms-is-agentic-distributed-and-collaborative/02-800.webp": "ff7d811fdd6207c6939158b2e10822827a554f688254718cc32ad1505e6f58e4"
+      }
+    },
+    "da2a-the-future-of-data-platforms-is-agentic-distributed-and-collaborative/03.webp": {
+      "sha256": "182bf157cb5281b3b1f7a6f020455da49fe561ac64253e1de4bdbd280b6c837d",
+      "targets": {
+        "da2a-the-future-of-data-platforms-is-agentic-distributed-and-collaborative/03-800.webp": "6461a51a0f9072c808360d55ec438f6ac4ec247b0f2bee80203099ff7712a730"
+      }
+    },
+    "da2a-the-future-of-data-platforms-is-agentic-distributed-and-collaborative/04.webp": {
+      "sha256": "e56316fde690510ea935b643d79958e98354f6a6fa6583c4df443244b2bc1a19",
+      "targets": {
+        "da2a-the-future-of-data-platforms-is-agentic-distributed-and-collaborative/04-800.webp": "653beafed99ba194bf37399c3833e1d12e547e94dd13adc39848ef3548d15f24"
+      }
+    },
+    "da2a-the-future-of-data-platforms-is-agentic-distributed-and-collaborative/cover.webp": {
+      "sha256": "63f1937ed082c496eef607eced68fa93cb8fb8168ad51741a66b2e26fdcbd3fb",
+      "targets": {
+        "da2a-the-future-of-data-platforms-is-agentic-distributed-and-collaborative/cover-800.webp": "2a7f3eb1235e675fc1cc89f079c3740256e0de23a3d27f48f007e2285f136f16"
+      }
+    },
+    "deploying-ai-agents-in-the-enterprise-using-adk-and-google-cloud/02.webp": {
+      "sha256": "1b8b1bdc3b34f6d5d5aef6825ad50924c8560fc00f5ae5c203a1d7bbc9ae929e",
+      "targets": {
+        "deploying-ai-agents-in-the-enterprise-using-adk-and-google-cloud/02-1280.webp": "5ae1a773b48f9a8fdc51aa505cae508da271dafd2da9faecc4535f0c93e9b2e1",
+        "deploying-ai-agents-in-the-enterprise-using-adk-and-google-cloud/02-800.webp": "e66d37022e908f894f1f029c821341b3a9cbafcd927460f4b67b44f59966c9db"
+      }
+    },
+    "deploying-ai-agents-in-the-enterprise-using-adk-and-google-cloud/03.webp": {
+      "sha256": "96868c82b6a9b931fd7ab08556f37d671fb37cf4835409be055c372da4c02f06",
+      "targets": {
+        "deploying-ai-agents-in-the-enterprise-using-adk-and-google-cloud/03-1280.webp": "dd452367bf337a428b1d06cf5f77a4fdc07b30ac08d80497043971f1c4401523",
+        "deploying-ai-agents-in-the-enterprise-using-adk-and-google-cloud/03-800.webp": "a55d40c5e7970928cf240711907f6a51de1ce726f9b89490a4fbb44ca26ea90c"
+      }
+    },
+    "deploying-ai-agents-in-the-enterprise-using-adk-and-google-cloud/04.webp": {
+      "sha256": "e322b0459e883295d532d5fe23d229e061a50319c1244a6ae4fbe30452add2c8",
+      "targets": {
+        "deploying-ai-agents-in-the-enterprise-using-adk-and-google-cloud/04-1280.webp": "e7f016a54bbc3849305bc58022d6d4be03cb676fb5bfd1a70c2bdaeae4104c92",
+        "deploying-ai-agents-in-the-enterprise-using-adk-and-google-cloud/04-800.webp": "b18832cb6034a7f9bceda0429458ab8fd63f6c4e0b655d4153cb9c52dadfd3c3"
+      }
+    },
+    "deploying-ai-agents-in-the-enterprise-using-adk-and-google-cloud/05.webp": {
+      "sha256": "4c7675e355cd4b3a4d813d03802937cb9ece225b42b482dfefa03ab1c913a71e",
+      "targets": {
+        "deploying-ai-agents-in-the-enterprise-using-adk-and-google-cloud/05-1280.webp": "d76f8112016ca82e3f6329ab47ebd62fa5c0beff6a49e0827222ecd233a3ea75",
+        "deploying-ai-agents-in-the-enterprise-using-adk-and-google-cloud/05-800.webp": "ffa3424115d2207cfc1dbc45cc8be4e59c5c8185c0088c9c50b16af652a58667"
+      }
+    },
+    "deploying-ai-agents-in-the-enterprise-using-adk-and-google-cloud/06.webp": {
+      "sha256": "2b3bc7231055e5ae3c4d01c46d65e38f358c7c952262a48e4f081d2b0a04581b",
+      "targets": {
+        "deploying-ai-agents-in-the-enterprise-using-adk-and-google-cloud/06-1280.webp": "28a915f0f32047705f9b161e266727fe1b9223184a4b92d05dece6fd178aaedb",
+        "deploying-ai-agents-in-the-enterprise-using-adk-and-google-cloud/06-800.webp": "a86565e7b5ed990f5f755ee1bdc71f8e49edc388a853e9db660f411701440a8d"
+      }
+    },
+    "deploying-ai-agents-in-the-enterprise-using-adk-and-google-cloud/07.webp": {
+      "sha256": "8b54b43e5cb1089bd191f1a6aea1f94102493ef62018bacfa2527e0564c2ae7f",
+      "targets": {
+        "deploying-ai-agents-in-the-enterprise-using-adk-and-google-cloud/07-1280.webp": "f6190ea368fb11d4fc024ddc126d3e94dee3a40724f3e2f4ffe62f253272991e",
+        "deploying-ai-agents-in-the-enterprise-using-adk-and-google-cloud/07-800.webp": "718e7111166b0e93cfdf6b8b945d0a456d8d09797edbf2fec3775f4b47d8d227"
+      }
+    },
+    "deploying-ai-agents-in-the-enterprise-using-adk-and-google-cloud/08.webp": {
+      "sha256": "d9d460bd9d587cb3733a916787649b5955afa42b3c029383fb87994a457dedfa",
+      "targets": {
+        "deploying-ai-agents-in-the-enterprise-using-adk-and-google-cloud/08-1280.webp": "218ac423c21f6c6ee625852d62cb708e1d72cff8d8ecc409f224294b2df3059f",
+        "deploying-ai-agents-in-the-enterprise-using-adk-and-google-cloud/08-800.webp": "f139dd1e340838398542669cb590ade2e5e08cdc4788c7c9ee11f34951c64117"
+      }
+    },
+    "deploying-ai-agents-in-the-enterprise-using-adk-and-google-cloud/09.webp": {
+      "sha256": "0fb8b4089ec5c64fcb66f7e7286ffc48053c741a42236d6a9558c84efe9021c3",
+      "targets": {
+        "deploying-ai-agents-in-the-enterprise-using-adk-and-google-cloud/09-1280.webp": "b5795a5d91bdac00f845db3a4d97e0224c4301158e0b4f5bf480f974ccfa8667",
+        "deploying-ai-agents-in-the-enterprise-using-adk-and-google-cloud/09-800.webp": "15ec72b7f550b8902f7e6bd4a5dab31fa338ceb5b21554cfe3bb6b9c737aa103"
+      }
+    },
+    "deploying-ai-agents-in-the-enterprise-using-adk-and-google-cloud/10.webp": {
+      "sha256": "abfc0fed3a49cc2f27c6c08eae72695bd4b6bc0342434e8e4d4a2dc39993c7ee",
+      "targets": {
+        "deploying-ai-agents-in-the-enterprise-using-adk-and-google-cloud/10-1280.webp": "6a07805e6e04b264de101110f803ca341d2afc29164f6b4e65f8da96164ff756",
+        "deploying-ai-agents-in-the-enterprise-using-adk-and-google-cloud/10-800.webp": "cbf70077d30667a7408e5ba5088ad9fcd649f1e551ac082adda5ee2ff90d68f1"
+      }
+    },
+    "deploying-ai-agents-in-the-enterprise-using-adk-and-google-cloud/11.webp": {
+      "sha256": "79d29a86b5df97ffad6e516b2db7f996e2e06a3313de19f2196c8230ca9500a0",
+      "targets": {
+        "deploying-ai-agents-in-the-enterprise-using-adk-and-google-cloud/11-1280.webp": "918f2ba59abdcb4c69e6b848a87a1bc80247ccca1d12e61d7d8ebd735d552a36",
+        "deploying-ai-agents-in-the-enterprise-using-adk-and-google-cloud/11-800.webp": "ae52d0483bab6b91fb0770bd6dda9ab0405671946b68e1701522e81958a196a8"
+      }
+    },
+    "deploying-ai-agents-in-the-enterprise-using-adk-and-google-cloud/12.webp": {
+      "sha256": "c99af56937cdbb51cfad33e1e21f26298cc7266752033f0da87b84596f015d35",
+      "targets": {
+        "deploying-ai-agents-in-the-enterprise-using-adk-and-google-cloud/12-1280.webp": "bae5133eb082eb9b621e95edd81be7d1b0ba8ec00ee6338895d6096a9a261c48",
+        "deploying-ai-agents-in-the-enterprise-using-adk-and-google-cloud/12-800.webp": "45014a790a2c51a5ae26348e78213820ac172173af6727108cefb546aef52513"
+      }
+    },
+    "deploying-ai-agents-in-the-enterprise-using-adk-and-google-cloud/13.webp": {
+      "sha256": "2d48f303b0ab8271197f0210cef99a6c60518cc5952a37255f6f9db11d5a51ed",
+      "targets": {
+        "deploying-ai-agents-in-the-enterprise-using-adk-and-google-cloud/13-1280.webp": "9387f66e452c580624823c89bab47db94a718a02c5516b4eb357a329f4540784",
+        "deploying-ai-agents-in-the-enterprise-using-adk-and-google-cloud/13-800.webp": "d9930ceba36d103b0560f13ab3dfbcd1819a159d14e19b93b087dc7b99e1bf52"
+      }
+    },
+    "deploying-ai-agents-in-the-enterprise-using-adk-and-google-cloud/14.webp": {
+      "sha256": "fa06c9f8379fd03291889820307f2cab2e4a5dceda67922403a8fa747d2df90d",
+      "targets": {
+        "deploying-ai-agents-in-the-enterprise-using-adk-and-google-cloud/14-1280.webp": "7f35256ea666c2af0ded92d9cb1867bdb0745aeaf0e51c8937d59314a78148fe",
+        "deploying-ai-agents-in-the-enterprise-using-adk-and-google-cloud/14-800.webp": "50c6f05e83483751d3617109a0d43128dbd471474e531737b836e76b4cf72a20"
+      }
+    },
+    "deploying-ai-agents-in-the-enterprise-using-adk-and-google-cloud/cover.webp": {
+      "sha256": "4a33fc364311def0568ba93feb699b4e312211aa1cde54f93e9363c9d2af20b5",
+      "targets": {
+        "deploying-ai-agents-in-the-enterprise-using-adk-and-google-cloud/cover-1280.webp": "407daf8c2f03167047d95bb6c28680737e875de2bc178a29b989dd7642eabe56",
+        "deploying-ai-agents-in-the-enterprise-using-adk-and-google-cloud/cover-800.webp": "5bdfc9ca64e388d663dd5fc44712a3d284bb3b3d2751e07eae6af86b5770a7d8"
+      }
+    },
+    "finding-harmony-in-mlops-balancing-functional-and-object-oriented-approaches/02.webp": {
+      "sha256": "64ffe2c6b7dfdaeb90cb24f2c45579e3d169565489470ce8a4e82a40a7d732b5",
+      "targets": {}
+    },
+    "finding-harmony-in-mlops-balancing-functional-and-object-oriented-approaches/03.webp": {
+      "sha256": "6f9d4e8a2214733bfdef4151e754111fc3c7ba553edaf473c23561c52222ce07",
+      "targets": {}
+    },
+    "finding-harmony-in-mlops-balancing-functional-and-object-oriented-approaches/04.webp": {
+      "sha256": "4fe8543ac47ccd85c74e0aa0dcef1f583a2e2e9fdc847bcda5c058760018210a",
+      "targets": {}
+    },
+    "finding-harmony-in-mlops-balancing-functional-and-object-oriented-approaches/05.webp": {
+      "sha256": "5978c34d08eed3e371a1bb553638429098477dfa5c5c0477518af5e35d1efc1e",
+      "targets": {
+        "finding-harmony-in-mlops-balancing-functional-and-object-oriented-approaches/05-1280.webp": "45adf49726129ec9a80b93b1d26cc6ea6b6b9bc017c3737b84501b2f71016818",
+        "finding-harmony-in-mlops-balancing-functional-and-object-oriented-approaches/05-800.webp": "760aeecd57c1dc2d9d3d06cec5e1af34688fdfc32f9742f38680cb5245287ac7"
+      }
+    },
+    "finding-harmony-in-mlops-balancing-functional-and-object-oriented-approaches/cover.webp": {
+      "sha256": "07c11254179ade156261f8740b7e115f4a07ddd7a3d32d2ddbd4cd39bea1322b",
+      "targets": {
+        "finding-harmony-in-mlops-balancing-functional-and-object-oriented-approaches/cover-1280.webp": "4db2c23dd2ede0fd93d6f18d1213dd57703f71b46769f716ad6b6c4846433b25",
+        "finding-harmony-in-mlops-balancing-functional-and-object-oriented-approaches/cover-800.webp": "732244ed8632ab4e9f96af875a35bc5693af4eb8bfa92725aa63d7d6f63a8d17"
+      }
+    },
+    "finding-the-holy-grail-of-ai-agent-uis-from-ai-orchestrated-development-to-a2ui/02.webp": {
+      "sha256": "3ca0dfe5375729428e800753e84504b059d80e3aac44cb56fc27be9cd8a0f08e",
+      "targets": {
+        "finding-the-holy-grail-of-ai-agent-uis-from-ai-orchestrated-development-to-a2ui/02-1280.webp": "4dca917a149c907714cb2f84150fc66887f7a150f0d4bea815227888b61baf5a",
+        "finding-the-holy-grail-of-ai-agent-uis-from-ai-orchestrated-development-to-a2ui/02-800.webp": "1cd1078c7a05440c3d36a041f6a3122a35d4959375250a268f0c4d1898dc4180"
+      }
+    },
+    "finding-the-holy-grail-of-ai-agent-uis-from-ai-orchestrated-development-to-a2ui/03.webp": {
+      "sha256": "dc41544acd2b6f87ebc08bddbb2c93570f6dabcb9558b62e09b5d31f7e2f63cc",
+      "targets": {
+        "finding-the-holy-grail-of-ai-agent-uis-from-ai-orchestrated-development-to-a2ui/03-800.webp": "8642b033661e2777d9307e2da601623d8e5addcb4c13980cbaf7634f1a13a276"
+      }
+    },
+    "finding-the-holy-grail-of-ai-agent-uis-from-ai-orchestrated-development-to-a2ui/cover.webp": {
+      "sha256": "a44b9598806c6684c89d90a82bf5ddf543cf70d60e58f53299a1265a57e40ae9",
+      "targets": {
+        "finding-the-holy-grail-of-ai-agent-uis-from-ai-orchestrated-development-to-a2ui/cover-800.webp": "be2372eae8af39fc08dd450365ecaf45051e056478e22360bcdad38ac6736aa8"
+      }
+    },
+    "fixing-the-mlops-survey-on-llms-with-chatgpt-api-lessons-learned/02.webp": {
+      "sha256": "70048052d3e065ace16bdc8014858cd3b3cf6630b4c6d31d8977503ff1d13297",
+      "targets": {}
+    },
+    "fixing-the-mlops-survey-on-llms-with-chatgpt-api-lessons-learned/03.webp": {
+      "sha256": "64fdc9b45ae059264f74c87ee389ea2820a685ff14190e8b86ebe9aaa2999751",
+      "targets": {
+        "fixing-the-mlops-survey-on-llms-with-chatgpt-api-lessons-learned/03-800.webp": "33177522fe5d17e02160dcc9b7a73a04ae2aa62d9d9eed991d6905eff51fb35c"
+      }
+    },
+    "fixing-the-mlops-survey-on-llms-with-chatgpt-api-lessons-learned/04.webp": {
+      "sha256": "28a793a6b4e8a09cbbce30ecef085984e3cfc7a5d7ac8a3b2e048e6f6f687b68",
+      "targets": {
+        "fixing-the-mlops-survey-on-llms-with-chatgpt-api-lessons-learned/04-800.webp": "db1bcd7b42521e58196aa6b137c70089e2629d357220a8dcf870a970a64f00be"
+      }
+    },
+    "fixing-the-mlops-survey-on-llms-with-chatgpt-api-lessons-learned/05.webp": {
+      "sha256": "065d0f4539388c3b6a67a93a3ce107e91c8b2a596d0b6377e7eabc8af26baadb",
+      "targets": {}
+    },
+    "fixing-the-mlops-survey-on-llms-with-chatgpt-api-lessons-learned/06.webp": {
+      "sha256": "7760634b562032198721153f8e79e0a6371cdf5de603ffbe3ddf28b9f54dcc02",
+      "targets": {}
+    },
+    "fixing-the-mlops-survey-on-llms-with-chatgpt-api-lessons-learned/07.webp": {
+      "sha256": "90ececdff1e9e0db4bba0f8d68bb89133c2adf07f30cb3edbca47419efe8e121",
+      "targets": {}
+    },
+    "fixing-the-mlops-survey-on-llms-with-chatgpt-api-lessons-learned/cover.webp": {
+      "sha256": "c8e6ab35f1f269a50850761a911122442e81f5e64c9664c0924947bc6c2853a3",
+      "targets": {
+        "fixing-the-mlops-survey-on-llms-with-chatgpt-api-lessons-learned/cover-1280.webp": "f75ba0c87aadb8aed287886df47024de8a87d8c6d5976464b7686a70c6f9ef26",
+        "fixing-the-mlops-survey-on-llms-with-chatgpt-api-lessons-learned/cover-800.webp": "db42d44066244899a347e4c9fe8508136d890c42ffe6c188e23ad760f08b0f54"
+      }
+    },
+    "forging-a-personal-chatbot-with-openai-api-chroma-db-huggingface-spaces-and-gradio/02.webp": {
+      "sha256": "1b73a2d95aa1e5546b0f7538e7091749562e39404bb9ab6a600a16739084db40",
+      "targets": {
+        "forging-a-personal-chatbot-with-openai-api-chroma-db-huggingface-spaces-and-gradio/02-800.webp": "3470c3fde5285d436f79a4d552f66a1a73fe96aa991a28960358d95db2755729"
+      }
+    },
+    "forging-a-personal-chatbot-with-openai-api-chroma-db-huggingface-spaces-and-gradio/03.webp": {
+      "sha256": "2173e54a7cd046bd36345c04612641e77c4cea93ba76af086d3c6751719257c8",
+      "targets": {
+        "forging-a-personal-chatbot-with-openai-api-chroma-db-huggingface-spaces-and-gradio/03-1280.webp": "b24d74040d888c3495b8790562570769eff9bad679029e09799596b9c3b9ed7e",
+        "forging-a-personal-chatbot-with-openai-api-chroma-db-huggingface-spaces-and-gradio/03-800.webp": "330875a6b7b1e762fc39113c1950fb425cb311645ff3ff39095bcff62ff7e7bd"
+      }
+    },
+    "forging-a-personal-chatbot-with-openai-api-chroma-db-huggingface-spaces-and-gradio/04.webp": {
+      "sha256": "93f71a7c4a67bc21c8d3afc74abe2746ea4fe93c30cef5794edf6f6ad2af0cf9",
+      "targets": {
+        "forging-a-personal-chatbot-with-openai-api-chroma-db-huggingface-spaces-and-gradio/04-1280.webp": "3f6a1ff0400dc066a4937ef0b3e07504d9fc7490344f80f8a1440fdc93caa043",
+        "forging-a-personal-chatbot-with-openai-api-chroma-db-huggingface-spaces-and-gradio/04-800.webp": "b61ee294babccb52b836e673f8d6193960dfac6129e97bda677e96650bc53d24"
+      }
+    },
+    "forging-a-personal-chatbot-with-openai-api-chroma-db-huggingface-spaces-and-gradio/05.webp": {
+      "sha256": "45c9657cc729f31a002a0110c140d45c71c4a7423e6b356e20b7c016d95e536f",
+      "targets": {
+        "forging-a-personal-chatbot-with-openai-api-chroma-db-huggingface-spaces-and-gradio/05-800.webp": "4631e0ff3c215d6432b33b425a5b9658f6afb8131e3bc1909b23ba424d90952e"
+      }
+    },
+    "forging-a-personal-chatbot-with-openai-api-chroma-db-huggingface-spaces-and-gradio/cover.webp": {
+      "sha256": "18257f8cebd0563b075e7deb9fc21292d913fef831e678392eb16fd4f461b816",
+      "targets": {
+        "forging-a-personal-chatbot-with-openai-api-chroma-db-huggingface-spaces-and-gradio/cover-800.webp": "49dc68180cff7393db4bbd65783443de3275315eff3e5c0e902f307d01273f7f"
+      }
+    },
+    "framework-template-or-example-choosing-the-right-ai-starter-kit-for-your-team/02.webp": {
+      "sha256": "72c1c30bfee1cfe66f208962c9f6c4b51aba256b2a91c0b62ba290fd16de9d37",
+      "targets": {
+        "framework-template-or-example-choosing-the-right-ai-starter-kit-for-your-team/02-1280.webp": "4e136be9aa48bd019630c42cae79555481d7687caca1c9ceab080f3938cb2bd9",
+        "framework-template-or-example-choosing-the-right-ai-starter-kit-for-your-team/02-800.webp": "b23c5a27e5916e20b324179421d4066490613e7b7cbd7b3a7d76beb09d96adbd"
+      }
+    },
+    "framework-template-or-example-choosing-the-right-ai-starter-kit-for-your-team/03.webp": {
+      "sha256": "ba07c1abd328e3ec87e682b74bca7f4168e9b6f8bc7e156a417bd3faa0579351",
+      "targets": {
+        "framework-template-or-example-choosing-the-right-ai-starter-kit-for-your-team/03-1280.webp": "190ffad1604074dca5e06fb3533704faf8966a32f0a23efaef0ba70460a503c3",
+        "framework-template-or-example-choosing-the-right-ai-starter-kit-for-your-team/03-800.webp": "10a20eaa5cc82246d9ec1db98d43cfca1af18f879420d53b199465fb813af55d"
+      }
+    },
+    "framework-template-or-example-choosing-the-right-ai-starter-kit-for-your-team/04.webp": {
+      "sha256": "8ae3d48ee78fcff6da42749f18c308837fb8e3da582a28b8352cb80996c96653",
+      "targets": {
+        "framework-template-or-example-choosing-the-right-ai-starter-kit-for-your-team/04-800.webp": "18d7907158003d4466efac85ed3a5ed8bf9fb642e2e594690b1b0b11921fafb8"
+      }
+    },
+    "framework-template-or-example-choosing-the-right-ai-starter-kit-for-your-team/05.webp": {
+      "sha256": "5b85a2e4b4a5ebe206f173cd4c9960c25853dd04e5fa6537a9977191e035f210",
+      "targets": {
+        "framework-template-or-example-choosing-the-right-ai-starter-kit-for-your-team/05-1280.webp": "8504d677d75fc40bb5119ca408491fef6f8b98796f9b005814ed32308a6a3de6",
+        "framework-template-or-example-choosing-the-right-ai-starter-kit-for-your-team/05-800.webp": "ce18c5cf016826ddf045e2fc150e1b378ee6981378c763c1948392971e877500"
+      }
+    },
+    "framework-template-or-example-choosing-the-right-ai-starter-kit-for-your-team/cover.webp": {
+      "sha256": "312b9e5008872837cb2bdcf86e7e96eac58ac1450bb5cf09f8f8304d9900c59f",
+      "targets": {
+        "framework-template-or-example-choosing-the-right-ai-starter-kit-for-your-team/cover-1280.webp": "52a75cb77349722e88f11cb760f6122e58deacb498ea1d55eaa6a46618c588d2",
+        "framework-template-or-example-choosing-the-right-ai-starter-kit-for-your-team/cover-800.webp": "c055ab794990ff230c378e9b6febbfd2cf2495d3d97c572b94f5a561ebdf44ed"
+      }
+    },
+    "genv-an-agentic-workflow-for-actionable-insights-from-google-meet-recordings/02.webp": {
+      "sha256": "3b1f2555b2aa304774b1dc0b5668cd606a64f456d60c2a12f84d4f021e6b669c",
+      "targets": {
+        "genv-an-agentic-workflow-for-actionable-insights-from-google-meet-recordings/02-800.webp": "382c3b6440fcc3f5534f876a770b87e8c60f0c65e29d5e7c072aecc9af1aa5d2"
+      }
+    },
+    "genv-an-agentic-workflow-for-actionable-insights-from-google-meet-recordings/cover.webp": {
+      "sha256": "d406f3539a6b9cde77e6980e9814900ea70d5aa3ed5e40965b8765cfe55e5744",
+      "targets": {
+        "genv-an-agentic-workflow-for-actionable-insights-from-google-meet-recordings/cover-800.webp": "9108680818c0b4c72b53a0e513d27ea90d3b3a62fd5d324cbc0f4dbb8dec2be9"
+      }
+    },
+    "gitworks-an-ai-agent-for-enforcing-github-repository-standards/02.webp": {
+      "sha256": "591e89df14b3f37bab4c042dbb7989ba54feee275d265e77f35bab1ad55029c6",
+      "targets": {
+        "gitworks-an-ai-agent-for-enforcing-github-repository-standards/02-1280.webp": "3608d5ae490a1c2829a7e08c296b988abad1d90e1f49a68e6972b67dcc86fcc7",
+        "gitworks-an-ai-agent-for-enforcing-github-repository-standards/02-800.webp": "28b5c960770ef4b5abe499a3b25a9068809505997e820bf24782b1b2ad7776c1"
+      }
+    },
+    "gitworks-an-ai-agent-for-enforcing-github-repository-standards/cover.webp": {
+      "sha256": "8724796f3bb3ce5ad74c6125235a8c0c02d6bf1654e4882576b469b3fe8ce2fc",
+      "targets": {
+        "gitworks-an-ai-agent-for-enforcing-github-repository-standards/cover-1280.webp": "be578ddc77042efb0352bd3d5bc503761e74fcb9630b1b28fb42c8f337659ccb",
+        "gitworks-an-ai-agent-for-enforcing-github-repository-standards/cover-800.webp": "c421c88785642b7bd21e31befd4c725973e92f1f64236425f04a29aceae5b42b"
+      }
+    },
+    "hackathon-speedrun-build-deploy-a-rag-app-in-minutes-with-vertex-ai-studio-vertex-ai-search/02.webp": {
+      "sha256": "e627f451ebbe2b59470b14887f8d921dc599cbb1f02c4fee417e887e069f9be6",
+      "targets": {
+        "hackathon-speedrun-build-deploy-a-rag-app-in-minutes-with-vertex-ai-studio-vertex-ai-search/02-800.webp": "b22314d008af1d8e10cb001d382c154a5b28a592e6714ba2a038d7b66c2f66c4"
+      }
+    },
+    "hackathon-speedrun-build-deploy-a-rag-app-in-minutes-with-vertex-ai-studio-vertex-ai-search/03.webp": {
+      "sha256": "b956ea6f053416658a7527f62b6f659bfac39f2ab7823166da42193576ca3974",
+      "targets": {
+        "hackathon-speedrun-build-deploy-a-rag-app-in-minutes-with-vertex-ai-studio-vertex-ai-search/03-800.webp": "05614ec00ee202625d10a01b024f0b667cfa998e3d120afee47c6b53f5711c8f"
+      }
+    },
+    "hackathon-speedrun-build-deploy-a-rag-app-in-minutes-with-vertex-ai-studio-vertex-ai-search/04.webp": {
+      "sha256": "599b38fef233d79569fce75c28c13e6b3581695904af297fb8312334c2fbb5d7",
+      "targets": {
+        "hackathon-speedrun-build-deploy-a-rag-app-in-minutes-with-vertex-ai-studio-vertex-ai-search/04-800.webp": "4bb6f3b57129fd9bc60e0e216fd84f3cbfc6b59f79cb8b9e96f7ccca695acb23"
+      }
+    },
+    "hackathon-speedrun-build-deploy-a-rag-app-in-minutes-with-vertex-ai-studio-vertex-ai-search/05.webp": {
+      "sha256": "d8bbaf2380334a566de6bdb2b0265da9eda3f07fdf905b9b59390b03c508fa14",
+      "targets": {
+        "hackathon-speedrun-build-deploy-a-rag-app-in-minutes-with-vertex-ai-studio-vertex-ai-search/05-800.webp": "4a1b69e885eef1a19ddde5df5a3df304bcc3d2bf6d7f8ee3c17891489d9fae31"
+      }
+    },
+    "hackathon-speedrun-build-deploy-a-rag-app-in-minutes-with-vertex-ai-studio-vertex-ai-search/06.webp": {
+      "sha256": "6c55a843ca056f0a2c01ceac306194103a67232659a78aabc4741efdfe0375e8",
+      "targets": {
+        "hackathon-speedrun-build-deploy-a-rag-app-in-minutes-with-vertex-ai-studio-vertex-ai-search/06-1280.webp": "54325ff53aeca6d51c9d530658380db213e527d33ef8e519c40ec854b0a99477",
+        "hackathon-speedrun-build-deploy-a-rag-app-in-minutes-with-vertex-ai-studio-vertex-ai-search/06-800.webp": "1422b6db8f86d5a2b73cc57aefcf3e70a7111280fad5a04b84a0c0dccb0f0fda"
+      }
+    },
+    "hackathon-speedrun-build-deploy-a-rag-app-in-minutes-with-vertex-ai-studio-vertex-ai-search/07.webp": {
+      "sha256": "debbbb4cedaff54ec9c114555b466c06629731f02f509acef47c51194c8ddc76",
+      "targets": {
+        "hackathon-speedrun-build-deploy-a-rag-app-in-minutes-with-vertex-ai-studio-vertex-ai-search/07-800.webp": "407ed02f797a3e630c462fc0cd34d058651876191c78851f018d9b7e498c0062"
+      }
+    },
+    "hackathon-speedrun-build-deploy-a-rag-app-in-minutes-with-vertex-ai-studio-vertex-ai-search/08.webp": {
+      "sha256": "af0ac5ac8914218ad6759baaa0684ef96af0b0a710d1bd0cb697074d6471da92",
+      "targets": {
+        "hackathon-speedrun-build-deploy-a-rag-app-in-minutes-with-vertex-ai-studio-vertex-ai-search/08-800.webp": "6845c1d61764b742563d19ba5c8701ae3d25dfdfd32beecac81f9962a2bcabec"
+      }
+    },
+    "hackathon-speedrun-build-deploy-a-rag-app-in-minutes-with-vertex-ai-studio-vertex-ai-search/09.webp": {
+      "sha256": "06b6e41bf68f02f57b7c97117648d024c99f0ae26d0be855a6213d0180cac2a8",
+      "targets": {
+        "hackathon-speedrun-build-deploy-a-rag-app-in-minutes-with-vertex-ai-studio-vertex-ai-search/09-800.webp": "e07ed7d49ac879c925c356844dc5088be8eb8273fc6c950e923a43b5049aba3c"
+      }
+    },
+    "hackathon-speedrun-build-deploy-a-rag-app-in-minutes-with-vertex-ai-studio-vertex-ai-search/10.webp": {
+      "sha256": "abd00aff531e6c5d2624e5f8b53cdf1b2f687df7fc7973afc3f8144fd31e3bee",
+      "targets": {}
+    },
+    "hackathon-speedrun-build-deploy-a-rag-app-in-minutes-with-vertex-ai-studio-vertex-ai-search/11.webp": {
+      "sha256": "8e2d63280bfb2e9302e3beceddd711f2dba2620f370eb8d81dd53c16d10b5efe",
+      "targets": {}
+    },
+    "hackathon-speedrun-build-deploy-a-rag-app-in-minutes-with-vertex-ai-studio-vertex-ai-search/12.webp": {
+      "sha256": "d7d16000f27d6bda4a9cce0bacb8a98961bfb70ec8d51588e2a8578ad49e109f",
+      "targets": {
+        "hackathon-speedrun-build-deploy-a-rag-app-in-minutes-with-vertex-ai-studio-vertex-ai-search/12-800.webp": "7a10734b0d126324a6ff5c4ee7c96dc7a2a0d1e3eba46282d128834d2d8d188d"
+      }
+    },
+    "hackathon-speedrun-build-deploy-a-rag-app-in-minutes-with-vertex-ai-studio-vertex-ai-search/13.webp": {
+      "sha256": "4b9d239705fe0de2df71b7e6986f2550f82407cb676cfeeb7e7efd9611d9d408",
+      "targets": {
+        "hackathon-speedrun-build-deploy-a-rag-app-in-minutes-with-vertex-ai-studio-vertex-ai-search/13-1280.webp": "607f032f4fdca308780812dcec8ed3d51b88d8206e0387c186ccb6c8d952c058",
+        "hackathon-speedrun-build-deploy-a-rag-app-in-minutes-with-vertex-ai-studio-vertex-ai-search/13-800.webp": "657ef88abc1ba2f847876bd0c3294a7d1718d0aeb5c17af41d85f70a91763131"
+      }
+    },
+    "hackathon-speedrun-build-deploy-a-rag-app-in-minutes-with-vertex-ai-studio-vertex-ai-search/14.webp": {
+      "sha256": "4a046e286d8ffb3f373476f5044ddf3dc3b4cf9b4953b24d6600f436e9f6d1d5",
+      "targets": {}
+    },
+    "hackathon-speedrun-build-deploy-a-rag-app-in-minutes-with-vertex-ai-studio-vertex-ai-search/15.webp": {
+      "sha256": "001e5dd667ff4b94a1c6677abf08e2644bca69263e48cad6c94c8cdc18d8aff2",
+      "targets": {}
+    },
+    "hackathon-speedrun-build-deploy-a-rag-app-in-minutes-with-vertex-ai-studio-vertex-ai-search/16.webp": {
+      "sha256": "c874752264dfa53d9b12cbc93723035951b952f1e70d1f6e0c577f76bbfb3a01",
+      "targets": {
+        "hackathon-speedrun-build-deploy-a-rag-app-in-minutes-with-vertex-ai-studio-vertex-ai-search/16-800.webp": "2f2fea0b77889c4fc9f401f15e548c3edf610ffc0b04da0a8c31b2a6a0214122"
+      }
+    },
+    "hackathon-speedrun-build-deploy-a-rag-app-in-minutes-with-vertex-ai-studio-vertex-ai-search/17.webp": {
+      "sha256": "07a4a7094ea6802c9af496ed71a97d061e9d20cf97706ca9aef0fd591b51365b",
+      "targets": {
+        "hackathon-speedrun-build-deploy-a-rag-app-in-minutes-with-vertex-ai-studio-vertex-ai-search/17-800.webp": "2a05cc8ededaa0dd8394dd64c42636395dd22b939633afe1abbe4eb830f03de9"
+      }
+    },
+    "hackathon-speedrun-build-deploy-a-rag-app-in-minutes-with-vertex-ai-studio-vertex-ai-search/18.webp": {
+      "sha256": "9877ca2d22ecf98ab95e7982b15a6e5f61d2a03a8c6a50dfe877ede699bfdfb5",
+      "targets": {
+        "hackathon-speedrun-build-deploy-a-rag-app-in-minutes-with-vertex-ai-studio-vertex-ai-search/18-800.webp": "dcef724d7649d8a2c952721cb3b66b50538bc582dcc1c319e4338a717ca8ee2d"
+      }
+    },
+    "hackathon-speedrun-build-deploy-a-rag-app-in-minutes-with-vertex-ai-studio-vertex-ai-search/19.webp": {
+      "sha256": "d8cd18f2e7b58b444e0e985720361f0631eb9bef2f54d7ef7eaccecebbc29828",
+      "targets": {
+        "hackathon-speedrun-build-deploy-a-rag-app-in-minutes-with-vertex-ai-studio-vertex-ai-search/19-1280.webp": "f295fc760784a2179ce2b3ef7b0a85762c43368df93c6770aed87fc409cd4c64",
+        "hackathon-speedrun-build-deploy-a-rag-app-in-minutes-with-vertex-ai-studio-vertex-ai-search/19-800.webp": "29dd98439d9172f4d613e4b5b832fa4e03243e6f6b1957f10c3ed03fe273befd"
+      }
+    },
+    "hackathon-speedrun-build-deploy-a-rag-app-in-minutes-with-vertex-ai-studio-vertex-ai-search/20.webp": {
+      "sha256": "fb9dfeb7ce174036ccbb8dca8d31d4b493245ad7507b34f84d41c893e54cf067",
+      "targets": {
+        "hackathon-speedrun-build-deploy-a-rag-app-in-minutes-with-vertex-ai-studio-vertex-ai-search/20-800.webp": "dcba3d697e05182c6005b13a5308f897c5813cd685c6d5bcec69ed0c6eaef662"
+      }
+    },
+    "hackathon-speedrun-build-deploy-a-rag-app-in-minutes-with-vertex-ai-studio-vertex-ai-search/21.webp": {
+      "sha256": "91f44249ae0ab3c9e1bd2ab72ea1448b0786bb366e5d726d79fee0456d2bf13d",
+      "targets": {
+        "hackathon-speedrun-build-deploy-a-rag-app-in-minutes-with-vertex-ai-studio-vertex-ai-search/21-800.webp": "8ba0f4ab4447169ed289a8da8a03688a996526e93d59bfae88c062f77be1e521"
+      }
+    },
+    "hackathon-speedrun-build-deploy-a-rag-app-in-minutes-with-vertex-ai-studio-vertex-ai-search/22.webp": {
+      "sha256": "af10f893c8cb442556eb351c7ff799c974e9f8c43d4b4443437eabf1b4aaa261",
+      "targets": {
+        "hackathon-speedrun-build-deploy-a-rag-app-in-minutes-with-vertex-ai-studio-vertex-ai-search/22-800.webp": "ce68fe3d80107396adef8960895008957a26fc4fc5faa54926de972d2953a897"
+      }
+    },
+    "hackathon-speedrun-build-deploy-a-rag-app-in-minutes-with-vertex-ai-studio-vertex-ai-search/cover.webp": {
+      "sha256": "35f41c04d141e853fd26c7fed7e4a2d399f6c44984bdd99459593e426206d0e1",
+      "targets": {
+        "hackathon-speedrun-build-deploy-a-rag-app-in-minutes-with-vertex-ai-studio-vertex-ai-search/cover-800.webp": "a7842a808f36998b068340f934685993db295aadb0c3adcb96e3a4b98a5e8df5"
+      }
+    },
+    "happy-birthday-xp-celebrating-gemini-deep-think-and-my-daughters-6th-birthday/02.webp": {
+      "sha256": "3943cefef2e59d33b00d5c65c5007fe7eb3df2760fc8c77a62643d19325341a4",
+      "targets": {
+        "happy-birthday-xp-celebrating-gemini-deep-think-and-my-daughters-6th-birthday/02-1280.webp": "eedae90b5356e863c87d37f03f45a5ab8014194cf058198f9ad49e22ff69b8c7",
+        "happy-birthday-xp-celebrating-gemini-deep-think-and-my-daughters-6th-birthday/02-800.webp": "56eab0fa9e8d2eff7f35e94920538816472a14b05dd2a609743e1869a633a343"
+      }
+    },
+    "happy-birthday-xp-celebrating-gemini-deep-think-and-my-daughters-6th-birthday/03.webp": {
+      "sha256": "1a70de6ac48d39ef5c1db19e5504369f00cc8cdaf6d754949d52bb82ea8ff89f",
+      "targets": {
+        "happy-birthday-xp-celebrating-gemini-deep-think-and-my-daughters-6th-birthday/03-1280.webp": "b5672ea0b3be87af78ce2d64ff523f8bfe59b81eddd6d50700cb80e39216ca25",
+        "happy-birthday-xp-celebrating-gemini-deep-think-and-my-daughters-6th-birthday/03-800.webp": "b8446678a14ab5823037d6b5d04feadb84491cf6286b53ebdd2798c6a21a89e8"
+      }
+    },
+    "happy-birthday-xp-celebrating-gemini-deep-think-and-my-daughters-6th-birthday/04.webp": {
+      "sha256": "028fcfbeac4795092b188b3a7d82821ee4308bb254e3d052354f3948d4adf529",
+      "targets": {
+        "happy-birthday-xp-celebrating-gemini-deep-think-and-my-daughters-6th-birthday/04-1280.webp": "f596e66600306fe66b71eea5e610bcda05c42112913e3d3f5810993b1ab1ca8a",
+        "happy-birthday-xp-celebrating-gemini-deep-think-and-my-daughters-6th-birthday/04-800.webp": "95b46221c85288e3286b8037b7a9cb91017bdc386aeac2751c55be54622e5038"
+      }
+    },
+    "happy-birthday-xp-celebrating-gemini-deep-think-and-my-daughters-6th-birthday/05.webp": {
+      "sha256": "136ce7ad662452e74c2855f40a83e34501ea771979ff33294428ee29a3cfa719",
+      "targets": {
+        "happy-birthday-xp-celebrating-gemini-deep-think-and-my-daughters-6th-birthday/05-800.webp": "7f73e449b27ccb3c6adb41bde376ce618d811990d5679604e9d14df116c4de23"
+      }
+    },
+    "happy-birthday-xp-celebrating-gemini-deep-think-and-my-daughters-6th-birthday/cover.webp": {
+      "sha256": "1953563d9f1542a6212e05104c50294577a20822533d7ea234269f21f97a2ca6",
+      "targets": {
+        "happy-birthday-xp-celebrating-gemini-deep-think-and-my-daughters-6th-birthday/cover-1280.webp": "aeae8984f42a3e058dbc1cf93e84a4eefd5f12023a6dd2152f49128d259831fc",
+        "happy-birthday-xp-celebrating-gemini-deep-think-and-my-daughters-6th-birthday/cover-800.webp": "ff2b84d702622be001132dced602b6faf97a50c1b9b3ea6bd6f099a454b68340"
+      }
+    },
+    "how-i-revamped-my-portfolio-website-in-5-nights-using-ai-agents/02.webp": {
+      "sha256": "d1baa517dfcc924ebc0a7aebfe1e5f749056095cdc4d325588228d9ea4f4a151",
+      "targets": {
+        "how-i-revamped-my-portfolio-website-in-5-nights-using-ai-agents/02-1280.webp": "8c2b9a1883b4640cb9f3a8e395536aa3af7d07ad3789c724fc7e7b28c325a46b",
+        "how-i-revamped-my-portfolio-website-in-5-nights-using-ai-agents/02-800.webp": "cb2c46f4787c4c56eb04018ef0419f05343f8a8bd41117ec8be1e5d52b8d8406"
+      }
+    },
+    "how-i-revamped-my-portfolio-website-in-5-nights-using-ai-agents/03.webp": {
+      "sha256": "3e0f5589d8ccc14b760c4ea000216a7e5e1901f640fb76277d7749e08f020659",
+      "targets": {
+        "how-i-revamped-my-portfolio-website-in-5-nights-using-ai-agents/03-1280.webp": "4a94e97f96d67d8d16cf24680b8e827e2649b31ffc50d6352718138d8dca68f7",
+        "how-i-revamped-my-portfolio-website-in-5-nights-using-ai-agents/03-800.webp": "f80e73d04dff1fd45cfb94370933f0a94d7b2d4a68c7399552f958d4f61e79ec"
+      }
+    },
+    "how-i-revamped-my-portfolio-website-in-5-nights-using-ai-agents/04.webp": {
+      "sha256": "2e88adfd00b0f2289723443ab30e06103cac6ac667f0e92616a31ac74019475f",
+      "targets": {
+        "how-i-revamped-my-portfolio-website-in-5-nights-using-ai-agents/04-1280.webp": "ecc3ce740b3d3d6a5f7592509f2a91a605a5713934ace84ccb16b152d0f29629",
+        "how-i-revamped-my-portfolio-website-in-5-nights-using-ai-agents/04-800.webp": "23d7e0d4b2e22ae698b2ab3049181babdb99a06657230c83a1279426a582ec1e"
+      }
+    },
+    "how-i-revamped-my-portfolio-website-in-5-nights-using-ai-agents/cover.webp": {
+      "sha256": "6d7ccbd2b852995806e42353dbc16ece2ffe9860bfad3614b8abb5ae3150f305",
+      "targets": {
+        "how-i-revamped-my-portfolio-website-in-5-nights-using-ai-agents/cover-1280.webp": "93d999b4909f72779872341ffe4a54d3904cbb5ad296c94c5c8ab308e420a708",
+        "how-i-revamped-my-portfolio-website-in-5-nights-using-ai-agents/cover-800.webp": "0a65baad10c44b477a42fba5ccfd590c2e56da3fcb874f0902a878924b8547b2"
+      }
+    },
+    "how-to-configure-vs-code-for-ai-ml-and-mlops-development-in-python/02.webp": {
+      "sha256": "4f568168dd9dc7a6807f376f2f03be0cc9c491cd2411703c4cf47bae2a8d18e7",
+      "targets": {
+        "how-to-configure-vs-code-for-ai-ml-and-mlops-development-in-python/02-800.webp": "ecacadd87e0892b8b13ead8280c1935a24cb5c3c98964393afffaef7a21ec119"
+      }
+    },
+    "how-to-configure-vs-code-for-ai-ml-and-mlops-development-in-python/03.webp": {
+      "sha256": "7df6b6492af359a5ad8cc93270545f5694d03b588cd8957a38fcdab56d998248",
+      "targets": {}
+    },
+    "how-to-configure-vs-code-for-ai-ml-and-mlops-development-in-python/05.webp": {
+      "sha256": "dcc2d81cf4c4ea247286241129410517f4e022329bfdd6e5e473d0f741bf9cb5",
+      "targets": {
+        "how-to-configure-vs-code-for-ai-ml-and-mlops-development-in-python/05-800.webp": "fcb1fb99b323889958d35292ac9ac80d6cf50cf45bf1cbd650727089d0102a40"
+      }
+    },
+    "how-to-configure-vs-code-for-ai-ml-and-mlops-development-in-python/06.webp": {
+      "sha256": "0fa05d11ca196610e14ac01ffaf40f02708ce135f9e1e6130037aa2b70432256",
+      "targets": {
+        "how-to-configure-vs-code-for-ai-ml-and-mlops-development-in-python/06-800.webp": "e16e5f887383d176970cd5d4927c614a215ee78e783d4a10766df602a82d28e2"
+      }
+    },
+    "how-to-configure-vs-code-for-ai-ml-and-mlops-development-in-python/07.webp": {
+      "sha256": "511aa63589bd107eddf6695d2fe862b9c9c77da00d054389918f45b69d25fd1b",
+      "targets": {}
+    },
+    "how-to-configure-vs-code-for-ai-ml-and-mlops-development-in-python/08.webp": {
+      "sha256": "ad836685fc156a7b45496adf476e46b499c917a66eb7161dec21c1dd3689fa10",
+      "targets": {}
+    },
+    "how-to-configure-vs-code-for-ai-ml-and-mlops-development-in-python/09.gif": {
+      "sha256": "f58712de3913d7ec0cba5dcee26a71318f828d7199f6c303d09ba554b8fefaee",
+      "targets": {}
+    },
+    "how-to-configure-vs-code-for-ai-ml-and-mlops-development-in-python/10.webp": {
+      "sha256": "3213cb323ca0d102b42689ee729b13a56cefa7bdff2292f55d9745ea39ed2658",
+      "targets": {}
+    },
+    "how-to-configure-vs-code-for-ai-ml-and-mlops-development-in-python/11.webp": {
+      "sha256": "9b20e991f8558b5d5c57d43afda94926b6fe02a75f5982f7feb399133732406a",
+      "targets": {
+        "how-to-configure-vs-code-for-ai-ml-and-mlops-development-in-python/11-800.webp": "857af079ef9ba468c8c24241e710b6a7376f4032120ebe77da4d4ea68b15e1e8"
+      }
+    },
+    "how-to-configure-vs-code-for-ai-ml-and-mlops-development-in-python/12.webp": {
+      "sha256": "041f733bbf49c99fe12465852501b71caf1d021ef9d2e0296e832af50dd7e3b8",
+      "targets": {}
+    },
+    "how-to-configure-vs-code-for-ai-ml-and-mlops-development-in-python/13.webp": {
+      "sha256": "5006641a234abd47b8136d3f3fd75174ed9e34cd056e327f166aae66c5258c36",
+      "targets": {}
+    },
+    "how-to-configure-vs-code-for-ai-ml-and-mlops-development-in-python/14.webp": {
+      "sha256": "99a6b0be9afbeaedf91b66fa11d63beeaf677916e794b6bcf784f32dd1e6f5b4",
+      "targets": {
+        "how-to-configure-vs-code-for-ai-ml-and-mlops-development-in-python/14-800.webp": "d76266252172a04d250ffc4e6070d137856ac3f31e69bb3d0a16491f757c7958"
+      }
+    },
+    "how-to-configure-vs-code-for-ai-ml-and-mlops-development-in-python/15.webp": {
+      "sha256": "e07c285ac4f1e1d0e9959114dcaef6ed17ffcfe232ab73132c7e53609d282c9b",
+      "targets": {
+        "how-to-configure-vs-code-for-ai-ml-and-mlops-development-in-python/15-800.webp": "f6b489baf36ee96a2a90e0455299ef53aa0aaa4ec74e58e40174924e98bb2c79"
+      }
+    },
+    "how-to-configure-vs-code-for-ai-ml-and-mlops-development-in-python/16.webp": {
+      "sha256": "a141135c38406c622e2e810471c09cb7e18ea2f41905f9a46b6fda3b88aba51c",
+      "targets": {
+        "how-to-configure-vs-code-for-ai-ml-and-mlops-development-in-python/16-800.webp": "5f65bf89994cc87af2a170745853df9e5dcc1f35831a3e86a7ccd499e1021bff"
+      }
+    },
+    "how-to-configure-vs-code-for-ai-ml-and-mlops-development-in-python/17.webp": {
+      "sha256": "bca3a0d069a8bdeb7b7e26e831210676cf84c4dbbf85f1a81af356f62809aa44",
+      "targets": {
+        "how-to-configure-vs-code-for-ai-ml-and-mlops-development-in-python/17-800.webp": "9bebfa692758a30dcaba7e27d0cb49e9f8e9c7c52a3a406602ca215e7d224ee1"
+      }
+    },
+    "how-to-configure-vs-code-for-ai-ml-and-mlops-development-in-python/cover.webp": {
+      "sha256": "f79dafb77042e66390370157a08be2f66373b41e9d8538900de1b93d64b5b561",
+      "targets": {
+        "how-to-configure-vs-code-for-ai-ml-and-mlops-development-in-python/cover-800.webp": "41c57c5a7c1a3f71013abd7de6d06506169c09feb70f3250fc9dd1020ad14e85"
+      }
+    },
+    "how-to-install-kubeflow-on-apple-silicon/02.webp": {
+      "sha256": "320f8656354c03f243b90a79204db13b14572b47421ef03725a632b815a9722a",
+      "targets": {}
+    },
+    "how-to-install-kubeflow-on-apple-silicon/03.webp": {
+      "sha256": "fcded6f52e60ad7425046cbc23e9623cd390c0b08a9a5df0a1b1d68ccb3a65ab",
+      "targets": {}
+    },
+    "how-to-install-kubeflow-on-apple-silicon/04.webp": {
+      "sha256": "042abc8101e28b9e19e8415987d26cd92ac8e7478ac58a73de916cb6e10ff219",
+      "targets": {
+        "how-to-install-kubeflow-on-apple-silicon/04-800.webp": "3ac0c8c075e339712c1067aadf7cf102f9424f89c2b0fc5448020485bb9e22aa"
+      }
+    },
+    "how-to-install-kubeflow-on-apple-silicon/05.webp": {
+      "sha256": "8109eca0eff41beda4551cec986550f03d5816673cba3fa254140d7c7a2c66c2",
+      "targets": {
+        "how-to-install-kubeflow-on-apple-silicon/05-800.webp": "148075bf3159cc789ecde9397810ef9304d3dcd933ffe7f413c708ec2c8f509e"
+      }
+    },
+    "how-to-install-kubeflow-on-apple-silicon/06.webp": {
+      "sha256": "9cae7a7e21e75705bc0f74d77fd834a57efadade2f8f84e4d9382de970e7c892",
+      "targets": {
+        "how-to-install-kubeflow-on-apple-silicon/06-800.webp": "b264aa5b63072dd2ed4149dc89f87d23681c0ed18624cf293f065e3b6ac854e2"
+      }
+    },
+    "how-to-install-kubeflow-on-apple-silicon/07.webp": {
+      "sha256": "e2ca224d72024b285f0e2bf7381852dc41bbb9f3c0986ba53c5b19a4106ee55d",
+      "targets": {
+        "how-to-install-kubeflow-on-apple-silicon/07-1280.webp": "9594913076d978cb639e0fe7f15bdb86e31d2def5db42ad5c50b4bb487512f4d",
+        "how-to-install-kubeflow-on-apple-silicon/07-800.webp": "6656afa321c2803f44d12b0f259fa3bc56c7edf29139a1ae201ee1cc7e99a052"
+      }
+    },
+    "how-to-install-kubeflow-on-apple-silicon/cover.webp": {
+      "sha256": "1b19de7b3ce09d81e3df499c3e2c3c5ef9f5ff2f98b5ab07a5b7eefb04722b75",
+      "targets": {
+        "how-to-install-kubeflow-on-apple-silicon/cover-800.webp": "317f71e5b81eacf9acd6068e05894490ec61c5d0e55b8323cbe776966d2cc2c8"
+      }
+    },
+    "introducing-gentwriter-building-a-multi-agent-content-generator-with-googles-adk/02.webp": {
+      "sha256": "3de91eee6736096b8b27e4e9d902273da8d1738b4363f9b8632c330ee3384e54",
+      "targets": {
+        "introducing-gentwriter-building-a-multi-agent-content-generator-with-googles-adk/02-1280.webp": "f18285d3fee89f37327948299a1d6fe6a5bb70c765b70c08cf12f2bd2b3f5da8",
+        "introducing-gentwriter-building-a-multi-agent-content-generator-with-googles-adk/02-800.webp": "81fc27e0fb34cbe7ae1485c0b58f3259d63c4d5425a97969bcf44f8343e40624"
+      }
+    },
+    "introducing-gentwriter-building-a-multi-agent-content-generator-with-googles-adk/03.webp": {
+      "sha256": "aea0c0dcf1e712b14ee6aa0315122d3632f2a8f0e80fc7a250db892b282c8b4b",
+      "targets": {
+        "introducing-gentwriter-building-a-multi-agent-content-generator-with-googles-adk/03-800.webp": "8d9ff433f136ca577db8290465188d2787f13267c21cf340f3b0362cf65f9018"
+      }
+    },
+    "introducing-gentwriter-building-a-multi-agent-content-generator-with-googles-adk/04.webp": {
+      "sha256": "a5781ed87b92fad031f040407938722c8cb693815a815bd70d0c48303a5ad1af",
+      "targets": {
+        "introducing-gentwriter-building-a-multi-agent-content-generator-with-googles-adk/04-1280.webp": "dde0b86909155a6e40d390b9fdcd419405b3134a8d8ffa29a67bd16dae947eb9",
+        "introducing-gentwriter-building-a-multi-agent-content-generator-with-googles-adk/04-800.webp": "4bac30e6cdf6cd651aeffd2e4b35ca0fb272565d47639481dabb677f9d459cc3"
+      }
+    },
+    "introducing-gentwriter-building-a-multi-agent-content-generator-with-googles-adk/05.webp": {
+      "sha256": "20562c8754fef66e508130d27320148954aca02bc0e1089db96b3323e9c0e2ed",
+      "targets": {
+        "introducing-gentwriter-building-a-multi-agent-content-generator-with-googles-adk/05-1280.webp": "e546419367e1f8056e23facdb497c1c87a13a1b5d8dd2801e202389b4033d46c",
+        "introducing-gentwriter-building-a-multi-agent-content-generator-with-googles-adk/05-800.webp": "e7f442aceea24c34d3f52a62f6908a1a2751a3f38b3706797fdf0884394a3d53"
+      }
+    },
+    "introducing-gentwriter-building-a-multi-agent-content-generator-with-googles-adk/06.webp": {
+      "sha256": "084ad585f5c699602f65ec9b44133945ce991bee0d3b14879254e321d2f8e04b",
+      "targets": {
+        "introducing-gentwriter-building-a-multi-agent-content-generator-with-googles-adk/06-1280.webp": "84266a1065d472e42f0614f85500323b876f9e7eef8009929e35efef4f06e200",
+        "introducing-gentwriter-building-a-multi-agent-content-generator-with-googles-adk/06-800.webp": "fdf9024dd7452e6c3b6e1cbb920f7011e329aa1959306ed0d64fc853a0704f1f"
+      }
+    },
+    "introducing-gentwriter-building-a-multi-agent-content-generator-with-googles-adk/cover.webp": {
+      "sha256": "ed2b47d5fbec5d1c5f914a9100f44918e2a937c78cf4459ed769b9fcac8830b8",
+      "targets": {
+        "introducing-gentwriter-building-a-multi-agent-content-generator-with-googles-adk/cover-1280.webp": "1d41477173e0e1cfed889fd18a616cb478fe0cace72de9383317692b19bcf5e7",
+        "introducing-gentwriter-building-a-multi-agent-content-generator-with-googles-adk/cover-800.webp": "57453218f7de84b1fbab339e79735397a732e2bff4e2b8078826a375b38f2b78"
+      }
+    },
+    "is-ai-ml-monitoring-just-data-engineering/02.webp": {
+      "sha256": "d75b67581c8d557c3eb252e3c681de80f717902863b3bb8fb8fc3a15af91f984",
+      "targets": {
+        "is-ai-ml-monitoring-just-data-engineering/02-1280.webp": "2571fe15265ce5829450af68c0c9845c03b6d8bb8f7b39363b932e98fd7ffb2b",
+        "is-ai-ml-monitoring-just-data-engineering/02-800.webp": "f70f5971576d51041a497b21d3e152ec31beff965d8dc72d0f577ac7aeadb459"
+      }
+    },
+    "is-ai-ml-monitoring-just-data-engineering/03.webp": {
+      "sha256": "f2486e4f60bb591fafad2b88816488eb21ce4adbb75c80beb3a7d3045221be40",
+      "targets": {
+        "is-ai-ml-monitoring-just-data-engineering/03-800.webp": "823d6b7686cc1b8029a8969aa5d5bc1109db596ce66666125373d163c0dfc848"
+      }
+    },
+    "is-ai-ml-monitoring-just-data-engineering/04.webp": {
+      "sha256": "ea2e431b408f6b9e7521e1c7eede0f5030652953b834dbb41085b1b825d3efac",
+      "targets": {
+        "is-ai-ml-monitoring-just-data-engineering/04-1280.webp": "e90522c3163c0cdff397195369be10ae4c49e24d3bd60fbaab689f3fda930d9e",
+        "is-ai-ml-monitoring-just-data-engineering/04-800.webp": "392fc49f9afbefa315f286c05c9692b5cbbf6cb7f5e03fd9a3c9d0ada0c07ff8"
+      }
+    },
+    "is-ai-ml-monitoring-just-data-engineering/05.webp": {
+      "sha256": "fbcef9c7cb99c7936f41d0134aee12f86470837134b29436bbcb7f473bf63496",
+      "targets": {}
+    },
+    "is-ai-ml-monitoring-just-data-engineering/06.webp": {
+      "sha256": "10beab1548f69bbf5e6971f08e83a62460ffd7c67cd7f4b595b2c185f7bfa84c",
+      "targets": {
+        "is-ai-ml-monitoring-just-data-engineering/06-800.webp": "7780efdac33dff97261df29f5f7dae9125e88e067e4e839de7247cfed46861d0"
+      }
+    },
+    "is-ai-ml-monitoring-just-data-engineering/cover.webp": {
+      "sha256": "78ce285d36376ba0866ef6c3c633191b603d19a0f5f328ba07c239fac4fdb78c",
+      "targets": {
+        "is-ai-ml-monitoring-just-data-engineering/cover-800.webp": "91f69acbf50f7f6efe474137d38c4e6cef2e86e56e18521ddff876698873064b"
+      }
+    },
+    "its-not-artificial-recreating-a-conversational-format-with-gemini-s-multi-speaker-text-to-speech/02.webp": {
+      "sha256": "fd1becf4e8ddef94741d25c794756b8d7b3dff2906655ae2cf22f53d1037a4d8",
+      "targets": {
+        "its-not-artificial-recreating-a-conversational-format-with-gemini-s-multi-speaker-text-to-speech/02-800.webp": "3c2f27049a31b2887a7ca1df7531ee8fce073093183ccfa9a085c84f8df5ad8a"
+      }
+    },
+    "its-not-artificial-recreating-a-conversational-format-with-gemini-s-multi-speaker-text-to-speech/cover.webp": {
+      "sha256": "aadac41f008ba2fce949bab39b818d658822a4f6a3d6fdcdd582cbac86f7a68d",
+      "targets": {
+        "its-not-artificial-recreating-a-conversational-format-with-gemini-s-multi-speaker-text-to-speech/cover-1280.webp": "af4674210e1b4941ea7e3f6cc413e858b2ffeeec6f4b0287f16dc92a70795459",
+        "its-not-artificial-recreating-a-conversational-format-with-gemini-s-multi-speaker-text-to-speech/cover-800.webp": "2a87a12fef28996545acea2d8eac056cd72dcadb672ff4a6f8da7fc9bb60eb78"
+      }
+    },
+    "lessons-learned-from-the-gemini-long-context-kaggle-competition/02.webp": {
+      "sha256": "845495be3b9bca56b64fe8f65f47632ba2bffc9bf07e523a6b647e29e4117cee",
+      "targets": {}
+    },
+    "lessons-learned-from-the-gemini-long-context-kaggle-competition/03.webp": {
+      "sha256": "2c09a079ef4526e6fb7f616882ba6fd4fbbed1b8e39b21dc400a65eae3bd39b3",
+      "targets": {
+        "lessons-learned-from-the-gemini-long-context-kaggle-competition/03-800.webp": "a4131e2e81efbe1011bedce650d7ff83f5f45e1a55e8bc1cdf5b1ca99de98203"
+      }
+    },
+    "lessons-learned-from-the-gemini-long-context-kaggle-competition/04.webp": {
+      "sha256": "e905eb2711a606a593e39eafb2f25772316e00633ba73fd7d55208f1906a73fe",
+      "targets": {
+        "lessons-learned-from-the-gemini-long-context-kaggle-competition/04-1280.webp": "9c4b9abc3b41f8ec2614cce9f3fe61b0be9fa0a2d031d7368f8c644869026237",
+        "lessons-learned-from-the-gemini-long-context-kaggle-competition/04-800.webp": "c33a8ade5c5509962063f846443afc053d801e9f868f9d18a8f2a54c79b9fff6"
+      }
+    },
+    "lessons-learned-from-the-gemini-long-context-kaggle-competition/05.webp": {
+      "sha256": "2696e9643744aa9a2994d945ff9823cd51bae370c9f29b26b681cc2a44073db8",
+      "targets": {
+        "lessons-learned-from-the-gemini-long-context-kaggle-competition/05-1280.webp": "ff299a01f3a49c9d8205d7bb03a315863e653ec990e034b2d2436aedfc79d45a",
+        "lessons-learned-from-the-gemini-long-context-kaggle-competition/05-800.webp": "7178f5166ef78b5f3d9b310827cfd6b6e2f24c5159278713a81d884c8b1ef625"
+      }
+    },
+    "lessons-learned-from-the-gemini-long-context-kaggle-competition/06.webp": {
+      "sha256": "b07a331aefddf29404c20cfff9a7bb72c8871625c86291ed3e6243cf74fa1165",
+      "targets": {
+        "lessons-learned-from-the-gemini-long-context-kaggle-competition/06-1280.webp": "7e850b3d209f498c15a86463f3d5c6992fa12c8631e065f7e0d944d64d758420",
+        "lessons-learned-from-the-gemini-long-context-kaggle-competition/06-800.webp": "1cce9fa98489191b83af127b8d95ab756d811654e66eb2ba7537212126fa074a"
+      }
+    },
+    "lessons-learned-from-the-gemini-long-context-kaggle-competition/07.webp": {
+      "sha256": "e2b588108a31542e5eb24be0470ed26863494f5db6baa1e792160ec0d37ace90",
+      "targets": {
+        "lessons-learned-from-the-gemini-long-context-kaggle-competition/07-1280.webp": "4e9d2b0c4816fe9e4240c6463066a35071762fce8d06c66191f5c3dfb391aded",
+        "lessons-learned-from-the-gemini-long-context-kaggle-competition/07-800.webp": "07dba2c5fd105f516e9c328442bf2261ca477eb203e61d66e43a9e2f09352168"
+      }
+    },
+    "lessons-learned-from-the-gemini-long-context-kaggle-competition/cover.webp": {
+      "sha256": "c228de2f1e8d410b9c28fd6100e51fe2553a81e685ddbd0b0be941c42b351e4b",
+      "targets": {
+        "lessons-learned-from-the-gemini-long-context-kaggle-competition/cover-1280.webp": "98662aef7fefbeb20072a6f493e3e1a9a4a4eed81eab8211a05b4959300d6032",
+        "lessons-learned-from-the-gemini-long-context-kaggle-competition/cover-800.webp": "353f1d53c6f7718f75c78b1355c53263a3c3f0b52b619bdc2608e9153005f119"
+      }
+    },
+    "maidai-building-a-personal-assistant-with-google-cloud-and-vertex-ai/02.webp": {
+      "sha256": "e6bd7bb71248278e753483e78e1a3ee6c8da4a965888e8ab776a40a6793a5605",
+      "targets": {
+        "maidai-building-a-personal-assistant-with-google-cloud-and-vertex-ai/02-1280.webp": "d9928c559dc889cd281038f0d9b346d274fc70ae7721bf602e1044d00be6ebff",
+        "maidai-building-a-personal-assistant-with-google-cloud-and-vertex-ai/02-800.webp": "9918f91c69501f8ed47eae77132bd7f0e108dfd90c2cb2052d646e38d145e936"
+      }
+    },
+    "maidai-building-a-personal-assistant-with-google-cloud-and-vertex-ai/03.webp": {
+      "sha256": "3fdfbe058051d2ed632a706156cbae93f01167a05e2da8995d29faf135cb0a9c",
+      "targets": {
+        "maidai-building-a-personal-assistant-with-google-cloud-and-vertex-ai/03-1280.webp": "7eb485bae2682b64e7c0795cc94afdbf4ad6e6ba5861aeb3228f1110551adc55",
+        "maidai-building-a-personal-assistant-with-google-cloud-and-vertex-ai/03-800.webp": "485b2045c81819ece45400c3bf60e9f11ac50558bf6a7867eb171a284c34662c"
+      }
+    },
+    "maidai-building-a-personal-assistant-with-google-cloud-and-vertex-ai/04.webp": {
+      "sha256": "a4366d56bb4fe1f88841c328faec3dbe3312bbc1cf47c3233272b9c5f543ec9f",
+      "targets": {
+        "maidai-building-a-personal-assistant-with-google-cloud-and-vertex-ai/04-1280.webp": "439d775959c0d3dd04d877375f45788239f64461f1822738553248e9811e6a62",
+        "maidai-building-a-personal-assistant-with-google-cloud-and-vertex-ai/04-800.webp": "abd7d57bba4ece33d1d79a61bc546c3bf6d07a4e3eb73514968cef942d7be6cd"
+      }
+    },
+    "maidai-building-a-personal-assistant-with-google-cloud-and-vertex-ai/05.webp": {
+      "sha256": "07c87f6a6296f018290814af739ad74ee634841561983a62c6a46b13ae856d0d",
+      "targets": {
+        "maidai-building-a-personal-assistant-with-google-cloud-and-vertex-ai/05-1280.webp": "277ed8a08f38bee267c8149f3383f0c347f3e018adf4473314b6d91301364585",
+        "maidai-building-a-personal-assistant-with-google-cloud-and-vertex-ai/05-800.webp": "ecbc934ca3e90a5d6f0441e9733c94bc199963df1a6bee71b88f32a18f799727"
+      }
+    },
+    "maidai-building-a-personal-assistant-with-google-cloud-and-vertex-ai/cover.webp": {
+      "sha256": "c8b30d3a5563665758a8d939d81d3bea8c862693afef08291e0df45577f780d9",
+      "targets": {
+        "maidai-building-a-personal-assistant-with-google-cloud-and-vertex-ai/cover-1280.webp": "bb471721606058ada11e5a19ad9c4f268e8978b758e3d86207497cff9c49911c",
+        "maidai-building-a-personal-assistant-with-google-cloud-and-vertex-ai/cover-800.webp": "b6017c4ffdaa9635c5afc2aefaef4d8ec4c5f5af225541f74c28124ce016dcff"
+      }
+    },
+    "make-your-mlops-code-base-solid-with-pydantic-and-pythons-abc/02.webp": {
+      "sha256": "60bb2011f6f992a4c9589527aae1709a638327dd286d7584efcfaae9af68c622",
+      "targets": {
+        "make-your-mlops-code-base-solid-with-pydantic-and-pythons-abc/02-1280.webp": "9b6eb303b98a52c006f438ab7ff72e7a705e00f9edef84e9260cd9b46f229723",
+        "make-your-mlops-code-base-solid-with-pydantic-and-pythons-abc/02-800.webp": "a9d42aefd2ae253b94b446f0ed861440427766d7bd8476eb45d4c71616e6877a"
+      }
+    },
+    "make-your-mlops-code-base-solid-with-pydantic-and-pythons-abc/cover.webp": {
+      "sha256": "42847f12aae63e76200d2fd050c85da2baab083bdd385c43beb1f2235c248b3a",
+      "targets": {
+        "make-your-mlops-code-base-solid-with-pydantic-and-pythons-abc/cover-1280.webp": "7c5891051ef55209f0ff5b0c2c50c5deac2afc0f261902b798cb90ec37eed4c4",
+        "make-your-mlops-code-base-solid-with-pydantic-and-pythons-abc/cover-800.webp": "437b3a908c34d4ad93825af17692da1e800cfcf7c4eecff8e89d31a262138c84"
+      }
+    },
+    "mcp-2026-07-28-stateless-core-enterprise-authorization-and-sdk-betas/cover.webp": {
+      "sha256": "21be2501a26da1af8aa95b492436b681870f5fd7116d87f026fb46579972e08b",
+      "targets": {
+        "mcp-2026-07-28-stateless-core-enterprise-authorization-and-sdk-betas/cover-1280.webp": "a511ccf25315d397cb5f0eb264f7cd47559f411f8a4d7c8f75bd7f22018c8d3a",
+        "mcp-2026-07-28-stateless-core-enterprise-authorization-and-sdk-betas/cover-800.webp": "b4fe85403fbc28695b23c734056bddc2aaee6e717879510f121a43be71b7b63e"
+      }
+    },
+    "meet-kate-your-ai-powered-live-multimodal-website-assistant/02.webp": {
+      "sha256": "ad418ae205aaf78edd58d97cfd558ffdac91a92bdad2a507982a89364fa4ee43",
+      "targets": {
+        "meet-kate-your-ai-powered-live-multimodal-website-assistant/02-800.webp": "87c412a2ac9953aff2561c6629a8f14cc8ec35c85faf6fe503bb92c35dc5eda7"
+      }
+    },
+    "meet-kate-your-ai-powered-live-multimodal-website-assistant/03.webp": {
+      "sha256": "b163a61d105818fe8818ff7408a2ec5eb508ac37bd3646207a749df7a8c6fd38",
+      "targets": {
+        "meet-kate-your-ai-powered-live-multimodal-website-assistant/03-1280.webp": "ee0250a92eb8ed277c090118551f57079f68fcbe660f561ad488f30e58a54aea",
+        "meet-kate-your-ai-powered-live-multimodal-website-assistant/03-800.webp": "b5622122d2f30c4c6b2b79e1de6a77fa3e1f1c0606ac95219b81525b69bfd5ef"
+      }
+    },
+    "meet-kate-your-ai-powered-live-multimodal-website-assistant/cover.webp": {
+      "sha256": "24f91887145a63b36de5c889fa54d1a463a82e2856caf4375a19f679c4288a49",
+      "targets": {
+        "meet-kate-your-ai-powered-live-multimodal-website-assistant/cover-800.webp": "67e00c39e718388d8fea272f575902f66086ad8d642169a2aa9ae364b3709452"
+      }
+    },
+    "mlops-adventure-continue/cover.webp": {
+      "sha256": "1715002c4e7607e890d4eb9d08ca4c14c9a1b0b49df0a750e2a687c9d9b1cdbb",
+      "targets": {
+        "mlops-adventure-continue/cover-1280.webp": "06e2706e1f81aa70690feac3ac01d7f5e56fbc84e3a2e5b29bbd36634bdd1148",
+        "mlops-adventure-continue/cover-800.webp": "10adb72d758181e23ddfc379aba8e5097bf4fcd5ed8cd7ee1968937ae15f44ae"
+      }
+    },
+    "mlops-coding-course-bridging-the-gap-between-data-scientists-and-machine-learning-engineers/02.webp": {
+      "sha256": "8b1dd5fffeb99fec893037428fb47be6c241b3af0ed2333371918ff185f08d3e",
+      "targets": {
+        "mlops-coding-course-bridging-the-gap-between-data-scientists-and-machine-learning-engineers/02-1280.webp": "0c1b5f0e1fd6c88a619905c94ccc6a9e4ef1e87af792fe0c45b678b06172afff",
+        "mlops-coding-course-bridging-the-gap-between-data-scientists-and-machine-learning-engineers/02-800.webp": "f0b34b5d032ef30a0b8c12e66f74776ed43be7ae2b97a708c191e6050eee48c7"
+      }
+    },
+    "mlops-coding-course-bridging-the-gap-between-data-scientists-and-machine-learning-engineers/cover.webp": {
+      "sha256": "b5324bfc0221bc8abe50dbfbb2ccd411e0065d49e80d022d9a36084697d2812d",
+      "targets": {
+        "mlops-coding-course-bridging-the-gap-between-data-scientists-and-machine-learning-engineers/cover-1280.webp": "54c5ef3b3e79c6ff8af407d8064540f09ef82325d44021a67b569675b08087a9",
+        "mlops-coding-course-bridging-the-gap-between-data-scientists-and-machine-learning-engineers/cover-800.webp": "58ee2fd8069db2bc13c6ab9732dc8643a453af763703c4507cadbea0095ac80e"
+      }
+    },
+    "mlops-coding-course-mastering-observability-for-reliable-ml/02.webp": {
+      "sha256": "5bc983519ed7228cedbb3e500910164be10022971037fec413c7b7bd2db4d42c",
+      "targets": {
+        "mlops-coding-course-mastering-observability-for-reliable-ml/02-1280.webp": "68af4e2f60e41ef900f294a19348b4dec03d7c64efe50ee8831a6662128e340b",
+        "mlops-coding-course-mastering-observability-for-reliable-ml/02-800.webp": "cc70ea14f6c9debc408c7655e43751c2515804c5367058f84f5882c390bdc475"
+      }
+    },
+    "mlops-coding-course-mastering-observability-for-reliable-ml/03.webp": {
+      "sha256": "65c07fdd3470fecf5d1b1c0cb7e1d0b8dae5484998ac85d15f38471aade47257",
+      "targets": {
+        "mlops-coding-course-mastering-observability-for-reliable-ml/03-800.webp": "a453ba1c5b19eb654198f9e3f75249894760258fdfe8dcbd1656565f2193d672"
+      }
+    },
+    "mlops-coding-course-mastering-observability-for-reliable-ml/04.webp": {
+      "sha256": "f0509e779f5d71f0bc03565dbf6d124a2ec1e93c1daf4765262c8832b1b7a7b1",
+      "targets": {
+        "mlops-coding-course-mastering-observability-for-reliable-ml/04-1280.webp": "9b940bc3586eb1531a44934bb8a30696814da92b12a06ee82ec506ebdb1eaa87",
+        "mlops-coding-course-mastering-observability-for-reliable-ml/04-800.webp": "f5e40222f46a113c4cc805af8e80535456dc2bff1676245af3441d319ac4fb6d"
+      }
+    },
+    "mlops-coding-course-mastering-observability-for-reliable-ml/05.webp": {
+      "sha256": "e25e90c86f37c7f1ad40ef6ce898b1d0e5d7a7bba77baef19bdb5b876ac05ef0",
+      "targets": {
+        "mlops-coding-course-mastering-observability-for-reliable-ml/05-1280.webp": "d0797d01c4f23e919628c13866cbfee10186a6b7bbd837bd1d3f17e7f471b859",
+        "mlops-coding-course-mastering-observability-for-reliable-ml/05-800.webp": "9ab2610fa118573237ea9d58298322acaba28b0945054b1b98e6598e7faa4f17"
+      }
+    },
+    "mlops-coding-course-mastering-observability-for-reliable-ml/06.webp": {
+      "sha256": "81f0a3984376bb1ea18ddc266acdf2f260e5966f815c368bfd8fc1bfb9fc7e7a",
+      "targets": {
+        "mlops-coding-course-mastering-observability-for-reliable-ml/06-1280.webp": "aa5d1244513bea40815a7ceddb8857cb75415b67fc61292200ca504ca817c8d6",
+        "mlops-coding-course-mastering-observability-for-reliable-ml/06-800.webp": "9b198227e2834a688a9b64421b78766e0bf9693740adc5cdf02a3a8777b45384"
+      }
+    },
+    "mlops-coding-course-mastering-observability-for-reliable-ml/07.webp": {
+      "sha256": "d159e16e9d02ddb064b836cb92c71b13fbc4a5b34215a3b198b71625776f6c95",
+      "targets": {
+        "mlops-coding-course-mastering-observability-for-reliable-ml/07-1280.webp": "88e0058669f4aff3bb767def535fbfa4515218f6b28c458a200af5788ead1ef8",
+        "mlops-coding-course-mastering-observability-for-reliable-ml/07-800.webp": "b09628c072328e510883c342f4e3c66d84ca9ca8cbc088715f81d6a29bb1e4ab"
+      }
+    },
+    "mlops-coding-course-mastering-observability-for-reliable-ml/cover.webp": {
+      "sha256": "f4224d97604a5d0bf51f1aa2945b20b11d1949df0c0d19d072b5500f60fb79f0",
+      "targets": {
+        "mlops-coding-course-mastering-observability-for-reliable-ml/cover-1280.webp": "33c1b64fe7ef9d571552817ca8a80655288eb1f9d77976b08be9b4590fdcff48",
+        "mlops-coding-course-mastering-observability-for-reliable-ml/cover-800.webp": "7f41b574c9144406dab619e93780a18daff2a4abb4a9ec7cfe046e9a5c37f2e3"
+      }
+    },
+    "mlops-coding-skills-bridging-the-gap-between-specs-and-agents/02.webp": {
+      "sha256": "ba07c1abd328e3ec87e682b74bca7f4168e9b6f8bc7e156a417bd3faa0579351",
+      "targets": {
+        "mlops-coding-skills-bridging-the-gap-between-specs-and-agents/02-1280.webp": "190ffad1604074dca5e06fb3533704faf8966a32f0a23efaef0ba70460a503c3",
+        "mlops-coding-skills-bridging-the-gap-between-specs-and-agents/02-800.webp": "10a20eaa5cc82246d9ec1db98d43cfca1af18f879420d53b199465fb813af55d"
+      }
+    },
+    "mlops-coding-skills-bridging-the-gap-between-specs-and-agents/03.webp": {
+      "sha256": "1edd9fc1981c0d4bf5951d2c32ac8170e5c7442f91b46fa67b191a41730888d6",
+      "targets": {
+        "mlops-coding-skills-bridging-the-gap-between-specs-and-agents/03-1280.webp": "324e929ce2a4cd5ba6b32b6a42459e5b1e144df2adc9876d349f0b4c8f2a2700",
+        "mlops-coding-skills-bridging-the-gap-between-specs-and-agents/03-800.webp": "77175143044a9bc1ef36ddd20293299bb841c6fb60a91e47f7f2b5e6667af140"
+      }
+    },
+    "mlops-coding-skills-bridging-the-gap-between-specs-and-agents/cover.webp": {
+      "sha256": "8d03f5f2389018a899cb5ccda9a67efdf5d9f52072f11da84c1f55bc5936f6fe",
+      "targets": {
+        "mlops-coding-skills-bridging-the-gap-between-specs-and-agents/cover-1280.webp": "51249426acfab24a86ab6a7402a7e210c8c0da3e00a1c51e146a647edefea8b0",
+        "mlops-coding-skills-bridging-the-gap-between-specs-and-agents/cover-800.webp": "1fa8e7fdd7508a3c48fbe258428a89cf13f2e8649307a8b85de2cd0162449e42"
+      }
+    },
+    "mlops-package-template-turbocharge-the-creation-of-ai-ml-projects/02.webp": {
+      "sha256": "b126c539896260d8b490820df8c964f2efb8aeaa1712b14569cfa889bd9b718d",
+      "targets": {
+        "mlops-package-template-turbocharge-the-creation-of-ai-ml-projects/02-1280.webp": "9342195b476f48b847c6a22aabe16995579fc1e2d4f19d06ef420643a9c3951d",
+        "mlops-package-template-turbocharge-the-creation-of-ai-ml-projects/02-800.webp": "c5d6046a5d0034fcbae87158278c0c24c679bfdbcb6df1e3ec933ebc590da745"
+      }
+    },
+    "mlops-package-template-turbocharge-the-creation-of-ai-ml-projects/cover.webp": {
+      "sha256": "6807bcd21fe069eb7e877c7cb1617c227a1390284cfdeda6d7bc72de667b3459",
+      "targets": {
+        "mlops-package-template-turbocharge-the-creation-of-ai-ml-projects/cover-1280.webp": "13fe84444e2c3d09abc41802e19da5dde1bcb06e67f8d3231cefcf5f14ee22b1",
+        "mlops-package-template-turbocharge-the-creation-of-ai-ml-projects/cover-800.webp": "17886fabaa203bb80e38530e47ead05804fd85889e172c5f8027c0240a226bfb"
+      }
+    },
+    "more-automation-more-reproducibility-mlops-python-package-v4-1-0/02.webp": {
+      "sha256": "02e596c891e0d7634ef05d4109f93cd11de0c9d8842f70f29018e477b56f6603",
+      "targets": {
+        "more-automation-more-reproducibility-mlops-python-package-v4-1-0/02-1280.webp": "cb45b262c112998e45a9c86505a51a8a8f470ad897c55bcb5fa1f400bb27a409",
+        "more-automation-more-reproducibility-mlops-python-package-v4-1-0/02-800.webp": "99d04d4924255f2f49c876a419b025d6e2540d71fbae713bc6345494348c4330"
+      }
+    },
+    "more-automation-more-reproducibility-mlops-python-package-v4-1-0/cover.webp": {
+      "sha256": "ba07c1abd328e3ec87e682b74bca7f4168e9b6f8bc7e156a417bd3faa0579351",
+      "targets": {
+        "more-automation-more-reproducibility-mlops-python-package-v4-1-0/cover-1280.webp": "190ffad1604074dca5e06fb3533704faf8966a32f0a23efaef0ba70460a503c3",
+        "more-automation-more-reproducibility-mlops-python-package-v4-1-0/cover-800.webp": "10a20eaa5cc82246d9ec1db98d43cfca1af18f879420d53b199465fb813af55d"
+      }
+    },
+    "poetry-was-good-uv-is-better-an-mlops-migration-story/02.webp": {
+      "sha256": "519e5b4dfe3bf93b0cc2e5e088a2cda4dd842e7cf59ad343be424a78f8f0bb33",
+      "targets": {
+        "poetry-was-good-uv-is-better-an-mlops-migration-story/02-1280.webp": "fe5e86a260a09b6cd4ccc2167b969b3b09cd72c613c502c26650295753f8034f",
+        "poetry-was-good-uv-is-better-an-mlops-migration-story/02-800.webp": "b4f39a083f613365ed67ca10abfd627b7365752e4b7ff2cc3ffd271a90742923"
+      }
+    },
+    "poetry-was-good-uv-is-better-an-mlops-migration-story/cover.webp": {
+      "sha256": "f757984dc279b80c10845fca558e2cdf063c517dc685bf19897f9bd12911e768",
+      "targets": {
+        "poetry-was-good-uv-is-better-an-mlops-migration-story/cover-1280.webp": "621f41a7ed08251952319a9c66cc7b7be08fe0967098c2da06524ef2a269958f",
+        "poetry-was-good-uv-is-better-an-mlops-migration-story/cover-800.webp": "96a819dedb762bbf9a9e15b9b865af9e785b97f348dbc74885152efe4c3ab982"
+      }
+    },
+    "powering-up-your-agent-in-production-with-adk-oauth-and-gemini-enterprise/02.webp": {
+      "sha256": "3e2630310d53cc033aac46317400a13c30622bbf28485a98f0f90ecf073f588d",
+      "targets": {
+        "powering-up-your-agent-in-production-with-adk-oauth-and-gemini-enterprise/02-1280.webp": "6c4b786afb470ac5da8918d817740ef6a9f75c7ab742608a3b39c65e7ea87564",
+        "powering-up-your-agent-in-production-with-adk-oauth-and-gemini-enterprise/02-800.webp": "4ad7dbe7909423f32e7e3bd77c4b5eb6ff9555eeeb0fb495de55447fd4ea4c8d"
+      }
+    },
+    "powering-up-your-agent-in-production-with-adk-oauth-and-gemini-enterprise/03.webp": {
+      "sha256": "d9d460bd9d587cb3733a916787649b5955afa42b3c029383fb87994a457dedfa",
+      "targets": {
+        "powering-up-your-agent-in-production-with-adk-oauth-and-gemini-enterprise/03-1280.webp": "218ac423c21f6c6ee625852d62cb708e1d72cff8d8ecc409f224294b2df3059f",
+        "powering-up-your-agent-in-production-with-adk-oauth-and-gemini-enterprise/03-800.webp": "f139dd1e340838398542669cb590ade2e5e08cdc4788c7c9ee11f34951c64117"
+      }
+    },
+    "powering-up-your-agent-in-production-with-adk-oauth-and-gemini-enterprise/04.webp": {
+      "sha256": "c30e04ceec0d1ce935a49cb71d30bd905809219c30974c2977ce3e4267369d07",
+      "targets": {
+        "powering-up-your-agent-in-production-with-adk-oauth-and-gemini-enterprise/04-1280.webp": "12332badbfcf1b58d96eac0175b9f3bc9c7a770683bd4372eb179d46347dcfd5",
+        "powering-up-your-agent-in-production-with-adk-oauth-and-gemini-enterprise/04-800.webp": "a8b0c1b28de049c409c872221528d7ba88f0040fb101d2e51e9fa6511bef7503"
+      }
+    },
+    "powering-up-your-agent-in-production-with-adk-oauth-and-gemini-enterprise/05.webp": {
+      "sha256": "98c080d3f3db019dbb7d9cc19a2307d769595e5abb2d285ea6a911c2c03eb0be",
+      "targets": {
+        "powering-up-your-agent-in-production-with-adk-oauth-and-gemini-enterprise/05-800.webp": "494df921a12dab64875973ee757510ea599f49c89344df9658ee61546446e88c"
+      }
+    },
+    "powering-up-your-agent-in-production-with-adk-oauth-and-gemini-enterprise/06.webp": {
+      "sha256": "73aaa948c48d7cda3f1b53a890a013dc6a40f3d1df34c2c31c2b151f499f2457",
+      "targets": {
+        "powering-up-your-agent-in-production-with-adk-oauth-and-gemini-enterprise/06-1280.webp": "7721dc48e8b1385cb012355cefe6448796e83e1b78f11ab9687fc2547424d882",
+        "powering-up-your-agent-in-production-with-adk-oauth-and-gemini-enterprise/06-800.webp": "6047bbbf18b3759b90a18aba95d686120ec4c13214ca2d56d89472c0bfe46080"
+      }
+    },
+    "powering-up-your-agent-in-production-with-adk-oauth-and-gemini-enterprise/07.webp": {
+      "sha256": "835ecf3c36be948dda9cbda0e5b3586ceb6f74fbc9a04d4e5c033a1ed3e2ec96",
+      "targets": {
+        "powering-up-your-agent-in-production-with-adk-oauth-and-gemini-enterprise/07-1280.webp": "8542d5332656072a4f63e15d4fa34275173ad740bea45c09b9f748ae4046df1e",
+        "powering-up-your-agent-in-production-with-adk-oauth-and-gemini-enterprise/07-800.webp": "479c186b0fb53d8125b13ba26d1ec1f6b4ea1c90c1739ed6b8e4248b343f4b9a"
+      }
+    },
+    "powering-up-your-agent-in-production-with-adk-oauth-and-gemini-enterprise/08.webp": {
+      "sha256": "5a94cce8cb2b2dba1b6ad4c4c1dea1862e6e04599b16402d4fe61ecc0eeefd97",
+      "targets": {
+        "powering-up-your-agent-in-production-with-adk-oauth-and-gemini-enterprise/08-800.webp": "40503a9b4e38e26e80f827f0885c6e8ecd8c423fd88c13aa39df79b4256a7185"
+      }
+    },
+    "powering-up-your-agent-in-production-with-adk-oauth-and-gemini-enterprise/cover.webp": {
+      "sha256": "2fd2843a63db6e2ce3fa5436deca4d0b07663fde1d128b52d0b3e35df135efa0",
+      "targets": {
+        "powering-up-your-agent-in-production-with-adk-oauth-and-gemini-enterprise/cover-800.webp": "1ecd7f3606baf189ce8be3f3c4bb03b5a5a91a3a3d10438150c83d42011cfc9b"
+      }
+    },
+    "scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/02.webp": {
+      "sha256": "b271a964beb570c4858058fc7ca705d628c234f3023425999eb61c00c617bbfe",
+      "targets": {
+        "scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/02-1280.webp": "be33f5b38bfb98e5598954372458ed8b8247c330d27387797ace36928b0fef69",
+        "scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/02-800.webp": "236ca6febbb4c3041d72ed6a5d2695b888b8e8460ce73bf9b21fc43f0b174472"
+      }
+    },
+    "scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/03.webp": {
+      "sha256": "2662301c9797f86ce80ccba37143e5d4ee215d1426a6678c9b0edc20f0990af7",
+      "targets": {
+        "scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/03-1280.webp": "498e8b43f5df52e45ff4d66c23aee8e823204157abcecc6a3ca9ae3e217d67c0",
+        "scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/03-800.webp": "f84db9b05fbb6c7b4ec565d172dbc8628de572a19da184c02d455234561f2eb6"
+      }
+    },
+    "scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/04.webp": {
+      "sha256": "e0ee18a7e36931e63c5d15dde99adc0e87399863662a5dbb33ed73db35adab86",
+      "targets": {
+        "scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/04-800.webp": "558d6a8a7f8636b1b719f2125ccd7c448bbce1d199423fe6f79aa3133c06f3ef"
+      }
+    },
+    "scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/05.webp": {
+      "sha256": "fb6df54d78d4f4536ca447dfc27ace53955a31659889ca14917d4a7fe620a9fd",
+      "targets": {}
+    },
+    "scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/06.webp": {
+      "sha256": "bafc077b0b362281d767e38e6c99de951a10de9679cd1419e990baa9b1c1cd77",
+      "targets": {
+        "scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/06-800.webp": "8f0fe63ef511e93a07a581888a007407138862883c8b4310bb9209f1d8a45fd9"
+      }
+    },
+    "scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/07.webp": {
+      "sha256": "44ba699afa087293d3912cc88830a0f4df61e0f7355d84eb70cce4444b1f5190",
+      "targets": {
+        "scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/07-1280.webp": "5df2ae08d2633a4b5f9bbc187223970cfa433a8e379f7a45773e5d8c4a31ad55",
+        "scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/07-800.webp": "f9e9d21ddcb629b3811a3f455ab83cccee7660e2635c378ce183e5f608aa2a47"
+      }
+    },
+    "scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/08.webp": {
+      "sha256": "137132e6f7ffc184ea209d0106ade51afe5e512d7c60812eef3e907db67aea29",
+      "targets": {
+        "scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/08-1280.webp": "5400230bf8739ecf50df658966069753528c37d0cf6cbedff2995a1fca6cc953",
+        "scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/08-800.webp": "c67533b411c6050ab8155b1441f685c7b19a99ebc44baad18faa8e9ad63a314f"
+      }
+    },
+    "scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/09.webp": {
+      "sha256": "53a86d28cb1cd0cba22c0b2df40aa5cf93d25cb983c05d7b71746fdb37aaba20",
+      "targets": {
+        "scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/09-800.webp": "b81077dac358e627f501ee52fcdb187856acd0c95f5a997a246ab62b1e366b14"
+      }
+    },
+    "scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/10.webp": {
+      "sha256": "7adf1a8ad301a15f7275cb4f65988e29cb23c72af475461aed88a023d9f299b6",
+      "targets": {
+        "scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/10-1280.webp": "14abac2af9d7b190dd8b48b5de6de1861db75ada3d0016f66c1683630967a4f9",
+        "scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/10-800.webp": "3465963e1da205cc735e7e1bb652443c06418c786ce1f883e365bbcc7115219b"
+      }
+    },
+    "scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/11.webp": {
+      "sha256": "f457e1f4348c8ba9c7e26eea8eebb33c7fc9858e6c3bf855aefcb33a17d3842b",
+      "targets": {
+        "scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/11-1280.webp": "6d49e5bfc06694cdd3bf06928d5a1a8c2772c29064ee5574a56e66efee143d7d",
+        "scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/11-800.webp": "925efb34e9cbea40f858d0b43c26c984d3ab516da22512782474d0f356698765"
+      }
+    },
+    "scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/12.webp": {
+      "sha256": "77820880f55b881e4e33fc5468c14ee6b6d7d143fde6f0f7a3f76fcd1626a1a9",
+      "targets": {
+        "scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/12-1280.webp": "2762eeebe5a298bfceca74c8f8d978f76d070964035289cf0f8ed0fc082ef4ea",
+        "scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/12-800.webp": "d15ae590685cee5fccd9d3821dc4c05cade48ac741992770e964e32211163d97"
+      }
+    },
+    "scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/13.webp": {
+      "sha256": "d1d764a390eaeaeb121111886857e2d27ec4e63e4eaf07aec7234a6e62b12224",
+      "targets": {
+        "scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/13-1280.webp": "06dd954fa38cb3bdbb5c6e75cb4331cdb17bfa8982f7da0f642e153779142845",
+        "scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/13-800.webp": "5736097f8825064db02dbe12de09c6e9c7955b6a3dd662f510c823cc5e45c100"
+      }
+    },
+    "scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/14.webp": {
+      "sha256": "8d7d3e9df7fbb716b596ce2df4ab8d4dd7bceb377cfc4d6ec554f6b6175ddcb7",
+      "targets": {
+        "scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/14-1280.webp": "729c66103d5374e1c98a669eff518b7b1612d36d556c500fa1d582bf1101786f",
+        "scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/14-800.webp": "f6b7e175e3a40b49231ec780ec2ef9874e1bdedd237d39743d1d00f965934e77"
+      }
+    },
+    "scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/15.webp": {
+      "sha256": "51ed40a20a5676e518037dcf95ed2102ba64b03e504b3891674fa4ac9cda0225",
+      "targets": {
+        "scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/15-1280.webp": "0cce9b1b5d524dbc5504c5dccb727ae8d8920e662e3e96e4efb13736d986f1fb",
+        "scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/15-800.webp": "6d90036dd38b585a094fc391a29a9e3cca3b9f38450af44280d900773fa59e58"
+      }
+    },
+    "scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/16.webp": {
+      "sha256": "46e16fbf467a43c49a6767fe2ce8f618ae2eb0cf33e495e8077b011dab796f34",
+      "targets": {
+        "scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/16-1280.webp": "02d27be542af9330cde5c9e5a5e674dbc38e5596565e6217ce8ace2829e44f16",
+        "scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/16-800.webp": "7af6b9546e0749f59cc6f4631770ec0d062a382568908a7222d1cceb69d9efd1"
+      }
+    },
+    "scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/cover.webp": {
+      "sha256": "8b49e6526ab8ef577a71ebf2fac88cd2edc8834e400a2b805af2aaa2d7703e11",
+      "targets": {
+        "scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/cover-1280.webp": "8ca570eb1821bbb992e07bb5d2f1943a33d82e5eb401032f91bb0ab9b1e34a4b",
+        "scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/cover-800.webp": "4dbf594e1fcd2fc41329ae63845927607755a1c4a603e4e3dbb7b45a1f717d29"
+      }
+    },
+    "slides-to-translate-when-it-says-no-build-a-0-04-solution-on-your-lunch-break/02.webp": {
+      "sha256": "731e7453694919491ef40ad993683a24b50e9f22ec971676a7bab325f4ff2f86",
+      "targets": {
+        "slides-to-translate-when-it-says-no-build-a-0-04-solution-on-your-lunch-break/02-800.webp": "63624377ea034f86e3cc0fbd451f847e320eb353e0525fcfbaaa70fc68d41017"
+      }
+    },
+    "slides-to-translate-when-it-says-no-build-a-0-04-solution-on-your-lunch-break/03.webp": {
+      "sha256": "ba1667bb9c4e71ff8c7c38b82c484f62de00968ebac49f316e7b65e841ec3de4",
+      "targets": {
+        "slides-to-translate-when-it-says-no-build-a-0-04-solution-on-your-lunch-break/03-800.webp": "fa4486726f5d7abef79f3a74f4f98fe270632e97bff65cee634a56c1560b0d9d"
+      }
+    },
+    "slides-to-translate-when-it-says-no-build-a-0-04-solution-on-your-lunch-break/cover.webp": {
+      "sha256": "ed28563cdaf56b6fd25aef883dea2a4f2c8a7cfbd874c74230eac716f2f306a3",
+      "targets": {
+        "slides-to-translate-when-it-says-no-build-a-0-04-solution-on-your-lunch-break/cover-800.webp": "3be39b820dd71ca047c52cfbb76d7eef62b5dcf1339167abcbdc21d179aa4186"
+      }
+    },
+    "stop-building-rigid-ai-ml-pipelines-embrace-reusable-components-for-flexible-mlops/02.webp": {
+      "sha256": "15d07320b5ae88acb166654bea923dd324856d9b0105fe9bf62f318bb6abc854",
+      "targets": {
+        "stop-building-rigid-ai-ml-pipelines-embrace-reusable-components-for-flexible-mlops/02-1280.webp": "70cec88388a6833b1bd0dc4a802fdf2e2b057de2fa8e7c2e4d2ec25f63598e84",
+        "stop-building-rigid-ai-ml-pipelines-embrace-reusable-components-for-flexible-mlops/02-800.webp": "05677c6740b7d30d7d5510511b1c96f0ca3f0bf2513cdf7ae35ccf036254e149"
+      }
+    },
+    "stop-building-rigid-ai-ml-pipelines-embrace-reusable-components-for-flexible-mlops/03.webp": {
+      "sha256": "92da1fcb68ef8869b68cb2a9e8cbdaf76da3f07f606af09d3c7e56a1a3d9a928",
+      "targets": {
+        "stop-building-rigid-ai-ml-pipelines-embrace-reusable-components-for-flexible-mlops/03-1280.webp": "cd22987a64f3aea20123c42829d7283a1ecc7a0f594ed01a305ffaed2e60abb3",
+        "stop-building-rigid-ai-ml-pipelines-embrace-reusable-components-for-flexible-mlops/03-800.webp": "6812efba2bbbc2f0a3aebc07b8ebf2594181af7072d3f3f696f7555807f759d7"
+      }
+    },
+    "stop-building-rigid-ai-ml-pipelines-embrace-reusable-components-for-flexible-mlops/04.webp": {
+      "sha256": "5d06f8a1bc1f8ed271b2b94130746e57c92b0c76dfeeb85e8f55a319cc71a0e5",
+      "targets": {
+        "stop-building-rigid-ai-ml-pipelines-embrace-reusable-components-for-flexible-mlops/04-800.webp": "206483c50643e9e5d5f3cd993a7d30e78c88069cfc673499e670777f330d61f1"
+      }
+    },
+    "stop-building-rigid-ai-ml-pipelines-embrace-reusable-components-for-flexible-mlops/05.webp": {
+      "sha256": "bc0ca7306e94e6734a0fd49d4de8b25ef3f98e0bc6d6ac27ab59427f65269cfe",
+      "targets": {
+        "stop-building-rigid-ai-ml-pipelines-embrace-reusable-components-for-flexible-mlops/05-1280.webp": "bdd2c4105d53d9c8ebce86ae89619efabe595ed4079efb0a3301436939228aa4",
+        "stop-building-rigid-ai-ml-pipelines-embrace-reusable-components-for-flexible-mlops/05-800.webp": "64f55d7e68e70655fd79d68861eba21733a3efba1cb79579208905950df08fec"
+      }
+    },
+    "stop-building-rigid-ai-ml-pipelines-embrace-reusable-components-for-flexible-mlops/06.webp": {
+      "sha256": "38b1e433543df2017684c26b6988593c893eb74019214b597c1326b8073bbb8e",
+      "targets": {
+        "stop-building-rigid-ai-ml-pipelines-embrace-reusable-components-for-flexible-mlops/06-1280.webp": "428f61b6e847d1c39a6ff9d9ce3ff969d313b9ffe71a7db9d1bf7dab61376428",
+        "stop-building-rigid-ai-ml-pipelines-embrace-reusable-components-for-flexible-mlops/06-800.webp": "1f06760bc767ccb2d9d97433da11f68f796f4b3c04c71fb662e6d4a1407e67c5"
+      }
+    },
+    "stop-building-rigid-ai-ml-pipelines-embrace-reusable-components-for-flexible-mlops/07.webp": {
+      "sha256": "51c3a21c1e231002e532cf1f94e8ef2152772f32b37a762e47e750e10e286867",
+      "targets": {
+        "stop-building-rigid-ai-ml-pipelines-embrace-reusable-components-for-flexible-mlops/07-800.webp": "b5fe0ef93f57bc5987a9b26716aaae0dfe32f9103cd01cccd7ae34df47bd9975"
+      }
+    },
+    "stop-building-rigid-ai-ml-pipelines-embrace-reusable-components-for-flexible-mlops/cover.webp": {
+      "sha256": "e5b909a80d632d77de4e8b2bc0e64c41f6cd7fab65018be39527eee4b5defd65",
+      "targets": {
+        "stop-building-rigid-ai-ml-pipelines-embrace-reusable-components-for-flexible-mlops/cover-1280.webp": "3c25b292ada25f2b45b21b91780ff36aa02faf9cdb65298d94ef854b342106f2",
+        "stop-building-rigid-ai-ml-pipelines-embrace-reusable-components-for-flexible-mlops/cover-800.webp": "fab7d0d71fb68243dff0cfc088bb2df59b5c2c500bc4877ea54a63b0105f2b1c"
+      }
+    },
+    "structured-llm-outputs-made-easy-building-a-slack-digest-agent-with-pydantic-ai/02.webp": {
+      "sha256": "4cc1acde094783d22c0ea3ec5f22e6305c2bec3ca8151077703aa0619a7dc172",
+      "targets": {
+        "structured-llm-outputs-made-easy-building-a-slack-digest-agent-with-pydantic-ai/02-800.webp": "bf0a81cf0e9535468ca65b8811c27d45a2c2a6f538bcb4eb68cce58ae33936c5"
+      }
+    },
+    "structured-llm-outputs-made-easy-building-a-slack-digest-agent-with-pydantic-ai/03.webp": {
+      "sha256": "0e4411d436dbf9b0ebc19d40e4278a1a1fb65d4433b8b6902529f22c310bc78f",
+      "targets": {
+        "structured-llm-outputs-made-easy-building-a-slack-digest-agent-with-pydantic-ai/03-1280.webp": "76e3d6187d921a88de2aca4ed6db8a9c2fa1df563d000ec0650bcefa64ab77e1",
+        "structured-llm-outputs-made-easy-building-a-slack-digest-agent-with-pydantic-ai/03-800.webp": "9d6f7aaaff7f87377677ed9149d8878623769ea91e0f652de4f45d6cf4602bf6"
+      }
+    },
+    "structured-llm-outputs-made-easy-building-a-slack-digest-agent-with-pydantic-ai/04.webp": {
+      "sha256": "cafb32740b59827002f6df4197850439b2b078e0af3a86c8119de97c417f72e8",
+      "targets": {
+        "structured-llm-outputs-made-easy-building-a-slack-digest-agent-with-pydantic-ai/04-800.webp": "4a4149904b1c36eb2b011318a6096483440957d44704057152665287edc98916"
+      }
+    },
+    "structured-llm-outputs-made-easy-building-a-slack-digest-agent-with-pydantic-ai/05.webp": {
+      "sha256": "bf6b6d8bae1118de33d0d061aa7ffc5ec164f1c619ff0fad42915b59a2562b4f",
+      "targets": {
+        "structured-llm-outputs-made-easy-building-a-slack-digest-agent-with-pydantic-ai/05-800.webp": "04259c4e1d1930b304516109b099ac1dcff1db2f8f09a2961f20d881a59dbc65"
+      }
+    },
+    "structured-llm-outputs-made-easy-building-a-slack-digest-agent-with-pydantic-ai/06.webp": {
+      "sha256": "4d02a62cdeb83e8e4ce00af548817069f0267ec8cb5dbc30fbfb960bf9b37194",
+      "targets": {
+        "structured-llm-outputs-made-easy-building-a-slack-digest-agent-with-pydantic-ai/06-1280.webp": "669c6ed40cccaf8512d6ee9075c68fe086def63449d15c011a2e1c8cf22209c6",
+        "structured-llm-outputs-made-easy-building-a-slack-digest-agent-with-pydantic-ai/06-800.webp": "b1e05e6aa53efc6fdd282143da41677ebbaf3ee5a7f3e7506b4bb6ec2849d5b3"
+      }
+    },
+    "structured-llm-outputs-made-easy-building-a-slack-digest-agent-with-pydantic-ai/cover.webp": {
+      "sha256": "be7254f7fb5712371d2bfadb18f9ed63bf91bc93ec646fcde3e8add72be82ea6",
+      "targets": {
+        "structured-llm-outputs-made-easy-building-a-slack-digest-agent-with-pydantic-ai/cover-800.webp": "feb8b831446eb696c4c0dbdbada69fa078737774e88ea2146303761b0d3c6131"
+      }
+    },
+    "supagents-one-source-to-rule-your-coding-subagents/02.webp": {
+      "sha256": "fa629b9ead2f34d9a5e14203a91078d9887ee54e13691532f7ff2fe3608eb5ff",
+      "targets": {
+        "supagents-one-source-to-rule-your-coding-subagents/02-1280.webp": "846a45bfb12c3af42520e8ba8e86aad52227b650617c0c5f442d1a7e15b6c23b",
+        "supagents-one-source-to-rule-your-coding-subagents/02-800.webp": "4df68b074ad1f1e24d1c5f0372fba93404bb38dd81adf936403fdd70eb1b1797"
+      }
+    },
+    "supagents-one-source-to-rule-your-coding-subagents/cover.webp": {
+      "sha256": "cd043311b963446497b205bf4f2ab51e10d37547d455dc9c2aed366c0d3331f5",
+      "targets": {
+        "supagents-one-source-to-rule-your-coding-subagents/cover-1280.webp": "ccbbb77ce769faddaeb6dad06dc7a673a9a3f9cbeb7c206c434e27ce9a8ff424",
+        "supagents-one-source-to-rule-your-coding-subagents/cover-800.webp": "4ebbd549577535748c6aa0409f1c6ee24f91d43c0569323a5228ae01ae249655"
+      }
+    },
+    "taming-python-installation-with-pyenv-for-ai-ml-and-mlops-projects/02.webp": {
+      "sha256": "87e425a074914ae027e8f86cd2f32f4dc4433dc01f96be89bae265e33ba94679",
+      "targets": {
+        "taming-python-installation-with-pyenv-for-ai-ml-and-mlops-projects/02-1280.webp": "2e8ffa24c3d88bb10c3a468da7f50223d366ca3bcc7b5b1fb7c18bdebcd740d9",
+        "taming-python-installation-with-pyenv-for-ai-ml-and-mlops-projects/02-800.webp": "e76e88c202d9390bfad5046771a8332a5a733c5c4e1daf888c41fe29effb7412"
+      }
+    },
+    "taming-python-installation-with-pyenv-for-ai-ml-and-mlops-projects/cover.webp": {
+      "sha256": "044fa74408659b7393726da2065af7ffacabbc21e23c44db21887bf1ea40e7c2",
+      "targets": {
+        "taming-python-installation-with-pyenv-for-ai-ml-and-mlops-projects/cover-800.webp": "4f5a4b0be3b87b8c45ed24ac34e0e1b2cab1cb1f2723d95c3ec57a614e4aaf3f"
+      }
+    },
+    "the-5xp-framework-steering-ai-coding-agents-from-chaos-to-success/02.webp": {
+      "sha256": "acf416479a65d1b91896a8d3f319ec9cce13b1ddb51469230809b61e8f0f0cc6",
+      "targets": {
+        "the-5xp-framework-steering-ai-coding-agents-from-chaos-to-success/02-1280.webp": "ecdf2b72bc8c661f6e99bf9b3b0bbe1010c3dafcba00305dc5c8bb44356f4320",
+        "the-5xp-framework-steering-ai-coding-agents-from-chaos-to-success/02-800.webp": "52adf994c7e74f21ed2dcf2c69805d00f0dad88d1a30c89e78556db93e7e6aa8"
+      }
+    },
+    "the-5xp-framework-steering-ai-coding-agents-from-chaos-to-success/cover.webp": {
+      "sha256": "1c4d0b412273821339acff5f6977975fd4c05341f6a145efcf4dd735040c2576",
+      "targets": {
+        "the-5xp-framework-steering-ai-coding-agents-from-chaos-to-success/cover-1280.webp": "c6dda96c38b4392c1a7eedb8fe4266445c2a6a71acd6c477cb1e85f4bee3761b",
+        "the-5xp-framework-steering-ai-coding-agents-from-chaos-to-success/cover-800.webp": "8dbca6a7f8a728a0a70b00c8f5c1d0e5309818ef1a6d4050ec7ec7949e304afb"
+      }
+    },
+    "the-affordable-ai-agents/cover.webp": {
+      "sha256": "783bf60f82d8e439651a917463ec309a18f8a2bbdb47418f1b67d7dc300726f9",
+      "targets": {
+        "the-affordable-ai-agents/cover-1280.webp": "559285b45d61947581e7fc992db1e43eefeca106f7cf56f2c5f730acafe2f231",
+        "the-affordable-ai-agents/cover-800.webp": "b0fd2a08baf28ad2daeab207477d0a6d752076f291e75da6606b1b182573b254"
+      }
+    },
+    "the-agentic-cloud-forging-the-next-era-of-infrastructure/02.webp": {
+      "sha256": "70dd1c2cfcbaa3b0b31cfadd0727fe8d5244f6b533e3de737ed38f702fd897ac",
+      "targets": {
+        "the-agentic-cloud-forging-the-next-era-of-infrastructure/02-1280.webp": "957027678d344d65c995be248689f4386e39f8ff09d6e17aca36dfabd28da82b",
+        "the-agentic-cloud-forging-the-next-era-of-infrastructure/02-800.webp": "f31b3f9d995fdf91038dc2e1011d52133a254c16f0522f28f7bb6e67ae5a87b8"
+      }
+    },
+    "the-agentic-cloud-forging-the-next-era-of-infrastructure/03.webp": {
+      "sha256": "6f2a55a3e7decc36ac3073754076a711ae4654dc0428f2b801ab11bdf9ab2856",
+      "targets": {
+        "the-agentic-cloud-forging-the-next-era-of-infrastructure/03-1280.webp": "b27aed1ab4295bd3c9e12083ed038fa0ae6cc14dc0a5baea81361f296d9bac75",
+        "the-agentic-cloud-forging-the-next-era-of-infrastructure/03-800.webp": "d294a7755d9b1c68939c846dde131eac90b80e8558c5f603366ef969aedffceb"
+      }
+    },
+    "the-agentic-cloud-forging-the-next-era-of-infrastructure/04.webp": {
+      "sha256": "6e7d62598796ffe90e9e74bc97e52b231daf9376f26662685b14cb93bfb55807",
+      "targets": {
+        "the-agentic-cloud-forging-the-next-era-of-infrastructure/04-1280.webp": "da7f5fbd72e8b0c5769562c23c37711f1c078267b768c569c7d65f00fc21830b",
+        "the-agentic-cloud-forging-the-next-era-of-infrastructure/04-800.webp": "e386f85c83faf9ba1986a25a0d2feec18246045bcd8f675fd92f90db3f734574"
+      }
+    },
+    "the-agentic-cloud-forging-the-next-era-of-infrastructure/05.webp": {
+      "sha256": "b0fe286d15e73ab615e2f7b394689be573bf1d9f5745f21bcaf8afbee01b272a",
+      "targets": {
+        "the-agentic-cloud-forging-the-next-era-of-infrastructure/05-1280.webp": "9b32e75c5bc3b28613ffce86fc6281bfadf1607805ef1af7f59d91cd9772feda",
+        "the-agentic-cloud-forging-the-next-era-of-infrastructure/05-800.webp": "50db99637e4d387dedd2e2c5612eaf12ea1cba8d518acc80ec3f0afdbad71559"
+      }
+    },
+    "the-agentic-cloud-forging-the-next-era-of-infrastructure/cover.webp": {
+      "sha256": "79c5144ab2d6790ff948e163292b71cd805a6ebe5a9ab8e6557b49d952281fa7",
+      "targets": {
+        "the-agentic-cloud-forging-the-next-era-of-infrastructure/cover-800.webp": "f9618daba4dabe6335ee961161048f2dca7ae33f3dfb4e818a537d358b86b334"
+      }
+    },
+    "the-great-data-divergence-why-generative-ai-demands-a-new-approach-beyond-the-data-lake/02.webp": {
+      "sha256": "9066ae6df3bdcceed7e10e534edf29357ea8dc7c054829bd724b2d9633a59369",
+      "targets": {
+        "the-great-data-divergence-why-generative-ai-demands-a-new-approach-beyond-the-data-lake/02-1280.webp": "1ad5a0112bb62691f52c3a201c516f96ae4389a860fde1add5e278a67345e113",
+        "the-great-data-divergence-why-generative-ai-demands-a-new-approach-beyond-the-data-lake/02-800.webp": "2cf0bef323f1c6db58157e15ca955f7003a55efa6c8dd0c4a88814716b689c93"
+      }
+    },
+    "the-great-data-divergence-why-generative-ai-demands-a-new-approach-beyond-the-data-lake/03.webp": {
+      "sha256": "c26ee9fb010c57b5369a339f71fa1b32bc5cb29b0be5b298927122dba439c271",
+      "targets": {}
+    },
+    "the-great-data-divergence-why-generative-ai-demands-a-new-approach-beyond-the-data-lake/04.webp": {
+      "sha256": "4a69e5113924e8a3781b5d14dc47c63dfe2f67e9adf8892c58aaeeeeb7f7d67d",
+      "targets": {
+        "the-great-data-divergence-why-generative-ai-demands-a-new-approach-beyond-the-data-lake/04-1280.webp": "4c89cc9be61f00d28fda6f703ea9bf6e70c8cee4e05ae3ad1bb32534e821ab42",
+        "the-great-data-divergence-why-generative-ai-demands-a-new-approach-beyond-the-data-lake/04-800.webp": "04444219ccb00c1f53bb17548bed551317b90b8eee1cf2d1db5c5e5de6b9e9c2"
+      }
+    },
+    "the-great-data-divergence-why-generative-ai-demands-a-new-approach-beyond-the-data-lake/05.webp": {
+      "sha256": "c93ce387d81a37c9cc64c69edf611e026454d437ef2782afee318bf00c4e8f8f",
+      "targets": {
+        "the-great-data-divergence-why-generative-ai-demands-a-new-approach-beyond-the-data-lake/05-1280.webp": "00cb4c863914ab54a52502edb84688f5dd54434ecdccea6a893809c0e4d4f996",
+        "the-great-data-divergence-why-generative-ai-demands-a-new-approach-beyond-the-data-lake/05-800.webp": "35b74accadd75cd74b605abc451e2f5e5e6daff4893dc884e35839f2196d8f6c"
+      }
+    },
+    "the-great-data-divergence-why-generative-ai-demands-a-new-approach-beyond-the-data-lake/cover.webp": {
+      "sha256": "68984285f95e15525e19afd3c0fcd7a5550ad7ae4c9a05535116261e120e17de",
+      "targets": {
+        "the-great-data-divergence-why-generative-ai-demands-a-new-approach-beyond-the-data-lake/cover-1280.webp": "765ce8ac8403a489a0f96ab3453ee0d2caf3e1c4c32750b51c1edbe45f788342",
+        "the-great-data-divergence-why-generative-ai-demands-a-new-approach-beyond-the-data-lake/cover-800.webp": "cf88b7a326a300b05af7eb22e648212ba7821be92b2b596f84d75223a33b3ed0"
+      }
+    },
+    "the-real-ai-agent-bottleneck-is-the-damn-ui/02.webp": {
+      "sha256": "a2488f89624bb418ae7e6a55aba3454958ed08742b646eb5696ce2bd41bdd1c5",
+      "targets": {
+        "the-real-ai-agent-bottleneck-is-the-damn-ui/02-800.webp": "ccb005fd43a0586cafbf96065f8b90f0539c4df254bf24ed5c8b2fdd47e8d8ea"
+      }
+    },
+    "the-real-ai-agent-bottleneck-is-the-damn-ui/03.webp": {
+      "sha256": "1b2f92b1e2cd3e3a5903788f4d0de792efba25406c41c5a37078df41c2e2e161",
+      "targets": {
+        "the-real-ai-agent-bottleneck-is-the-damn-ui/03-800.webp": "e357819ce38a5651b4fd51d44bc5fe531d61d11d1185cb03b8a63a1c6baa9b48"
+      }
+    },
+    "the-real-ai-agent-bottleneck-is-the-damn-ui/04.webp": {
+      "sha256": "0525b9fa8347b03cbea700b2e38a8d1e082364d57ae8725482929afdcb447e8d",
+      "targets": {
+        "the-real-ai-agent-bottleneck-is-the-damn-ui/04-800.webp": "9a60722de91de629719592452bb900f9d71d18e6b272e931d40738d2f2b298f0"
+      }
+    },
+    "the-real-ai-agent-bottleneck-is-the-damn-ui/05.webp": {
+      "sha256": "ac11bdb132bf249ce6b2057734c0c7452a7e3e7fbd22705c05a69f0f97449724",
+      "targets": {
+        "the-real-ai-agent-bottleneck-is-the-damn-ui/05-800.webp": "d86d31cf85febd50e07335d254c0e6d0c27dfe7ab780602e1ce04aa1642c779a"
+      }
+    },
+    "the-real-ai-agent-bottleneck-is-the-damn-ui/06.webp": {
+      "sha256": "2ddbd8c750b9088710e4654747c7bf1e30120c490cbf0ca8a35ba501546f0a1b",
+      "targets": {
+        "the-real-ai-agent-bottleneck-is-the-damn-ui/06-800.webp": "fa0989ddcaf33f625235a3f3a4de485918190141415b5ab5d77bdfb3cae8d412"
+      }
+    },
+    "the-real-ai-agent-bottleneck-is-the-damn-ui/07.webp": {
+      "sha256": "6fc2abb23a718b6f7d688b78a532097140a60828326524e03f1859ec6d8a583a",
+      "targets": {
+        "the-real-ai-agent-bottleneck-is-the-damn-ui/07-800.webp": "b3f7176c3af2017580c2ec7665643cd7ba04caf560556550062f320e7b80dff7"
+      }
+    },
+    "the-real-ai-agent-bottleneck-is-the-damn-ui/08.webp": {
+      "sha256": "4dde32ed8bac5e08cffa663b03ca9c1e4dd40be250ab28f6c4f97e80b9f1be48",
+      "targets": {
+        "the-real-ai-agent-bottleneck-is-the-damn-ui/08-1280.webp": "ab38a60bc148ba94a00adea000b1a59c2b3426d2870e7b9b57f7684d96fed8b2",
+        "the-real-ai-agent-bottleneck-is-the-damn-ui/08-800.webp": "8a5d9d14b15bfd0bf32c26385ca38b52cfb4acd9a2e6a6a29f6c186c425d054a"
+      }
+    },
+    "the-real-ai-agent-bottleneck-is-the-damn-ui/09.webp": {
+      "sha256": "235a409fde951e306f7d32e89d7844e3fb797551cc402f0bcd068f5ded5b797a",
+      "targets": {
+        "the-real-ai-agent-bottleneck-is-the-damn-ui/09-1280.webp": "e631bf6288d897b3d8f5b50f539ec7898bbd51babe47451bd61450c13dddbee7",
+        "the-real-ai-agent-bottleneck-is-the-damn-ui/09-800.webp": "69c2a4822cf47e785fae061839d7e5c94181dcaba5a4dcd573f774f5751ff13a"
+      }
+    },
+    "the-real-ai-agent-bottleneck-is-the-damn-ui/10.webp": {
+      "sha256": "e7f3c7571f5341329e03551c4c7affbb7ec1328828f87b896f66d5e85a5050c3",
+      "targets": {
+        "the-real-ai-agent-bottleneck-is-the-damn-ui/10-1280.webp": "e1919d0065eb9d2f723a2778851cf7079213b5b1371a3d024d9d68b83d920c21",
+        "the-real-ai-agent-bottleneck-is-the-damn-ui/10-800.webp": "5bad667b7cc8ca67d5767c1e4ee99095a62436821d07fb8b092872b1823003e5"
+      }
+    },
+    "the-real-ai-agent-bottleneck-is-the-damn-ui/cover.webp": {
+      "sha256": "e081d2330d450cceebc4fa01c19ceaa53458c78a2cc1d6a787cbafede10731ba",
+      "targets": {
+        "the-real-ai-agent-bottleneck-is-the-damn-ui/cover-800.webp": "e54cb2b52072141027c20bea1476b6e249d72e6c2bb5e50a7a5f3838d78e0319"
+      }
+    },
+    "vibe-youtubing-with-notebooklm-the-mlops-coding-course-gets-a-video-upgrade-in-under-48-hours/02.webp": {
+      "sha256": "c111934b4ed523456247018d266cf6a631b89dcef66c6c13c4f369298a576b3f",
+      "targets": {
+        "vibe-youtubing-with-notebooklm-the-mlops-coding-course-gets-a-video-upgrade-in-under-48-hours/02-1280.webp": "2ba7f0f2bc5bddfc7eed75c5bc7fe62d0cde27cb6c38ffab1f08192a276fb830",
+        "vibe-youtubing-with-notebooklm-the-mlops-coding-course-gets-a-video-upgrade-in-under-48-hours/02-800.webp": "be313600c1f25b52a7273f58319113ed96956a7377f1affa0dd71078eadc5799"
+      }
+    },
+    "vibe-youtubing-with-notebooklm-the-mlops-coding-course-gets-a-video-upgrade-in-under-48-hours/03.webp": {
+      "sha256": "d0c9abdcc58933d36e754f3b0de6cb4727a717d6217c5501c3d2a4a38296c387",
+      "targets": {
+        "vibe-youtubing-with-notebooklm-the-mlops-coding-course-gets-a-video-upgrade-in-under-48-hours/03-800.webp": "013acbe3ae7cf25734c5de87825530ce60ced47415918c2ffd55f3e40be419e2"
+      }
+    },
+    "vibe-youtubing-with-notebooklm-the-mlops-coding-course-gets-a-video-upgrade-in-under-48-hours/04.webp": {
+      "sha256": "305aaa1ec9025401fd3ef40580104e9c7f6edeff5b9f03739eeab379e647ed1b",
+      "targets": {
+        "vibe-youtubing-with-notebooklm-the-mlops-coding-course-gets-a-video-upgrade-in-under-48-hours/04-1280.webp": "8de62ef66232446ad8c58332d92abd26516f5ab25e62c82fd01dd99c4ba889e9",
+        "vibe-youtubing-with-notebooklm-the-mlops-coding-course-gets-a-video-upgrade-in-under-48-hours/04-800.webp": "996fef26f605bd25eeff9b542779c98d91509bb176cd803cc1c7ac5d4596f884"
+      }
+    },
+    "vibe-youtubing-with-notebooklm-the-mlops-coding-course-gets-a-video-upgrade-in-under-48-hours/05.webp": {
+      "sha256": "d769ac39b5900333990e703ed30d50de06cff328d8f00fb21e68a216f1af4c1c",
+      "targets": {
+        "vibe-youtubing-with-notebooklm-the-mlops-coding-course-gets-a-video-upgrade-in-under-48-hours/05-1280.webp": "f99365c9a2a3bcc1ec92ff4fd4b967e9741e557bcd795dce01198b3547ab8091",
+        "vibe-youtubing-with-notebooklm-the-mlops-coding-course-gets-a-video-upgrade-in-under-48-hours/05-800.webp": "8ec0e82158b2de55181a5fad159c63b9dd815e2df343b8cb498cceb563001939"
+      }
+    },
+    "vibe-youtubing-with-notebooklm-the-mlops-coding-course-gets-a-video-upgrade-in-under-48-hours/cover.webp": {
+      "sha256": "f03b19bfaa0cf2b3ad0a3aa72539a2185b99f2d80557e32031d643f275a9e687",
+      "targets": {
+        "vibe-youtubing-with-notebooklm-the-mlops-coding-course-gets-a-video-upgrade-in-under-48-hours/cover-1280.webp": "61f064f0758626a600030add2eafb8c22bb6af66e2fa8a9a88b372481fde6bf8",
+        "vibe-youtubing-with-notebooklm-the-mlops-coding-course-gets-a-video-upgrade-in-under-48-hours/cover-800.webp": "39a02fc86f30da464a99386da803a4c4ea66396921136ac6b3ba6139bd8d25f6"
+      }
+    },
+    "we-need-posix-for-mlops/02.webp": {
+      "sha256": "e2fa0f455a3341d0a839ebb7dedeeb1673a92b8e1ea86d6ef1aa40d4a6b5964b",
+      "targets": {
+        "we-need-posix-for-mlops/02-800.webp": "307714d95bc408a16d592cb5b64a2fbb8a85fe14a6f35f34f18fb04ffbb95da1"
+      }
+    },
+    "we-need-posix-for-mlops/03.webp": {
+      "sha256": "2b45bc491f2d4a99b581c56173860223cc02f07978159c0639e7af6efb9c92b0",
+      "targets": {}
+    },
+    "we-need-posix-for-mlops/cover.webp": {
+      "sha256": "049640fb3393b726d9d11c300870a253762b4b1e4938577c1d751d0f13269ca0",
+      "targets": {
+        "we-need-posix-for-mlops/cover-800.webp": "3ce656e558cf55c92a3d301d623ffcde33864c4f8e5fe47523fac54d7e3adeda"
+      }
+    }
+  },
+  "version": 2,
+  "widths": [
+    800,
+    1280
+  ]
+}

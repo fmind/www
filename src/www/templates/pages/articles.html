@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% from "macros/articles.html" import article_card, search_form, tag_link %}
+{% block content %}
+  <section class="bg-base-200 min-h-screen px-4 py-14 md:py-20">
+    <div class="container mx-auto max-w-6xl">
+      <header class="text-center max-w-3xl mx-auto mb-10 md:mb-14">
+        <p class="text-sm uppercase tracking-[0.2em] text-primary font-semibold mb-3">Writing</p>
+        <h1 class="text-4xl md:text-6xl font-heading font-black text-balance">Articles</h1>
+        <p class="text-lg text-base-content/70 leading-relaxed mt-5">Pragmatic field notes on AI agents, MLOps, cloud architecture, and engineering systems.</p>
+      </header>
+      {{ search_form(view) }}
+      <nav class="flex flex-wrap justify-center gap-2 mb-12" aria-label="Filter articles by tag">
+        <a class="tag{% if not view.active_tag %} tag-active{% endif %}" href="{{ article_filter_url('', view.query) }}">All</a>
+        {% for tag in view.tags %}{{ tag_link(tag, view.active_tag == tag, view.query) }}{% endfor %}
+      </nav>
+      {% if view.query %}
+        <section aria-labelledby="search-results">
+          <h2 id="search-results" class="text-2xl font-heading font-bold mb-6 border-b border-base-300 pb-3">
+            {{ view.results|length }} result{% if view.results|length != 1 %}s{% endif %} for <span class="text-primary">“{{ view.query }}”</span>
+          </h2>
+          {% if not view.results %}<div class="alert max-w-2xl mx-auto"><span>No articles match this search. Try a broader term, or browse the tags above.</span></div>{% endif %}
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {% for article in view.results %}{{ article_card(article, loop.first) }}{% endfor %}
+          </div>
+        </section>
+      {% else %}
+        {% if not view.years %}<div class="alert max-w-2xl mx-auto"><span>No articles match this tag.</span></div>{% endif %}
+        <div class="space-y-16">
+          {% for group in view.years %}
+            {% set first_group = loop.first %}
+            <section aria-labelledby="year-{{ group.year }}">
+              <h2 id="year-{{ group.year }}" class="text-3xl font-heading font-bold mb-6 border-b border-base-300 pb-3">{{ group.year }}</h2>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {% for article in group.articles %}{{ article_card(article, loop.first and first_group) }}{% endfor %}
+              </div>
+            </section>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
+  </section>
+{% endblock %}

@@ -1,6 +1,6 @@
 ---
 name: infra
-description: Change the Google Cloud infrastructure for www.fmind.dev with OpenTofu — validate offline, plan, and apply manually against live state. Use for any change under infra/.
+description: Change www.fmind.dev cloud resources with OpenTofu while preserving state, cost, identity, and apply gates. Use for changes under infra/.
 license: MIT
 metadata:
   author: Médéric HURIER (Fmind)
@@ -8,48 +8,57 @@ metadata:
 
 # Change the Infrastructure
 
-`infra/` is a flat OpenTofu root module owning every cloud resource behind <https://www.fmind.dev/>: the Cloud Run service, Artifact Registry, the runtime and CI service accounts, Workload Identity Federation, error alerting, and the cookieless BigQuery analytics route. State lives in the versioned GCS bucket `www-fmind-dev-tfstate` under prefix `infra/state`.
+Change the flat `infra/` OpenTofu root while preserving live-state, cost, identity, deployment, and privacy boundaries.
 
-**Applying is always a deliberate human step.** No task and no hook runs `tofu apply` — plans move real infrastructure and real money.
-
-## Division of Ownership
-
-CI and OpenTofu both touch the Cloud Run service, and they do not fight:
-
-- **CI owns the image.** `.github/workflows/deploy.yml` deploys an immutable digest on every `main` push.
-- **OpenTofu owns the shape** — CPU, memory, scaling, env vars, probes, IAM. The image tag is under `lifecycle.ignore_changes`, so a plan never rolls the container back to whatever digest the state remembers.
-
-An infrastructure change therefore does **not** trigger a deployment, and a deployment does **not** drift the infrastructure.
+The module owns Cloud Run, Artifact Registry, runtime and CI identities, Workload Identity Federation, alerting, and aggregate BigQuery analytics. State is versioned in `www-fmind-dev-tfstate` under `infra/state`. Local validation is not authority to plan against live state or apply; obtain explicit owner approval before either consequential step.
 
 ## Workflow
 
-1. **Validate, without touching state**:
-   ```bash
-   mise run format          # tofu fmt -recursive, among the rest
-   mise run check           # includes check:scan
-   mise run check:tofu      # tofu fmt -check, init -backend=false, validate, tflint
-   ```
-   `check:scan` runs `trivy config` over the module and the Dockerfile; it is offline and part of every commit. `check:tofu` is not, because `init` downloads provider schemas — that alone keeps it out of the pre-commit hook, and its own `infra` workflow gates every `infra/` change instead. It does **not** need credentials: the task runs under a scratch `TF_DATA_DIR`, so a working copy where step 4 has already run a real `init` no longer makes `-backend=false` reach for the gcs backend.
+1. Inspect the current application/runtime contract and the complete proposed OpenTofu diff. Keep existing GCP identifiers stable unless the task explicitly authorizes a resource migration.
+1. Validate source without cloud credentials:
 
-1. **Authenticate** for anything that reads real state:
+   ```bash
+   mise run format
+   mise run check          # includes Trivy configuration scanning
+   mise run check:tofu     # backend-free init, validate, and tflint
+   ```
+
+   `check:tofu` downloads provider schemas, so it is network-dependent and separate from `check`. It uses a scratch `TF_DATA_DIR` and must not read a prior real backend cache.
+
+1. After explicit approval to read live state, authenticate to the intended account and pin the project context:
+
    ```bash
    gcloud auth application-default login
+   gcloud config get-value account
+   gcloud config get-value project
    ```
 
-1. **Plan and read it** — never skip reading:
+1. Initialize, save a plan, and read every action:
+
    ```bash
    tofu -chdir=infra init
-   tofu -chdir=infra plan -out=tmp/plan.tfplan
+   tofu -chdir=infra plan -out=../tmp/plan.tfplan
+   tofu -chdir=infra show ../tmp/plan.tfplan
    ```
 
-1. **Apply the reviewed plan**, deliberately:
+1. Stop on replacement, deletion, unexplained drift, provider migration, or cost-sensitive expansion. Apply only the exact reviewed plan and only after explicit owner authorization:
+
    ```bash
-   tofu -chdir=infra apply tmp/plan.tfplan
+   tofu -chdir=infra apply ../tmp/plan.tfplan
    ```
 
-## Querying the Analytics
+1. Verify the resulting state, Cloud Run readiness/traffic, IAM boundary, and relevant logs. An accepted apply is not application release proof.
 
-The sink in `analytics.tf` has no BI layer in front of it on purpose — this is the query surface. The first production pageview creates `www-fmind-dev.website_analytics.run_googleapis_com_stderr`, partitioned daily on `timestamp` with a 180-day expiry. Always filter on `timestamp` so the partition pruner reads one slice instead of the whole table, and exclude crawlers with `jsonPayload.bot = false`:
+## Division of Ownership
+
+- CI owns the deployed immutable image digest on `main` pushes.
+- OpenTofu owns CPU, memory, scaling, environment, probes, IAM, routing, monitoring, and analytics resources.
+- `infra/cloud_run.tf` ignores image changes, so a plan must not roll back CI's deployed digest.
+- The manual `mise run deploy <digest-ref>` task changes only the image and does not authorize infrastructure drift.
+
+## Querying Analytics
+
+The first pageview creates `www-fmind-dev.website_analytics.run_googleapis_com_stderr`, partitioned by `timestamp` with a 180-day expiry. Always bound `timestamp` and exclude bots:
 
 ```sql
 SELECT jsonPayload.utm_source, jsonPayload.utm_medium, jsonPayload.path, COUNT(*) AS views
@@ -60,12 +69,22 @@ GROUP BY 1, 2, 3
 ORDER BY views DESC
 ```
 
-Swapping the grouped fields answers the other questions from the same table: `path` for top pages, `referer` for referrer hosts, `country` for the geographic split, and `TIMESTAMP_TRUNC(timestamp, DAY)` for pageviews over time. The field list is fixed by the emitter in `middleware.go` — adding a dimension there is a privacy decision, not a reporting one.
+Use `path`, `referer`, or `TIMESTAMP_TRUNC(timestamp, DAY)` for other aggregates. `src/www/middleware.py` defines the emitted field set; adding a dimension is a privacy decision. `country` remains empty until infrastructure establishes a non-bypassable, trusted geography boundary.
 
 ## Gotchas
 
-1. **First OpenTofu init migrates the lockfile**: the module moved from HashiCorp Terraform to OpenTofu, so provider source addresses are now `registry.opentofu.org/...`. The first `tofu init` against the existing GCS state reconciles that. The resources are unchanged — a plan right after the migration must come back empty. **If it does not, stop and read it before applying.**
-1. **State is secret**: it stores every attribute in plaintext. It never belongs in git — `.gitignore` blocks `*.tfstate*` and `*.tfvars` — only in the versioned bucket.
-1. **Provider majors move fast**: `google` and `google-beta` are pinned exactly (`= 7.43.0`) because resources rename across majors. Bump them deliberately with the [upgrade-tools](~/.agents/skills/upgrade-tools/SKILL.md) skill and read the upgrade guide.
-1. **The privacy boundary is code, not config**: the external edge must strip inbound `X-Client-Geo` before injecting trusted geography. `middleware.go` treats that edge rule as the boundary — changing the edge means changing both.
-1. **Keyless only**: CI authenticates through branch-restricted Workload Identity Federation. Never create a service-account key.
+- State stores attributes in plaintext. Never commit `*.tfstate*` or `*.tfvars`; keep state only in the versioned bucket.
+- Google providers are pinned to `= 7.43.0`. Upgrade deliberately and require an empty or fully explained live plan after provider changes.
+- A Cloud Run domain mapping does not authenticate geography headers. Keep `country` empty unless a non-bypassable managed edge overwrites one dedicated header and the application trusts only that header.
+- CI remains keyless through branch-restricted Workload Identity Federation. Never create a service-account key.
+- Never run `tofu destroy`, apply a speculative plan, or infer production authority from a green local or CI validation.
+
+## Official Skills
+
+- Use [terraform](~/.agents/skills/terraform/SKILL.md) for OpenTofu conventions.
+- Use [gcloud](~/.agents/skills/gcloud/SKILL.md) for pinned-account Google Cloud operations.
+
+## Documentation
+
+- [OpenTofu CLI](https://opentofu.org/docs/cli/)
+- [Cloud Run](https://cloud.google.com/run/docs)

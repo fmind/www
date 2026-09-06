@@ -1,0 +1,81 @@
+{% macro tag_badge(tag) -%}
+  <span class="tag" data-tag="{{ tag }}">{{ tag }}</span>
+{%- endmacro %}
+
+{% macro tag_link(tag, active=false, query="") -%}
+  <a class="tag{% if active %} tag-active{% endif %}" data-tag="{{ tag }}" href="{{ article_filter_url(tag, query) }}">{{ tag }}</a>
+{%- endmacro %}
+
+{% macro search_form(view) -%}
+  <form class="flex flex-wrap justify-center items-center gap-2 mb-6" method="get" action="/articles/" role="search">
+    {% if view.active_tag %}<input type="hidden" name="tag" value="{{ view.active_tag }}"/>{% endif %}
+    <label class="sr-only" for="article-search">Search articles</label>
+    <input class="input input-bordered w-full max-w-md" id="article-search" type="search" name="q" value="{{ view.query }}" placeholder="Search articles…" autocomplete="off" maxlength="128"/>
+    <button class="btn btn-primary rounded-xl font-semibold" type="submit">Search</button>
+    {% if view.query %}<a class="btn btn-ghost border border-base-300 rounded-xl" href="{{ article_filter_url(view.active_tag, '') }}">Clear</a>{% endif %}
+  </form>
+{%- endmacro %}
+
+{% macro article_card(article, priority=false) -%}
+  <article class="card bg-base-100 border border-base-300 shadow-lg hover:shadow-xl transition-shadow overflow-hidden h-full">
+    <a href="/articles/{{ article.slug }}/" class="block">
+      {% if priority %}
+        <img class="w-full aspect-[16/9] object-cover" src="{{ article.card_image_path() }}" alt="{{ article.image_alt }}" width="800" height="450" fetchpriority="high" decoding="async"/>
+      {% else %}
+        <img class="w-full aspect-[16/9] object-cover" src="{{ article.card_image_path() }}" alt="{{ article.image_alt }}" width="800" height="450" loading="lazy" decoding="async"/>
+      {% endif %}
+    </a>
+    <div class="card-body p-5 sm:p-6">
+      <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-base-content/65">
+        <time datetime="{{ article.date.strftime('%Y-%m-%d') }}">{{ article.date.strftime('%b %-d, %Y') }}</time>
+        <span aria-hidden="true">·</span>
+        <span>{{ article.reading_minutes }} min read</span>
+      </div>
+      <h3 class="card-title font-heading text-xl leading-snug mt-2">
+        <a class="hover:text-primary transition-colors" href="/articles/{{ article.slug }}/">{{ article.title }}</a>
+      </h3>
+      <p class="text-base-content/75 leading-relaxed mt-2">{{ article.description }}</p>
+      {% if article.tags %}
+        <ul class="flex flex-wrap gap-2 mt-4" aria-label="Article tags">
+          {% for tag in article.tags %}<li>{{ tag_badge(tag) }}</li>{% endfor %}
+        </ul>
+      {% endif %}
+    </div>
+  </article>
+{%- endmacro %}
+
+{% macro article_footer(related_articles, metadata, static_url) -%}
+  <footer class="max-w-4xl mx-auto mt-16 md:mt-20 space-y-12">
+    <section class="card bg-base-200 border border-base-300" aria-labelledby="article-author">
+      <div class="card-body p-6 md:p-8 flex flex-col sm:flex-row items-center gap-6 text-center sm:text-left">
+        <img class="w-20 h-20 rounded-full object-cover ring ring-primary ring-offset-base-100 ring-offset-2 shrink-0" src="{{ static_url('static/img/avatar-192.webp') }}" alt="{{ metadata.name }}" width="80" height="80" loading="lazy" decoding="async"/>
+        <div class="flex-1 min-w-0">
+          <h2 id="article-author" class="font-heading text-xl font-bold">
+            <a class="hover:text-primary transition-colors" href="/#about">{{ metadata.name }} ({{ metadata.alternate_name }})</a>
+          </h2>
+          <p class="text-sm text-primary font-semibold mt-1">{{ metadata.job_title }}</p>
+          <p class="text-base-content/75 leading-relaxed mt-3">{{ metadata.description }}</p>
+        </div>
+        <div class="flex flex-col gap-2 w-full sm:w-auto shrink-0">
+          <a class="btn btn-primary rounded-xl font-bold" href="{{ metadata.calendar_url }}" target="_blank" rel="noopener noreferrer">Book a Session</a>
+          <a class="btn btn-ghost border border-base-300 rounded-xl" href="mailto:{{ metadata.email }}">Contact Me</a>
+        </div>
+      </div>
+    </section>
+    {% if related_articles %}
+      <section aria-labelledby="related-articles">
+        <h2 id="related-articles" class="font-heading text-2xl font-bold mb-6 flex items-center gap-2">
+          <span class="w-2 h-8 bg-primary rounded-full" aria-hidden="true"></span>
+          Keep reading
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {% for item in related_articles %}{{ article_card(item) }}{% endfor %}
+        </div>
+      </section>
+    {% endif %}
+    <div class="flex flex-wrap justify-center items-center gap-3 text-sm">
+      <a class="btn btn-outline btn-primary rounded-full font-semibold" href="/articles/">All articles</a>
+      <a class="btn btn-ghost border border-base-300 rounded-full" href="/articles/feed.xml">Subscribe (Atom)</a>
+    </div>
+  </footer>
+{%- endmacro %}

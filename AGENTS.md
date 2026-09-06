@@ -1,106 +1,95 @@
 # AGENTS.md — www
 
-Go 1.26 server-rendered web app (Go + Templ + Tailwind/DaisyUI + a small vanilla JS theme/menu and calculator controller). Self-contained: one static binary with `//go:embed`ed assets, no client framework, no database, no Node.js application project; pinned Playwright runs browser tests.
+Python 3.14 server-rendered web application: Litestar + strict Jinja + Tailwind/DaisyUI, served by Granian. It has no client framework, Node.js application project, or database. Jinja templates are package data; `content/` and `static/` are deploy-time trees copied into the OCI image.
 
 ## Commands (mise)
 
-The canonical vocabulary lives in `mise.toml` and is reused by the repo's lefthook hooks and CI. Run from this directory.
+`mise.toml` is the canonical task contract reused by Lefthook and CI. Run tasks from the repository root.
 
 - `mise install` — install the pinned project toolchain.
-- `mise run install` — generate templates, tidy Go modules, and download dependencies.
-- `mise run watch` — live-reload dev server (air + Tailwind watch).
-- `mise run format` — goimports, gofumpt, `templ fmt`, dprint.
-- `mise run check` — golangci-lint, govulncheck, dprint check, gitleaks, hadolint, `trivy config`, `typos`, and actionlint + zizmor.
-- `mise run check:typos` — the article spelling floor inside `check`, with documented verbatim and library-name exceptions.
-- `mise run check:links` — lychee reachability check for external content links (network-dependent and prone to false reds, so it runs on a weekly schedule, never in the offline `check`/pre-commit or as a merge gate).
-- `mise run check:tofu` — `tofu fmt -check`, backend-free `init`, `tofu validate`, and tflint (network-dependent, since `init` downloads provider schemas; CI runs it on every `infra/` change). It runs under a scratch `TF_DATA_DIR` so it never reads the real `infra/.terraform/` cache — see the note in `mise.toml`.
-- `mise run test` — gotestsum with race + coverage.
-- `mise run test:browser` — Chromium journeys on desktop/light and mobile/dark, including every published page. Set `BROWSER_BASE_URL` to validate a running deployment.
-- `mise run build` — generate templates, compile CSS, build `bin/www`.
-- `mise run deploy <image-ref>` — manual Cloud Run rollout/rollback to an image digest; never wired into a hook or `all`, since it mutates production.
+- `mise run install` — frozen all-group `uv` sync, Lefthook install, and pinned Chromium install.
+- `mise run watch` — Granian ASGI reload server plus Tailwind watch.
+- `mise run format` — Ruff imports/format, dprint, and OpenTofu format.
+- `mise run check` — project/lock validation, Ruff, ty, dprint, secrets, dependency and Dockerfile/IaC scans, and workflow audits.
+- `mise run check:image` — build and scan the exact production OCI archive; requires Docker with Buildx.
+- `mise run check:images` — read-only validation of the complete image derivative archive, provenance lock, and encoder recipe; part of `check`.
+- `mise run check:typos` — article spelling floor inside `check`, with reviewed exceptions in `typos.toml`.
+- `mise run check:links` — network-dependent external-link check, scheduled weekly rather than used as a merge gate.
+- `mise run check:tofu` — network-dependent backend-free OpenTofu validation and tflint, run in CI on `infra/` changes.
+- `mise run test` — offline pytest suite with branch coverage of at least 85%.
+- `mise run test:browser` — pinned Chromium journeys on desktop/light and mobile/dark.
+- `mise run test:image` — bounded HTTP/MCP smoke test of the already-built production OCI archive.
+- `mise run test:lighthouse -- --base-url <origin> [--mode full|smoke]` — strict five-category audit; never part of `all`.
+- `mise run build` — compile CSS and build clean wheel and source distributions.
+- `mise run build:images` — reconcile the SHA-256 provenance lock and generate only changed, missing, tampered, or recipe-stale Pillow WebP derivatives.
+- `mise run build:image` — build the production OCI image archive at `tmp/www-image.tar`.
+- `mise run deploy <digest-ref>` — manual repository-pinned Cloud Run rollout/rollback; production-mutating and never in a hook or `all`.
 
-Tooling split: heavy CLIs (golangci-lint, gotestsum, gitleaks, dprint, hadolint, lychee, typos, lefthook, trivy, actionlint, zizmor, opentofu, tflint, tailwindcss-extra) are mise-managed; code generators (`templ`, `goimports`, `gofumpt`, `govulncheck`, `air`) are `go tool` via the `go.mod` tool directive.
+`mise run test:lighthouse` expects the pinned Chromium to be present; run `mise run install:browser` first. The harness clearly reports `playwright install chromium` when the browser is absent.
 
-The checks require no cloud credentials; zizmor runs offline. Vulnerability scanners may refresh public databases, so `check` is not guaranteed to work without network access. `check:vuln` combines call-aware govulncheck with a complete dependency scan. The more variable checks stay separate: `check:links` runs weekly and `check:tofu` runs on `infra/` changes.
+`mise run all` runs sequentially: format, check, the package/CSS build, test, the exact OCI archive build and scan, its runtime smoke test, one Chromium installation, then browser journeys. The image smoke reuses the archive and never builds it. It skips the browser task's automatic dependencies only after satisfying them once; standalone task dependencies are unchanged. The full gate requires a running Docker Engine with Buildx. A fresh checkout requires `mise install`; the first full gate needs network access for Chromium installation, the base-image pull, and scanner database refreshes. No cloud credentials are required. Browser reports and temporary outputs belong under `tmp/`.
 
 ## Layout
 
-Entries are in ASCII order — dotfiles, then capitalized files, then the rest — so an agent scanning for a path can stop at the first miss.
+Entries are in ASCII order: dotfiles, capitalized files, then lowercase paths.
 
-- `.agents/` — Portable agent layer: project skills (`article`, `infra`, `release`, `site-page`) shared by every agent CLI.
-- `.air.toml` — Live-reload configuration for the Air Go development server.
-- `.dockerignore` — Specifies file paths that should not be copied into Docker images.
-- `.env.example` — Configuration template containing placeholder environment variables.
-- `.github/` — GitHub Actions CI/CD plus the infrastructure, security, and link-rot workflows, dependabot, and the zizmor audit policy.
-- `.gitignore` — Specifies file paths that Git should not track.
-- `.golangci.yml` — Configuration for the golangci-lint Go static analysis tool.
-- `.trivyignore` — Reviewed misconfiguration exceptions for `check:scan`, each with its reason.
-- `AGENTS.md` — AI assistant instructions, tooling setup, commands, conventions, and layout.
-- `CHANGELOG.md` — Generated release history (git-cliff), rewritten by the release skill.
-- `CLAUDE.md` — Claude Code entry point; imports this file so both read one source.
-- `Dockerfile` — Multi-stage recipe for building a secure, distroless application container.
-- `LICENSE` — Software license file governing distribution and reuse rights (MIT).
-- `README.md` — Human-readable documentation covering project setup, run instructions, and usage.
-- `articles.go` — Strict embedded Markdown parsing, validation, rendering, and immutable article collection.
-- `articles_test.go` — Tests for frontmatter validation, cover resolution, and responsive body-image markup.
-- `assets/` — Authored sources compiled into `static/` (the Tailwind entry point); never embedded, never served.
-- `bin/` — Output directory for compiled application binaries (ignored by Git).
-- `cmd/` — Main packages for the web server and deterministic article-image derivative generator.
-- `config/` — Configuration structures and environment variables parser packages.
-- `content/` — Embedded Markdown article sources with strict TOML frontmatter.
-- `coverage.out` — Generated Go unit test code coverage analysis profiles.
-- `dprint.json` — Configuration for the dprint code formatting tool.
-- `export_test.go` — Exports unexported internals (article counts, injected handler) to the external test package.
-- `go.mod` — Go module dependencies definition and tool directive manifest.
-- `go.sum` — Checksums file for verifying the integrity of Go module dependencies.
-- `highlight.go` — Chroma code-block highlighting, language guessing, and the generated theme stylesheet.
-- `highlight_test.go` — Tests for language guessing and the highlighted, class-based markup.
-- `infra/` — OpenTofu for Cloud Run, registries, monitoring, identity, and cookieless BigQuery analytics routing.
-- `lefthook.yml` — Configuration for Lefthook Git pre-commit and pre-push hooks.
-- `lychee.toml` — Configuration settings for the Lychee hyperlink checker tool.
-- `mcp.go` — Go implementation of the Model Context Protocol (MCP) server handler.
-- `mcp_test.go` — Test suites for validating Model Context Protocol (MCP) endpoint behavior.
-- `middleware.go` — Custom HTTP middlewares covering logging, security headers, compression, and sizing.
-- `mise.lock` — Pinned checksums for the mise-managed toolchain; committed so every machine and CI resolve identical binaries.
-- `mise.toml` — Developer tooling, tasks, environment variables, and alias definitions.
-- `publications.go` — Generated Atom, sitemap, llms.txt, article-index, and related-article surfaces.
-- `publications_test.go` — Tests for the discovery surfaces and the related-article ranking.
-- `search.go` — BM25 article index shared by the `/articles/?q=` page and the MCP `search_articles` tool.
-- `search_test.go` — Tests for ranking, query normalization, and search/tag filter composition.
-- `server.go` — HTTP router initialization, routing rules, static asset serving, and metadata files.
-- `server.json` — Publish-ready metadata for the official MCP Registry; its `version` tracks the released tag.
-- `server_internal_test.go` — Package-internal tests for asset-loading failures and buffered page rendering.
-- `server_test.go` — Integration and request handling tests for HTTP endpoints and middlewares.
-- `sites.go` — Source snapshots, validated inputs, and hosting-economics calculations for decision tools.
-- `sites_charts.go` — Server-computed cost curves and demand/throughput scenarios.
-- `sites_explore_test.go` — Pricing-mode, freshness, scenario, quality, and latency regression tests.
-- `sites_options.go` — Validated optional assumptions and complete shareable scenario URLs.
-- `sites_pricing.go` — API billing modes, dated price snapshots, and accepted-task cost comparisons.
-- `sites_test.go` — Unit tests for site-page input validation and calculation invariants.
-- `static/` — Build output and hand-placed binary assets (fonts, article images, compiled styles); the whole tree is embedded and publicly served.
-- `telemetry.go` — OpenTelemetry trace exporter initialization and structured logging correlation.
-- `templates/` — Portfolio/article data models, layouts, structured metadata, and Templ UI components.
-- `tests/` — Playwright configuration and browser regression journeys; reports and traces go in `tmp/`.
-- `tmp/` — Temporary workspace directory for test logs and compiler outputs.
-- `typos.toml` — Article typo-check configuration and reviewed exceptions.
+- `.agents/` — portable project skills: `article`, `infra`, `release`, and `site`.
+- `.dockerignore` — build-context exclusions.
+- `.env.example` — placeholder runtime configuration.
+- `.github/` — CI/CD, infrastructure, security, link-rot, and dependency automation.
+- `.gitignore` — local and generated exclusions.
+- `.python-version` — selected Python runtime version.
+- `.trivyignore` — reviewed scan exceptions with reasons.
+- `AGENTS.md` — agent instructions and repository invariants.
+- `CHANGELOG.md` — release history generated by git-cliff.
+- `CLAUDE.md` — Claude entry point importing this file.
+- `Dockerfile` — locked, non-root Python OCI build.
+- `LICENSE` — MIT license.
+- `README.md` — human setup, behavior, and operations.
+- `assets/` — authored Tailwind input and the image provenance and encoder-recipe lock; never served directly.
+- `content/` — strict Markdown article sources.
+- `dprint.json` — JSON, Markdown, TOML, and YAML formatting.
+- `infra/` — OpenTofu for Cloud Run, identities, monitoring, and aggregate analytics.
+- `lefthook.yml` — git hooks delegating to mise tasks.
+- `lychee.toml` — external-link checker configuration.
+- `mise.lock` — pinned mise tool checksums.
+- `mise.toml` — tool versions, environment defaults, and canonical tasks.
+- `pyproject.toml` — Python package, dependencies, Ruff, ty, pytest, and coverage configuration.
+- `server.json` — publish-ready official MCP Registry metadata; version tracks the release tag.
+- `scripts/` — bounded production-image and Lighthouse qualification entry points.
+- `src/www/` — application package, composition root, domain logic, and packaged Jinja templates.
+- `static/` — compiled or final public assets copied into the runtime image.
+- `tests/` — pytest and pinned Playwright regressions.
+- `typos.toml` — reviewed spelling exceptions.
+- `uv.lock` — exact Python dependency resolution.
+
+Important package ownership:
+
+- `app.py` composes immutable startup state, Litestar routes, middleware, static delivery, MCP, and teardown.
+- `assets.py`, `content.py`, and `images.py` load/hash static files, parse/render articles, and generate derivatives.
+- `data.py`, `models.py`, and `tags.py` own portfolio data, shared types, the site-page registry, and the closed tag vocabulary.
+- `highlighting.py`, `markdown.py`, `publications.py`, and `search.py` own Pygments output, source-preserving link rewriting, discovery artifacts, and BM25 search.
+- `middleware.py`, `log.py`, and `telemetry.py` own HTTP policy, structured logs, and OpenTelemetry; `deployment.py` and `image_runtime.py` own the manual deploy and exact-digest production-image smoke contracts.
+- `pages.py` builds page metadata; `rendering.py` is the only Jinja environment and reviewed raw-markup boundary.
+- `sites/` owns calculator inputs, immutable source snapshots, validation, formulas, formatting, and view models.
+- `src/www/templates/` uses base inheritance, partials, and macros for all HTML page types.
 
 ## Conventions
 
-- Errors as values, wrapped with `%w`; never ignore an `err`. Context first for I/O. Defer `Close()` on acquisition.
-- No hardcoded operational values — parse them into `config.Config` at the boundary; fail fast.
-- All Tailwind/DaisyUI classes live in `.templ` files (the `@source` scan and DaisyUI `include:` list depend on this — no classes in Go strings).
-- Every static asset is self-hosted; never reference a CDN at runtime. Interactive features stay server-rendered (plain links and GET forms) or use the two existing inline snippets — no widget, SDK, or third-party script.
-- Authored sources live in `assets/`, build output in `static/`. `server.go` embeds `static` wholesale and `GET /static/` serves all of it, so anything placed there ships inside the binary and is publicly downloadable — the Tailwind entry point used to sit in `static/css/` and was served verbatim in production. A new authored source belongs in `assets/`; only compiled or already-final files belong in `static/`.
-- The go-stack's esbuild bundling step is deliberately not adopted here: there is no first-party JavaScript module graph to bundle. The only scripts are the two inline nonce-authorized snippets in `layout.templ`, and the theme initializer has to stay inline because it runs before first paint to prevent a flash of the wrong theme. Adding `assets/js/` plus a bundle would trade a render-blocking request for roughly a kilobyte. Revisit this only if first-party JS grows into real modules.
-- The validated article collection is the only publication source for HTML, Atom, sitemap, llms.txt, JSON, and MCP surfaces; production discovery never includes drafts.
-- New private drafts enter `content/articles/` through `pub export` from the private publications repository, which carries its own authoring instructions. Once it records the live site URL, the private draft is removed and this repository owns the only published body; a substantial generated revision must start from the current site Markdown.
-- Decision tools under `/sites/` share `templates.SITE_PAGES` for routes, metadata, sitemap, `llms.txt`, JSON, and MCP discovery; follow the `site-page` skill for their source and calculation contract.
-- Article tags come from the closed vocabulary in `templates/tags.go`; each needs a matching `[data-tag='…']` color rule in `assets/css/input.css`, must tag at least one article, and anything else fails startup.
-- Code blocks are highlighted at startup by Chroma (`codeTheme` in `highlight.go`) and their stylesheet is generated from that same theme; new articles should use fenced blocks with a language, since unlabeled blocks fall back to the guesser in `languageMarkers`.
-- A new article needs its image derivatives generated (`mise run build:images`) and committed; startup fails without the cover's, and the archive test fails for any other missing rung. The ladder is `templates.DerivativeWidths` — widening it means regenerating with `FORCE=1`. The pinned pure-Go WebP encoder runs with `nodynamic`, so derivatives are reproducible without an external image-processing binary.
-- Body images are bounded by a ~2.4MP pixel budget, not a width — `pub export` applies it. A standalone image renders as a `<figure>` that breaks out of the text column to `--figure-max-width` and links to its full resolution. Every figure fits that width; nothing pans horizontally. `figureSizes` in `articles.go` and the `.article-page` rules in `assets/css/input.css` describe one layout and must change together.
-- The paragraph after a standalone image is folded into the figure as a `<figcaption>` when its text repeats the image's alt (`foldBodyCaptions`); the folded image drops its `alt`, which the caption and the link's accessible name already carry. Compare as text, never as markup — rendering adds links and typographic spaces that change nothing. Position alone is not a caption signal: every article opens with a cover followed by ordinary prose.
-- An illustration too wide to read when fitted to the figure is a diagram laid out wrong at its source, and is fixed there — never compensated for in the layout. What matters is apparent label size, `declared size * 1280 / canvas width`; raising the font loses, because D2 grows every box to fit the text and the canvas grows with it. Fix it in the diagram source and re-import; the layout rules for that live with the diagram sources in the private publications repository. What this repository asserts is only the acceptance bar: labels ≥ ~12px apparent size and a rendered height ≤ ~1300px at 1280 wide.
-- The `templates` coverage percentage is structurally low (~2%) and is not a defect: generated `_templ.go` dominates the statement count, and the components are exercised by the root package's rendering tests, which Go credits to the root package. Cover the hand-written helpers (`tags.go`, `models.go`, `helpers.go`) directly instead. `-coverpkg=./...` does make the merged profile honest, but it rewrites every per-package headline into nonsense (`config` reads 0.3% instead of 90.9%), so the suite deliberately does not use it.
-- Definition of done: `mise run format` clean, `mise run check` no findings, `mise run test` and `mise run test:browser` green, new behavior covered by a test.
-- Conventional Commits; no attribution.
+- Parse environment, query, Markdown, and protocol input at the boundary; use strict types and fail fast with contextual chained exceptions.
+- Build the validated article collection, static hashes, search index, derived publications, renderer, and MCP server once at application construction. Requests must not observe partial state.
+- Keep Jinja `StrictUndefined` and autoescape enabled. Only `src/www/rendering.py` may mark validated article HTML, biography fragments, inline CSS, or guarded JSON-LD as trusted markup.
+- Keep all Tailwind/DaisyUI classes in `src/www/templates/**/*.html`; `assets/css/input.css` scans that tree. Authored inputs belong in `assets/`; only compiled or final files belong in public `static/`.
+- Retain the two small nonce-authorized inline scripts. The theme initializer must run before first paint. Add a JS bundle only when first-party code becomes a real module graph.
+- Treat the validated article collection as the only publication source for HTML, Atom, sitemap, LLM text, JSON, search, and MCP. Production discovery never includes drafts.
+- Treat this repository as owning the published body of each article; revisions start from the current site Markdown.
+- Register decision pages in `src/www/data.py:SITE_PAGES`; it feeds metadata, sitemap, LLM text, JSON, MCP discovery, and article relationships. Wire each route, template, and view builder explicitly in `src/www/app.py`, and keep formulas and validated inputs under `src/www/sites/`.
+- Add tags only through `src/www/tags.py`, a matching `[data-tag='…']` rule in `assets/css/input.css`, and at least one article use. Vocabulary construction rejects blank or untrimmed names and descriptions, and duplicate names. Article parsing rejects unknown tags; archive tests require every vocabulary tag to be used and styled.
+- Fence code blocks with a language. `src/www/highlighting.py` performs Pygments highlighting and emits the matching stylesheet; unlabeled blocks use its bounded guesser.
+- Generate and commit article derivatives and `assets/image-derivatives.json` after image changes. Widths live in `src/www/models.py:DERIVATIVE_WIDTHS`; the lock reconciles ladder or pinned encoder-recipe changes automatically, while `check:images` never writes.
+- Keep `src/www/content.py:FIGURE_SIZES` and `.article-page` CSS aligned. Standalone images fit the figure width and never pan; unreadable diagrams must be fixed at their source.
+- Fold a paragraph into `<figcaption>` only when its text repeats the standalone image alt. Compare text rather than markup; position alone is not evidence of a caption.
+- Preserve the diagram acceptance bar: apparent labels at least about 12px and rendered height at most about 1300px when fitted to 1280px.
+- Definition of done: `mise run all` passes warning-free; when infrastructure changes, `mise run check:tofu` also passes. New behavior has a regression test.
+- A `main` deployment must scan and smoke-test the pushed immutable digest before Cloud Run receives it; local archive proof is not a substitute for the registry artifact.
+- Use Conventional Commits without attribution. Do not commit, push, publish, apply infrastructure, deploy, or incur spend without explicit authority.

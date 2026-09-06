@@ -14,21 +14,27 @@ concurrency:
   cancel-in-progress: true
 jobs:
   scan:
-    name: Full-history scan
+    name: Full-history and runtime image scan
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout complete history
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
           persist-credentials: false # scanners only read the checkout
       - name: Set up mise tools
-        uses: jdx/mise-action@v4
+        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4
         with:
-          install: true
+          install: false
           cache: true
+      - name: Install security scanners
+        run: mise install --locked -y gitleaks trivy
       - name: Scan complete Git history
         run: gitleaks git --redact=100 --verbose
       - name: Scan full checkout
         run: trivy fs --exit-code=1 --severity HIGH,CRITICAL --scanners vuln,secret,misconfig .
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4
+      - name: Build and scan production OCI image
+        run: mise run check:image

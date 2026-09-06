@@ -10,10 +10,6 @@ draft = false
 
 I’m incredibly excited to announce the launch of the first video series for my [**MLOps Coding Course**](https://mlops-coding-course.fmind.dev/), covering the introduction and the entire first chapter on [AI/ML Project Initialization](https://mlops-coding-course.fmind.dev/1.%20Initializing/index.html)! But this announcement is about more than just new content. It’s the story of how a powerful AI tool transformed my workflow, turning a mountain of a task into a manageable and even enjoyable creative process.
 
-# An error occurred.
-
-Unable to execute JavaScript.
-
 In this article, I want to share my journey of using [**NotebookLM’s new Video Overview feature**](https://blog.google/technology/google-labs/notebook-lm-audio-video-overviews-more-languages-longer-content/). I’ll take you behind the scenes of how I turned a comprehensive, text-based course into engaging video content at a speed I never thought possible, and how it has fundamentally changed my perspective on content creation you are not specialized in.
 
 ### The Challenge: A Mountain of Content to Visualize

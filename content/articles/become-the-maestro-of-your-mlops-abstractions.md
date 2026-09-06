@@ -31,9 +31,9 @@ Direct integration of each component in a project poses several risks. On one ha
 **Abstractions** offer a solution to these challenges. By utilizing flexible abstractions, you can facilitate the addition of new components over time, avoiding direct implementation dependencies. This architectural approach is so prevalent in our industry that it’s encapsulated in a gold principle known as [**SOLID**](https://en.wikipedia.org/wiki/SOLID):
 
 - ***S*ingle Responsibility Principle **— A class should have one, and only one, reason to change.
-- ***O*pen/Closed Principle** — Software entities should be open for extension, but closed for modification.
-- ***L*iskov Substitution Principle** — Objects in a program should be replaceable with instances of their subtypes without altering the correctness of that program.
-- ***I*nterface Segregation Principle** — No client should be forced to depend on methods it does not use.
+- __*O*pen/Closed Principle__ — Software entities should be open for extension, but closed for modification.
+- __*L*iskov Substitution Principle__ — Objects in a program should be replaceable with instances of their subtypes without altering the correctness of that program.
+- __*I*nterface Segregation Principle__ — No client should be forced to depend on methods it does not use.
 - ***D*ependency Inversion Principle **— High-level modules should not depend on low-level modules. Both should depend on abstractions.
 
 ### Why should I own my MLOps abstractions?
@@ -209,9 +209,3 @@ This article exemplifies how design patterns can be effectively utilized to evol
 ![Become the maestro of your MLOps abstractions](/static/img/articles/become-the-maestro-of-your-mlops-abstractions/09.webp)
 
 While abstractions offer significant benefits, they cannot fully address the ‘curse of components’ inherent in the [MLOps landscape](https://mattturck.com/landscape/mad2023.pdf). The sheer complexity of integrating every conceivable solution in the market with others presents a daunting, perhaps intractable, challenge. This complexity could potentially stifle innovation and hinder long-term integration efforts. The concept of a **‘** [**Language of the System**](https://www.youtube.com/watch?v=ROor6_NGIWU) **’**, as articulated by Rich Hickey in his insightful talk, could be a game-changer for MLOps in this regard. Until such a paradigm emerges, the best practice is to maintain strong abstractions and strive for simplicity in your codebase.
-
-# An error occurred.
-
-Unable to execute JavaScript.
-
-The Language of the System — Rich Hickey

@@ -17,6 +17,6 @@
 #
 # The site is served publicly at https://www.fmind.dev/ via a Cloud Run domain
 # mapping (managed outside this state); deploying new revisions keeps it intact.
-# That external edge must strip inbound X-Client-Geo before injecting trusted
-# geography. middleware.go treats this edge rule as the privacy boundary.
+# A domain mapping is not a trusted geography boundary, so the application does
+# not derive analytics dimensions from caller-controlled request headers.
 # ==============================================================================

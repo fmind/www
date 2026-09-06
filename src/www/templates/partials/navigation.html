@@ -1,0 +1,65 @@
+{% from "macros/icons.html" import icon %}
+<nav class="navbar bg-base-100/90 backdrop-blur-md border-b border-base-200" aria-label="Primary navigation">
+  <div class="container mx-auto flex px-4">
+    <div class="flex-1 flex items-center gap-1 sm:gap-4">
+      <div class="2xl:hidden relative">
+        <button id="menu-toggle" class="btn btn-ghost btn-circle btn-sm md:btn-md" aria-label="Menu" aria-controls="mobile-menu" aria-expanded="false">
+          {{ icon("menu", "h-5 w-5") }}
+        </button>
+        <ul id="mobile-menu" class="menu menu-sm absolute left-0 mt-3 z-[50] p-2 shadow bg-base-100 rounded-box w-52 border border-base-200 hidden">
+          {% for link in nav_links %}
+            <li><a class="font-medium hover:text-primary py-2" href="{{ link.href }}">{{ link.label }}</a></li>
+          {% endfor %}
+          <li class="mt-1 pt-1 border-t border-base-200">
+            <a class="font-semibold text-primary py-2" href="/articles/">
+              {{ icon("article", "h-4 w-4") }}
+              Articles
+            </a>
+          </li>
+          <li>
+            <a class="font-semibold text-primary py-2" href="/sites/">
+              <span class="text-base leading-none select-none" aria-hidden="true">🌐</span>
+              Sites
+            </a>
+          </li>
+        </ul>
+      </div>
+      <a class="btn btn-ghost text-xl md:text-2xl font-bold font-heading text-primary normal-case gap-2 sm:gap-4 px-1 sm:px-2" href="/">
+        <img class="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-full object-cover" src="{{ static_url('static/img/logo.webp') }}" alt="{{ metadata.site_name }} logo" width="48" height="48" decoding="async"/>
+        <span class="hidden sm:inline">{{ metadata.site_name }}</span>
+      </a>
+      <ul class="menu menu-horizontal px-1 hidden 2xl:flex gap-1">
+        {% for link in nav_links %}
+          <li>
+            <a class="relative font-medium hover:text-primary transition-colors duration-150 after:content-[''] after:absolute after:w-full after:scale-x-0 after:h-0.5 after:bottom-0 after:left-0 after:bg-primary after:origin-bottom-right after:transition-transform after:duration-300 hover:after:scale-x-100 hover:after:origin-bottom-left py-2 px-3" href="{{ link.href }}">{{ link.label }}</a>
+          </li>
+        {% endfor %}
+      </ul>
+      <div class="hidden xl:flex items-center gap-3">
+        <div class="border-l border-base-content/20 h-6" aria-hidden="true"></div>
+        <a class="btn btn-sm btn-outline btn-primary rounded-xl font-semibold gap-1.5 px-4" href="/articles/">
+          {{ icon("article", "h-4 w-4") }}
+          Articles
+        </a>
+        <a class="btn btn-sm btn-outline btn-primary rounded-xl font-semibold gap-1.5 px-4" href="/sites/">
+          <span class="text-base leading-none select-none" aria-hidden="true">🌐</span>
+          Sites
+        </a>
+      </div>
+    </div>
+    <div class="flex-none flex items-center gap-1 md:gap-4">
+      <div class="flex gap-0 md:gap-2">
+        {% for social in metadata.socials if social.header %}
+          <a class="btn btn-ghost btn-circle btn-sm md:btn-md hover:bg-transparent hover:text-accent transition-colors" href="{{ social.url }}" target="_blank" rel="noopener noreferrer" aria-label="{{ social.name }}">
+            {{ icon(social.icon, "h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6") }}
+          </a>
+        {% endfor %}
+      </div>
+      <div class="border-l border-base-content/20 h-6 md:h-8 mx-0.5 md:mx-2"></div>
+      <button id="theme-toggle" class="btn btn-ghost btn-circle btn-sm md:btn-md bg-base-200/60 border border-base-content/10" aria-label="Switch to dark theme" aria-pressed="false">
+        <span class="theme-icon-moon">{{ icon("moon", "h-5 w-5 md:h-6 md:w-6") }}</span>
+        <span class="theme-icon-sun">{{ icon("sun", "h-5 w-5 md:h-6 md:w-6") }}</span>
+      </button>
+    </div>
+  </div>
+</nav>

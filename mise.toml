@@ -1,6 +1,8 @@
 [env]
 APP_NAME = "www"
+IMAGE_ARCHIVE = "tmp/www-image.tar"
 PROJECT_ID = "www-fmind-dev"
+REPOSITORY = "app"
 SERVICE_NAME = "www-fmind-dev"
 REGION = "europe-west1"
 
@@ -8,79 +10,72 @@ REGION = "europe-west1"
 run_auto_install = false
 
 [tools]
-"github:dobicinaitis/tailwind-cli-extra" = "2.10.10"
+"aqua:astral-sh/uv" = "0.12.10"
+"github:dobicinaitis/tailwind-cli-extra" = "2.10.20"
 actionlint = "1.7.12"
-dprint = "0.55.2"
+dprint = "0.57.4"
 gitleaks = "8.30.1"
-go = "1.26.6"
-golangci-lint = "2.12.2"
-gotestsum = "1.13.0"
 hadolint = "2.15.1"
-lefthook = "2.1.10"
+lefthook = "2.1.12"
 lychee = "0.24.2"
-node = "24.20.0"
+node = "26.8.1"
+"npm:lighthouse" = "13.4.1"
 "npm:playwright" = "1.63.0"
-opentofu = "1.12.5"
+opentofu = "1.12.6"
+python = "3.14.7"
+shellcheck = "0.11.0"
 tflint = "0.64.0"
-trivy = "0.73.0"
-typos = "1.49.0"
-zizmor = "1.29.0"
+trivy = "0.74.0"
+typos = "1.50.1"
+zizmor = "1.30.0"
 
 [tasks.all]
 alias = "a"
-description = "Format, check, test, and build the project"
-run = ["mise run format", "mise run check", "mise run test", "mise run build", "mise run test:browser"]
+description = "Format, check, test, build, and exercise browser contracts"
+run = [
+  "mise run format",
+  "mise run check",
+  "mise run build",
+  "mise run --skip-deps test",
+  "mise run check:image",
+  "mise run test:image",
+  "mise run install:browser",
+  "mise run --skip-deps test:browser",
+]
 
 [tasks.build]
 alias = "b"
-description = "Compile the production binary"
-depends = ["build:go"]
+description = "Build Python distribution artifacts and production CSS"
+depends = ["build:css"]
+run = "uv build --clear"
 
 [tasks."build:css"]
 description = "Compile and minify Tailwind CSS"
 run = "tailwindcss-extra -i assets/css/input.css -o static/dist/styles.css --minify"
 
-[tasks."build:go"]
-description = "Compile the production Go binary"
-depends = ["build:templ", "build:css"]
-sources = ["go.mod", "go.sum", "**/*.go", "static/**"]
-outputs = ["bin/{{env.APP_NAME}}"]
-run = "go build -trimpath -o bin/$APP_NAME ./cmd/$APP_NAME"
+[tasks."build:image"]
+description = "Build the linux/amd64 production OCI image as a local archive"
+run = 'mkdir -p tmp && docker buildx build --platform linux/amd64 --target runner --tag "$APP_NAME:local" --output "type=docker,dest=$IMAGE_ARCHIVE" .'
 
 [tasks."build:images"]
-description = "Generate the downscaled article image derivatives (FORCE=1 rebuilds all)"
-sources = ["static/img/articles/*/*", "cmd/images/**/*.go"]
-outputs = ["static/img/articles/*/*-800.webp"]
-run = "go run -tags nodynamic ./cmd/images"
-
-[tasks."build:image"]
-description = "Build the production OCI image"
-run = "docker build --target runner -t $APP_NAME:local ."
-
-[tasks."build:templ"]
-description = "Generate Go code from Templ templates"
-sources = ["**/*.templ"]
-outputs = ["**/*_templ.go"]
-# Templ emits ungrouped imports; pass concrete generated files to the same
-# formatters as the hook so clean installs and staged-file checks are byte-stable.
-run = [
-  "go tool templ generate",
-  "go tool goimports -local github.com/fmind/www -w templates/*_templ.go",
-  "go tool gofumpt -w templates/*_templ.go",
-]
+description = "Generate changed or missing article image derivatives"
+run = "uv run --locked python -m www.images"
 
 [tasks.check]
 alias = "c"
 description = "Run all static checks in parallel"
 depends = [
   "check:actions",
-  "check:lint",
-  "check:vuln",
-  "check:format",
-  "check:leaks",
   "check:dockerfile",
+  "check:format",
+  "check:images",
+  "check:lighthouse",
+  "check:leaks",
+  "check:lint",
   "check:scan",
+  "check:types",
   "check:typos",
+  "check:vuln",
 ]
 
 [tasks."check:actions"]
@@ -96,39 +91,57 @@ run = "hadolint Dockerfile"
 
 [tasks."check:format"]
 alias = "cf"
-description = "Check config/markup formatting (dprint)"
-run = "dprint check"
+description = "Check formatting, project metadata, and lockfile"
+run = [
+  "uv lock --check",
+  "uv run --locked validate-pyproject pyproject.toml",
+  "uv run --locked ruff format --check src tests",
+  "dprint check",
+]
+
+[tasks."check:image"]
+description = "Build and scan the exact local production OCI image"
+depends = ["build:image"]
+# The owner has a global Trivy policy; unset it so local and CI scans use the
+# complete policy below and fail on the same fixable runtime findings. Inspect
+# without --ignore-unfixed when reviewing advisories that have no patch yet.
+run = 'env -u TRIVY_CONFIG trivy image --input "$IMAGE_ARCHIVE" --platform linux/amd64 --exit-code=1 --severity HIGH,CRITICAL --ignore-unfixed --scanners vuln,secret'
+
+[tasks."check:images"]
+description = "Validate article image derivatives without changing files"
+run = "uv run --locked python -m www.images --check"
+
+[tasks."check:lighthouse"]
+description = "Test the Lighthouse qualification harness without network access"
+run = "node --test scripts/lighthouse.test.mjs"
 
 [tasks."check:leaks"]
 alias = "cs"
-description = "Audit git history for leaked secrets (gitleaks)"
-run = "gitleaks git --redact=100 --log-opts=\"--max-count=100\" --verbose"
+description = "Audit recent commits and the working tree for leaked secrets (gitleaks)"
+run = [
+  'gitleaks git --redact=100 --log-opts="--max-count=100" --verbose',
+  "gitleaks dir . --redact=100 --verbose",
+]
+
+[tasks."check:leaks:staged"]
+description = "Audit staged changes for leaked secrets (gitleaks)"
+run = "gitleaks git --redact=100 --staged --verbose"
 
 [tasks."check:links"]
 alias = "ck"
 description = "Check external content links are reachable"
 run = "lychee --root-dir \"$PWD\" ."
 
-[tasks."check:typos"]
-description = "Check article prose for common spelling mistakes"
-run = "typos content/articles"
-
 [tasks."check:lint"]
 alias = "cl"
-description = "Lint Go sources (golangci-lint)"
-depends = ["build:templ"]
-# golangci-lint caches absolute source paths. Keep the cache with this checkout
-# so moving or renaming the repository cannot replay findings for an old path.
-run = "GOLANGCI_LINT_CACHE=\"$PWD/tmp/golangci-lint\" golangci-lint run ./..."
+description = "Lint Python sources (ruff)"
+run = "uv run --locked ruff check src tests"
 
 [tasks."check:scan"]
 description = "Scan Dockerfile and infrastructure for misconfigurations (trivy config)"
-# Severity is pinned on the command line on purpose. Left unset, trivy falls
-# back to the developer's ~/.config/trivy/trivy.yaml, which CI does not have —
-# that divergence let a LOW finding pass locally and fail the pipeline. A CLI
-# flag outranks every config file, so this reads the same everywhere.
-# Reviewed exceptions live in .trivyignore, each with its reason.
-run = "trivy config --exit-code=1 --severity LOW,MEDIUM,HIGH,CRITICAL ."
+# Unset the owner's global policy, then state the complete repository policy so
+# local and CI scans cannot diverge through inherited configuration.
+run = "env -u TRIVY_CONFIG trivy config --exit-code=1 --severity LOW,MEDIUM,HIGH,CRITICAL --ignorefile .trivyignore ."
 
 [tasks."check:tofu"]
 description = "Validate and lint the OpenTofu configuration"
@@ -151,55 +164,65 @@ run = [
   "tflint --chdir=infra",
 ]
 
+[tasks."check:types"]
+alias = "ct"
+description = "Type-check Python sources (ty)"
+run = "uv run --locked ty check"
+
+[tasks."check:typos"]
+description = "Check article prose for common spelling mistakes"
+run = "typos content/articles"
+
 [tasks."check:vuln"]
 alias = "cv"
-description = "Scan Go code for known vulnerabilities (govulncheck)"
+description = "Scan Python dependencies for known vulnerabilities (uv + trivy)"
 run = [
-  "go tool govulncheck ./...",
-  # Include tool and transitive dependencies even when no vulnerable call is reachable.
-  "trivy fs --exit-code=1 --severity HIGH,CRITICAL --scanners vuln .",
+  "uv audit --preview-features audit-command --locked",
+  # Scan the maintained lock, not third-party checkouts under tmp/.
+  "env -u TRIVY_CONFIG trivy fs --exit-code=1 --severity HIGH,CRITICAL --scanners vuln --ignorefile .trivyignore uv.lock",
 ]
 
 [tasks.clean]
 alias = "n"
-description = "Remove build artifacts and coverage files"
-run = "rm -rf bin/ tmp/ coverage.out static/dist/styles.css"
+description = "Remove build artifacts, caches, and coverage files"
+run = "rm -rf .cache/ .coverage .pytest_cache/ .ruff_cache/ .ty_cache/ dist/ htmlcov/ tmp/ static/dist/styles.css"
 
 [tasks.coverage]
 alias = "v"
 description = "Show test coverage in the terminal"
 depends = ["test"]
-run = "go tool cover -func=coverage.out"
+run = "uv run --locked coverage report"
 
 [tasks.deploy]
-description = "Deploy an image digest to Cloud Run — pass the image ref as the argument"
+description = "Deploy one immutable Artifact Registry digest to Cloud Run"
+raw_args = true
 # On demand only, never from a hook or `all`: this mutates production. CI owns
 # the routine path (push to main); this is for manual rollout and rollback, so
 # it sets only the image — OpenTofu still owns the rest of the service shape.
-# mise appends CLI args to the last command: `mise run deploy <image-ref>`.
-# Update requires the service to exist; the explicit project prevents a shell's
-# unrelated gcloud default from receiving a rollout or accidentally creating one.
-run = "gcloud run services update $SERVICE_NAME --project=$PROJECT_ID --billing-project=$PROJECT_ID --region=$REGION --image"
+# The typed boundary rejects tags, foreign repositories, missing digests, and
+# extra flags before constructing a fixed project/region/service gcloud argv.
+run = "uv run --locked python -m www.deployment"
 
 [tasks.format]
 alias = "f"
 description = "Format all sources and documents"
-depends = ["format:go", "format:templ", "format:dprint", "format:tofu"]
+depends = ["format:dprint", "format:python", "format:tofu"]
 
 [tasks."format:dprint"]
 description = "Format JSON, Markdown, TOML, YAML with dprint"
-run = "dprint fmt"
+run = "dprint fmt --allow-no-files"
 
-[tasks."format:go"]
-description = "Format Go sources and imports (goimports + gofumpt)"
-run = [
-  "go tool goimports -local github.com/fmind/www -w .",
-  "go tool gofumpt -w .",
-]
-
-[tasks."format:templ"]
-description = "Format Templ templates"
-run = "go tool templ fmt ."
+[tasks."format:python"]
+description = "Format Python sources and imports (ruff)"
+raw_args = true
+run = """
+bash -c '
+set -euo pipefail
+if [ "$#" -eq 0 ]; then set -- src tests; fi
+uv run --locked ruff check --select=I --fix --force-exclude "$@"
+uv run --locked ruff format --force-exclude "$@"
+' --
+"""
 
 [tasks."format:tofu"]
 description = "Format the OpenTofu configuration"
@@ -207,45 +230,54 @@ run = "tofu -chdir=infra fmt -recursive"
 
 [tasks.install]
 alias = "i"
-description = "Tidy Go modules and download dependencies"
-depends = ["install:go", "install:browser"]
+description = "Install locked development and browser dependencies"
+depends = ["install:python", "install:browser"]
 
-[tasks."install:go"]
-description = "Tidy Go modules and download dependencies"
-depends = ["build:templ"]
-run = "go mod tidy"
+[tasks."install:browser"]
+description = "Install the Chromium version used by browser and Lighthouse tests"
+run = "playwright install chromium"
+
+[tasks."install:python"]
+description = "Install locked Python dependencies and Git hooks"
+run = ["uv sync --locked --all-groups", "lefthook install"]
 
 [tasks.test]
 alias = "t"
-description = "Run the test suite (gotestsum)"
-depends = ["build:templ", "build:css"]
-run = "gotestsum --format pkgname -- -race -coverprofile=coverage.out ./..."
-
-[tasks."test:watch"]
-alias = "tw"
-description = "Run the test suite in watch mode"
-depends = ["build:templ", "build:css"]
-run = "gotestsum --watch --format pkgname -- -race -coverprofile=coverage.out ./..."
-
-[tasks.watch]
-alias = "w"
-description = "Run the dev server with live reload (Go + CSS)"
-depends = ["watch:css", "watch:air"]
-
-[tasks."watch:air"]
-hide = true
-run = "go tool air"
-
-[tasks."watch:css"]
-hide = true
-run = "tailwindcss-extra -i assets/css/input.css -o static/dist/styles.css --watch"
-
-[tasks."install:browser"]
-description = "Install the Chromium version used by the browser regression suite"
-run = "playwright install chromium"
+description = "Run offline tests with the branch-coverage gate"
+depends = ["build:css"]
+run = 'uv run --locked pytest -m "not integration" --cov=www --cov-fail-under=85'
 
 [tasks."test:browser"]
 description = "Exercise navigation, articles, and calculators in Chromium"
 depends = ["build"]
 # Playwright is a pinned mise CLI, keeping browser tooling outside the application.
 run = 'NODE_PATH="$(mise where npm:playwright)/node_modules" env -u NO_COLOR playwright test --config tests/playwright.config.cjs'
+
+[tasks."test:image"]
+description = "Smoke-test the already-built production OCI archive"
+run = "uv run --locked python scripts/test_image.py"
+
+[tasks."test:lighthouse"]
+description = "Run the manual Lighthouse qualification matrix with an already-installed Chromium"
+run = "node scripts/lighthouse.mjs"
+
+[tasks."test:watch"]
+alias = "tw"
+description = "Run offline tests in watch mode"
+depends = ["build:css"]
+run = 'uv run --locked pytest-watcher . --now -m "not integration"'
+
+[tasks.watch]
+alias = "w"
+description = "Run the dev server with live reload (Python + CSS)"
+depends = ["watch:css", "watch:server"]
+
+[tasks."watch:css"]
+hide = true
+depends = ["build:css"]
+run = "tailwindcss-extra -i assets/css/input.css -o static/dist/styles.css --watch"
+
+[tasks."watch:server"]
+hide = true
+depends = ["build:css"]
+run = 'GRANIAN_PORT="${PORT:-8080}" uv run --locked granian --interface asgi --reload --host 0.0.0.0 www.app:app'

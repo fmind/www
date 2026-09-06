@@ -48,9 +48,9 @@ Then, instead of continuously reminding the agent who I am and what I want, I ex
 
 1. **`PROFILE.md`**: Outlining my professional identity, experience, and links.
 
-   # Profile - Médéric Hurier (Fmind)
+   **Profile - Médéric Hurier (Fmind)**
 
-   ## Headline
+   **Headline**
 
    Freelancer • AI/ML Architect & Engineer • AI Agents & MLOps • GCP Professional Cloud Architect • PhD in AI & Computer Security
 
@@ -58,9 +58,9 @@ Then, instead of continuously reminding the agent who I am and what I want, I ex
 
 2. **`DESIGN.md`**: Defining my brand identity (e.g., “Space & Tech” aesthetic).
 
-   # Website Design
+   **Website Design**
 
-   ## Brand Identity
+   **Brand Identity**
 
    A professional, advanced, and modern digital presence for an AI/ML Architect.
 

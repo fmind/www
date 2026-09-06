@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block content %}
+  <section class="bg-base-200 min-h-screen px-4 py-14 md:py-20">
+    <div class="container mx-auto max-w-6xl">
+      <header class="text-center max-w-3xl mx-auto mb-10 md:mb-14">
+        <p class="text-sm uppercase tracking-[0.2em] text-primary font-semibold mb-3">Explore and decide</p>
+        <h1 class="text-4xl md:text-6xl font-heading font-black text-balance">Sites</h1>
+        <p class="text-lg text-base-content/70 leading-relaxed mt-5">Focused, source-backed tools for decisions that deserve more than a spreadsheet guess.</p>
+      </header>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {% for site_page in site_pages %}
+          <article class="card bg-base-100 border border-base-300 shadow-lg h-full">
+            <div class="card-body p-6 md:p-8">
+              <p class="text-sm uppercase tracking-[0.16em] text-primary font-semibold">For {{ site_page.audience }}</p>
+              <h2 class="card-title font-heading text-2xl mt-2"><a class="hover:text-primary transition-colors" href="/sites/{{ site_page.slug }}/">{{ site_page.title }}</a></h2>
+              <p class="text-base-content/75 leading-relaxed mt-3">{{ site_page.description }}</p>
+              <div class="card-actions mt-5"><a class="btn btn-primary rounded-xl font-bold" href="/sites/{{ site_page.slug }}/">Open calculator</a></div>
+            </div>
+          </article>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+{% endblock %}

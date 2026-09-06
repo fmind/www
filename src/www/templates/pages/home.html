@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+{% from "macros/articles.html" import article_card %}
+{% from "macros/icons.html" import icon %}
+{% block content %}
+  <div>
+    <div class="hero min-h-screen bg-base-200 relative overflow-hidden flex items-center justify-center">
+      <div class="hero-content text-center z-10 relative px-4">
+        <div class="max-w-5xl">
+          <div class="avatar mb-8">
+            <div class="w-32 h-32 sm:w-40 sm:h-40 md:w-48 md:h-48 rounded-full ring ring-primary ring-offset-base-100 ring-offset-2 shadow-2xl overflow-hidden mx-auto">
+              <img class="object-cover w-full h-full" src="{{ static_url('static/img/avatar-192.webp') }}" srcset="{{ static_url('static/img/avatar-192.webp') }} 192w, {{ static_url('static/img/avatar-280.webp') }} 280w, {{ static_url('static/img/avatar.webp') }} 384w" sizes="(max-width: 639px) 128px, (max-width: 768px) 160px, 192px" alt="{{ metadata.name }}" width="192" height="192" fetchpriority="high"/>
+            </div>
+          </div>
+          <h1 class="text-5xl md:text-7xl font-heading font-black mb-4 bg-clip-text text-transparent bg-gradient-to-r from-primary to-blue-600 select-text">{{ metadata.name }}</h1>
+          <h2 class="text-xl md:text-3xl font-heading font-medium text-base-content/90 mb-10 max-w-5xl mx-auto leading-relaxed text-balance select-text">{{ metadata.headline_primary }}</h2>
+          <div class="flex flex-wrap justify-center gap-4 md:gap-8">
+            <a class="btn btn-lg bg-primary/5 hover:bg-primary/10 text-primary border border-primary/20 rounded-xl shadow-lg hover:scale-105 active:scale-95 transition-transform hover:shadow-xl hover:shadow-primary/10 px-6 py-3 font-semibold" href="mailto:{{ metadata.email }}">Contact Me</a>
+            <a class="btn btn-primary btn-lg bg-primary text-primary-content border-none rounded-xl shadow-lg ring-2 ring-primary/40 hover:scale-105 active:scale-95 transition-transform hover:shadow-xl hover:shadow-primary/20 px-6 py-3 font-semibold" href="{{ metadata.calendar_url }}" target="_blank" rel="noopener noreferrer">Book a Session</a>
+          </div>
+          <div class="mt-16 animate-bounce flex justify-center">
+            <a class="text-primary hover:text-primary-focus transition-colors duration-300" href="#about" aria-label="Scroll to About section">{{ icon("arrow_down", "h-10 w-10") }}</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <section class="py-16 md:py-24 bg-base-100 overflow-hidden px-4" id="about">
+      <div class="container mx-auto">
+        <div class="text-center mb-12">
+          <h2 class="text-4xl md:text-5xl font-heading font-bold mb-4 text-base-content">About <span class="text-primary">Me</span></h2>
+          <p class="text-xl text-base-content/70 max-w-3xl mx-auto leading-relaxed text-balance">Transforming AI/ML initiatives into secure, scalable, and high-impact solutions.</p>
+        </div>
+        <div class="grid md:grid-cols-12 gap-8 mb-14">
+          <div class="md:col-span-10 md:col-start-2 space-y-6">
+            <div class="prose prose-lg text-base-content/80 mx-auto leading-loose [&_p]:leading-loose space-y-6 select-text">
+              {% for paragraph in biography_html %}<p class="select-text">{{ paragraph }}</p>{% endfor %}
+            </div>
+          </div>
+        </div>
+        <h3 class="text-xl font-bold mb-10 flex items-center justify-center gap-2"><span class="w-2 h-8 bg-primary rounded-full"></span>Core Expertise & Skills</h3>
+        {% set gradients = ["from-accent to-blue-500", "from-blue-500 to-cyan-500", "from-rose-500 to-red-500", "from-orange-500 to-amber-500", "from-cyan-500 to-blue-500", "from-emerald-500 to-teal-500"] %}
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6 max-w-6xl mx-auto">
+          {% for card in expertise %}
+            <div class="card bg-base-200/50 backdrop-blur-sm hover:bg-base-200 transition-all duration-300 hover:-translate-y-2 border border-base-300 hover:border-primary/30 overflow-hidden h-full shadow-xl hover:shadow-2xl group">
+              <div class="h-1 bg-gradient-to-r {{ gradients[loop.index0 % (gradients|length)] }}" aria-hidden="true"></div>
+              <div class="card-body p-5 md:p-6 items-center text-center">
+                <div class="text-4xl md:text-5xl mb-3 group-hover:scale-110 transition-transform duration-300" aria-hidden="true">{{ card.emoji }}</div>
+                <h4 class="font-bold text-lg text-base-content">{{ card.title }}</h4>
+                <p class="text-sm text-base-content/70 mt-2 leading-relaxed">{{ card.description }}</p>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </section>
+
+    <section class="py-16 md:py-24 bg-base-200 px-4" id="work-experience">
+      <div class="container mx-auto">
+        <div class="text-center mb-10 md:mb-16">
+          <h2 class="text-4xl md:text-5xl font-heading font-bold mb-4 text-base-content">Work <span class="text-primary">Experience</span></h2>
+          <p class="text-xl text-base-content/70 max-w-3xl mx-auto leading-relaxed text-balance">A track record of engineering scale, reliability, and security for industry-leading institutions.</p>
+        </div>
+        <ul class="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-8 max-w-6xl mx-auto">
+          {% for item in experiences %}
+            <li class="h-full">
+              <div class="card card-side bg-base-100 shadow-xl border-l-4 hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 h-full flex flex-col sm:flex-row overflow-hidden group" data-company="{{ item.company }}">
+                <figure class="w-full sm:w-1/3 p-4 sm:p-6 shrink-0 flex items-center justify-center min-h-24 sm:min-h-[150px] bg-slate-50 border-r border-base-200">
+                  <div class="rounded-lg p-2 flex items-center justify-center w-full h-full max-h-24 max-w-[150px]">
+                    <img class="object-contain w-full h-full max-h-20 filter" src="{{ static_url('static/img/companies/' ~ item.logo) }}" alt="{{ item.company }}" width="150" height="80" loading="lazy" decoding="async"/>
+                  </div>
+                </figure>
+                <div class="card-body w-full sm:w-2/3 p-6 flex flex-col justify-between">
+                  <div>
+                    <h3 class="card-title text-lg md:text-xl font-bold leading-tight text-base-content select-text">{{ item.title }}</h3>
+                    <p class="text-sm font-semibold text-primary mt-1 select-text">{{ item.company }}</p>
+                    <p class="text-base-content/80 text-sm mt-4 leading-relaxed select-text">{{ item.description }}</p>
+                  </div>
+                  <div class="card-actions justify-start gap-1.5 mt-6">
+                    {% for tag in item.tags %}<div class="badge badge-outline text-xs border-base-content/25 py-2 px-2.5 font-medium select-none">{{ tag }}</div>{% endfor %}
+                  </div>
+                </div>
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+        <h3 class="text-xl font-bold mb-8 mt-14 md:mt-20 flex items-center justify-center gap-2"><span class="w-2 h-8 bg-primary rounded-full"></span>Leadership & Community</h3>
+        <ul class="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-6xl mx-auto">
+          {% for item in leadership %}
+            <li class="h-full">
+              <a class="card bg-base-200/50 hover:bg-base-200 border border-base-300 hover:border-primary/40 shadow-sm hover:shadow-lg transition-all duration-300 h-full" href="{{ item.url }}" target="_blank" rel="noopener noreferrer"><div class="card-body p-5"><p class="text-xs font-bold uppercase tracking-wider text-primary">{{ item.organization }}</p><h4 class="font-heading font-bold text-lg text-base-content inline-flex items-start gap-2">{{ item.role }}{{ icon("external_link", "w-4 h-4 mt-1 shrink-0 text-primary") }}</h4><p class="text-sm text-base-content/75 leading-relaxed">{{ item.description }}</p></div></a>
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </section>
+
+    <section class="py-16 md:py-24 bg-base-100 px-4" id="certifications">
+      <div class="container mx-auto">
+        <div class="text-center mb-10 md:mb-16">
+          <h2 class="text-4xl md:text-5xl font-heading font-bold mb-4 text-primary">Certifications</h2>
+          <p class="text-xl text-base-content/70 max-w-3xl mx-auto leading-relaxed text-balance">Validated capabilities from leading foundations, cloud providers, and academic networks.</p>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 justify-items-center max-w-6xl mx-auto mb-16">
+          {% for badge in badges %}
+            <a class="group relative flex items-center gap-3.5 p-4 bg-base-100 rounded-2xl border-2 transition-all duration-300 w-full {% if badge.active %}border-primary shadow-lg hover:shadow-primary/20 hover:-translate-y-1{% else %}border-base-content/20 shadow-sm hover:border-base-content/40 hover:-translate-y-0.5{% endif %}" href="{{ badge.url }}" target="_blank" rel="noopener noreferrer"><div class="p-2.5 rounded-xl group-hover:bg-base-300 transition-colors shrink-0 flex items-center justify-center w-16 h-16 bg-slate-50 border border-base-200"><img class="w-11 h-11 object-contain" src="{{ static_url('static/img/certifications/' ~ badge.logo) }}" alt="{{ badge.issuer }}" width="44" height="44" loading="lazy" decoding="async"/></div><div class="flex-1 min-w-0"><h3 class="font-bold text-base md:text-md leading-tight line-clamp-2 transition-colors select-text {% if badge.active %}text-primary{% else %}text-base-content group-hover:text-accent{% endif %}">{{ badge.title }}</h3><p class="text-xs text-base-content/60 mt-1.5 truncate select-text" title="{{ badge.issuer }} • {{ badge.cert_id }}">{{ badge.issuer }} • {{ badge.cert_id }}</p></div>{% if badge.active %}{{ icon("external_link", "w-4 h-4 transition-opacity shrink-0 text-primary opacity-50 group-hover:opacity-100") }}{% else %}{{ icon("external_link", "w-4 h-4 transition-opacity shrink-0 text-accent opacity-0 group-hover:opacity-100") }}{% endif %}</a>
+          {% endfor %}
+        </div>
+        <div class="relative py-8 max-w-6xl mx-auto">
+          <div class="absolute inset-0 flex items-center" aria-hidden="true"><div class="w-full border-t border-base-300"></div></div>
+          <div class="relative flex justify-center"><span class="bg-base-100 px-6 text-sm text-base-content/70 uppercase tracking-widest font-semibold select-none">Specializations & Foundations</span></div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-w-6xl mx-auto mt-6">
+          {% for entry in specializations %}
+            <a class="group flex items-center gap-4 p-4 rounded-xl hover:bg-base-200 border border-transparent hover:border-base-300 transition-all cursor-pointer" href="{{ entry.url }}" target="_blank" rel="noopener noreferrer"><img class="w-10 h-10 object-contain shrink-0" src="{{ static_url('static/img/certifications/' ~ entry.logo) }}" alt="{{ entry.title }}" width="40" height="40" loading="lazy" decoding="async"/><div class="min-w-0 flex-1"><h4 class="text-sm md:text-base font-semibold text-base-content group-hover:text-primary transition-colors line-clamp-2 select-text">{{ entry.title }}</h4><p class="text-xs md:text-sm text-base-content/70 mt-0.5 select-text">{{ entry.issuer_details }}</p></div>{{ icon("external_link", "w-4 h-4 ml-auto text-base-content/30 group-hover:text-primary transition-colors opacity-0 group-hover:opacity-100 shrink-0") }}</a>
+          {% endfor %}
+        </div>
+      </div>
+    </section>
+
+    <section class="py-16 md:py-24 bg-base-200 px-4" id="projects">
+      <div class="container mx-auto">
+        <div class="text-center mb-10 md:mb-16">
+          <h2 class="text-4xl md:text-5xl font-heading font-bold mb-4 text-primary">Projects</h2>
+          <p class="text-xl text-base-content/70 max-w-3xl mx-auto leading-relaxed text-balance">Open-source repositories and educational deep dives created to upskill engineers worldwide.</p>
+        </div>
+        <div class="mb-16 max-w-6xl mx-auto">
+          <h3 class="text-2xl font-bold mb-6 text-base-content">
+            <a class="inline-flex items-center gap-2.5 group hover:text-accent transition-colors" href="https://github.com/fmind" target="_blank" rel="noopener noreferrer">{{ icon("github", "w-6 h-6 text-primary group-hover:text-accent transition-colors") }}<span>Open Source Projects</span>{{ icon("external_link", "w-5 h-5 text-accent shrink-0") }}</a>
+          </h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {% for project in open_source %}
+              <div class="card bg-base-100 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 border border-base-300 hover:border-primary/30 group overflow-hidden">
+                <div class="h-0.5 bg-gradient-to-r from-primary to-blue-400"></div>
+                <div class="card-body p-6 flex flex-col justify-between">
+                  <div>
+                    <h3 class="card-title text-lg font-bold flex items-center gap-2 select-none">{{ icon("github", "w-5 h-5 group-hover:scale-110 transition-transform duration-300") }}<a class="text-base-content group-hover:text-primary transition-colors hover:underline decoration-2 underline-offset-4 select-text" href="{{ project.href }}" target="_blank" rel="noopener noreferrer">{{ project.title }}</a>{{ icon("external_link", "w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity shrink-0") }}</h3>
+                    <p class="text-sm text-base-content/85 mt-4 leading-relaxed select-text">{{ project.description }}</p>
+                  </div>
+                  <div class="card-actions justify-end mt-6">
+                    <a class="btn btn-sm btn-ghost hover:bg-base-300 font-semibold gap-1" href="{{ project.repo or project.href }}" target="_blank" rel="noopener noreferrer">View Code <span class="group-hover:translate-x-1 transition-transform inline-block">→</span></a>
+                  </div>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="max-w-6xl mx-auto">
+          <h3 class="text-2xl font-bold mb-6 text-base-content">
+            <a class="inline-flex items-center gap-2.5 group hover:text-accent transition-colors" href="https://www.youtube.com/@fmind-dev" target="_blank" rel="noopener noreferrer">{{ icon("youtube", "w-6 h-6 text-red-500 group-hover:text-accent transition-colors") }}<span>YouTube Series</span>{{ icon("external_link", "w-5 h-5 text-accent shrink-0") }}</a>
+          </h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {% for playlist in youtube_series %}
+              <a class="card bg-base-100 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 border border-base-300 block group overflow-hidden" href="{{ playlist.url }}" target="_blank" rel="noopener noreferrer"><div class="h-0.5 bg-gradient-to-r from-primary to-blue-400"></div><div class="card-body p-6"><h3 class="card-title text-base-content group-hover:text-primary transition-colors flex items-center gap-1.5 select-none"><span class="font-bold text-lg">{{ playlist.title }}</span>{{ icon("external_link", "w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity shrink-0") }}</h3><p class="text-sm text-base-content/85 mt-3 leading-relaxed select-text">{{ playlist.description }}</p><div class="card-actions justify-end mt-6"><div class="btn btn-sm btn-ghost hover:bg-base-300 font-semibold gap-1">{{ playlist.cta }} <span class="group-hover:translate-x-1 transition-transform inline-block">→</span></div></div></div></a>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="py-16 md:py-24 bg-base-100 overflow-hidden relative px-4" id="services">
+      <div class="container mx-auto">
+        <div class="text-center mb-10 md:mb-16">
+          <h2 class="text-4xl md:text-5xl font-heading font-bold mb-4 text-base-content">My <span class="text-primary">Services</span></h2>
+          <p class="text-xl text-base-content/70 max-w-3xl mx-auto leading-relaxed text-balance">Bring deep AI architecture, MLOps, and security expertise to your next high-impact initiative.</p>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+          {% for service in services %}
+            <div class="card bg-base-200 shadow-xl hover:shadow-2xl transition-all duration-300 border-2 border-primary group rounded-2xl overflow-hidden">
+              <div class="card-body p-8 items-center text-center">
+                <span class="text-6xl mb-4 inline-block group-hover:scale-110 transition-transform duration-300 select-none" aria-hidden="true">{{ service.icon }}</span>
+                <h3 class="card-title text-2xl font-heading font-bold text-base-content select-text">{{ service.title }}</h3>
+                <p class="text-base-content/70 mt-3 text-sm md:text-base leading-relaxed select-text">{{ service.description }}</p>
+                <div class="badge gap-1 mt-6 font-semibold py-3 px-4 select-none badge-{{ service.badge_type }} text-{{ service.badge_type }}-content">{{ service.badge }}</div>
+                <div class="card-actions mt-8 w-full justify-center">
+                  <a class="btn btn-primary bg-primary hover:bg-primary/90 text-primary-content border-none rounded-xl shadow-md hover:scale-105 transition-transform hover:shadow-lg w-full max-w-[220px] py-3 text-center font-bold" href="{{ service.cta_url }}"{% if not service.cta_url.startswith('mailto:') %} target="_blank" rel="noopener noreferrer"{% endif %}>{{ service.cta_text }}</a>
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </section>
+
+    <section class="py-16 md:py-24 bg-base-200 px-4" id="articles">
+      <div class="container mx-auto">
+        <div class="text-center mb-10 md:mb-16">
+          <h2 class="text-4xl md:text-5xl font-heading font-bold mb-4 text-primary">Articles</h2>
+          <p class="text-xl text-base-content/70 max-w-3xl mx-auto leading-relaxed text-balance">Field notes on AI agents, MLOps, cloud architecture, and security — written from delivery, not theory.</p>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
+          {% for article in articles[:6] %}{{ article_card(article) }}{% endfor %}
+        </div>
+        <div class="flex justify-center mt-10 md:mt-12">
+          <a class="btn btn-primary btn-lg rounded-xl shadow-lg hover:scale-105 active:scale-95 transition-transform hover:shadow-xl hover:shadow-primary/20 font-bold" href="/articles/">{{ icon("article", "w-5 h-5 mr-2") }}Browse all {{ articles|length }} articles</a>
+        </div>
+      </div>
+    </section>
+  </div>
+{% endblock %}

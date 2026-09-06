@@ -48,10 +48,6 @@ Let’s see how the models did.
 
 [Gemini 2.5 Flash](https://cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/2-5-flash?hl=fr) is designed for speed and efficiency. It’s great for basic tasks, but complex, creative coding is not its primary strength.
 
-# An error occurred.
-
-Unable to execute JavaScript.
-
 _Watch the Flash result:_ [_https://youtu.be/g6KLIY7hy-I_](https://youtu.be/g6KLIY7hy-I)
 
 Flash grasped the very basics of the request, but not much more.
@@ -74,10 +70,6 @@ Flash grasped the very basics of the request, but not much more.
 ### Round 2: Gemini 2.5 Pro
 
 [Gemini 2.5 Pro](https://cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/2-5-pro?hl=fr) is the workhorse model, balancing capability with performance. I expected an improvement over Flash, and I got one.
-
-# An error occurred.
-
-Unable to execute JavaScript.
 
 _Watch the Pro result:_ [_https://youtu.be/4t0Hm_zeGqc_](https://youtu.be/4t0Hm_zeGqc)
 
@@ -111,10 +103,6 @@ Unmoved. The magic had failed to land.
 ### Round 3: Gemini DeepThink
 
 Enter [Deep Think](https://blog.google/products/gemini/gemini-2-5-deep-think/). This represents the cutting edge of Gemini’s capabilities, utilizing advanced reasoning and complex instruction following. The difference was immediate and profound.
-
-# An error occurred.
-
-Unable to execute JavaScript.
 
 _Watch the DeepThink result:_ [_https://youtu.be/CA55UQ0tGrQ_](https://youtu.be/CA55UQ0tGrQ)
 

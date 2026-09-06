@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% from "macros/articles.html" import article_footer, tag_link %}
+{% block content %}
+  <article class="article-page bg-base-100 min-h-screen px-4 py-12 md:py-20">
+    <header class="max-w-4xl mx-auto text-center mb-10 md:mb-14">
+      <a class="link link-primary font-semibold" href="/articles/">← All articles</a>
+      <h1 class="font-heading text-4xl md:text-6xl font-black leading-tight text-balance mt-6">{{ article.title }}</h1>
+      <p class="text-xl text-base-content/70 leading-relaxed mt-6 text-balance">{{ article.description }}</p>
+      <div class="flex flex-wrap justify-center items-center gap-x-3 gap-y-2 text-sm text-base-content/65 mt-6">
+        <time datetime="{{ article.date.strftime('%Y-%m-%d') }}">{{ article.date.strftime('%B %-d, %Y') }}</time>
+        <span aria-hidden="true">·</span>
+        <span>{{ article.reading_minutes }} min read</span>
+      </div>
+      {% if article.tags %}
+        <ul class="flex flex-wrap justify-center gap-2 mt-6" aria-label="Article tags">
+          {% for tag in article.tags %}<li>{{ tag_link(tag) }}</li>{% endfor %}
+        </ul>
+      {% endif %}
+    </header>
+    <div class="prose prose-lg md:prose-xl mx-auto max-w-4xl text-base-content prose-headings:font-heading prose-headings:scroll-mt-24 prose-a:text-primary prose-img:rounded-xl prose-img:shadow-lg prose-pre:bg-slate-800 prose-pre:text-slate-50 prose-pre:border prose-pre:border-slate-700 prose-code:before:content-none prose-code:after:content-none [&_video]:my-10 [&_video]:w-full [&_video]:rounded-xl [&_video]:shadow-lg">
+      {{ article_html }}
+    </div>
+    {% for site_page in related_site_pages %}
+      <aside class="max-w-4xl mx-auto rounded-2xl border border-primary/30 bg-primary/5 p-6 my-10">
+        <p class="text-sm font-semibold uppercase tracking-wider">Put the ideas into practice</p>
+        <a class="link link-primary font-heading text-xl font-bold block mt-2" href="/sites/{{ site_page.slug }}/">{{ site_page.title }} →</a>
+        <p class="text-base-content/75 mt-3">Try the decision tool to compare demand, API bills, hosting capacity, and cost per accepted task.</p>
+      </aside>
+    {% endfor %}
+    {{ article_footer(related_articles, metadata, static_url) }}
+  </article>
+{% endblock %}
