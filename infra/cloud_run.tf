@@ -21,7 +21,7 @@ resource "google_cloud_run_v2_service" "web" {
     scaling {
       # Scale to zero when idle (min 0); allow a few instances so a traffic
       # spike is absorbed instead of throttled against a single-container ceiling.
-      max_instance_count = 3
+      max_instance_count = 5
       min_instance_count = 0
     }
 

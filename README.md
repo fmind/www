@@ -92,7 +92,7 @@ The site runs on Google Cloud Run in project `www-fmind-dev`, region `europe-wes
 1. **Local image** — run `mise run build:image`, load the archive with `docker load --input tmp/www-image.tar`, then run `docker run -p 8080:8080 www:local`.
 1. **Manual rollout or rollback** — `mise run deploy europe-west1-docker.pkg.dev/www-fmind-dev/app/www-fmind-dev@sha256:<64-lowercase-hex>` accepts exactly one digest from the production repository and changes only the service image. Tags, foreign repositories, and extra flags fail before `gcloud`; the task never runs from a hook or `mise run all`.
 
-Reconcile reviewed `infra/` changes before rolling out an application image. The Python runtime is qualified for the declared concurrency of **8**, a **512 MiB** service limit, and the startup probe's **6 attempts at 5-second intervals**. CI and the manual deploy task change only the image; merging a branch does not apply service settings. After each image rollout, verify health, traffic, error logs, and browser journeys; keep the previous known-good digest available for rollback.
+Reconcile reviewed `infra/` changes before rolling out an application image. The Python runtime is qualified for the declared concurrency of **8**, a **512 MiB** service limit, scale-to-zero with at most **5 instances**, and the startup probe's **6 attempts at 5-second intervals**. CI and the manual deploy task change only the image; merging a branch does not apply service settings. After each image rollout, verify health, traffic, error logs, and browser journeys; keep the previous known-good digest available for rollback.
 
 ### Analytics
 
