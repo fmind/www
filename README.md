@@ -64,6 +64,7 @@ All tasks are defined in `mise.toml` and reused by Lefthook and CI:
 | `mise run format`                                                      | Ruff Python imports/formatting, dprint, and OpenTofu formatting                       |
 | `mise run check`                                                       | Ruff, ty, metadata/lock, dependency, Dockerfile/IaC, and workflow checks              |
 | `mise run check:image`                                                 | Build and scan the exact production OCI archive (Docker with Buildx required)         |
+| `mise run check:image:deployed`                                        | Resolve and scan every serving Cloud Run revision with Trivy                          |
 | `mise run check:images`                                                | Validate all image derivatives, hashes, modes, dimensions, and recipe without writing |
 | `mise run check:typos`                                                 | Check article prose against the spelling floor                                        |
 | `mise run check:links`                                                 | Check external content links (network-dependent; scheduled weekly in CI)              |

@@ -52,8 +52,8 @@ jobs:
         with:
           install: false
           cache: true
-      - name: Install scanner
-        run: mise install --locked -y trivy
+      - name: Install scanner and runtime
+        run: mise install --locked -y python trivy
       - name: Authenticate read-only scanner
         id: auth
         uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
@@ -70,23 +70,7 @@ jobs:
           username: oauth2accesstoken
           password: ${{ steps.auth.outputs.access_token }}
       - name: Resolve and scan every serving digest
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p tmp/security
-          gcloud run services describe www-fmind-dev --format='json(status.traffic)' > tmp/security/service.json
-          jq -er '[.status.traffic[] | select(.percent > 0) | .revisionName] | unique | if length > 0 then .[] else error("no serving revision") end' tmp/security/service.json > tmp/security/revisions.txt
-          result=0
-          while IFS= read -r revision; do
-            [[ "$revision" =~ ^www-fmind-dev-[a-z0-9-]+$ ]]
-            digest=$(gcloud run revisions describe "$revision" --format='value(status.imageDigest)')
-            [[ "$digest" =~ ^europe-west1-docker.pkg.dev/www-fmind-dev/app/www-fmind-dev@sha256:[a-f0-9]{64}$ ]]
-            printf '%s %s\n' "$revision" "$digest" >> tmp/security/digests.txt
-            env -u TRIVY_CONFIG trivy image --platform linux/amd64 --scanners vuln --severity HIGH,CRITICAL --ignorefile /dev/null --format json --output "tmp/security/$revision.json" "$digest"
-            # Keep unfixed advisories visible while enforcing the deployment gate.
-            mise run check:image:digest "$digest" || result=1
-          done < tmp/security/revisions.txt
-          exit "$result"
+        run: mise run check:image:deployed
       - name: Retain digest and advisory evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

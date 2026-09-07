@@ -12,6 +12,7 @@ Python 3.14 server-rendered web application: Litestar + strict Jinja + Tailwind/
 - `mise run format` — Ruff imports/format, dprint, and OpenTofu format.
 - `mise run check` — project/lock validation, Ruff, ty, dprint, secrets, dependency and Dockerfile/IaC scans, and workflow audits.
 - `mise run check:image` — build and scan the exact production OCI archive; requires Docker with Buildx.
+- `mise run check:image:deployed` — resolve and scan every serving Cloud Run revision with Trivy.
 - `mise run check:images` — read-only validation of the complete image derivative archive, provenance lock, and encoder recipe; part of `check`.
 - `mise run check:typos` — article spelling floor inside `check`, with reviewed exceptions in `typos.toml`.
 - `mise run check:links` — network-dependent external-link check, scheduled weekly rather than used as a merge gate.
@@ -27,7 +28,7 @@ Python 3.14 server-rendered web application: Litestar + strict Jinja + Tailwind/
 
 `mise run test:lighthouse` expects the pinned Chromium to be present; run `mise run install:browser` first. The harness clearly reports `playwright install chromium` when the browser is absent.
 
-`mise run all` runs sequentially: format, check, the package/CSS build, test, the exact OCI archive build and scan, its runtime smoke test, one Chromium installation, then browser journeys. The image smoke reuses the archive and never builds it. It skips the browser task's automatic dependencies only after satisfying them once; standalone task dependencies are unchanged. The full gate requires a running Docker Engine with Buildx. A fresh checkout requires `mise install`; the first full gate needs network access for Chromium installation, the base-image pull, and scanner database refreshes. No cloud credentials are required. Browser reports and temporary outputs belong under `tmp/`.
+`mise run all` runs sequentially: format, check, the package/CSS build, test, the exact OCI archive build and scan, its runtime smoke test, one Chromium installation, then browser journeys. The image smoke reuses the archive and never builds it; standalone task dependencies are unchanged. The full gate requires a running Docker Engine with Buildx. A fresh checkout requires `mise install`; the first full gate needs network access for Chromium installation, the base-image pull, and scanner database refreshes. No cloud credentials are required. Browser reports and temporary outputs belong under `tmp/`.
 
 ## Layout
 
@@ -57,7 +58,7 @@ Entries are in ASCII order: dotfiles, capitalized files, then lowercase paths.
 - `mise.toml` — tool versions, environment defaults, and canonical tasks.
 - `pyproject.toml` — Python package, dependencies, Ruff, ty, pytest, and coverage configuration.
 - `server.json` — publish-ready official MCP Registry metadata; version tracks the release tag.
-- `scripts/` — manual deploy, SDK-based image smoke, and bounded Lighthouse qualification; excluded from the runtime image.
+- `scripts/` — manual deploy, SDK-based image smoke, deployed-image scanning, and bounded Lighthouse qualification; excluded from the runtime image.
 - `src/www/` — application package, composition root, domain logic, and packaged Jinja templates.
 - `static/` — compiled or final public assets copied into the runtime image.
 - `tests/` — pytest and pinned Playwright regressions.

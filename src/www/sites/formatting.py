@@ -54,21 +54,38 @@ def task_cost_max(rows: Sequence[TaskComparison]) -> float:
 
 def hosting_decision_title(view: LLMSelfHostingView) -> str:
     """Summarize the immediate economic conclusion without hiding capacity."""
+    if view.estimate.context_issue:
+        return "The request exceeds this model's context limit"
+    if not view.estimate.topology_confirmed:
+        return "Confirm this multi-host configuration with a pilot"
     if not view.estimate.demand_fits:
         return "This fleet cannot cover the modeled demand"
-    if min(row.monthly_usd for row in view.apis) < view.estimate.total_monthly_usd:
+    available = tuple(row for row in view.apis if not row.request_issue)
+    if not available:
+        return "No managed API baseline accepts this request"
+    if min(row.monthly_usd for row in available) < view.estimate.total_monthly_usd:
         return "Start with an API on cost grounds"
     return "Self-hosting has a cost case to test"
 
 
 def hosting_decision_copy(view: LLMSelfHostingView) -> str:
     """Explain the capacity and cost conclusion in decision-ready language."""
+    if view.estimate.context_issue:
+        return view.estimate.context_issue + ". Reduce the request or choose a model with a larger context window."
+    if not view.estimate.topology_confirmed:
+        return (
+            "The model spans more than one host. Record latency and completion measurements on this exact serving "
+            "configuration before using its capacity or cost verdict."
+        )
     if not view.estimate.demand_fits:
         return (
             "Do not treat the current fleet bill as a quote for all this work. Increase replicas, measure a faster "
             "configuration, or reduce demand, then recalculate. A monthly average cannot establish peak-time capacity."
         )
-    cheapest = min(view.apis, key=lambda row: row.monthly_usd)
+    available = tuple(row for row in view.apis if not row.request_issue)
+    if not available:
+        return "Reduce the input or output budget before comparing this fleet with managed APIs."
+    cheapest = min(available, key=lambda row: row.monthly_usd)
     if cheapest.monthly_usd < view.estimate.total_monthly_usd:
         return (
             f"{cheapest.baseline.name} is {format_usd2(cheapest.monthly_usd)}/month for this token mix, versus "

@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import replace
 from decimal import Decimal
+from hashlib import sha256
 from math import isfinite
 from re import fullmatch
 from urllib.parse import urlencode
@@ -240,16 +241,19 @@ def parse_inputs(query: Query) -> tuple[HostingInputs, tuple[str, ...]]:
         ),
     )
     node = find_node_pool(inputs.node_pool_id)
-    plan = _parse_choice(
-        query,
-        "billing",
-        node.prices[0].plan.value,
-        frozenset(price.plan.value for price in node.prices),
-        validation,
-    )
+    raw_plan = _first(query, "billing")
+    available_plans = frozenset(price.plan.value for price in node.prices)
+    plan = node.prices[0].plan.value
+    if raw_plan and raw_plan not in available_plans:
+        validation.append(
+            f"{node.name} does not offer the {raw_plan} billing plan; {node.prices[0].label} was used",
+        )
+    elif raw_plan:
+        plan = raw_plan
     inputs = replace(inputs, billing_plan=BillingPlan(plan))
     inputs = _apply_demand_preset(_first(query, "preset"), inputs, validation)
-    return _parse_hosting_options(query, inputs, validation), tuple(validation)
+    inputs = _parse_hosting_options(query, inputs, validation)
+    return _bind_pilot_measurements(query, inputs, validation), tuple(validation)
 
 
 def _parse_hosting_options(
@@ -388,6 +392,49 @@ def find_quantization(quantization_id: str) -> Quantization:
     )
 
 
+def pilot_configuration_id(inputs: HostingInputs) -> str:
+    """Return a stable identifier for the configuration behind pilot evidence."""
+    values = (
+        inputs.model_id,
+        inputs.node_pool_id,
+        inputs.quantization_id,
+        str(inputs.replicas),
+        _float_for_url(inputs.memory_overhead_pct),
+        _float_for_url(inputs.tokens_per_second),
+        _float_for_url(inputs.input_tokens_request),
+        _float_for_url(inputs.output_tokens_request),
+        str(inputs.concurrency),
+    )
+    return "v1-" + sha256("\0".join(values).encode()).hexdigest()[:24]
+
+
+def _bind_pilot_measurements(
+    query: Query,
+    inputs: HostingInputs,
+    validation: list[str],
+) -> HostingInputs:
+    current = pilot_configuration_id(inputs)
+    saved = _first(query, "pilot") or ""
+    confirmation = _first(query, "confirm-pilot") or ""
+    measurements_present = any(
+        (inputs.measured_concurrency, inputs.measured_first_token, inputs.measured_completion),
+    )
+    if not measurements_present:
+        return replace(inputs, pilot_config="")
+    if saved == current or confirmation == current:
+        return replace(inputs, pilot_config=current)
+    if saved or confirmation:
+        validation.append("The pilot measurements were cleared because the serving configuration changed")
+        return replace(
+            inputs,
+            measured_concurrency=0,
+            measured_first_token=0,
+            measured_completion=0,
+            pilot_config="",
+        )
+    return inputs
+
+
 def _float_for_url(value: float) -> str:
     if value.is_integer():
         return str(int(value))
@@ -426,6 +473,8 @@ def hosting_url(inputs: HostingInputs) -> str:
     }
     if inputs.quality_enabled:
         values["quality"] = "on"
+    if inputs.pilot_config:
+        values["pilot"] = inputs.pilot_config
     for index, quality in enumerate(inputs.quality):
         values[f"quality-{index}-acceptance"] = _float_for_url(
             quality.acceptance_percent,

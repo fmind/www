@@ -349,6 +349,9 @@ API_BASELINES = (
         "2026-10-07",
         "2026-12-31",
         "Introductory rates through Dec 31, 2026; input, output, cache reads, and storage double on Jan 1, 2027.",
+        1_048_576,
+        65_536,
+        1_048_576,
     ),
     APIBaseline(
         "Claude Sonnet 5",
@@ -364,6 +367,9 @@ API_BASELINES = (
         "2026-10-07",
         "",
         "$2 / $10 is standard pricing; the previously announced September increase was canceled. No announced end date.",
+        1_000_000,
+        128_000,
+        1_000_000,
     ),
     APIBaseline(
         "GPT-6 Astra",
@@ -379,6 +385,9 @@ API_BASELINES = (
         "2026-10-07",
         "",
         "OpenAI's published Astra name. Above 272,000 input tokens, full-request rates rise to $20 input / $75 output per million. No announced end date.",
+        1_050_000,
+        128_000,
+        1_050_000,
     ),
 )
 

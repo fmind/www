@@ -17,9 +17,24 @@ from .data import (
     PRICE_SOURCE_URL,
     QUANTIZATIONS,
 )
-from .economics import api_monthly_cost, current_api_baselines, estimate_hosting, utc_date
+from .economics import (
+    api_monthly_cost,
+    api_request_issue,
+    current_api_baselines,
+    estimate_hosting,
+    pilot_measurements_complete,
+    utc_date,
+)
 from .formatting import format_decimal, format_usd2
-from .inputs import Query, find_model, find_node_pool, find_quantization, hosting_url, parse_inputs
+from .inputs import (
+    Query,
+    find_model,
+    find_node_pool,
+    find_quantization,
+    hosting_url,
+    parse_inputs,
+    pilot_configuration_id,
+)
 from .models import (
     APIBaseline,
     APIComparison,
@@ -97,6 +112,7 @@ def _compare_apis(
                 break_even_requests=float(high),
                 break_even_fits=(high * inputs.output_tokens_request <= estimate.capacity_tokens_month),
                 mode_note=_api_mode_note(inputs, baseline),
+                request_issue=api_request_issue(inputs, baseline),
             ),
         )
     return tuple(rows)
@@ -112,12 +128,16 @@ def _hosting_tasks(
         requests = inputs.tasks_per_month * quality.calls_per_task
         accepted = inputs.tasks_per_month * quality.acceptance_percent / 100
         model_usd = estimate.total_monthly_usd
-        fits = requests * inputs.output_tokens_request <= estimate.capacity_tokens_month
+        request_issue = estimate.context_issue
+        if not estimate.topology_confirmed:
+            request_issue = "Multi-host serving needs pilot measurements from this configuration"
+        fits = not request_issue and requests * inputs.output_tokens_request <= estimate.capacity_tokens_month
         name = "Your GKE fleet"
         if index > 0:
             name = baselines[index - 1].name
             model_usd = api_monthly_cost(inputs, baselines[index - 1], requests)[0]
-            fits = True
+            request_issue = api_request_issue(inputs, baselines[index - 1])
+            fits = not request_issue
         review_usd = inputs.tasks_per_month * quality.review_minutes / 60 * inputs.review_hourly_usd
         rows.append(
             TaskComparison(
@@ -130,6 +150,7 @@ def _hosting_tasks(
                 review_usd=review_usd,
                 per_accepted_usd=(model_usd + review_usd) / accepted if accepted else 0,
                 fits=fits,
+                request_issue=request_issue,
             ),
         )
     return tuple(rows)
@@ -162,6 +183,12 @@ def _demand_label(inputs: HostingInputs) -> str:
 
 
 def _hosting_latency(inputs: HostingInputs) -> tuple[str, str]:
+    measurements_complete = pilot_measurements_complete(inputs)
+    if measurements_complete and not inputs.pilot_config:
+        return (
+            "Confirm which configuration produced this pilot",
+            "Re-submit the latency measurements to bind them to the current model, hardware, precision, and workload.",
+        )
     if (
         inputs.measured_concurrency < inputs.concurrency
         or inputs.measured_first_token == 0
@@ -196,6 +223,14 @@ def _hosting_sensitivity(
                 requests_per_day=min(10_000_000, max(1, inputs.requests_per_day * demand)),
                 tokens_per_second=min(1_000_000, max(0.1, inputs.tokens_per_second * speed)),
             )
+            if inputs.pilot_config and pilot_configuration_id(scenario) != inputs.pilot_config:
+                scenario = replace(
+                    scenario,
+                    measured_concurrency=0,
+                    measured_first_token=0,
+                    measured_completion=0,
+                    pilot_config="",
+                )
             estimate = estimate_hosting(
                 find_model(inputs.model_id),
                 find_node_pool(inputs.node_pool_id),
@@ -215,7 +250,7 @@ def _hosting_sensitivity(
                     inputs=scenario,
                     capacity_pct=estimate.demand_capacity_pct,
                     cheapest_api_usd=cheapest,
-                    fits=estimate.demand_fits,
+                    fits=estimate.qualified,
                 ),
             )
         rows.append(SensitivityRow(labels[row_index], tuple(cells)))
@@ -229,11 +264,14 @@ def build_llm_self_hosting_view(
 ) -> LLMSelfHostingView:
     query = query or {}
     now = now or datetime.now(UTC)
-    inputs, validation = parse_inputs(query)
+    inputs, parsed_validation = parse_inputs(query)
+    validation = list(parsed_validation)
     model = find_model(inputs.model_id)
     node = find_node_pool(inputs.node_pool_id)
     quantization = find_quantization(inputs.quantization_id)
     estimate = estimate_hosting(model, node, quantization, inputs)
+    if estimate.context_issue and estimate.context_issue not in validation:
+        validation.append(estimate.context_issue)
     baselines = current_api_baselines(now, inputs)
     review_date = utc_date(now)
     apis = tuple(
@@ -253,6 +291,7 @@ def build_llm_self_hosting_view(
         for comparison in _compare_apis(inputs, estimate, baselines)
     )
     latency_title, latency_detail = _hosting_latency(inputs)
+    current_pilot_config = pilot_configuration_id(inputs)
     precisions = tuple(PrecisionComparison(item, estimate_hosting(model, node, item, inputs)) for item in QUANTIZATIONS)
     comparisons: list[ModelComparison] = []
     for candidate in FRONTIER_MODELS:
@@ -276,7 +315,7 @@ def build_llm_self_hosting_view(
         selected_quant=quantization,
         estimate=estimate,
         comparison=tuple(comparisons),
-        validation=validation,
+        validation=tuple(validation),
         snapshot_date=MODEL_SNAPSHOT,
         index_version=INDEX_VERSION,
         presets=DEMAND_PRESETS,
@@ -291,4 +330,6 @@ def build_llm_self_hosting_view(
         model_source_url=MODEL_SOURCE_URL,
         gke_source_url=GKE_SOURCE_URL,
         price_source_url=PRICE_SOURCE_URL,
+        current_pilot_config=current_pilot_config,
+        comparison_ready=estimate.qualified and any(not row.request_issue for row in apis),
     )

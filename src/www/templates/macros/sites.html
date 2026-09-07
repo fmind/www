@@ -51,13 +51,13 @@
     {% for row in view.apis %}
       <article class="rounded-2xl border border-base-300 bg-base-100 p-5">
         <h4 class="font-heading font-bold"><a class="link link-primary" href="{{ row.baseline.source_url }}">{{ row.baseline.name }}</a></h4>
-        <p class="font-heading font-black text-3xl mt-3">{{ format_usd2(row.monthly_usd) }}<span class="text-sm font-body font-normal">/ month</span></p>
-        <dl class="text-sm mt-4 space-y-3">
+        {% if row.request_issue %}<p class="font-semibold mt-3">Unavailable: {{ row.request_issue }}</p>{% else %}<p class="font-heading font-black text-3xl mt-3">{{ format_usd2(row.monthly_usd) }}<span class="text-sm font-body font-normal">/ month</span></p>{% endif %}
+        {% if not row.request_issue %}<dl class="text-sm mt-4 space-y-3">
           <div><dt class="text-base-content/70">Standard input / output per 1M tokens</dt><dd class="font-semibold">{{ format_usd2(row.baseline.input_per_million) }} / {{ format_usd2(row.baseline.output_per_million) }}</dd></div>
           <div><dt class="text-base-content/70">Per 1,000 requests</dt><dd class="font-semibold">{{ format_usd2(row.per_thousand_requests_usd) }}</dd></div>
           <div><dt class="text-base-content/70">Self-hosting break-even</dt><dd class="font-semibold">{{ format_decimal(row.break_even_requests, 0) }} requests/month</dd></div>
-        </dl>
-        {% if row.break_even_fits %}<p class="text-sm mt-3">Within modeled capacity; quality still unproved.</p>{% else %}<p class="text-sm font-semibold mt-3">Beyond this fleet's modeled capacity.</p>{% endif %}
+        </dl>{% endif %}
+        {% if not row.request_issue %}{% if row.break_even_fits %}<p class="text-sm mt-3">Within modeled capacity; quality still unproved.</p>{% else %}<p class="text-sm font-semibold mt-3">Beyond this fleet's modeled capacity.</p>{% endif %}{% endif %}
       </article>
     {% endfor %}
   </div>
@@ -102,9 +102,7 @@
             <tr>
               <th scope="row"><a class="link link-primary" href="{{ row.baseline.source_url }}" target="_blank" rel="noopener noreferrer">{{ row.baseline.name }}</a></th>
               <td class="whitespace-nowrap">{{ format_usd2(row.baseline.input_per_million) }} / {{ format_usd2(row.baseline.output_per_million) }}</td>
-              <td class="font-bold whitespace-nowrap">{{ format_usd2(row.monthly_usd) }}</td>
-              <td>{{ format_usd2(row.per_thousand_requests_usd) }}</td>
-              <td>{{ format_number(row.break_even_requests) }} requests/month{% if row.break_even_fits %}<span class="block text-xs mt-1">Within modeled capacity; quality still unproved</span>{% else %}<span class="block text-xs font-semibold mt-1">Beyond this fleet's modeled capacity</span>{% endif %}</td>
+              {% if row.request_issue %}<td colspan="3" class="font-semibold">Unavailable: {{ row.request_issue }}</td>{% else %}<td class="font-bold whitespace-nowrap">{{ format_usd2(row.monthly_usd) }}</td><td>{{ format_usd2(row.per_thousand_requests_usd) }}</td><td>{{ format_number(row.break_even_requests) }} requests/month{% if row.break_even_fits %}<span class="block text-xs mt-1">Within modeled capacity; quality still unproved</span>{% else %}<span class="block text-xs font-semibold mt-1">Beyond this fleet's modeled capacity</span>{% endif %}</td>{% endif %}
             </tr>
           {% endfor %}
         </tbody>
@@ -227,7 +225,8 @@
         {{ number_input("measured-first", "Measured p95 first token (seconds)", view.inputs.measured_first_token, "0", "3600", "any", "Use the full workload, including prompt processing and network delay.") }}
         {{ number_input("measured-complete", "Measured p95 completion (seconds)", view.inputs.measured_completion, "0", "86400", "any", "Measure the whole response; aggregate tokens/s cannot predict this.") }}
       </div>
-      <button id="update-latency" type="submit" form="calculator" class="btn btn-primary rounded-xl mt-5">Check recorded latency</button>
+      {% if view.inputs.pilot_config %}<input type="hidden" form="calculator" name="pilot" value="{{ view.inputs.pilot_config }}"/>{% endif %}
+      <button id="update-latency" type="submit" form="calculator" name="confirm-pilot" value="{{ view.current_pilot_config }}" class="btn btn-primary rounded-xl mt-5">Check recorded latency</button>
     </details>
   </section>
 {%- endmacro %}
@@ -265,7 +264,9 @@
           {% for row in view.tasks %}
             <div>
               <h3 class="font-semibold">{{ row.name }}</h3>
-              {% if row.accepted == 0 %}
+              {% if row.request_issue %}
+                <p class="font-bold mt-2">Unavailable: {{ row.request_issue }}</p>
+              {% elif row.accepted == 0 %}
                 <p class="font-bold mt-2">No accepted tasks; cost per accepted task is undefined.</p>
               {% elif row.fits %}
                 <p class="font-heading text-2xl font-black text-primary mt-2">{{ format_usd2(row.per_accepted_usd) }} / accepted task</p>

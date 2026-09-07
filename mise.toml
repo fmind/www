@@ -36,11 +36,11 @@ run = [
   "mise run format",
   "mise run check",
   "mise run build",
-  "mise run --skip-deps test",
+  "mise run test",
   "mise run check:image",
   "mise run test:image",
   "mise run install:browser",
-  "mise run --skip-deps test:browser",
+  "mise run test:browser",
 ]
 
 [tasks.build]
@@ -95,7 +95,7 @@ description = "Check formatting, project metadata, and lockfile"
 run = [
   "uv lock --check",
   "uv run --locked validate-pyproject pyproject.toml",
-  "uv run --locked ruff format --check src tests scripts",
+  "uv run --locked ruff format --check",
   "dprint check",
 ]
 
@@ -114,6 +114,10 @@ raw_args = true
 # complete policy below and fail on the same fixable runtime findings.
 run = "env -u TRIVY_CONFIG trivy image --platform linux/amd64 --exit-code=1 --severity HIGH,CRITICAL --ignore-unfixed --scanners vuln,secret"
 
+[tasks."check:image:deployed"]
+description = "Resolve and scan every serving Cloud Run revision with Trivy"
+run = "python -m scripts.scan_deployed"
+
 [tasks."check:images"]
 description = "Validate article image derivatives without changing files"
 run = "uv run --locked python -m www.images --check"
@@ -130,10 +134,6 @@ run = [
   "gitleaks dir . --config assets/gitleaks-dir.toml --redact=100 --verbose",
 ]
 
-[tasks."check:leaks:staged"]
-description = "Audit staged changes for leaked secrets (gitleaks)"
-run = "gitleaks git --redact=100 --staged --verbose"
-
 [tasks."check:links"]
 alias = "ck"
 description = "Check external content links are reachable"
@@ -142,7 +142,7 @@ run = "lychee --root-dir \"$PWD\" ."
 [tasks."check:lint"]
 alias = "cl"
 description = "Lint Python sources (ruff)"
-run = "uv run --locked ruff check src tests scripts"
+run = "uv run --locked ruff check"
 
 [tasks."check:scan"]
 description = "Scan Dockerfile and infrastructure for misconfigurations (trivy config)"
@@ -221,15 +221,10 @@ run = "dprint fmt --allow-no-files"
 
 [tasks."format:python"]
 description = "Format Python sources and imports (ruff)"
-raw_args = true
-run = """
-bash -c '
-set -euo pipefail
-if [ "$#" -eq 0 ]; then set -- src tests scripts; fi
-uv run --locked ruff check --select=I --fix --force-exclude "$@"
-uv run --locked ruff format --force-exclude "$@"
-' --
-"""
+run = [
+  "uv run --locked ruff check --select=I --fix",
+  "uv run --locked ruff format",
+]
 
 [tasks."format:tofu"]
 description = "Format the OpenTofu configuration"

@@ -6,7 +6,7 @@ metadata:
   author: Médéric HURIER (Fmind)
 ---
 
-# Release www
+# Release
 
 This workflow contains commits, pushes, a GitHub release, and a production deployment. Run it only after explicit owner authorization. Local readiness never grants publication authority, and already published tags are immutable.
 

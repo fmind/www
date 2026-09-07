@@ -99,6 +99,9 @@ class APIBaseline:
     review_on: str
     valid_through: str
     note: str
+    input_token_limit: int
+    output_token_limit: int
+    context_token_limit: int = 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -137,6 +140,7 @@ class HostingInputs:
     quality: tuple[TaskQuality, TaskQuality, TaskQuality, TaskQuality]
     quality_enabled: bool
     billing_plan: BillingPlan = BillingPlan.ON_DEMAND
+    pilot_config: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -158,6 +162,9 @@ class HostingEstimate:
     demand_capacity_pct: float
     per_thousand_requests_usd: float
     demand_fits: bool
+    context_issue: str
+    topology_confirmed: bool
+    qualified: bool
 
 
 @dataclass(frozen=True, slots=True)
@@ -169,6 +176,7 @@ class APIComparison:
     break_even_requests: float
     break_even_fits: bool
     mode_note: str
+    request_issue: str
     freshness: str = ""
     needs_review: bool = False
 
@@ -203,6 +211,7 @@ class TaskComparison:
     review_usd: float
     per_accepted_usd: float
     fits: bool
+    request_issue: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -284,3 +293,5 @@ class LLMSelfHostingView:
     model_source_url: str
     gke_source_url: str
     price_source_url: str
+    current_pilot_config: str
+    comparison_ready: bool

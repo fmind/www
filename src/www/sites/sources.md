@@ -23,15 +23,15 @@ The [GKE cluster fee](https://cloud.google.com/kubernetes-engine/pricing) remain
 
 ## API baselines
 
-| Provider model   | Standard input/M | Output/M | Cache read/M | Cache write/M |
-| ---------------- | ---------------- | -------- | ------------ | ------------- |
-| Gemini 3.8 Flash | 0.75             | 3.75     | 0.075        | Storage fees  |
-| Claude Sonnet 5  | 2                | 10       | 0.20         | 2.50          |
-| GPT-6 Astra      | 10               | 50       | 1            | 12.50         |
+| Provider model   | Standard input/M | Output/M | Cache read/M | Cache write/M | Combined context | Max output |
+| ---------------- | ---------------- | -------- | ------------ | ------------- | ---------------- | ---------- |
+| Gemini 3.8 Flash | 0.75             | 3.75     | 0.075        | Storage fees  | 1,048,576        | 65,536     |
+| Claude Sonnet 5  | 2                | 10       | 0.20         | 2.50          | 1,000,000        | 128,000    |
+| GPT-6 Astra      | 10               | 50       | 1            | 12.50         | 1,050,000        | 128,000    |
 
-- [Astra model pricing](https://developers.openai.com/api/docs/models/gpt-6-astra): input over 272,000 tokens doubles input/cache rates and multiplies output by 1.5 for the entire request. These are standard API token prices, separate from ChatGPT/Codex subscriptions and tool charges.
-- [Gemini pricing](https://ai.google.dev/gemini-api/docs/pricing#gemini-3.8-flash): introductory rates end December 31, 2026. Input, output, cache reads, and $0.50/M token-hour storage double on January 1, 2027.
-- [Claude pricing](https://platform.claude.com/docs/en/about-claude/pricing): Sonnet 5's $2/$10 rates are now standard; the announced September increase was canceled.
+- [Astra model pricing and limits](https://developers.openai.com/api/docs/models/gpt-6-astra): input over 272,000 tokens doubles input/cache rates and multiplies output by 1.5 for the entire request. These are standard API token prices, separate from ChatGPT/Codex subscriptions and tool charges.
+- [Gemini pricing](https://ai.google.dev/gemini-api/docs/pricing#gemini-3.8-flash): introductory rates end December 31, 2026. Input, output, cache reads, and $0.50/M token-hour storage double on January 1, 2027. The [model card](https://ai.google.dev/gemini-api/docs/models/gemini-3.8-flash) lists the input and output limits; the [token guide](https://ai.google.dev/gemini-api/docs/tokens#context-window) defines the context window as their combined budget.
+- [Claude pricing](https://platform.claude.com/docs/en/about-claude/pricing): Sonnet 5's $2/$10 rates are now standard; the announced September increase was canceled. The [Sonnet 5 model guide](https://platform.claude.com/docs/en/models/sonnet-5/whats-new-sonnet-5) documents its context and output limits.
 
 Batch rates remain half the standard input/output rates. Cache rules and provider links remain attached to each `APIBaseline`; batch and caching are modeled separately.
 

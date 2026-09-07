@@ -55,6 +55,14 @@ def estimate_hosting(
     )
     requests = inputs.requests_per_day * inputs.active_days
     output_tokens = requests * inputs.output_tokens_request
+    context_issue = ""
+    if inputs.input_tokens_request + inputs.output_tokens_request > model.context_tokens:
+        context_issue = (
+            f"The request needs {inputs.input_tokens_request + inputs.output_tokens_request:,.0f} tokens, "
+            f"above {model.name}'s {model.context_tokens:,}-token context limit"
+        )
+    topology_confirmed = nodes_per_replica == 1 or (bool(inputs.pilot_config) and pilot_measurements_complete(inputs))
+    qualified = output_tokens <= capacity and not context_issue and topology_confirmed
     return HostingEstimate(
         weight_memory_gb=weight_memory,
         required_memory_gb=required_memory,
@@ -73,7 +81,33 @@ def estimate_hosting(
         demand_capacity_pct=output_tokens / capacity * 100,
         per_thousand_requests_usd=total_monthly / requests * 1000,
         demand_fits=output_tokens <= capacity,
+        context_issue=context_issue,
+        topology_confirmed=topology_confirmed,
+        qualified=qualified,
     )
+
+
+def pilot_measurements_complete(inputs: HostingInputs) -> bool:
+    """Return whether bound pilot evidence covers the modeled concurrency."""
+    return (
+        inputs.measured_concurrency >= inputs.concurrency
+        and inputs.measured_first_token > 0
+        and inputs.measured_completion > 0
+    )
+
+
+def api_request_issue(inputs: HostingInputs, baseline: APIBaseline) -> str:
+    """Explain why a request cannot be sent to one managed API baseline."""
+    if inputs.input_tokens_request > baseline.input_token_limit:
+        return f"Input exceeds the {baseline.input_token_limit:,}-token limit"
+    if inputs.output_tokens_request > baseline.output_token_limit:
+        return f"Output exceeds the {baseline.output_token_limit:,}-token limit"
+    if (
+        baseline.context_token_limit
+        and inputs.input_tokens_request + inputs.output_tokens_request > baseline.context_token_limit
+    ):
+        return f"Input plus output exceeds the {baseline.context_token_limit:,}-token context limit"
+    return ""
 
 
 def current_api_baselines(

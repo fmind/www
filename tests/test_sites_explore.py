@@ -196,6 +196,7 @@ def test_latency_does_not_follow_monthly_capacity() -> None:
         "measured-concurrency": "8",
         "measured-first": "1.5",
         "measured-complete": "25",
+        "confirm-pilot": view().current_pilot_config,
     }
     assert view(query).latency_title == "The recorded pilot meets your latency targets"
     query["measured-first"] = "3"
