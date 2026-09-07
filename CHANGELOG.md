@@ -2,25 +2,32 @@
 
 All notable changes to this project are documented in this file.
 
+## [1.5.0] - 2026-09-07
+
+### 🚀 Features
+
+- Refine hosting costs and harden site operations
+- Refine self-hosting estimates and scan deployed revisions
+
 ## [1.4.5] - 2026-09-07
 
 ### 🐛 Bug Fixes
 
 - _(infra)_ Absorb burst traffic
 
-## [1.4.4] - 2026-09-07
+## [1.4.4] - 2026-09-06
 
 ### 🧪 Testing
 
 - _(browser)_ Bound remote image loading
 
-## [1.4.3] - 2026-09-07
+## [1.4.3] - 2026-09-06
 
 ### 🧪 Testing
 
 - _(browser)_ Allow remote crawl network variance
 
-## [1.4.2] - 2026-09-07
+## [1.4.2] - 2026-09-06
 
 ### 🐛 Bug Fixes
 
