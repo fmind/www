@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file.
 
+## [1.4.5] - 2026-09-07
+
+### 🐛 Bug Fixes
+
+- _(infra)_ Absorb burst traffic
+
 ## [1.4.4] - 2026-09-07
 
 ### 🧪 Testing
