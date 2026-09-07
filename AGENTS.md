@@ -46,7 +46,8 @@ Entries are in ASCII order: dotfiles, capitalized files, then lowercase paths.
 - `Dockerfile` — locked, non-root Python OCI build.
 - `LICENSE` — MIT license.
 - `README.md` — human setup, behavior, and operations.
-- `assets/` — authored Tailwind input and the image provenance and encoder-recipe lock; never served directly.
+- `SECURITY.md` — vulnerability reporting, deployed advisory triage, and review ownership.
+- `assets/` — authored Tailwind input, working-tree scanner scope, and image provenance/encoder-recipe lock; never served directly.
 - `content/` — strict Markdown article sources.
 - `dprint.json` — JSON, Markdown, TOML, and YAML formatting.
 - `infra/` — OpenTofu for Cloud Run, identities, monitoring, and aggregate analytics.
@@ -56,7 +57,7 @@ Entries are in ASCII order: dotfiles, capitalized files, then lowercase paths.
 - `mise.toml` — tool versions, environment defaults, and canonical tasks.
 - `pyproject.toml` — Python package, dependencies, Ruff, ty, pytest, and coverage configuration.
 - `server.json` — publish-ready official MCP Registry metadata; version tracks the release tag.
-- `scripts/` — bounded production-image and Lighthouse qualification entry points.
+- `scripts/` — manual deploy, SDK-based image smoke, and bounded Lighthouse qualification; excluded from the runtime image.
 - `src/www/` — application package, composition root, domain logic, and packaged Jinja templates.
 - `static/` — compiled or final public assets copied into the runtime image.
 - `tests/` — pytest and pinned Playwright regressions.
@@ -69,15 +70,16 @@ Important package ownership:
 - `assets.py`, `content.py`, and `images.py` load/hash static files, parse/render articles, and generate derivatives.
 - `data.py`, `models.py`, and `tags.py` own portfolio data, shared types, the site-page registry, and the closed tag vocabulary.
 - `highlighting.py`, `markdown.py`, `publications.py`, and `search.py` own Pygments output, source-preserving link rewriting, discovery artifacts, and BM25 search.
-- `middleware.py`, `log.py`, and `telemetry.py` own HTTP policy, structured logs, and OpenTelemetry; `deployment.py` and `image_runtime.py` own the manual deploy and exact-digest production-image smoke contracts.
+- `middleware.py`, `log.py`, and `telemetry.py` own HTTP policy, structured logs, and OpenTelemetry.
+- `static.py` owns inventory-bound static delivery and delegates conditional byte ranges to `ranges.py`.
 - `pages.py` builds page metadata; `rendering.py` is the only Jinja environment and reviewed raw-markup boundary.
-- `sites/` owns calculator inputs, immutable source snapshots, validation, formulas, formatting, and view models.
+- `sites/` separates input parsing and URLs, economics, charts, formatting, immutable sources, and view composition; import from the owning module.
 - `src/www/templates/` uses base inheritance, partials, and macros for all HTML page types.
 
 ## Conventions
 
 - Parse environment, query, Markdown, and protocol input at the boundary; use strict types and fail fast with contextual chained exceptions.
-- Build the validated article collection, static hashes, search index, derived publications, renderer, and MCP server once at application construction. Requests must not observe partial state.
+- Build the validated article collection, static hashes, search index, derived publications, renderer, and MCP server once at application construction. Requests must not observe partial state. Rendering validates immutable trusted markup at construction; MCP discovery is derived from registered primitives during lifespan startup.
 - Keep Jinja `StrictUndefined` and autoescape enabled. Only `src/www/rendering.py` may mark validated article HTML, biography fragments, inline CSS, or guarded JSON-LD as trusted markup.
 - Keep all Tailwind/DaisyUI classes in `src/www/templates/**/*.html`; `assets/css/input.css` scans that tree. Authored inputs belong in `assets/`; only compiled or final files belong in public `static/`.
 - Retain the two small nonce-authorized inline scripts. The theme initializer must run before first paint. Add a JS bundle only when first-party code becomes a real module graph.
@@ -91,5 +93,6 @@ Important package ownership:
 - Fold a paragraph into `<figcaption>` only when its text repeats the standalone image alt. Compare text rather than markup; position alone is not evidence of a caption.
 - Preserve the diagram acceptance bar: apparent labels at least about 12px and rendered height at most about 1300px when fitted to 1280px.
 - Definition of done: `mise run all` passes warning-free; when infrastructure changes, `mise run check:tofu` also passes. New behavior has a regression test.
+- The scheduled security workflow uses a separate read-only identity to scan every serving digest and retain unfixed advisory evidence; keep `SECURITY.md` triage current.
 - A `main` deployment must scan and smoke-test the pushed immutable digest before Cloud Run receives it; local archive proof is not a substitute for the registry artifact.
 - Use Conventional Commits without attribution. Do not commit, push, publish, apply infrastructure, deploy, or incur spend without explicit authority.

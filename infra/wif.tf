@@ -1,3 +1,4 @@
+# Docs: https://cloud.google.com/iam/docs/workload-identity-federation-with-deployment-pipelines
 # Keyless CI: Workload Identity Federation for GitHub Actions.
 #
 # GitHub's OIDC token impersonates a dedicated service account (no long-lived
@@ -60,16 +61,16 @@ resource "google_iam_workload_identity_pool_provider" "github_provider" {
   description                        = "OIDC identity provider for GitHub Actions"
 
   attribute_mapping = {
-    "google.subject"       = "assertion.sub"
-    "attribute.actor"      = "assertion.actor"
-    "attribute.ref"        = "assertion.ref"
-    "attribute.repository" = "assertion.repository"
+    "google.subject"                = "assertion.sub"
+    "attribute.actor"               = "assertion.actor"
+    "attribute.ref"                 = "assertion.ref"
+    "attribute.repository"          = "assertion.repository"
+    "attribute.repository_id"       = "assertion.repository_id"
+    "attribute.repository_owner_id" = "assertion.repository_owner_id"
   }
 
-  # Mint tokens only for this exact repository (not just any repo in the org), so
-  # the pool itself is the first least-privilege gate — not only the downstream
-  # principalSet impersonation binding below. assertion.repository is "owner/repo".
-  attribute_condition = "assertion.repository == '${var.github_repository}' && assertion.ref == 'refs/heads/main'"
+  # Numeric IDs prevent a reused repository or owner name inheriting cloud access.
+  attribute_condition = "assertion.repository == '${var.github_repository}' && assertion.repository_id == '${var.github_repository_numeric_id}' && assertion.repository_owner_id == '${var.github_owner_numeric_id}' && assertion.ref == 'refs/heads/main'"
 
   oidc {
     issuer_uri = "https://token.actions.githubusercontent.com"
@@ -81,4 +82,31 @@ resource "google_service_account_iam_member" "wif_impersonate" {
   service_account_id = google_service_account.github_actions_sa.name
   role               = "roles/iam.workloadIdentityUser"
   member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github_pool.name}/attribute.repository/${var.github_repository}"
+}
+
+# Scheduled scans can read the serving revisions and pull images, never deploy.
+resource "google_service_account" "github_security_sa" {
+  account_id   = "github-security"
+  display_name = "GitHub Security Read-Only Scanner"
+  depends_on   = [time_sleep.wait_for_apis]
+}
+
+resource "google_artifact_registry_repository_iam_member" "security_repo_reader" {
+  location   = google_artifact_registry_repository.repo.location
+  repository = google_artifact_registry_repository.repo.name
+  role       = "roles/artifactregistry.reader"
+  member     = "serviceAccount:${google_service_account.github_security_sa.email}"
+}
+
+resource "google_cloud_run_v2_service_iam_member" "security_run_viewer" {
+  location = google_cloud_run_v2_service.web.location
+  name     = google_cloud_run_v2_service.web.name
+  role     = "roles/run.viewer"
+  member   = "serviceAccount:${google_service_account.github_security_sa.email}"
+}
+
+resource "google_service_account_iam_member" "security_wif_impersonate" {
+  service_account_id = google_service_account.github_security_sa.name
+  role               = "roles/iam.workloadIdentityUser"
+  member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github_pool.name}/attribute.repository_id/${var.github_repository_numeric_id}"
 }

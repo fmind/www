@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from typing import Annotated
+
+from pydantic import Field
 
 CARD_COVER_WIDTH = 800
 DERIVATIVE_WIDTHS = (CARD_COVER_WIDTH, 1280)
@@ -77,7 +80,7 @@ class Project:
     title: str
     href: str
     description: str
-    repo: str = ""
+    repo: Annotated[str, Field(exclude_if=lambda value: value == "")] = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -122,8 +125,8 @@ class Article:
     description: str = ""
     title: str = ""
     slug: str = ""
-    canonical: str = ""
-    syndicated: str = ""
+    canonical: Annotated[str, Field(exclude_if=lambda value: value == "")] = ""
+    syndicated: Annotated[str, Field(exclude_if=lambda value: value == "")] = ""
     html: str = ""
     url: str = ""
     image_url: str = ""
@@ -183,8 +186,8 @@ class ArticleSummary:
     title: str
     description: str
     slug: str
-    canonical: str = ""
-    syndicated: str = ""
+    canonical: Annotated[str, Field(exclude_if=lambda value: value == "")] = ""
+    syndicated: Annotated[str, Field(exclude_if=lambda value: value == "")] = ""
     url: str
     image_url: str
     image_alt: str
@@ -215,7 +218,7 @@ class PageMetadata:
     article: Article | None = None
     title: str = ""
     description: str = ""
-    canonical: str = ""
+    canonical: Annotated[str, Field(exclude_if=lambda value: value == "")] = ""
     image_url: str = ""
     image_alt: str = ""
     kind: str = ""
@@ -259,7 +262,7 @@ class SitePage:
     description: str
     audience: str
     url: str
-    article_slugs: tuple[str, ...] = field(default_factory=tuple, repr=False)
+    article_slugs: Annotated[tuple[str, ...], Field(exclude=True)] = field(default_factory=tuple, repr=False)
 
     def relates_to(self, slug: str) -> bool:
         return slug in self.article_slugs

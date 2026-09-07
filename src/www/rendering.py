@@ -17,7 +17,7 @@ from markupsafe import Markup
 from www.assets import ApplicationAssets
 from www.data import METADATA, article_filter_url
 from www.models import PageMetadata
-from www.sites import (
+from www.sites.formatting import (
     format_count,
     format_decimal,
     format_number,
@@ -119,17 +119,25 @@ def _format_go_float(value: float, digits: int) -> str:
 class Renderer:
     """Render complete pages while keeping every raw-HTML decision explicit."""
 
-    __slots__ = ("_clock", "_environment", "_style_css")
+    __slots__ = ("_clock", "_environment", "_html", "_json_ld", "_style_css")
 
     def __init__(
         self,
         assets: ApplicationAssets,
         *,
         clock: Callable[[], datetime] | None = None,
+        article_html: Sequence[str] = (),
+        biography_html: Sequence[str] = (),
+        structured_data: Sequence[str] = (),
     ) -> None:
         self._environment = create_environment(assets.hashes)
         self._style_css = _trusted_stylesheet(assets.inline_styles)
         self._clock = clock or _utc_now
+        # Only startup-owned values enter these bounded snapshots. Request data
+        # still passes validation and can never grow a shared markup cache.
+        self._html = {value: _trusted_html(value, "article_html") for value in article_html}
+        self._html.update({value: _trusted_html(value, "biography_html") for value in biography_html})
+        self._json_ld = {value: _trusted_json_ld(value) for value in structured_data}
 
     def render(
         self,
@@ -149,11 +157,11 @@ class Renderer:
         if conflicts:
             msg = f"reserved render context: {', '.join(sorted(conflicts))}"
             raise ValueError(msg)
-        _trust_html_context(page_context)
+        _trust_html_context(page_context, self._html)
 
         # These strings come from validated startup-owned generators. Every
         # audited raw conversion remains confined to this module.
-        trusted_page = replace(page, structured_data=_trusted_json_ld(page.structured_data))
+        trusted_page = replace(page, structured_data=_trusted_json_ld(page.structured_data, self._json_ld))
         page_context.update(
             current_year=self._clock().year,
             metadata=METADATA,
@@ -220,20 +228,22 @@ def _unsafe_url(value: str) -> bool:
     return normalized.startswith(_UNSAFE_URL_PREFIXES)
 
 
-def _trusted_html(value: object, boundary: str) -> Markup:
+def _trusted_html(value: object, boundary: str, known: Mapping[str, Markup] | None = None) -> Markup:
     if type(value) is not str:
         msg = f"{boundary} must be a string"
         raise TypeError(msg)
+    if known is not None and value in known:
+        return known[value]
     parser = _TrustedFragmentParser(boundary)
     parser.feed(value)
     parser.close()
     return Markup(value)  # noqa: S704
 
 
-def _trust_html_context(context: MutableMapping[str, object]) -> None:
+def _trust_html_context(context: MutableMapping[str, object], known: Mapping[str, Markup]) -> None:
     article_html = context.get("article_html")
     if article_html is not None:
-        context["article_html"] = _trusted_html(article_html, "article_html")
+        context["article_html"] = _trusted_html(article_html, "article_html", known)
 
     biography_html = context.get("biography_html")
     if biography_html is None:
@@ -244,7 +254,7 @@ def _trust_html_context(context: MutableMapping[str, object]) -> None:
     if any(type(item) is not str for item in biography_html):
         msg = "biography_html items must be strings"
         raise TypeError(msg)
-    context["biography_html"] = tuple(_trusted_html(item, "biography_html") for item in biography_html)
+    context["biography_html"] = tuple(_trusted_html(item, "biography_html", known) for item in biography_html)
 
 
 def _trusted_stylesheet(value: object) -> Markup:
@@ -257,10 +267,12 @@ def _trusted_stylesheet(value: object) -> Markup:
     return Markup(value)  # noqa: S704
 
 
-def _trusted_json_ld(value: object) -> Markup:
+def _trusted_json_ld(value: object, known: Mapping[str, Markup] | None = None) -> Markup:
     if type(value) is not str:
         msg = "structured_data must be a string"
         raise TypeError(msg)
+    if known is not None and value in known:
+        return known[value]
     try:
         json.loads(value)
     except json.JSONDecodeError as error:

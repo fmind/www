@@ -76,7 +76,7 @@ Use `path`, `referer`, or `TIMESTAMP_TRUNC(timestamp, DAY)` for other aggregates
 - State stores attributes in plaintext. Never commit `*.tfstate*` or `*.tfvars`; keep state only in the versioned bucket.
 - Google providers are pinned to `= 7.43.0`. Upgrade deliberately and require an empty or fully explained live plan after provider changes.
 - A Cloud Run domain mapping does not authenticate geography headers. Keep `country` empty unless a non-bypassable managed edge overwrites one dedicated header and the application trusts only that header.
-- CI remains keyless through branch-restricted Workload Identity Federation. Never create a service-account key.
+- CI remains keyless through branch- and numeric-ID-restricted Workload Identity Federation. The scheduled scanner has only service viewer and registry reader grants. Never create a service-account key.
 - Never run `tofu destroy`, apply a speculative plan, or infer production authority from a green local or CI validation.
 
 ## Official Skills

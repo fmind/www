@@ -9,7 +9,7 @@ from collections.abc import Sequence
 
 import pytest
 
-from www.deployment import DeploymentTarget, Runner, build_deploy_command, main
+from scripts.deploy import DeploymentTarget, Runner, build_deploy_command, main
 
 TARGET = DeploymentTarget(
     region="europe-west1",
@@ -27,7 +27,7 @@ class RecordingRunner:
         self.returncode = returncode
         self.commands: list[tuple[str, ...]] = []
 
-    def run(self, arguments: Sequence[str]) -> int:
+    def __call__(self, arguments: Sequence[str]) -> int:
         self.commands.append(tuple(arguments))
         return self.returncode
 
@@ -35,7 +35,7 @@ class RecordingRunner:
 class MissingExecutableRunner:
     """Represent a host where gcloud is unavailable."""
 
-    def run(self, arguments: Sequence[str]) -> int:
+    def __call__(self, arguments: Sequence[str]) -> int:
         del arguments
         raise FileNotFoundError("gcloud")
 
@@ -110,7 +110,7 @@ def test_module_invocation_rejects_missing_digest_without_gcloud() -> None:
     )
 
     result = subprocess.run(
-        (sys.executable, "-m", "www.deployment"),
+        (sys.executable, "-m", "scripts.deploy"),
         check=False,
         capture_output=True,
         text=True,

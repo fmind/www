@@ -12,7 +12,7 @@ from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.context import Context
 from mcp.server.mcpserver.exceptions import ToolError
 from mcp_types import GetPromptResult, Icon, InputRequiredResult, Prompt, ToolAnnotations
-from pydantic import BaseModel, ConfigDict, Field, SerializerFunctionWrapHandler, TypeAdapter, model_serializer
+from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 
 from www.data import (
     BADGES,
@@ -60,19 +60,6 @@ _CACHE_HINTS = {
 }
 _PORTFOLIO_ADAPTER = TypeAdapter(Portfolio)
 
-_TOOLS = (
-    ("get_profile", "Get profile", "Return Fmind's identity, biography, leadership, and expertise."),
-    ("list_experience", "List work experience", "List professional roles, companies, and skills."),
-    ("list_certifications", "List credentials", "List certifications, badges, and specializations."),
-    ("list_publications", "List publications", "List the thesis, papers, and hosted articles."),
-    ("search_articles", "Search articles", "Rank Fmind's articles by relevance to a query."),
-    ("list_projects", "List projects", "List open-source projects and educational series."),
-    ("get_services", "Get professional services", "List advisory and mentoring services."),
-)
-_PROMPTS = (
-    ("assess_fit", "Assess a role or project fit", "Evaluate a brief against Fmind's portfolio."),
-    ("brief_me", "Brief me about Fmind", "Create an audience-specific portfolio briefing."),
-)
 _PROMPT_ARGUMENT_TITLES = {
     ("assess_fit", "brief"): "Role or project brief",
     ("brief_me", "audience"): "Audience",
@@ -143,11 +130,6 @@ class _PortfolioMCPServer(MCPServer[None]):
 
 class _ResultModel(BaseModel):
     model_config = ConfigDict(frozen=True)
-
-    @model_serializer(mode="wrap")
-    def _serialize_wire(self, handler: SerializerFunctionWrapHandler) -> Any:
-        """Match the established Go wire contract for optional nested fields."""
-        return _clean_wire_value(handler(self))
 
 
 class ProfileResult(_ResultModel):
@@ -360,31 +342,13 @@ def create_mcp_server(articles: tuple[ArticleSummary, ...], index: SearchIndex) 
     return server
 
 
-def _clean_wire_value(value: Any) -> Any:
-    """Apply the previous JSON tags' omit/hidden rules after typed encoding."""
-    if isinstance(value, list):
-        return [_clean_wire_value(item) for item in value]
-    if not isinstance(value, dict):
-        return value
-
-    cleaned: dict[str, Any] = {}
-    for key, item in value.items():
-        if key == "article_slugs":
-            continue
-        if key in {"canonical", "repo", "syndicated"} and item == "":
-            continue
-        cleaned[key] = _clean_wire_value(item)
-    return cleaned
-
-
 def serialize_portfolio(articles: tuple[ArticleSummary, ...]) -> dict[str, Any]:
     """Serialize the portfolio once for both JSON and MCP delivery surfaces."""
     encoded = _PORTFOLIO_ADAPTER.dump_python(portfolio_snapshot(articles), mode="json")
-    cleaned = _clean_wire_value(encoded)
-    if not isinstance(cleaned, dict):  # pragma: no cover - fixed TypeAdapter root
+    if not isinstance(encoded, dict):  # pragma: no cover - fixed TypeAdapter root
         msg = "portfolio serialization must produce an object"
         raise TypeError(msg)
-    return cleaned
+    return encoded
 
 
 def render_profile_json(articles: tuple[ArticleSummary, ...]) -> bytes:
@@ -392,8 +356,11 @@ def render_profile_json(articles: tuple[ArticleSummary, ...]) -> bytes:
     return (json.dumps(serialize_portfolio(articles), ensure_ascii=False, indent=2) + "\n").encode()
 
 
-def render_mcp_server_card() -> bytes:
-    """Render experimental server-card discovery from the same primitive list."""
+async def render_mcp_server_card(server: MCPServer[None]) -> bytes:
+    """Render discovery from the actual registered protocol primitives."""
+    tools = await server.list_tools()
+    prompts = await server.list_prompts()
+    resources = await server.list_resources()
     card = {
         "$schema": "https://static.modelcontextprotocol.io/schemas/mcp-server-card/v1.json",
         "version": "1.0",
@@ -413,16 +380,8 @@ def render_mcp_server_card() -> bytes:
             "Use the tools for focused queries, the portfolio resource for a complete snapshot, and prompts for "
             "guided assessments."
         ),
-        "resources": [
-            {
-                "name": "profile",
-                "title": "Full portfolio",
-                "description": "The complete portfolio as JSON at portfolio://profile.json.",
-            }
-        ],
-        "tools": [{"name": name, "title": title, "description": description} for name, title, description in _TOOLS],
-        "prompts": [
-            {"name": name, "title": title, "description": description} for name, title, description in _PROMPTS
-        ],
+        "resources": [resource.model_dump(include={"name", "title", "description"}) for resource in resources],
+        "tools": [tool.model_dump(include={"name", "title", "description"}) for tool in tools],
+        "prompts": [prompt.model_dump(include={"name", "title", "description"}) for prompt in prompts],
     }
     return (json.dumps(card, ensure_ascii=False, indent=2) + "\n").encode()

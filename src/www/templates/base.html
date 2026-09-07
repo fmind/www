@@ -228,6 +228,13 @@
               }
             }
           }
+          document.addEventListener('change', function (event) {
+            if (event.target.id !== 'model') return;
+            // Display the server-owned static reference without changing the scenario.
+            var option = event.target.selectedOptions[0];
+            document.querySelector('[data-hardware-minimum]').textContent = option.dataset.hardware;
+            document.querySelector('[data-hardware-multi-host]').hidden = option.dataset.multiHost !== 'true';
+          });
           document.addEventListener('submit', function (event) {
             var form = event.target;
             if (form.id !== 'calculator') return;

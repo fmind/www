@@ -2,25 +2,21 @@ from __future__ import annotations
 
 from dataclasses import replace
 from datetime import UTC, datetime
-from math import isclose
+from math import ceil, isclose
 
 import pytest
 
-from www.sites import (
+from www.sites.calculator import build_llm_self_hosting_view
+from www.sites.data import (
     API_BASELINES,
     DEFAULT_HOSTING_INPUTS,
     DEMAND_PRESETS,
     FRONTIER_MODELS,
     GKE_NODE_POOLS,
     QUANTIZATIONS,
-    build_llm_self_hosting_view,
-    current_api_baselines,
-    estimate_hosting,
-    format_count,
-    hosting_decision_copy,
-    hosting_decision_title,
-    task_cost_max,
 )
+from www.sites.economics import current_api_baselines, estimate_hosting
+from www.sites.formatting import format_count, hosting_decision_copy, hosting_decision_title, task_cost_max
 
 NOW = datetime(2026, 9, 5, 12, tzinfo=UTC)
 
@@ -51,7 +47,7 @@ def test_estimate_uses_whole_nodes_and_complete_monthly_cost() -> None:
     assert estimate.total_nodes == 2
     assert estimate.total_gpus == 2
     assert estimate.total_monthly_usd == pytest.approx(
-        2 * node.hourly_usd * 730 * 0.5 + 0.1 * 730 + 1000,
+        2 * node.price(inputs.billing_plan).hourly_usd * 730 * 0.5 + 0.1 * 730 + 1000,
     )
     assert estimate.capacity_tokens_month == 10 * 2 * 0.5 * 730 * 60 * 60 * 0.5
 
@@ -113,7 +109,7 @@ def test_commitment_charges_idle_time_while_on_demand_can_stop(node_id: str) -> 
     full = view({"node": node_id})
     partial = view({"node": node_id, "duty": "25"})
     expected_compute = (
-        full.estimate.compute_monthly_usd if full.selected_node.committed else full.estimate.compute_monthly_usd / 4
+        full.estimate.compute_monthly_usd if full.selected_price.committed else full.estimate.compute_monthly_usd / 4
     )
 
     assert partial.estimate.compute_monthly_usd == expected_compute
@@ -222,3 +218,104 @@ def test_template_quantity_and_task_scale_helpers() -> None:
     assert format_count(1, "node") == "1 node"
     assert format_count(2, "GPU") == "2 GPUs"
     assert task_cost_max(result.tasks) == max(row.per_accepted_usd for row in result.tasks if row.fits)
+
+
+@pytest.mark.parametrize("node", GKE_NODE_POOLS, ids=lambda node: node.id)
+def test_every_published_billing_plan_charges_whole_nodes_and_keeps_idle_commitments(node) -> None:
+    for price in node.prices:
+        full = view({"node": node.id, "billing": price.plan.value, "replicas": "2"})
+        partial = view({"node": node.id, "billing": price.plan.value, "replicas": "2", "duty": "25"})
+        assert not full.validation
+        assert full.selected_price == price
+        assert full.estimate.compute_monthly_usd == pytest.approx(full.estimate.total_nodes * price.hourly_usd * 730)
+        assert partial.estimate.compute_monthly_usd == pytest.approx(
+            full.estimate.compute_monthly_usd * (1 if price.committed else 0.25),
+        )
+        assert partial.estimate.capacity_tokens_month == full.estimate.capacity_tokens_month / 4
+        assert partial.estimate.total_monthly_usd == pytest.approx(
+            partial.estimate.compute_monthly_usd + 73 + 1000,
+        )
+
+
+@pytest.mark.parametrize(
+    ("node", "hourly", "one_year", "three_year", "vram"),
+    [
+        ("g2-standard-12", 1.000416348, 0.630262303, 0.450187356, 24),
+        ("g4-standard-48", 4.49993, 3.105, 1.97945, 96),
+    ],
+)
+def test_small_gpu_prices_use_resource_cuds_and_gpu_memory(node, hourly, one_year, three_year, vram) -> None:
+    for plan, rate in (("on-demand", hourly), ("cud-1y", one_year), ("cud-3y", three_year)):
+        result = view({"node": node, "billing": plan, "quant": "fp4"})
+        assert result.selected_node.vram_gb == vram
+        assert result.estimate.total_nodes == 1
+        assert result.estimate.compute_monthly_usd == pytest.approx(rate * 730)
+
+
+@pytest.mark.parametrize(("node", "billing"), [("a4", "on-demand"), ("g2-standard-12", "flex"), ("a3-high", "unknown")])
+def test_unsupported_billing_is_visible_and_uses_a_published_rate(node: str, billing: str) -> None:
+    result = view({"node": node, "billing": billing})
+    assert len(result.validation) == 1
+    assert "billing" in result.validation[0]
+    assert result.selected_price == result.selected_node.prices[0]
+
+
+def test_unpublished_rate_is_rejected_by_calculation_boundary() -> None:
+    from www.sites.models import BillingPlan
+
+    node = next(node for node in GKE_NODE_POOLS if node.id == "a4")
+    with pytest.raises(ValueError, match="does not offer on-demand"):
+        node.price(BillingPlan.ON_DEMAND)
+
+
+@pytest.mark.parametrize(("legacy", "billing"), [("a4-cud-3y", "cud-3y"), ("a4-flex", "flex")])
+def test_old_a4_links_preserve_their_billing_plan(legacy: str, billing: str) -> None:
+    result = view({"node": legacy})
+    assert not result.validation
+    assert result.inputs.node_pool_id == "a4"
+    assert result.inputs.billing_plan.value == billing
+    overridden = view({"node": legacy, "billing": "cud-1y"})
+    assert overridden.inputs.billing_plan.value == "cud-1y"
+
+
+@pytest.mark.parametrize("model", FRONTIER_MODELS)
+def test_static_hardware_reference_fits_fixed_minimum_and_uses_catalog(model) -> None:
+    result = view({"model": model.id})
+    reference = result.hardware_guidance
+    assert reference.node in GKE_NODE_POOLS
+    required = model.parameters_b * 0.5 * 1.25
+    assert reference.node.vram_gb * reference.nodes_per_replica >= required
+    assert reference.nodes_per_replica == 1 or reference.node.multi_host
+    for node in GKE_NODE_POOLS:
+        hosts = max(1, ceil(required / node.vram_gb))
+        if hosts == 1 or node.multi_host:
+            assert (reference.nodes_per_replica, reference.node.vram_gb * reference.nodes_per_replica) <= (
+                hosts,
+                node.vram_gb * hosts,
+            )
+
+
+@pytest.mark.parametrize("model", FRONTIER_MODELS)
+def test_hardware_reference_depends_only_on_model(model) -> None:
+    initial = view({"model": model.id})
+    changed = view(
+        {
+            "model": model.id,
+            "node": "a4",
+            "billing": "cud-3y",
+            "quant": "fp16",
+            "overhead": "50",
+            "replicas": "3",
+            "duty": "25",
+            "requests": "734",
+            "throughput": "1",
+            "measured-first": "1",
+            "measured-complete": "4",
+            "measured-concurrency": "8",
+            "quality": "on",
+        }
+    )
+    assert changed.hardware_guidance == initial.hardware_guidance
+    assert changed.inputs.node_pool_id == "a4"
+    assert changed.inputs.measured_first_token == 1
+    assert not changed.validation

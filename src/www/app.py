@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import mimetypes
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
@@ -40,7 +39,7 @@ from www.data import (
 )
 from www.log import configure_logging
 from www.mcp import create_mcp_server, render_mcp_server_card, render_profile_json
-from www.middleware import Logger, SiteMiddleware, etag_matches, strong_etag_matches, trace_fields
+from www.middleware import Logger, SiteMiddleware, trace_fields
 from www.models import PageMetadata, SitePage
 from www.pages import (
     article_index_metadata,
@@ -60,16 +59,15 @@ from www.publications import (
     render_llms_txt,
     render_sitemap,
 )
-from www.ranges import range_file_response
 from www.rendering import PageTemplate, Renderer
 from www.search import SearchIndex
-from www.sites import build_llm_self_hosting_view
+from www.sites.calculator import build_llm_self_hosting_view
+from www.static import static_asset_response
 from www.telemetry import TELEMETRY_SHUTDOWN_TIMEOUT_SECONDS, configure_telemetry, shutdown_telemetry
 
 _DAY_CACHE = "public, max-age=86400, must-revalidate"
 _HOUR_CACHE = "public, max-age=3600, must-revalidate"
 _HOUR_CACHE_WITHOUT_REVALIDATION = "public, max-age=3600"
-_YEAR_CACHE = "public, max-age=31536000, immutable"
 _NO_CACHE = "no-cache"
 _MCP_MAX_BODY_SIZE = 1 << 20
 # Static ETags and byte ranges describe the on-disk representation. Compressing
@@ -187,10 +185,20 @@ def create_app(
         slug: article_metadata(article, get_structured_data(article))
         for slug, article in article_collection.by_slug.items()
     }
-    renderer = Renderer(application_assets)
     # Rendering owns the single reviewed trusted-markup boundary for these
     # application-generated fragments.
     biography_html = tuple(markdown_to_html(paragraph) for paragraph in BIOGRAPHY)
+    renderer = Renderer(
+        application_assets,
+        article_html=tuple(article.html for article in article_collection.all),
+        biography_html=biography_html,
+        structured_data=(
+            home_structured_data,
+            site_index_page.structured_data,
+            *(page.structured_data for page in site_metadata_by_slug.values()),
+            *(page.structured_data for page in article_metadata_by_slug.values()),
+        ),
+    )
     home_context: dict[str, object] = {
         "articles": page_articles,
         "biography_html": biography_html,
@@ -210,7 +218,7 @@ def create_app(
     llms = render_llms_txt(public_articles)
     llms_full = render_llms_full(llms, public_articles).encode()
     llms_bytes = llms.encode()
-    server_card = render_mcp_server_card()
+    server_card: bytes | None = None
 
     def render_page(
         request: AppRequest,
@@ -228,52 +236,7 @@ def create_app(
 
     @route("/static/{asset_path:path}", http_method=_READ_METHODS)
     async def static_asset(asset_path: FromPath[str], request: AppRequest) -> ASGIApp:
-        relative_path = asset_path.lstrip("/")
-        route = f"/static/{relative_path}"
-        digest = application_assets.hashes.get(route)
-        static_root = static_dir.resolve()
-        # Look up the immutable URL inventory before touching the filesystem.
-        # Unknown paths (including NULs and dot segments) are client misses,
-        # and files added after startup must not become public accidentally.
-        path = (static_root / relative_path).resolve() if digest is not None else None
-        if path is None or not path.is_relative_to(static_root) or not path.is_file():
-            response = _static_response(
-                b"404 page not found\n",
-                "text/plain; charset=utf-8",
-                _NO_CACHE,
-                status_code=404,
-            )
-            return response.to_asgi_response(
-                app=None,
-                request=request,
-                is_head_response=request.method == HttpMethod.HEAD,
-            )
-
-        # The startup snapshot hashes every regular asset, so the ETag also
-        # provides the strong validator required for a safe If-Range response.
-        # Only the canonical content-addressed URL is immutable. Unknown, empty,
-        # or duplicated versions must revalidate instead of pinning stale bytes.
-        immutable = request.query_params.getall("v", []) == [digest]
-        cache_control = _YEAR_CACHE if immutable else _DAY_CACHE
-        etag = f'"{digest}"'
-        if_match = request.headers.get("if-match")
-        if if_match is not None and not strong_etag_matches(if_match, etag):
-            # Evaluate this strong precondition before cache and range logic.
-            response = Response(b"", headers={"cache-control": cache_control, "etag": etag}, status_code=412)
-            return response.to_asgi_response(app=None, request=request)
-        if etag_matches(request.headers.get("if-none-match", ""), etag):
-            response = Response(b"", headers={"cache-control": cache_control, "etag": etag}, status_code=304)
-            return response.to_asgi_response(app=None, request=request)
-        content_type = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
-        if content_type.startswith("text/"):
-            content_type += "; charset=utf-8"
-        return range_file_response(
-            path,
-            content_type=content_type,
-            cache_control=cache_control,
-            etag=etag,
-            use_pathsend=True,
-        )
+        return await static_asset_response(asset_path, request, application_assets, static_dir)
 
     @route("/static", http_method=_READ_METHODS, sync_to_thread=False)
     def static_root(request: AppRequest) -> Redirect | Response[bytes]:
@@ -311,6 +274,8 @@ def create_app(
         sync_to_thread=False,
     )
     def mcp_server_card() -> Response[bytes]:
+        if server_card is None:
+            raise RuntimeError("MCP discovery requires application startup")
         return _static_response(
             server_card,
             "application/mcp-server-card+json; charset=utf-8",
@@ -488,7 +453,9 @@ def create_app(
 
     @asynccontextmanager
     async def lifespan(_: Litestar) -> AsyncIterator[None]:
+        nonlocal server_card
         try:
+            server_card = await render_mcp_server_card(mcp_server)
             async with mcp_app.router.lifespan_context(mcp_app):
                 yield
         finally:

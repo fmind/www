@@ -625,3 +625,36 @@ def test_main_check_mode_is_read_only(
     assert captured.out == "image derivatives: 1 sources and 1 targets verified ([800 1280] px, q75)\n"
     assert captured.err == ""
     assert {path: path.stat().st_mtime_ns for path in (source, target, lock_path)} == before
+
+
+@pytest.mark.parametrize(
+    ("section", "key", "value"),
+    [
+        ("", "unknown", True),
+        ("", "version", True),
+        ("", "version", 2.0),
+        ("", "widths", [True, 1280]),
+        ("", "widths", [1280, 800]),
+        ("", "widths", [800, 800]),
+        ("recipe", "quality", True),
+        ("recipe", "method", 7),
+        ("recipe", "algorithm", " padded "),
+        ("source", "sha256", "a" * 64 + "\n"),
+        ("source", "source_sha256", "a" * 64),
+        ("source", "targets", {"../escape.webp": "a" * 64}),
+        ("source", "targets", {"example/other-800.webp": "a" * 64}),
+    ],
+)
+def test_malformed_lock_rejected_before_archive_mutation(tmp_path: Path, section: str, key: str, value: object) -> None:
+    source = tmp_path / "example/figure.png"
+    _write_image(source, 16, 16)
+    lock_path = tmp_path / "lock.json"
+    images.generate_derivatives(tmp_path, output=StringIO(), lock_path=lock_path)
+    document = json.loads(lock_path.read_text())
+    target = document["sources"]["example/figure.png"] if section == "source" else document.get(section, document)
+    target[key] = value
+    lock_path.write_text(json.dumps(document))
+    before = {path: path.read_bytes() for path in tmp_path.rglob("*") if path.is_file()}
+    with pytest.raises(images.ImageDerivativeError, match="read derivative lock"):
+        images.generate_derivatives(tmp_path, output=StringIO(), lock_path=lock_path, require_lock=True)
+    assert {path: path.read_bytes() for path in before} == before

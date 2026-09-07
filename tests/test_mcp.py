@@ -182,8 +182,12 @@ async def test_profile_resource_and_prompt_are_grounded(mcp_server: MCPServer[No
     assert "portfolio resource" in briefing_content.text
 
 
-def test_server_card_describes_the_same_transport_and_primitives() -> None:
-    card = json.loads(render_mcp_server_card())
+@pytest.mark.anyio
+async def test_server_card_describes_the_same_transport_and_primitives(mcp_server: MCPServer[None]) -> None:
+    card = json.loads(await render_mcp_server_card(mcp_server))
+    assert card["tools"] == [
+        tool.model_dump(include={"name", "title", "description"}) for tool in await mcp_server.list_tools()
+    ]
 
     assert card["protocolVersion"] == "2026-07-28"
     assert card["transport"] == {

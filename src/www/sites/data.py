@@ -3,10 +3,12 @@ from __future__ import annotations
 from .models import (
     APIBaseline,
     APIMode,
+    BillingPlan,
     DemandPreset,
     FrontierModel,
     GKENodePool,
     HostingInputs,
+    NodePrice,
     Quantization,
     TaskQuality,
 )
@@ -15,12 +17,14 @@ from .models import (
 # ruff: noqa: RUF001
 
 
-MODEL_SNAPSHOT = "2026-09-05"
+MODEL_SNAPSHOT = "2026-09-07"
 INDEX_VERSION = "4.2"
 MODEL_SOURCE_URL = "https://artificialanalysis.ai/models"
 GKE_SOURCE_URL = "https://cloud.google.com/kubernetes-engine/pricing"
 PRICE_SOURCE_URL = "https://cloud.google.com/products/compute/pricing/accelerator-optimized"
 
+# Static minimums use 4-bit weights plus 25% reserve: fewest hosts, then
+# smallest aggregate VRAM from the listed machines; multi-host uses A3/A4.
 FRONTIER_MODELS = (
     FrontierModel(
         "kimi-k3",
@@ -35,6 +39,8 @@ FRONTIER_MODELS = (
         "Commercial license",
         "https://artificialanalysis.ai/models/kimi-k3",
         "https://huggingface.co/moonshotai/Kimi-K3",
+        "a3-ultra",
+        2,
     ),
     FrontierModel(
         "glm-5-3",
@@ -49,6 +55,8 @@ FRONTIER_MODELS = (
         "Commercial license",
         "https://artificialanalysis.ai/models/glm-5-3",
         "https://huggingface.co/zai-org/GLM-5.3",
+        "a3-high",
+        1,
     ),
     FrontierModel(
         "qwen3-8-2-4t-a95b",
@@ -63,6 +71,8 @@ FRONTIER_MODELS = (
         "Commercial license",
         "https://artificialanalysis.ai/models/qwen3-8-2-4t-a95b",
         "https://huggingface.co/Qwen/Qwen3.8-2.4T-A95B",
+        "a3-ultra",
+        2,
     ),
     FrontierModel(
         "glm-5-3-flash",
@@ -77,6 +87,8 @@ FRONTIER_MODELS = (
         "Permissive",
         "https://artificialanalysis.ai/models/glm-5-3-flash",
         "https://huggingface.co/zai-org/GLM-5.3-Flash",
+        "a3-high",
+        1,
     ),
     FrontierModel(
         "deepseek-v4-pro",
@@ -91,13 +103,15 @@ FRONTIER_MODELS = (
         "Permissive",
         "https://artificialanalysis.ai/models/deepseek-v4-pro",
         "https://huggingface.co/deepseek-ai/DeepSeek-V4-Pro-0813",
+        "a3-ultra",
+        1,
     ),
     FrontierModel(
         "qwen3-8-27b",
         6,
         "Qwen3.8 27B (xhigh)",
         "Alibaba",
-        41.6459,
+        41.4059,
         27,
         27,
         256_000,
@@ -105,6 +119,8 @@ FRONTIER_MODELS = (
         "Permissive",
         "https://artificialanalysis.ai/models/qwen3-8-27b",
         "https://huggingface.co/Qwen/Qwen3.8-27B",
+        "g2-standard-12",
+        1,
     ),
     FrontierModel(
         "k2-horizon-375b-a23b",
@@ -119,6 +135,8 @@ FRONTIER_MODELS = (
         "Permissive",
         "https://artificialanalysis.ai/models/k2-horizon-375b-a23b",
         "https://huggingface.co/IFM/K2-Horizon-375B-A23B",
+        "a3-high",
+        1,
     ),
     FrontierModel(
         "minimax-m3",
@@ -133,13 +151,15 @@ FRONTIER_MODELS = (
         "Commercial license",
         "https://artificialanalysis.ai/models/minimax-m3",
         "https://huggingface.co/MiniMaxAI/MiniMax-M3",
+        "a3-high",
+        1,
     ),
     FrontierModel(
         "inkling",
         9,
         "Inkling (xhigh)",
         "Thinking Machines",
-        32.1865,
+        32.1665,
         975,
         41,
         1_000_000,
@@ -147,6 +167,8 @@ FRONTIER_MODELS = (
         "Permissive",
         "https://artificialanalysis.ai/models/inkling",
         "https://huggingface.co/thinkingmachines/Inkling",
+        "a3-high",
+        1,
     ),
     FrontierModel(
         "muse-glimmer",
@@ -161,60 +183,94 @@ FRONTIER_MODELS = (
         "Permissive",
         "https://artificialanalysis.ai/models/muse-glimmer",
         "https://huggingface.co/meta-models/Muse-Glimmer-30B",
+        "g2-standard-12",
+        1,
     ),
 )
 
+# Full-machine USD prices, including attached GPUs and bundled host resources.
+# Resource CUD columns are used explicitly; flexible CUDs are not GPU CUDs.
 GKE_NODE_POOLS = (
     GKENodePool(
-        "a4-cud-3y",
-        "A4 · 3-year resource CUD",
-        "8× NVIDIA B200",
-        8,
-        1440,
-        56.7072,
-        "3-year committed use",
-        "Billed for the full term, even while idle. Capacity reservation and commitment required.",
-        True,
+        "g2-standard-12",
+        "G2 · 1× L4 · 24 GB",
+        "1× NVIDIA L4",
+        1,
+        24,
+        (
+            NodePrice(BillingPlan.ON_DEMAND, "On-demand", 1.000416348),
+            NodePrice(BillingPlan.CUD_1Y, "1-year resource CUD", 0.630262303),
+            NodePrice(BillingPlan.CUD_3Y, "3-year resource CUD", 0.450187356),
+        ),
+        "48 GiB host RAM. Small-model inference; validate checkpoint loading, runtime support, and KV cache.",
     ),
     GKENodePool(
-        "a4-flex",
-        "A4 · DWS Flex-start",
-        "8× NVIDIA B200",
-        8,
-        1440,
-        64.44,
-        "Flex-start",
-        "Batch-like provisioning; do not assume continuous online availability.",
-    ),
-    GKENodePool(
-        "a3-ultra",
-        "A3 Ultra · on-demand",
-        "8× NVIDIA H200",
-        8,
-        1128,
-        84.806908493,
-        "On-demand",
-        "Validate regional stock, quota, and RDMA topology.",
-    ),
-    GKENodePool(
-        "a3-high",
-        "A3 High · on-demand",
-        "8× NVIDIA H100",
-        8,
-        640,
-        88.490000119,
-        "On-demand",
-        "Validate regional stock, quota, and multi-host networking.",
+        "g4-standard-48",
+        "G4 · 1× RTX PRO 6000 · 96 GB",
+        "1× NVIDIA RTX PRO 6000 Blackwell Server Edition",
+        1,
+        96,
+        (
+            NodePrice(BillingPlan.ON_DEMAND, "On-demand", 4.49993),
+            NodePrice(BillingPlan.CUD_1Y, "1-year resource CUD", 3.105),
+            NodePrice(BillingPlan.CUD_3Y, "3-year resource CUD", 1.97945),
+        ),
+        "180 GiB host RAM. GCP Server Edition; verify GKE version, drivers, regional quota, and capacity.",
     ),
     GKENodePool(
         "a2-ultra-1g",
-        "A2 Ultra · on-demand",
+        "A2 Ultra · 1× A100 · 80 GB",
         "1× NVIDIA A100 80GB",
         1,
         80,
-        5.06879789,
-        "On-demand",
+        (
+            NodePrice(BillingPlan.ON_DEMAND, "On-demand", 5.06879789),
+            NodePrice(BillingPlan.CUD_1Y, "1-year resource CUD", 4.199690411),
+            NodePrice(BillingPlan.CUD_3Y, "3-year resource CUD", 3.499997559),
+        ),
         "Best used for models that fit on one node; inter-node serving needs separate validation.",
+    ),
+    GKENodePool(
+        "a3-high",
+        "A3 High · 8× H100 · 640 GB",
+        "8× NVIDIA H100",
+        8,
+        640,
+        (
+            NodePrice(BillingPlan.ON_DEMAND, "On-demand", 88.490000119),
+            NodePrice(BillingPlan.CUD_1Y, "1-year resource CUD", 61.383674231),
+            NodePrice(BillingPlan.CUD_3Y, "3-year resource CUD", 38.864383195),
+        ),
+        "Validate regional stock, quota, and multi-host networking.",
+        multi_host=True,
+    ),
+    GKENodePool(
+        "a3-ultra",
+        "A3 Ultra · 8× H200 · 1,128 GB",
+        "8× NVIDIA H200",
+        8,
+        1128,
+        (
+            NodePrice(BillingPlan.ON_DEMAND, "On-demand", 84.806908493),
+            NodePrice(BillingPlan.CUD_1Y, "1-year resource CUD", 58.471933151),
+            NodePrice(BillingPlan.CUD_3Y, "3-year resource CUD", 37.208420822),
+        ),
+        "Validate regional stock, quota, and RDMA topology.",
+        multi_host=True,
+    ),
+    GKENodePool(
+        "a4",
+        "A4 · 8× B200 · 1,440 GB",
+        "8× NVIDIA B200",
+        8,
+        1440,
+        (
+            NodePrice(BillingPlan.FLEX, "DWS Flex-start", 64.44),
+            NodePrice(BillingPlan.CUD_1Y, "1-year resource CUD", 88.9272),
+            NodePrice(BillingPlan.CUD_3Y, "3-year resource CUD", 56.7072),
+        ),
+        "No on-demand list rate. Flex-start suits queued jobs; continuous serving needs reserved capacity.",
+        multi_host=True,
     ),
 )
 
@@ -290,7 +346,7 @@ API_BASELINES = (
         "https://ai.google.dev/gemini-api/docs/pricing#gemini-3.8-flash",
         "https://ai.google.dev/gemini-api/docs/generate-content/caching",
         MODEL_SNAPSHOT,
-        "2026-10-05",
+        "2026-10-07",
         "2026-12-31",
         "Introductory rates through Dec 31, 2026; input, output, cache reads, and storage double on Jan 1, 2027.",
     ),
@@ -305,7 +361,7 @@ API_BASELINES = (
         "https://platform.claude.com/docs/en/about-claude/pricing",
         "https://platform.claude.com/docs/en/build-with-claude/prompt-caching",
         MODEL_SNAPSHOT,
-        "2026-10-05",
+        "2026-10-07",
         "",
         "$2 / $10 is standard pricing; the previously announced September increase was canceled. No announced end date.",
     ),
@@ -320,7 +376,7 @@ API_BASELINES = (
         "https://developers.openai.com/api/docs/models/gpt-6-astra",
         "https://developers.openai.com/api/docs/guides/prompt-caching",
         MODEL_SNAPSHOT,
-        "2026-10-05",
+        "2026-10-07",
         "",
         "OpenAI's published Astra name. Above 272,000 input tokens, full-request rates rise to $20 input / $75 output per million. No announced end date.",
     ),

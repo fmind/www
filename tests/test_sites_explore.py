@@ -6,17 +6,11 @@ from urllib.parse import parse_qs, urlparse
 
 import pytest
 
-from www.sites import (
-    DEFAULT_HOSTING_INPUTS,
-    api_monthly_cost,
-    build_llm_self_hosting_view,
-    current_api_baselines,
-    format_decimal,
-    format_number,
-    format_usd,
-    format_usd2,
-    hosting_url,
-)
+from www.sites.calculator import build_llm_self_hosting_view
+from www.sites.data import DEFAULT_HOSTING_INPUTS
+from www.sites.economics import api_monthly_cost, current_api_baselines
+from www.sites.formatting import format_decimal, format_number, format_usd, format_usd2
+from www.sites.inputs import hosting_url
 
 NOW = datetime(2026, 9, 5, 12, tzinfo=UTC)
 
@@ -125,63 +119,49 @@ def test_cost_explorer_frames_use_billing_and_capacity() -> None:
     assert "beyond" in selected.summary
 
 
-def test_cost_explorer_samples_match_go_float64_urls_exactly() -> None:
-    result = view()
-
-    # Go's math.Pow is deliberately independent of the platform libm. These
-    # values cover both sides of its fractional-exponent reduction.
-    expected = {
-        "32 requests/month": "1.4500555508308368",
-        "67 requests/month": "3.0489754002893172",
-        "37,163 requests/month": "1689.2456246739282",
-        "1,268,439 requests/month": "57656.31529737998",
-    }
-    for label, requests_per_day in expected.items():
-        frame = next(frame for frame in result.cost_plot.frames if frame.label == label)
-        assert f"requests={requests_per_day}&" in frame.url
-
-
 @pytest.mark.parametrize(
-    ("query", "requests_per_day"),
+    "query",
     [
-        (
-            {
-                "api-mode": "cached",
-                "cache-prefix": "4096",
-                "input-tokens": "6000",
-                "tokens": "500",
-                "requests": "20",
-                "days": "1",
-            },
-            "4.1681530536423885",
-        ),
-        (
-            {
-                "preset": "service",
-                "throughput": "0.1",
-                "node": "a4-cud-3y",
-                "model": "kimi-k3",
-                "quant": "fp16",
-                "replicas": "3",
-                "duty": "25",
-            },
-            "5.011872336272724",
-        ),
+        None,
+        {"days": "1"},
+        {"requests": "651.4", "days": "31"},
+        {"api-mode": "cached", "input-tokens": "6000", "cache-prefix": "4096"},
+        {"requests": "10000000", "node": "a4", "billing": "cud-3y", "model": "kimi-k3"},
     ],
 )
-def test_representative_cost_samples_match_go_urls_exactly(
-    query: dict[str, str],
-    requests_per_day: str,
-) -> None:
+def test_cost_chart_has_round_labels_and_workloads_with_exact_costs(query) -> None:
     result = view(query)
+    for tick in (*result.cost_plot.x_ticks, *result.cost_plot.y_ticks):
+        assert "." not in tick.label
+    assert len(result.cost_plot.x_ticks) <= 5
+    assert len(result.cost_plot.y_ticks) <= 5
+    for index, frame in enumerate(result.cost_plot.frames):
+        parsed = parse_qs(urlparse(frame.url).query)
+        daily = float(parsed["requests"][0])
+        if index != result.cost_plot.selected:
+            assert daily.is_integer()
+            assert str(int(daily)).rstrip("0") in {"1", "2", "5"}
+        assert 1 <= daily <= 10_000_000
+        assert frame.requests == daily * result.inputs.active_days
+        assert "requests/day" in frame.label
+        for api in result.apis:
+            cost = api_monthly_cost(result.inputs, api.baseline, frame.requests)[0]
+            assert f"{api.baseline.name} {format_usd2(cost)}" in frame.summary
+        assert 130 <= float(frame.x) <= 720
+    current = result.cost_plot.frames[result.cost_plot.selected]
+    assert view(parse_qs(urlparse(current.url).query)).inputs == result.inputs
+    for line in result.cost_plot.lines:
+        for point in line.points.split():
+            x, y = map(float, point.split(","))
+            assert 130 <= x <= 720
+            assert 40 <= y <= 300
 
-    assert any(f"requests={requests_per_day}&" in frame.url for frame in result.cost_plot.frames)
 
-
-def test_selected_node_keeps_the_go_gpu_descriptor() -> None:
+def test_selected_node_describes_hardware_separately_from_billing() -> None:
     result = view()
 
-    assert result.selected_node.name == "A2 Ultra · on-demand"
+    assert result.selected_node.name == "A2 Ultra · 1\u00d7 A100 · 80 GB"
+    assert result.selected_price.label == "On-demand"
     assert result.selected_node.gpu == "1\u00d7 NVIDIA A100 80GB"
 
 

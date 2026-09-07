@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import os
-import re
 import stat
 import sys
 from argparse import ArgumentParser
@@ -14,10 +13,11 @@ from hashlib import sha256
 from io import BytesIO
 from pathlib import Path, PurePosixPath
 from tempfile import NamedTemporaryFile
-from typing import TextIO, cast
+from typing import Annotated, TextIO
 
 import PIL
 from PIL import Image, features
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, field_validator
 
 from www.models import CARD_COVER_WIDTH, DERIVATIVE_WIDTHS
 
@@ -31,7 +31,6 @@ _COVER_STEM = "cover"
 # the library versions below bind the native codec implementation as well.
 _ENCODER_ALGORITHM = "pillow-webp-bicubic-no-upscale-v1"
 _LOCK_VERSION = 2
-_SHA256_PATTERN = re.compile(r"[0-9a-f]{64}", re.ASCII)
 _SOURCE_EXTENSIONS = frozenset({".webp", ".png", ".jpg", ".jpeg", ".gif"})
 # Article Markdown deliberately promotes local MP4 image syntax into video markup.
 _ARTICLE_MEDIA_EXTENSIONS = _SOURCE_EXTENSIONS | {".mp4"}
@@ -41,19 +40,45 @@ class ImageDerivativeError(RuntimeError):
     """An article-image derivative could not be generated safely."""
 
 
-@dataclass(frozen=True, slots=True)
-class _LockEntry:
-    source_sha256: str
-    targets: dict[str, str]
+def _trimmed(value: str) -> str:
+    if not value or value.strip() != value:
+        raise ValueError("expected a non-empty trimmed string")
+    return value
 
 
-@dataclass(frozen=True, slots=True)
-class _EncoderRecipe:
-    algorithm: str
-    method: int
-    pillow_version: str
-    quality: int
-    webp_version: str
+type _Trimmed = Annotated[str, AfterValidator(_trimmed)]
+type _Digest = Annotated[str, Field(pattern=r"^[0-9a-f]{64}$", min_length=64, max_length=64)]
+
+
+class _StrictModel(BaseModel):
+    model_config = ConfigDict(strict=True, extra="forbid", frozen=True)
+
+
+class _LockEntry(_StrictModel):
+    source_sha256: _Digest = Field(alias="sha256")
+    targets: dict[str, _Digest]
+
+
+class _EncoderRecipe(_StrictModel):
+    algorithm: _Trimmed
+    method: Annotated[int, Field(ge=0, le=6)]
+    pillow_version: _Trimmed
+    quality: Annotated[int, Field(ge=0, le=100)]
+    webp_version: _Trimmed
+
+
+class _LockDocument(_StrictModel):
+    version: Annotated[int, Field(ge=_LOCK_VERSION, le=_LOCK_VERSION)]
+    recipe: _EncoderRecipe
+    widths: Annotated[list[Annotated[int, Field(gt=0)]], Field(min_length=1)]
+    sources: dict[str, _LockEntry]
+
+    @field_validator("widths")
+    @classmethod
+    def ascending_widths(cls, widths: list[int]) -> list[int]:
+        if widths != sorted(set(widths)):
+            raise ValueError("widths must be ascending and unique")
+        return widths
 
 
 @dataclass(frozen=True, slots=True)
@@ -224,83 +249,19 @@ def _validated_relative_path(value: object, *, field: str) -> str:
     return value
 
 
-def _validated_sha256(value: object, *, field: str) -> str:
-    if not isinstance(value, str) or _SHA256_PATTERN.fullmatch(value) is None:
-        raise ValueError(f"{field} must be a lowercase SHA-256 digest")
-    return value
-
-
-def _validated_recipe(data: object) -> _EncoderRecipe:
-    expected_fields = {"algorithm", "method", "pillow_version", "quality", "webp_version"}
-    if not isinstance(data, dict) or set(data) != expected_fields:
-        raise ValueError(f"recipe must contain exactly {', '.join(sorted(expected_fields))}")
-    algorithm = data["algorithm"]
-    pillow_version = data["pillow_version"]
-    webp_version = data["webp_version"]
-    if not isinstance(algorithm, str) or not algorithm or algorithm.strip() != algorithm:
-        raise ValueError("recipe algorithm must be a non-empty trimmed string")
-    if not isinstance(pillow_version, str) or not pillow_version or pillow_version.strip() != pillow_version:
-        raise ValueError("recipe pillow_version must be a non-empty trimmed string")
-    if not isinstance(webp_version, str) or not webp_version or webp_version.strip() != webp_version:
-        raise ValueError("recipe webp_version must be a non-empty trimmed string")
-    quality = data["quality"]
-    method = data["method"]
-    if type(quality) is not int or not 0 <= quality <= 100:
-        raise ValueError("recipe quality must be an integer from 0 through 100")
-    if type(method) is not int or not 0 <= method <= 6:
-        raise ValueError("recipe method must be an integer from 0 through 6")
-    return _EncoderRecipe(
-        algorithm=algorithm,
-        method=method,
-        pillow_version=pillow_version,
-        quality=quality,
-        webp_version=webp_version,
-    )
-
-
 def _parse_lock(data: object) -> _DerivativeLock:
-    if not isinstance(data, dict) or set(data) != {"recipe", "sources", "version", "widths"}:
-        raise ValueError("expected exactly version, recipe, widths, and sources")
-    if data["version"] != _LOCK_VERSION or type(data["version"]) is not int:
-        raise ValueError(f"version must be {_LOCK_VERSION}")
-    recipe = _validated_recipe(data["recipe"])
-
-    raw_widths = data["widths"]
-    if (
-        not isinstance(raw_widths, list)
-        or not raw_widths
-        or any(type(width) is not int or width <= 0 for width in raw_widths)
-        or raw_widths != sorted(set(raw_widths))
-    ):
-        raise ValueError("widths must be a non-empty ascending list of unique positive integers")
-    widths = tuple(cast(list[int], raw_widths))
-
-    raw_sources = data["sources"]
-    if not isinstance(raw_sources, dict):
-        raise ValueError("sources must be an object")
-    sources: dict[str, _LockEntry] = {}
-    for raw_source_name, raw_entry in raw_sources.items():
-        source_name = _validated_relative_path(raw_source_name, field="source path")
-        if not isinstance(raw_entry, dict) or set(raw_entry) != {"sha256", "targets"}:
-            raise ValueError(f'source "{source_name}" must contain exactly sha256 and targets')
-        source_sha256 = _validated_sha256(raw_entry["sha256"], field=f'source "{source_name}" sha256')
-        raw_targets = raw_entry["targets"]
-        if not isinstance(raw_targets, dict):
-            raise ValueError(f'source "{source_name}" targets must be an object')
-
-        source_path = PurePosixPath(source_name)
+    document = _LockDocument.model_validate(data)
+    widths = tuple(document.widths)
+    # Shape validation cannot establish filename ownership; retain this explicit
+    # check before any supplied path can affect the derivative archive.
+    for source_name, entry in document.sources.items():
+        source_path = PurePosixPath(_validated_relative_path(source_name, field="source path"))
         valid_targets = {source_path.with_name(f"{source_path.stem}-{width}.webp").as_posix() for width in widths}
-        targets: dict[str, str] = {}
-        for raw_target_name, raw_digest in raw_targets.items():
-            target_name = _validated_relative_path(raw_target_name, field="target path")
+        for target_name in entry.targets:
+            _validated_relative_path(target_name, field="target path")
             if target_name not in valid_targets:
                 raise ValueError(f'target "{target_name}" does not belong to source "{source_name}"')
-            targets[target_name] = _validated_sha256(
-                raw_digest,
-                field=f'target "{target_name}" sha256',
-            )
-        sources[source_name] = _LockEntry(source_sha256=source_sha256, targets=targets)
-    return _DerivativeLock(recipe=recipe, widths=widths, sources=sources)
+    return _DerivativeLock(recipe=document.recipe, widths=widths, sources=document.sources)
 
 
 def _load_lock(path: Path, *, required: bool) -> _DerivativeLock:
@@ -331,22 +292,10 @@ def _lock_bytes(lock: _DerivativeLock) -> bytes:
     if lock.recipe is None:
         raise ImageDerivativeError("cannot serialize a derivative lock without an encoder recipe")
     payload = {
-        "recipe": {
-            "algorithm": lock.recipe.algorithm,
-            "method": lock.recipe.method,
-            "pillow_version": lock.recipe.pillow_version,
-            "quality": lock.recipe.quality,
-            "webp_version": lock.recipe.webp_version,
-        },
+        "recipe": lock.recipe.model_dump(),
         "version": _LOCK_VERSION,
         "widths": list(lock.widths),
-        "sources": {
-            source_name: {
-                "sha256": entry.source_sha256,
-                "targets": entry.targets,
-            }
-            for source_name, entry in lock.sources.items()
-        },
+        "sources": {name: entry.model_dump(by_alias=True) for name, entry in lock.sources.items()},
     }
     return (json.dumps(payload, indent=2, sort_keys=True) + "\n").encode()
 
@@ -544,7 +493,7 @@ def _generate_locked(
         finally:
             decoded.close()
         new_entries[source_name] = _LockEntry(
-            source_sha256=source_digest,
+            sha256=source_digest,
             targets=target_digests,
         )
 

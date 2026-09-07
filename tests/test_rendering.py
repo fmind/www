@@ -38,7 +38,7 @@ from www.pages import (
 from www.publications import article_index_data, related_articles
 from www.rendering import PageTemplate, Renderer, create_environment
 from www.search import SearchIndex
-from www.sites import build_llm_self_hosting_view
+from www.sites.calculator import build_llm_self_hosting_view
 
 
 def application_assets(
@@ -266,3 +266,38 @@ def test_renderer_renders_all_six_pages_with_real_domain_contexts() -> None:
         assert html.count(f'nonce="{nonce}"') == 3
         assert "{{" not in html
         assert markers[template] in html
+
+
+def test_startup_markup_is_validated_once_but_unknown_markup_remains_guarded(monkeypatch: pytest.MonkeyPatch) -> None:
+    from www import rendering
+
+    page = not_found_metadata(get_structured_data())
+    renderer = Renderer(
+        application_assets(), article_html=("<p>published</p>",), structured_data=(page.structured_data,)
+    )
+
+    def unexpected_validation(*args: object, **kwargs: object) -> None:
+        del args, kwargs
+        raise AssertionError("immutable markup was reparsed during a request")
+
+    with monkeypatch.context() as patched:
+        patched.setattr("www.rendering._TrustedFragmentParser.feed", unexpected_validation)
+        patched.setattr(rendering.json, "loads", unexpected_validation)
+        first = renderer.render(
+            PageTemplate.NOT_FOUND, page=page, nonce="first", context={"article_html": "<p>published</p>"}
+        )
+        second = renderer.render(
+            PageTemplate.NOT_FOUND, page=page, nonce="second", context={"article_html": "<p>published</p>"}
+        )
+        assert 'nonce="first"' in first
+        assert 'nonce="second"' in second
+
+    with pytest.raises(ValueError, match="unsafe attribute"):
+        renderer.render(
+            PageTemplate.NOT_FOUND,
+            page=page,
+            nonce="third",
+            context={"article_html": '<p onclick="bad()">unregistered</p>'},
+        )
+    with pytest.raises(ValueError, match="script or style"):
+        Renderer(application_assets(), article_html=("<script>bad()</script>",))

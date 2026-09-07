@@ -1,0 +1,8 @@
+# Docs: https://github.com/gitleaks/gitleaks#configuration
+# Only the working-tree scan uses this file; Git history keeps the default rules.
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Generated scratch, virtual environments, and build outputs are not maintained source"
+paths = ['''^(?:tmp|\.venv|dist)/''']

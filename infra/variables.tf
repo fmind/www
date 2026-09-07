@@ -12,6 +12,18 @@ variable "github_repository" {
   default     = "fmind/www"
 }
 
+variable "github_repository_numeric_id" {
+  description = "Immutable GitHub repository ID used by Workload Identity Federation"
+  type        = string
+  default     = "1261133438"
+}
+
+variable "github_owner_numeric_id" {
+  description = "Immutable GitHub owner ID used by Workload Identity Federation"
+  type        = string
+  default     = "3929438"
+}
+
 variable "image_uri" {
   description = "The Docker image URI to deploy. Defaults to a hello-world image for the initial create; the live image is managed out-of-band by CI (see cloud_run.tf lifecycle.ignore_changes)."
   type        = string

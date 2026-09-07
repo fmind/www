@@ -1635,6 +1635,10 @@ dev = [
     { name = "ty" },
     { name = "validate-pyproject" },
 ]
+ops = [
+    { name = "anyio" },
+    { name = "httpx2" },
+]
 
 [package.metadata]
 requires-dist = [
@@ -1666,4 +1670,8 @@ dev = [
     { name = "ruff", specifier = ">=0.16.6,<0.17" },
     { name = "ty", specifier = ">=0.0.78,<0.1" },
     { name = "validate-pyproject", specifier = ">=0.26,<0.27" },
+]
+ops = [
+    { name = "anyio", specifier = ">=4.15.1,<5" },
+    { name = "httpx2", specifier = ">=2.12.0,<3" },
 ]

@@ -4,25 +4,30 @@ from __future__ import annotations
 
 import json
 import signal
+import traceback
 from collections.abc import Sequence
+from pathlib import Path
 from typing import Any
 
 import pytest
 
-from www.image_runtime import (
+from scripts.image_smoke import (
     CommandResult,
     HTTPResponse,
-    MCPProbeRequest,
     SmokeError,
     TerminationRequestedError,
     _assert_http_contracts,
     _probe_modern_mcp,
+    _request,
     assert_runtime_read_only,
     container_guard,
     exporter_environment_names,
+    main,
     parse_configured_user,
     parse_loaded_reference,
     parse_published_port,
+    resolve_image_id,
+    validate_image_reference,
     wait_for_health,
 )
 
@@ -33,6 +38,7 @@ _MCP_CLIENT_CAPABILITIES_META_KEY = "io.modelcontextprotocol/clientCapabilities"
 
 
 def _mcp_result(request_id: int, result: dict[str, object]) -> bytes:
+    result = {"cacheScope": "public", "ttlMs": 3600000, "resultType": "complete", **result}
     return json.dumps({"jsonrpc": "2.0", "id": request_id, "result": result}).encode()
 
 
@@ -205,7 +211,6 @@ def test_http_contract_probe_uses_modern_mcp_discovery_and_lists_primitives(
         mcp_method = payload["method"]
         mcp_methods.append(mcp_method)
         assert payload["jsonrpc"] == "2.0"
-        assert payload["id"] == len(mcp_methods)
         assert payload["params"]["_meta"] == {
             _MCP_PROTOCOL_VERSION_META_KEY: _MCP_PROTOCOL_VERSION,
             _MCP_CLIENT_INFO_META_KEY: {"name": "image-smoke", "version": "1.0"},
@@ -222,12 +227,14 @@ def test_http_contract_probe_uses_modern_mcp_discovery_and_lists_primitives(
         }
         if name := expected_names.get(mcp_method):
             expected_headers["mcp-name"] = name
-        assert headers == expected_headers
+        assert headers is not None
+        for name, value in expected_headers.items():
+            assert headers[name].replace(" ", "") == value.replace(" ", "")
         return HTTPResponse(
             200, {"content-type": "application/json"}, _mcp_result(payload["id"], mcp_results[mcp_method])
         )
 
-    monkeypatch.setattr("www.image_runtime._request", request)
+    monkeypatch.setattr("scripts.image_smoke._request", request)
 
     _assert_http_contracts(49152)
 
@@ -302,16 +309,22 @@ def test_modern_mcp_probe_fails_closed_on_incomplete_results(
     rejected_result: dict[str, object],
     message: str,
 ) -> None:
-    def send_request(port: int, request: MCPProbeRequest, request_id: int) -> dict[str, Any]:
-        del port, request_id
-        if request.method == rejected_method:
-            return rejected_result
-        return _mcp_results()[request.method]
+    def request(
+        port: int, method: str, path: str, *, body: bytes | None = None, headers: dict[str, str] | None = None
+    ) -> HTTPResponse:
+        del port, method, path, headers
+        assert body is not None
+        payload = json.loads(body)
+        result = rejected_result if payload["method"] == rejected_method else _mcp_results()[payload["method"]]
+        return HTTPResponse(200, {"content-type": "application/json"}, _mcp_result(payload["id"], result))
 
-    monkeypatch.setattr("www.image_runtime._send_modern_mcp_request", send_request)
+    monkeypatch.setattr("scripts.image_smoke._request", request)
 
-    with pytest.raises(SmokeError, match=message):
+    with pytest.raises(SmokeError, match="MCP qualification failed") as caught:
         _probe_modern_mcp(49152)
+    # The SDK may reject incompatible discovery before application checks run.
+    if rejected_method != "server/discover" or "supportedVersions" not in rejected_result:
+        assert message in "".join(traceback.format_exception(caught.value))
 
 
 def test_http_contract_probe_matches_the_real_application_wire(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -335,7 +348,7 @@ def test_http_contract_probe_matches_the_real_application_wire(monkeypatch: pyte
             response = client.request(method, path, content=body, headers=headers)
             return HTTPResponse(response.status_code, dict(response.headers), response.content)
 
-        monkeypatch.setattr("www.image_runtime._request", request)
+        monkeypatch.setattr("scripts.image_smoke._request", request)
         _assert_http_contracts(49152)
 
 
@@ -438,3 +451,171 @@ def test_runtime_write_probe_uses_fixed_docker_arguments_and_fails_closed() -> N
     privileged_runner = RecordingRunner([CommandResult(returncode=4, output="")])
     with pytest.raises(SmokeError, match="setuid or setgid"):
         assert_runtime_read_only(privileged_runner, "www-image-smoke-test")
+
+
+def test_validate_image_reference_accepts_valid_refs() -> None:
+    valid_digest_ref = f"europe-west1-docker.pkg.dev/www-fmind-dev/app/www-fmind-dev@sha256:{'a' * 64}"
+    validate_image_reference(valid_digest_ref)
+    validate_image_reference("www:local")
+    validate_image_reference("ghcr.io/owner/repo:v1.0.0")
+
+
+@pytest.mark.parametrize(
+    ("invalid_ref", "error_match"),
+    [
+        ("", "invalid image reference"),
+        ("   ", "invalid image reference"),
+        ("image with spaces", "invalid image reference"),
+        ("image;rm-rf", "invalid characters"),
+        ("image$bad", "invalid characters"),
+        ("repo@sha256:123", "invalid image digest"),
+        ("repo@sha256:" + ("g" * 64), "invalid image digest"),
+        ("repo@md5:123", "invalid image digest"),
+    ],
+)
+def test_validate_image_reference_rejects_malformed_refs(invalid_ref: str, error_match: str) -> None:
+    with pytest.raises(SmokeError, match=error_match):
+        validate_image_reference(invalid_ref)
+
+
+def test_resolve_image_id_loads_existing_archive(tmp_path: Path) -> None:
+    archive = tmp_path / "test-image.tar"
+    archive.write_bytes(b"dummy archive")
+    digest = "sha256:" + ("b" * 64)
+
+    runner = RecordingRunner(
+        [
+            CommandResult(returncode=0, output="Loaded image: www:test\n"),
+            CommandResult(returncode=0, output=f"{digest}\n"),
+        ]
+    )
+
+    image_id = resolve_image_id(runner, archive)
+    assert image_id == digest
+    assert runner.commands == [
+        ("docker", "image", "load", "--input", str(archive)),
+        ("docker", "image", "inspect", "--format", "{{.Id}}", "www:test"),
+    ]
+
+
+def test_resolve_image_id_fails_when_archive_missing(tmp_path: Path) -> None:
+    missing = tmp_path / "missing.tar"
+    runner = RecordingRunner()
+    with pytest.raises(SmokeError, match="is missing"):
+        resolve_image_id(runner, missing)
+
+
+def test_resolve_image_id_pulls_and_inspects_remote_reference() -> None:
+    target = f"europe-west1-docker.pkg.dev/www-fmind-dev/app/www-fmind-dev@sha256:{'c' * 64}"
+    digest = "sha256:" + ("c" * 64)
+
+    runner = RecordingRunner(
+        [
+            CommandResult(returncode=0, output="pulled\n"),
+            CommandResult(returncode=0, output=f"{digest}\n"),
+        ]
+    )
+
+    image_id = resolve_image_id(runner, target)
+    assert image_id == digest
+    assert runner.commands == [
+        ("docker", "pull", "--platform", "linux/amd64", target),
+        ("docker", "image", "inspect", "--format", "{{.Id}}", target),
+    ]
+
+
+def test_main_rejects_extra_arguments(capsys: pytest.CaptureFixture[str]) -> None:
+    exit_code = main(["one", "two"])
+    assert exit_code == 2
+    assert "usage:" in capsys.readouterr().err
+
+
+def test_main_passes_target_and_handles_errors(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    recorded_targets: list[str | None] = []
+
+    def fake_smoke(target: str | None = None, *, runner: Any = None) -> None:
+        del runner
+        recorded_targets.append(target)
+
+    monkeypatch.setattr("scripts.image_smoke.smoke_image", fake_smoke)
+
+    assert main([]) == 0
+    assert recorded_targets == [None]
+
+    assert main(["my-image:latest"]) == 0
+    assert recorded_targets == [None, "my-image:latest"]
+
+    def failing_smoke(target: str | None = None, *, runner: Any = None) -> None:
+        del target, runner
+        raise SmokeError("broken image")
+
+    monkeypatch.setattr("scripts.image_smoke.smoke_image", failing_smoke)
+    assert main([]) == 1
+    assert "image smoke failed: broken image" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("failure", ["oversized", "timeout"])
+def test_http_boundary_caps_reads_sanitizes_errors_and_closes_connection(
+    failure: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    events: list[str] = []
+
+    class FakeResponse:
+        def read(self, amount: int) -> bytes:
+            assert amount == 2 * 1024 * 1024 + 1
+            return b"x" * amount
+
+    class FakeConnection:
+        def __init__(self, host: str, port: int, *, timeout: float) -> None:
+            assert (host, port, timeout) == ("127.0.0.1", 49152, 5)
+
+        def request(self, method: str, path: str, *, body: bytes | None, headers: dict[str, str]) -> None:
+            del method, path, body, headers
+
+        def getresponse(self) -> FakeResponse:
+            if failure == "timeout":
+                raise TimeoutError("untrusted diagnostic payload")
+            return FakeResponse()
+
+        def close(self) -> None:
+            events.append("closed")
+
+    monkeypatch.setattr("scripts.image_smoke.http.client.HTTPConnection", FakeConnection)
+    expected = "response exceeded 2097152 bytes" if failure == "oversized" else r"request failed \(TimeoutError\)"
+    with pytest.raises(SmokeError, match=expected) as caught:
+        _request(49152, "POST", "/mcp")
+    assert "untrusted diagnostic" not in str(caught.value)
+    assert events == ["closed"]
+
+
+def test_mcp_deadline_returns_before_a_stalled_http_read_finishes(monkeypatch: pytest.MonkeyPatch) -> None:
+    from threading import Event
+
+    import anyio
+
+    entered = Event()
+    release = Event()
+    finished = Event()
+    deadline = anyio.fail_after
+
+    def stalled_request(*_arguments: object, **_keywords: object) -> HTTPResponse:
+        entered.set()
+        try:
+            release.wait(timeout=3)
+            raise TimeoutError("stalled peer")
+        finally:
+            finished.set()
+
+    monkeypatch.setattr("scripts.image_smoke._request", stalled_request)
+    monkeypatch.setattr(anyio, "fail_after", lambda _seconds: deadline(0.5))
+    try:
+        with pytest.raises(SmokeError, match="MCP qualification failed"):
+            _probe_modern_mcp(49152)
+        assert entered.is_set()
+        # Container cleanup must be able to run while the peer is still stalled.
+        assert not finished.is_set()
+    finally:
+        release.set()
+        assert finished.wait(timeout=3)

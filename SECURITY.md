@@ -1,0 +1,33 @@
+# Security
+
+Report suspected vulnerabilities privately to <mederic.hurier@fmind.dev>, with the affected URL or commit, reproduction steps, and expected impact. Do not include credentials or visitor data in public issues.
+
+## Verification policy
+
+The deployment gate scans and smoke-tests the pushed immutable image before Cloud Run receives it. HIGH/CRITICAL vulnerabilities with an available fix and secret findings block rollout. A passing filtered gate does not mean that the image has no advisories.
+
+The weekly [security workflow](.github/workflows/security.yml) resolves every Cloud Run revision receiving traffic and scans its exact platform digest, including unfixed HIGH/CRITICAL vulnerabilities. Its `deployed-image-advisories` artifact retains the traffic snapshot, revision-to-digest mapping, and JSON reports for 30 days. A separate read-only identity has service-level Cloud Run viewer and repository-level Artifact Registry reader grants. It cannot deploy or impersonate the runtime identity.
+
+**Review owner:** Médéric Hurier. **Last reviewed:** 2026-09-07. **Next review:** 2026-09-14, or immediately after a new fixable finding or a runtime/dependency change that affects reachability. Recheck scanner reports, Debian status, the maintained base image, and request-path applicability; rebuild and qualify an updated image when a fix becomes available. No CVE suppression was added for these findings.
+
+## Current residual package exposure
+
+The 2026-09-07 review scanned platform digest `sha256:358f3f22a66a1bd5f7170f06c00e9d5e76b27710851aea2cb46340247a215938` in `europe-west1-docker.pkg.dev/www-fmind-dev/app/www-fmind-dev`. It found 54 Debian package/advisory instances (51 HIGH, 3 CRITICAL), covering 18 unique CVEs, with no fixed version reported and no HIGH/CRITICAL Python-package finding. This is a dated baseline; the workflow artifact identifies what is serving at each subsequent scan.
+
+The table records source-based reachability assessment, not exploit testing or a claim that affected libraries are absent. The runtime is amd64, non-root, has no database, and does not launch external commands from request handlers. Public requests cannot upload archives, databases, terminal descriptions, or filesystem ACLs. Authored content and dependencies remain separate trusted build inputs.
+
+| Component and advisories                                                                                                           | Reviewed applicability and remaining boundary                                                                                                                                                                                                              |
+| ---------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Perl: CVE-2026-13221, CVE-2026-8376, CVE-2026-42496, CVE-2026-42497, CVE-2026-48962, CVE-2026-57432, CVE-2026-57433, CVE-2026-9538 | No request path invokes Perl regex compilation, archive extraction, compression output globs, pack/unpack, or Storable. CVE-2026-8376 specifically concerns 32-bit builds; the image is amd64. Reassess if subprocess or archive processing is introduced. |
+| SQLite: CVE-2026-11822, CVE-2026-11824                                                                                             | No database or SQLite FTS5 usage in the application. Reassess before adding a database or accepting database files.                                                                                                                                        |
+| ncurses: CVE-2025-69720                                                                                                            | No interactive terminal or caller-supplied terminal database processing in the web service.                                                                                                                                                                |
+| systemd: CVE-2026-16742                                                                                                            | The container runs Granian, not systemd-homed. The shared library's presence alone does not establish exposure to the affected home-record workflow.                                                                                                       |
+| gzip: CVE-2026-41992                                                                                                               | No request path invokes gzip's LZH decompressor. HTTP Brotli compression uses a separate library.                                                                                                                                                          |
+| libacl: CVE-2026-54369                                                                                                             | No ACL manipulation of caller-owned filesystem trees; runtime files are root-owned and the process is unprivileged.                                                                                                                                        |
+| util-linux: CVE-2026-76642, CVE-2026-78408, CVE-2026-78409, CVE-2026-78410                                                         | No request path invokes mount helpers, nsenter, or mount post-hooks. The image strips setuid/setgid privileges from installed helpers.                                                                                                                     |
+
+Consult the [Debian Security Tracker](https://security-tracker.debian.org/tracker/) for release-specific status. Package severity alone does not establish website exploitability. The three CRITICAL entries concern [large Perl regular expressions](https://security-tracker.debian.org/tracker/CVE-2026-13221), [Archive::Tar symlinks](https://security-tracker.debian.org/tracker/CVE-2026-42496), and [32-bit Perl regular expressions](https://security-tracker.debian.org/tracker/CVE-2026-8376).
+
+## Logs and privacy
+
+Custom analytics omit visitor identifiers and IP addresses and expire from BigQuery after 180 days. Private Cloud Run operational request logs are separate and can include IP addresses, user agents, and full request URLs; the Cloud Logging `_Default` bucket retains them for 30 days. See [README analytics](README.md#analytics) for the data-flow scope.

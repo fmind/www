@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import http.client
 import json
 import os
@@ -14,52 +15,18 @@ import time
 from collections.abc import Callable, Iterator, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
+from functools import partial
 from pathlib import Path
 from tempfile import TemporaryFile
 from types import FrameType
-from typing import Any, NoReturn, Protocol, cast
+from typing import NoReturn, Protocol, cast, override
 
-from mcp.shared.inbound import (
-    MCP_METHOD_HEADER,
-    MCP_NAME_HEADER,
-    MCP_PROTOCOL_VERSION_HEADER,
-    NAME_BEARING_METHODS,
-    encode_header_value,
-)
-from mcp_types import (
-    CLIENT_CAPABILITIES_META_KEY,
-    CLIENT_INFO_META_KEY,
-    PROTOCOL_VERSION_META_KEY,
-    SERVER_INFO_META_KEY,
-    CallToolRequest,
-    CallToolRequestParams,
-    CallToolResult,
-    ClientCapabilities,
-    DiscoverRequest,
-    DiscoverResult,
-    GetPromptRequest,
-    GetPromptRequestParams,
-    GetPromptResult,
-    Implementation,
-    JSONRPCRequest,
-    JSONRPCResponse,
-    ListPromptsRequest,
-    ListPromptsResult,
-    ListResourcesRequest,
-    ListResourcesResult,
-    ListToolsRequest,
-    ListToolsResult,
-    PaginatedRequestParams,
-    ReadResourceRequest,
-    ReadResourceRequestParams,
-    ReadResourceResult,
-    RequestParams,
-    RequestParamsMeta,
-    TextContent,
-    TextResourceContents,
-)
-from mcp_types.jsonrpc import JSONRPC_VERSION
-from pydantic import BaseModel, ValidationError
+import anyio
+import httpx2
+from anyio import to_thread
+from mcp import ClientSession
+from mcp.client.streamable_http import streamable_http_client
+from mcp_types import Implementation, TextContent, TextResourceContents
 
 from www.mcp import MCP_PROFILE_URI, MCP_PROTOCOL_VERSION
 
@@ -77,6 +44,8 @@ OTEL_ENDPOINT_NAMES = {
 }
 HOMEPAGE_TITLE_PREFIX = "<title>Médéric Hurier (Fmind)".encode()
 _IMAGE_ID = re.compile(r"sha256:[0-9a-f]{64}\Z")
+_IMAGE_DIGEST = re.compile(r"sha256:[0-9a-f]{64}\Z")
+_IMAGE_REFERENCE_CHARS = re.compile(r"[A-Za-z0-9_./:@-]+\Z")
 _CONTAINER_ID = re.compile(r"[0-9a-f]{12,64}\Z")
 _ENVIRONMENT_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*\Z")
 _EXPECTED_MCP_TOOLS = frozenset(("get_profile", "search_articles"))
@@ -136,17 +105,6 @@ class Runner(Protocol):
     """Narrow command seam used by Docker-free unit tests."""
 
     def run(self, arguments: Sequence[str], *, timeout: float, check: bool = True) -> CommandResult: ...
-
-
-type MCPProbeRequest = (
-    CallToolRequest
-    | DiscoverRequest
-    | GetPromptRequest
-    | ListPromptsRequest
-    | ListResourcesRequest
-    | ListToolsRequest
-    | ReadResourceRequest
-)
 
 
 class SubprocessRunner:
@@ -212,6 +170,45 @@ def parse_loaded_reference(output: str) -> str:
     if not reference or len(reference) > 512 or any(character.isspace() for character in reference):
         raise SmokeError("docker image load reported an invalid image reference")
     return reference
+
+
+def validate_image_reference(reference: str) -> None:
+    """Ensure the target image reference is safe and well-formed."""
+    if not reference or len(reference) > 512 or any(character.isspace() for character in reference):
+        raise SmokeError("invalid image reference")
+    if not _IMAGE_REFERENCE_CHARS.fullmatch(reference):
+        raise SmokeError(f"image reference contains invalid characters: {reference!r}")
+    if "@" in reference:
+        repository, _, digest = reference.rpartition("@")
+        if not repository or not _IMAGE_DIGEST.fullmatch(digest):
+            raise SmokeError(f"invalid image digest: {digest}")
+
+
+def _is_archive_target(target: str | Path | None) -> bool:
+    if target is None:
+        return True
+    path = Path(target)
+    return path.suffix == ".tar" or path.is_file()
+
+
+def resolve_image_id(runner: Runner, target: str | Path | None = None) -> str:
+    """Resolve the immutable Docker image ID from an archive or remote reference."""
+    if _is_archive_target(target):
+        archive_path = Path(target) if target is not None else IMAGE_ARCHIVE
+        if archive_path.is_symlink() or not archive_path.is_file():
+            raise SmokeError(f"{archive_path} is missing; run mise run check:image first")
+        load = runner.run(("docker", "image", "load", "--input", os.fspath(archive_path)), timeout=120)
+        reference = parse_loaded_reference(load.output)
+        return parse_image_id(
+            runner.run(("docker", "image", "inspect", "--format", "{{.Id}}", reference), timeout=30).output
+        )
+
+    image_reference = str(target).strip()
+    validate_image_reference(image_reference)
+    runner.run(("docker", "pull", "--platform", "linux/amd64", image_reference), timeout=180)
+    return parse_image_id(
+        runner.run(("docker", "image", "inspect", "--format", "{{.Id}}", image_reference), timeout=30).output
+    )
 
 
 def parse_image_id(output: str) -> str:
@@ -354,207 +351,103 @@ def _expect_ok(response: HTTPResponse, path: str) -> None:
         raise SmokeError(f"{path} returned HTTP {response.status}, expected 200")
 
 
-def _mcp_request_meta() -> RequestParamsMeta:
-    client_info = Implementation(name="image-smoke", version="1.0")
-    client_capabilities = ClientCapabilities()
-    return cast(
-        RequestParamsMeta,
-        {
-            PROTOCOL_VERSION_META_KEY: MCP_PROTOCOL_VERSION,
-            CLIENT_INFO_META_KEY: client_info.model_dump(by_alias=True, mode="json", exclude_none=True),
-            CLIENT_CAPABILITIES_META_KEY: client_capabilities.model_dump(by_alias=True, mode="json", exclude_none=True),
-        },
-    )
+class _LocalTransport(httpx2.AsyncBaseTransport):
+    """Give the SDK the same bounded, loopback-only HTTP boundary as page probes."""
+
+    def __init__(self, port: int) -> None:
+        self.port = port
+
+    @override
+    async def handle_async_request(self, request: httpx2.Request) -> httpx2.Response:
+        # Cancellation must return control to the container guard immediately.
+        # asyncio's executor shutdown otherwise waits for a stalled socket before
+        # cleanup can terminate the peer and release that connection.
+        response = await to_thread.run_sync(
+            partial(
+                _request,
+                self.port,
+                request.method,
+                request.url.raw_path.decode("ascii"),
+                body=await request.aread(),
+                headers=dict(request.headers),
+            ),
+            abandon_on_cancel=True,
+        )
+        return httpx2.Response(response.status, headers=response.headers, content=response.body, request=request)
 
 
-def _send_modern_mcp_request(port: int, request: MCPProbeRequest, request_id: int) -> dict[str, Any]:
-    params = (
-        request.params.model_dump(by_alias=True, mode="json", exclude_none=True) if request.params is not None else None
-    )
-    envelope = JSONRPCRequest(
-        jsonrpc=JSONRPC_VERSION,
-        id=request_id,
-        method=request.method,
-        params=params,
-    )
-    headers = {
-        "accept": "application/json, text/event-stream",
-        "content-type": "application/json",
-        MCP_METHOD_HEADER: request.method,
-        MCP_PROTOCOL_VERSION_HEADER: MCP_PROTOCOL_VERSION,
-    }
-    name_key = NAME_BEARING_METHODS.get(request.method)
-    if name_key is not None:
-        name = params.get(name_key) if params is not None else None
-        if not isinstance(name, str):
-            raise SmokeError(f"MCP {request.method} request omitted its {name_key!r} routing value")
-        # Mirror the installed SDK client so the smoke exercises the same
-        # 2026-07-28 request-routing contract enforced by the server.
-        headers[MCP_NAME_HEADER] = encode_header_value(name)
+async def _probe_mcp(port: int) -> None:
+    # The transport bounds each read and response size; the enclosing deadline
+    # also bounds the complete protocol exchange, including SDK retries.
+    with anyio.fail_after(30):
+        async with (
+            httpx2.AsyncClient(transport=_LocalTransport(port), trust_env=False) as client,
+            streamable_http_client(f"http://127.0.0.1:{port}/mcp", http_client=client) as streams,
+            ClientSession(
+                *streams, read_timeout_seconds=5, client_info=Implementation(name="image-smoke", version="1.0")
+            ) as session,
+        ):
+            discovery = await session.discover()
+            if session.protocol_version != MCP_PROTOCOL_VERSION:
+                raise SmokeError(f"MCP server/discover did not advertise {MCP_PROTOCOL_VERSION}")
+            if session.server_info is None or session.server_info.name != "www":
+                raise SmokeError("MCP server/discover returned an unexpected server identity")
+            capabilities = discovery.capabilities
+            if capabilities.tools is None or capabilities.resources is None or capabilities.prompts is None:
+                raise SmokeError("MCP server/discover did not advertise tools, resources, and prompts")
 
-    response = _request(
-        port,
-        "POST",
-        "/mcp",
-        body=envelope.model_dump_json(by_alias=True, exclude_none=True).encode(),
-        headers=headers,
-    )
-    _expect_ok(response, "/mcp")
-    try:
-        message = JSONRPCResponse.model_validate_json(response.body)
-    except ValidationError as error:
-        raise SmokeError(f"MCP {request.method} returned an invalid JSON-RPC result") from error
-    if message.id != request_id:
-        raise SmokeError(f"MCP {request.method} returned an unexpected request ID")
-    return message.result
+            tools = await session.list_tools()
+            if not _EXPECTED_MCP_TOOLS.issubset(tool.name for tool in tools.tools):
+                raise SmokeError("MCP tools/list omitted representative portfolio tools")
+            resources = await session.list_resources()
+            if MCP_PROFILE_URI not in {str(resource.uri) for resource in resources.resources}:
+                raise SmokeError("MCP resources/list omitted the portfolio resource")
+            prompts = await session.list_prompts()
+            if not _EXPECTED_MCP_PROMPTS.issubset(prompt.name for prompt in prompts.prompts):
+                raise SmokeError("MCP prompts/list omitted representative portfolio prompts")
 
+            search = await session.call_tool("search_articles", {"query": _MCP_SEARCH_QUERY, "limit": 1})
+            if search.is_error or not isinstance(search.structured_content, dict):
+                raise SmokeError("MCP tools/call did not return a successful structured result")
+            if search.structured_content.get("query") != _MCP_SEARCH_QUERY:
+                raise SmokeError("MCP tools/call did not return the normalized query")
+            articles = search.structured_content.get("articles")
+            if not isinstance(articles, list) or not articles:
+                raise SmokeError("MCP tools/call did not return a matching article")
 
-def _parse_mcp_result[ResultT: BaseModel](
-    result_type: type[ResultT],
-    result: dict[str, Any],
-    method: str,
-) -> ResultT:
-    try:
-        return result_type.model_validate(result)
-    except ValidationError as error:
-        raise SmokeError(f"MCP {method} returned an invalid result") from error
+            resource = await session.read_resource(MCP_PROFILE_URI)
+            if len(resource.contents) != 1 or not isinstance(resource.contents[0], TextResourceContents):
+                raise SmokeError("MCP resources/read did not return the portfolio profile")
+            content = resource.contents[0]
+            if str(content.uri) != MCP_PROFILE_URI or content.mime_type != "application/json":
+                raise SmokeError("MCP resources/read did not return the portfolio profile")
+            profile = json.loads(content.text)
+            if (
+                not isinstance(profile, dict)
+                or not isinstance(metadata := profile.get("metadata"), dict)
+                or metadata.get("alternate_name") != "Fmind"
+            ):
+                raise SmokeError("MCP resources/read returned an unexpected portfolio profile")
+
+            fit = await session.get_prompt("assess_fit", {"brief": _MCP_FIT_BRIEF})
+            if not fit.messages:
+                raise SmokeError("MCP prompts/get did not return a grounded fit assessment")
+            message = fit.messages[0]
+            if (
+                message.role != "user"
+                or not isinstance(message.content, TextContent)
+                or _MCP_FIT_BRIEF not in message.content.text
+            ):
+                raise SmokeError("MCP prompts/get did not return a grounded fit assessment")
 
 
 def _probe_modern_mcp(port: int) -> None:
-    discover = _parse_mcp_result(
-        DiscoverResult,
-        _send_modern_mcp_request(
-            port,
-            DiscoverRequest(params=RequestParams(_meta=_mcp_request_meta())),
-            1,
-        ),
-        "server/discover",
-    )
-    if MCP_PROTOCOL_VERSION not in discover.supported_versions:
-        raise SmokeError(f"MCP server/discover did not advertise {MCP_PROTOCOL_VERSION}")
     try:
-        server_info = Implementation.model_validate((discover.meta or {}).get(SERVER_INFO_META_KEY))
-    except ValidationError as error:
-        raise SmokeError("MCP server/discover returned invalid server metadata") from error
-    if server_info.name != "www":
-        raise SmokeError("MCP server/discover returned an unexpected server identity")
-    capabilities = discover.capabilities
-    if capabilities.tools is None or capabilities.resources is None or capabilities.prompts is None:
-        raise SmokeError("MCP server/discover did not advertise tools, resources, and prompts")
-
-    tools = _parse_mcp_result(
-        ListToolsResult,
-        _send_modern_mcp_request(
-            port,
-            ListToolsRequest(params=PaginatedRequestParams(_meta=_mcp_request_meta())),
-            2,
-        ),
-        "tools/list",
-    )
-    if not _EXPECTED_MCP_TOOLS.issubset(tool.name for tool in tools.tools):
-        raise SmokeError("MCP tools/list omitted representative portfolio tools")
-
-    resources = _parse_mcp_result(
-        ListResourcesResult,
-        _send_modern_mcp_request(
-            port,
-            ListResourcesRequest(params=PaginatedRequestParams(_meta=_mcp_request_meta())),
-            3,
-        ),
-        "resources/list",
-    )
-    if MCP_PROFILE_URI not in {str(resource.uri) for resource in resources.resources}:
-        raise SmokeError("MCP resources/list omitted the portfolio resource")
-
-    prompts = _parse_mcp_result(
-        ListPromptsResult,
-        _send_modern_mcp_request(
-            port,
-            ListPromptsRequest(params=PaginatedRequestParams(_meta=_mcp_request_meta())),
-            4,
-        ),
-        "prompts/list",
-    )
-    if not _EXPECTED_MCP_PROMPTS.issubset(prompt.name for prompt in prompts.prompts):
-        raise SmokeError("MCP prompts/list omitted representative portfolio prompts")
-
-    search = _parse_mcp_result(
-        CallToolResult,
-        _send_modern_mcp_request(
-            port,
-            CallToolRequest(
-                params=CallToolRequestParams(
-                    _meta=_mcp_request_meta(),
-                    name="search_articles",
-                    arguments={"query": _MCP_SEARCH_QUERY, "limit": 1},
-                )
-            ),
-            5,
-        ),
-        "tools/call",
-    )
-    if search.is_error or not isinstance(search.structured_content, dict):
-        raise SmokeError("MCP tools/call did not return a successful structured result")
-    if search.structured_content.get("query") != _MCP_SEARCH_QUERY:
-        raise SmokeError("MCP tools/call did not return the normalized query")
-    articles = search.structured_content.get("articles")
-    if not isinstance(articles, list) or not articles:
-        raise SmokeError("MCP tools/call did not return a matching article")
-
-    resource = _parse_mcp_result(
-        ReadResourceResult,
-        _send_modern_mcp_request(
-            port,
-            ReadResourceRequest(
-                params=ReadResourceRequestParams(
-                    _meta=_mcp_request_meta(),
-                    uri=MCP_PROFILE_URI,
-                )
-            ),
-            6,
-        ),
-        "resources/read",
-    )
-    if len(resource.contents) != 1 or not isinstance(resource.contents[0], TextResourceContents):
-        raise SmokeError("MCP resources/read did not return the portfolio profile")
-    profile_content = resource.contents[0]
-    if str(profile_content.uri) != MCP_PROFILE_URI or profile_content.mime_type != "application/json":
-        raise SmokeError("MCP resources/read did not return the portfolio profile")
-    try:
-        profile = json.loads(profile_content.text)
-    except json.JSONDecodeError as error:
-        raise SmokeError("MCP resources/read returned invalid portfolio JSON") from error
-    if (
-        not isinstance(profile, dict)
-        or not isinstance(metadata := profile.get("metadata"), dict)
-        or metadata.get("alternate_name") != "Fmind"
-    ):
-        raise SmokeError("MCP resources/read returned an unexpected portfolio profile")
-
-    fit = _parse_mcp_result(
-        GetPromptResult,
-        _send_modern_mcp_request(
-            port,
-            GetPromptRequest(
-                params=GetPromptRequestParams(
-                    _meta=_mcp_request_meta(),
-                    name="assess_fit",
-                    arguments={"brief": _MCP_FIT_BRIEF},
-                )
-            ),
-            7,
-        ),
-        "prompts/get",
-    )
-    if not fit.messages:
-        raise SmokeError("MCP prompts/get did not return a grounded fit assessment")
-    first_message = fit.messages[0]
-    if (
-        first_message.role != "user"
-        or not isinstance(first_message.content, TextContent)
-        or _MCP_FIT_BRIEF not in first_message.content.text
-    ):
-        raise SmokeError("MCP prompts/get did not return a grounded fit assessment")
+        asyncio.run(_probe_mcp(port))
+    except Exception as error:
+        # SDK task groups can wrap protocol failures. Keep credentials and raw
+        # response payloads out of CLI diagnostics while retaining the cause.
+        raise SmokeError(f"MCP qualification failed ({type(error).__name__})") from error
 
 
 def _probe_health(port: int) -> None:
@@ -621,17 +514,10 @@ def _termination_handlers() -> Iterator[None]:
             signal.signal(item, handler)
 
 
-def smoke_image(runner: Runner | None = None) -> None:
-    """Load and qualify the existing archive without rebuilding it."""
+def smoke_image(target: str | Path | None = None, *, runner: Runner | None = None) -> None:
+    """Load and qualify an image archive or remote reference without rebuilding it."""
     command_runner = SubprocessRunner() if runner is None else runner
-    if IMAGE_ARCHIVE.is_symlink() or not IMAGE_ARCHIVE.is_file():
-        raise SmokeError("tmp/www-image.tar is missing; run mise run check:image first")
-
-    load = command_runner.run(("docker", "image", "load", "--input", os.fspath(IMAGE_ARCHIVE)), timeout=120)
-    loaded_reference = parse_loaded_reference(load.output)
-    image_id = parse_image_id(
-        command_runner.run(("docker", "image", "inspect", "--format", "{{.Id}}", loaded_reference), timeout=30).output
-    )
+    image_id = resolve_image_id(command_runner, target)
     parse_configured_user(
         command_runner.run(
             ("docker", "image", "inspect", "--format", "{{json .Config.User}}", image_id), timeout=30
@@ -681,10 +567,15 @@ def smoke_image(runner: Runner | None = None) -> None:
         _assert_http_contracts(published_port)
 
 
-def main() -> int:
+def main(arguments: Sequence[str] | None = None) -> int:
+    args = sys.argv[1:] if arguments is None else arguments
+    if len(args) > 1:
+        sys.stderr.write("usage: python -m scripts.image_smoke [<image-archive-or-reference>]\n")
+        return 2
+    target = args[0] if args else None
     try:
         with _termination_handlers():
-            smoke_image()
+            smoke_image(target)
     except TerminationRequestedError as error:
         sys.stderr.write(f"image smoke interrupted: {error}\n")
         return 128 + error.signal_number

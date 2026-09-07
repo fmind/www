@@ -95,7 +95,7 @@ description = "Check formatting, project metadata, and lockfile"
 run = [
   "uv lock --check",
   "uv run --locked validate-pyproject pyproject.toml",
-  "uv run --locked ruff format --check src tests",
+  "uv run --locked ruff format --check src tests scripts",
   "dprint check",
 ]
 
@@ -106,6 +106,13 @@ depends = ["build:image"]
 # complete policy below and fail on the same fixable runtime findings. Inspect
 # without --ignore-unfixed when reviewing advisories that have no patch yet.
 run = 'env -u TRIVY_CONFIG trivy image --input "$IMAGE_ARCHIVE" --platform linux/amd64 --exit-code=1 --severity HIGH,CRITICAL --ignore-unfixed --scanners vuln,secret'
+
+[tasks."check:image:digest"]
+description = "Scan an immutable remote image digest with Trivy"
+raw_args = true
+# The owner has a global Trivy policy; unset it so local and CI scans use the
+# complete policy below and fail on the same fixable runtime findings.
+run = "env -u TRIVY_CONFIG trivy image --platform linux/amd64 --exit-code=1 --severity HIGH,CRITICAL --ignore-unfixed --scanners vuln,secret"
 
 [tasks."check:images"]
 description = "Validate article image derivatives without changing files"
@@ -120,7 +127,7 @@ alias = "cs"
 description = "Audit recent commits and the working tree for leaked secrets (gitleaks)"
 run = [
   'gitleaks git --redact=100 --log-opts="--max-count=100" --verbose',
-  "gitleaks dir . --redact=100 --verbose",
+  "gitleaks dir . --config assets/gitleaks-dir.toml --redact=100 --verbose",
 ]
 
 [tasks."check:leaks:staged"]
@@ -135,13 +142,13 @@ run = "lychee --root-dir \"$PWD\" ."
 [tasks."check:lint"]
 alias = "cl"
 description = "Lint Python sources (ruff)"
-run = "uv run --locked ruff check src tests"
+run = "uv run --locked ruff check src tests scripts"
 
 [tasks."check:scan"]
 description = "Scan Dockerfile and infrastructure for misconfigurations (trivy config)"
 # Unset the owner's global policy, then state the complete repository policy so
 # local and CI scans cannot diverge through inherited configuration.
-run = "env -u TRIVY_CONFIG trivy config --exit-code=1 --severity LOW,MEDIUM,HIGH,CRITICAL --ignorefile .trivyignore ."
+run = "env -u TRIVY_CONFIG trivy config --exit-code=1 --severity LOW,MEDIUM,HIGH,CRITICAL --ignorefile .trivyignore --skip-dirs tmp --skip-dirs .venv --skip-dirs dist ."
 
 [tasks."check:tofu"]
 description = "Validate and lint the OpenTofu configuration"
@@ -201,7 +208,7 @@ raw_args = true
 # it sets only the image — OpenTofu still owns the rest of the service shape.
 # The typed boundary rejects tags, foreign repositories, missing digests, and
 # extra flags before constructing a fixed project/region/service gcloud argv.
-run = "uv run --locked python -m www.deployment"
+run = "uv run --locked python -m scripts.deploy"
 
 [tasks.format]
 alias = "f"
@@ -218,7 +225,7 @@ raw_args = true
 run = """
 bash -c '
 set -euo pipefail
-if [ "$#" -eq 0 ]; then set -- src tests; fi
+if [ "$#" -eq 0 ]; then set -- src tests scripts; fi
 uv run --locked ruff check --select=I --fix --force-exclude "$@"
 uv run --locked ruff format --force-exclude "$@"
 ' --
@@ -245,7 +252,7 @@ run = ["uv sync --locked --all-groups", "lefthook install"]
 alias = "t"
 description = "Run offline tests with the branch-coverage gate"
 depends = ["build:css"]
-run = 'uv run --locked pytest -m "not integration" --cov=www --cov-fail-under=85'
+run = 'uv run --locked pytest -m "not integration" --cov --cov-fail-under=85'
 
 [tasks."test:browser"]
 description = "Exercise navigation, articles, and calculators in Chromium"
@@ -254,8 +261,9 @@ depends = ["build"]
 run = 'NODE_PATH="$(mise where npm:playwright)/node_modules" env -u NO_COLOR playwright test --config tests/playwright.config.cjs'
 
 [tasks."test:image"]
-description = "Smoke-test the already-built production OCI archive"
-run = "uv run --locked python scripts/test_image.py"
+description = "Smoke-test the already-built production OCI archive or remote digest"
+raw_args = true
+run = "uv run --locked --no-dev --group ops python -m scripts.image_smoke"
 
 [tasks."test:lighthouse"]
 description = "Run the manual Lighthouse qualification matrix with an already-installed Chromium"

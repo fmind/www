@@ -10,6 +10,24 @@ class APIMode(StrEnum):
     CACHED = "cached"
 
 
+class BillingPlan(StrEnum):
+    ON_DEMAND = "on-demand"
+    CUD_1Y = "cud-1y"
+    CUD_3Y = "cud-3y"
+    FLEX = "flex"
+
+
+@dataclass(frozen=True, slots=True)
+class NodePrice:
+    plan: BillingPlan
+    label: str
+    hourly_usd: float
+
+    @property
+    def committed(self) -> bool:
+        return self.plan in (BillingPlan.CUD_1Y, BillingPlan.CUD_3Y)
+
+
 @dataclass(frozen=True, slots=True)
 class FrontierModel:
     id: str
@@ -24,6 +42,8 @@ class FrontierModel:
     license_class: str
     analysis_url: str
     weights_url: str
+    minimum_node_id: str
+    minimum_nodes: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -32,11 +52,17 @@ class GKENodePool:
     name: str
     gpu: str
     gpu_count: int
-    hbm_gb: float
-    hourly_usd: float
-    price_model: str
+    vram_gb: float
+    prices: tuple[NodePrice, ...]
     operational: str
-    committed: bool = False
+    multi_host: bool = False
+
+    def price(self, plan: BillingPlan) -> NodePrice:
+        for price in self.prices:
+            if price.plan is plan:
+                return price
+        msg = f"{self.name} does not offer {plan} in this price snapshot"
+        raise ValueError(msg)
 
 
 @dataclass(frozen=True, slots=True)
@@ -110,6 +136,7 @@ class HostingInputs:
     review_hourly_usd: float
     quality: tuple[TaskQuality, TaskQuality, TaskQuality, TaskQuality]
     quality_enabled: bool
+    billing_plan: BillingPlan = BillingPlan.ON_DEMAND
 
 
 @dataclass(frozen=True, slots=True)
@@ -157,6 +184,12 @@ class ModelComparison:
     model: FrontierModel
     estimate: HostingEstimate
     decision: str
+
+
+@dataclass(frozen=True, slots=True)
+class HardwareGuidance:
+    node: GKENodePool
+    nodes_per_replica: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -231,6 +264,8 @@ class LLMSelfHostingView:
     quantizations: tuple[Quantization, ...]
     selected_model: FrontierModel
     selected_node: GKENodePool
+    selected_price: NodePrice
+    hardware_guidance: HardwareGuidance
     selected_quant: Quantization
     estimate: HostingEstimate
     comparison: tuple[ModelComparison, ...]

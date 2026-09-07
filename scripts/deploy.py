@@ -6,9 +6,8 @@ import os
 import re
 import subprocess
 import sys
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Protocol
 
 _DIGEST = re.compile(r"sha256:[0-9a-f]{64}\Z")
 _CONFIG_VALUE = re.compile(r"[a-z][a-z0-9-]*[a-z0-9]\Z")
@@ -46,17 +45,12 @@ class DeploymentTarget:
         return cls(*(environment.get(name, "") for name in _CONFIG_NAMES))
 
 
-class Runner(Protocol):
-    """Narrow process seam that keeps contract tests away from gcloud."""
-
-    def run(self, arguments: Sequence[str]) -> int: ...
+type Runner = Callable[[Sequence[str]], int]
 
 
-class SubprocessRunner:
-    """Run the already-validated gcloud command with inherited streams and signals."""
-
-    def run(self, arguments: Sequence[str]) -> int:
-        return subprocess.run(tuple(arguments), check=False).returncode  # noqa: S603 - fixed gcloud argv only.
+def run_command(arguments: Sequence[str]) -> int:
+    """Run validated gcloud argv with inherited streams and signals."""
+    return subprocess.run(tuple(arguments), check=False).returncode  # noqa: S603 - fixed gcloud argv only.
 
 
 def build_deploy_command(arguments: Sequence[str], target: DeploymentTarget) -> tuple[str, ...]:
@@ -102,7 +96,7 @@ def main(
         return 2
 
     try:
-        return (runner or SubprocessRunner()).run(command)
+        return (runner or run_command)(command)
     except FileNotFoundError:
         sys.stderr.write("deployment failed: gcloud is not installed or executable\n")
         return 127
