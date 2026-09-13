@@ -3,15 +3,19 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from io import BytesIO
+from pathlib import Path
 from typing import Any
 
 import pytest
 from litestar.plugins.opentelemetry import OpenTelemetryPlugin
 from litestar.testing import TestClient
 from opentelemetry.sdk.trace import TracerProvider
+from PIL import Image
 
 import www.app as app_module
 from www.app import app, create_app
@@ -24,8 +28,8 @@ from www.rendering import Renderer
 type AppClient = TestClient[Any]
 
 FONT_PATHS = (
-    "/static/fonts/Inter-Variable.woff2",
-    "/static/fonts/Outfit-Variable.woff2",
+    "/static/fonts/GoogleSans-Variable.woff2",
+    "/static/fonts/GoogleSansCode-Variable.woff2",
 )
 
 
@@ -54,6 +58,7 @@ def snapshots() -> tuple[ApplicationAssets, ArticleCollection]:
 def test_human_pages_render_complete_no_cache_documents(client: AppClient) -> None:
     cases = {
         "/": ("Médéric Hurier", 200),
+        "/connect": ("Connect on LinkedIn", 200),
         "/articles/": ("Articles", 200),
         "/articles/the-affordable-ai-agents/": ("The Affordable AI Agents", 200),
         "/sites/": ("LLM self-hosting on GKE", 200),
@@ -77,6 +82,7 @@ def test_human_pages_render_complete_no_cache_documents(client: AppClient) -> No
 
 def test_canonical_redirects_preserve_only_the_established_queries(client: AppClient) -> None:
     cases = {
+        "/connect/?event=conference": "/connect",
         "/articles?tag=Agent": "/articles/?tag=Agent",
         "/articles/the-affordable-ai-agents?q=agent%20cost": ("/articles/the-affordable-ai-agents/?q=agent%20cost"),
         "/sites?requests=234": "/sites/",
@@ -87,6 +93,80 @@ def test_canonical_redirects_preserve_only_the_established_queries(client: AppCl
         response = client.get(path, follow_redirects=False)
         assert response.status_code == 301, path
         assert response.headers["location"] == location
+
+
+@pytest.mark.parametrize(("name", "size"), [("logo", (1254, 1254)), ("banner", (2056, 765))])
+def test_brand_downloads_serve_full_resolution_pngs(client: AppClient, name: str, size: tuple[int, int]) -> None:
+    path = f"/{name}.png"
+    response = client.get(path, follow_redirects=False)
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "image/png"
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert "must-revalidate" in response.headers["cache-control"]
+    assert response.content == Path(f"static/{name}.png").read_bytes()
+    with Image.open(BytesIO(response.content)) as downloaded:
+        assert downloaded.format == "PNG"
+        assert downloaded.size == size
+        assert downloaded.mode == "RGBA"
+
+    head = client.head(path)
+    assert head.status_code == 200
+    assert head.content == b""
+    assert head.headers["content-type"] == "image/png"
+    assert head.headers["etag"] == response.headers["etag"]
+    cached = client.get(path, headers={"if-none-match": response.headers["etag"]})
+    assert cached.status_code == 304
+    assert cached.content == b""
+
+
+def test_branding_uses_small_navigation_asset_and_banner_preview(client: AppClient) -> None:
+    home = client.get("/").text
+    assert "/static/img/logo.webp?v=" in home
+    assert 'property="og:image" content="https://www.fmind.dev/static/img/og-image.jpg"' in home
+    assert 'property="og:image:alt" content="Fmind.dev — AI, Agents, Security"' in home
+    with Image.open(BytesIO(client.get("/static/img/logo.webp").content)) as logo:
+        assert logo.format == "WEBP"
+        assert logo.size == (96, 96)
+    with Image.open(BytesIO(client.get("/static/img/og-image.jpg").content)) as banner:
+        assert banner.format == "JPEG"
+        assert banner.size == (1200, 630)
+        assert banner.info["progressive"]
+
+    manifest = client.get("/site.webmanifest").json()
+    for icon in manifest["icons"]:
+        with Image.open(BytesIO(client.get(icon["src"]).content)) as decoded:
+            assert f"{decoded.width}x{decoded.height}" == icon["sizes"]
+            assert decoded.mode == "RGB"
+        assert icon["purpose"] == "any"
+
+
+def test_connect_actions_and_contact_download(client: AppClient) -> None:
+    response = client.get("/connect?next=https://example.org")
+    assert '<link rel="canonical" href="https://www.fmind.dev/connect"' in response.text
+    assert 'href="https://www.linkedin.com/in/fmind-dev/"' in response.text
+    assert f'href="mailto:{METADATA.email}"' in response.text
+    assert 'href="/connect.vcf"' in response.text
+    assert "example.org" not in response.text
+    card = client.get("/connect.vcf")
+    assert card.status_code == 200
+    assert card.headers["content-type"] == "text/vcard; charset=utf-8"
+    assert card.headers["content-disposition"] == 'attachment; filename="mederic-hurier.vcf"'
+    assert card.headers["cache-control"] == "no-cache"
+    assert card.content.startswith(b"BEGIN:VCARD\r\nVERSION:3.0\r\n")
+    assert card.content.endswith(b"END:VCARD\r\n")
+    assert f"FN:{METADATA.name}\r\n" in card.text
+    assert "N:Hurier;Médéric;;;\r\n" in card.text
+    assert f"EMAIL;TYPE=INTERNET,WORK:{METADATA.email}\r\n" in card.text
+    assert f"URL:{METADATA.site_url}\r\n" in card.text
+    assert "URL:https://www.linkedin.com/in/fmind-dev/\r\n" in card.text
+    assert "TEL:" not in card.text
+    for path in ("/connect", "/connect.vcf", "/static/img/connect-qr.svg"):
+        assert client.get(path).status_code == 200
+        head = client.head(path)
+        assert head.status_code == 200
+        assert not head.content
+    for path in ("/sitemap.xml", "/llms.txt"):
+        assert f"{METADATA.site_url}/connect" in client.get(path).text
 
 
 def test_machine_surfaces_keep_content_cache_and_cors_contracts(client: AppClient) -> None:
@@ -133,6 +213,29 @@ def test_machine_surfaces_keep_content_cache_and_cors_contracts(client: AppClien
         assert response.headers.get("cache-control") == cache_control
         assert response.headers.get("access-control-allow-origin") == cors
         assert marker in response.content
+
+
+def test_expertise_is_consistent_for_people_search_and_agents(client: AppClient) -> None:
+    titles = [
+        "Agentic Orchestration",
+        "Production MLOps",
+        "Security-First AI",
+        "Technical Strategy",
+        "Data Science & ML",
+        "Python Development",
+    ]
+    profile = client.get("/api/profile").json()
+    assert [card["title"] for card in profile["expertise"]] == titles
+    html = client.get("/").text
+    graph = json.loads(html.split('<script type="application/ld+json">', 1)[1].split("</script>", 1)[0])
+    person = next(item for item in graph["@graph"] if item["@type"] == "Person")
+    assert person["hasOccupation"]["skills"] == titles
+    for path in ("/llms.txt", "/llms-full.txt"):
+        context = client.get(path).text
+        assert METADATA.headline_primary in context
+        assert METADATA.headline_secondary in context
+        for title in titles:
+            assert f"**{title}**" in context
 
 
 def test_profile_json_matches_the_go_omission_and_time_contract(
@@ -314,7 +417,7 @@ def test_static_validators_and_ranges_identify_the_same_bytes(client: AppClient,
     "path",
     [
         "/static/%00",
-        "/static/fonts/%2e/Inter-Variable.woff2",
+        "/static/fonts/%2e/GoogleSans-Variable.woff2",
         "/static/fonts/%2e%2e/robots.txt",
         "/static/%2e%2e/pyproject.toml",
         "/static/missing.css",

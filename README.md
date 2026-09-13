@@ -2,7 +2,7 @@
 
 <!-- mcp-name: dev.fmind/portfolio -->
 
-The portfolio website of Médéric Hurier (Fmind). It is a fully server-rendered Python application built with [Litestar](https://litestar.dev/), [Jinja](https://jinja.palletsprojects.com/), Tailwind CSS v4, and DaisyUI v5. A small vanilla JavaScript theme, menu, and calculator controller provide progressive enhancement. There is no client framework, Node.js application project, database, cookie, or analytics tracker.
+The portfolio website of Médéric Hurier (Fmind). It is a fully server-rendered Python application built with [Litestar](https://litestar.dev/), [Jinja](https://jinja.palletsprojects.com/), Tailwind CSS v4, and DaisyUI v5. Small vanilla JavaScript menu and calculator controllers provide progressive enhancement. There is no client framework, Node.js application project, database, cookie, or analytics tracker.
 
 ## Highlights
 
@@ -47,6 +47,26 @@ Sources are bounded by a roughly 2.4MP pixel budget. Each image ships only the r
 
 The validated article collection is the sole source for HTML, search, raw Markdown, Atom, sitemap, LLM text, JSON, and MCP publication surfaces. Markdown responses make rendered root-relative links absolute while preserving code examples and external URLs. Article changes follow the authorized [article publication workflow](.agents/skills/article/SKILL.md); this repository owns the published body.
 
+## Branding
+
+The light website palette follows [fmind/theme](https://github.com/fmind/theme): white canvas, light gray panels, charcoal text, and the logo blue `#174EA6` for links, controls, and focus. `assets/css/input.css` owns interface colors; `src/www/highlighting.py` maps the same syntax roles to the existing token classes (blue keywords/functions, green strings, orange literals, purple types, gray comments, and red errors). Update both from the theme’s `checks/palette.yaml` and `ptpython/fmind.py`; the website builds independently of that checkout.
+
+The full-resolution, losslessly optimized PNG masters are available at `https://www.fmind.dev/logo.png` and `https://www.fmind.dev/banner.png`. These stable URLs serve PNG bytes directly with cache revalidation and also retain the artwork's transparency for reuse.
+
+Navigation uses a 96px lossless WebP logo for the 48px display, while favicons and home-screen icons use appropriately sized derivatives. Default social previews fit the complete banner onto a white 1200×630 progressive JPEG canvas; article previews retain their own covers. Regenerate these committed assets from `static/logo.png` and `static/banner.png` with `mise run build:branding`. Home-screen icons declare `any` because the logo's outer ring extends beyond the maskable safe area.
+
+## Conference Contact Page
+
+Share `https://www.fmind.dev/connect` at conferences. The page puts LinkedIn first, followed by a downloadable contact card, email, and the portfolio. `/connect.vcf` derives its public name, role, email, website, and LinkedIn from the portfolio data at application startup. Visitors confirm saving the contact in their own app; some Android browsers require importing the downloaded `.vcf` from Contacts.
+
+The page displays a QR code encoding the permanent `/connect` URL, so contact actions can change without replacing the code. The page and contact download work without JavaScript or third-party QR services.
+
+Regenerate the displayed QR asset with the pinned [Segno CLI](https://segno.readthedocs.io/en/stable/command-line.html); it is a build-time tool, with no application dependency:
+
+```bash
+uvx --from segno==1.6.6 segno --error M --border 4 --scale 8 --light white --output static/img/connect-qr.svg https://www.fmind.dev/connect
+```
+
 ## Decision Tools
 
 Focused tools live under `/sites/`. `src/www/data.py:SITE_PAGES` drives metadata, the sitemap, LLM text, JSON, MCP discovery, and article relationships; `src/www/app.py` wires each page's route, template, and view builder explicitly. Calculation models and validation live under `src/www/sites/`; Jinja owns presentation; native GET forms keep scenarios linkable. Follow the repository's [`site` skill](.agents/skills/site/SKILL.md) when adding or revising one.
@@ -70,7 +90,7 @@ All tasks are defined in `mise.toml` and reused by Lefthook and CI:
 | `mise run check:links`                                                 | Check external content links (network-dependent; scheduled weekly in CI)              |
 | `mise run check:tofu`                                                  | Validate and lint OpenTofu (network-dependent; runs in CI on `infra/` changes)        |
 | `mise run test`                                                        | Run pytest offline with branch coverage of at least 85%                               |
-| `mise run test:browser`                                                | Run Chromium journeys on desktop/light and mobile/dark                                |
+| `mise run test:browser`                                                | Run Chromium journeys on desktop and mobile in light mode                             |
 | `mise run test:image`                                                  | Smoke-test the already-built production OCI archive through Docker                    |
 | `mise run test:lighthouse -- --base-url <origin> [--mode full\|smoke]` | Run the strict five-category Lighthouse matrix; never in `all`                        |
 | `mise run coverage`                                                    | Show the terminal coverage report                                                     |
@@ -81,7 +101,7 @@ All tasks are defined in `mise.toml` and reused by Lefthook and CI:
 
 `mise run all` runs sequentially: format, static checks, the package/CSS build, pytest, the exact OCI archive build and scan, its bounded runtime smoke test, one pinned Chromium installation, then browser journeys. The image smoke reuses the archive produced by `check:image`; it never builds. The final browser task skips its automatic prerequisites because `all` has already built and installed them once; standalone `test:browser` keeps its normal dependencies. Docker Engine with Buildx must be running, and a cold run needs network access as described above.
 
-Lighthouse remains an explicit, non-default audit because it needs a target origin and runs 174 audits in full mode. Install Chromium first with `mise run install:browser`; if it is absent, the harness reports the equivalent `playwright install chromium` remediation. Use `mise run test:lighthouse -- --base-url http://127.0.0.1:8080 --mode smoke` for the four-audit local smoke matrix, or omit `--mode smoke` for full qualification. To exercise the browser suite against production, use `BROWSER_BASE_URL=https://www.fmind.dev mise run test:browser`. Reports and traces stay under `tmp/`. Local application checks need no cloud credentials.
+Lighthouse remains an explicit, non-default audit because it needs a target origin and runs 176 audits in full mode. Install Chromium first with `mise run install:browser`; if it is absent, the harness reports the equivalent `playwright install chromium` remediation. Use `mise run test:lighthouse -- --base-url http://127.0.0.1:8080 --mode smoke` for the four-audit local smoke matrix, or omit `--mode smoke` for full qualification. To exercise the browser suite against production, use `BROWSER_BASE_URL=https://www.fmind.dev mise run test:browser`. Reports and traces stay under `tmp/`. Local application checks need no cloud credentials.
 
 Configuration and working-tree secret scans exclude generated `tmp/`, `.venv/`, and `dist/` trees. Secret scans of Git history keep the default rules.
 
@@ -108,6 +128,8 @@ Each HTML response emits one aggregate structured record: path, status, referrer
 ## Connecting an AI Agent to `/mcp`
 
 After deployment, add `https://www.fmind.dev/mcp` as a custom MCP connector. The server exposes the closed-world, read-only tools `get_profile`, `list_experience`, `list_certifications`, `list_publications`, `search_articles`, `list_projects`, and `get_services`; the `portfolio://profile.json` resource; and the `assess_fit` and `brief_me` prompts. Server-card metadata is available at `/mcp/server-card` and the well-known compatibility route. Browser calls are accepted only from the same origin; non-browser clients need no authentication.
+
+The homepage, JSON profile, JSON-LD occupation skills, and LLM text derive expertise from the same `EXPERTISE` collection. Both headline lines and the six expertise descriptions are included in `/llms.txt` and `/llms-full.txt`. These are integration surfaces; they do not guarantee search indexing or AI citations.
 
 The checked-in `server.json` is ready for the official MCP Registry. Publication remains one explicit owner action after domain authentication:
 

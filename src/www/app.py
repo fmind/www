@@ -21,6 +21,7 @@ from mcp.server.transport_security import TransportSecuritySettings
 
 from www.assets import ApplicationAssets, StaticResponse, load_application_assets
 from www.config import Config, Environment
+from www.connect import CONNECT_URL, LINKEDIN_URL, render_contact_card
 from www.content import ArticleCollection, article_summaries, load_articles, visible_articles
 from www.data import (
     BADGES,
@@ -44,6 +45,7 @@ from www.models import PageMetadata, SitePage
 from www.pages import (
     article_index_metadata,
     article_metadata,
+    connect_metadata,
     home_metadata,
     not_found_metadata,
     site_index_metadata,
@@ -168,6 +170,8 @@ def create_app(
 
     home_structured_data = get_structured_data()
     home_page = home_metadata(home_structured_data)
+    connect_page = connect_metadata(home_structured_data)
+    contact_card = render_contact_card()
     not_found_page = not_found_metadata(home_structured_data)
     site_index = SitePage(
         slug="",
@@ -200,7 +204,6 @@ def create_app(
         ),
     )
     home_context: dict[str, object] = {
-        "articles": page_articles,
         "biography_html": biography_html,
         "expertise": EXPERTISE,
         "experiences": EXPERIENCES,
@@ -237,6 +240,10 @@ def create_app(
     @route("/static/{asset_path:path}", http_method=_READ_METHODS)
     async def static_asset(asset_path: FromPath[str], request: AppRequest) -> ASGIApp:
         return await static_asset_response(asset_path, request, application_assets, static_dir)
+
+    @route(["/banner.png", "/logo.png"], http_method=_READ_METHODS)
+    async def branding_asset(request: AppRequest) -> ASGIApp:
+        return await static_asset_response(request.scope["path"], request, application_assets, static_dir)
 
     @route("/static", http_method=_READ_METHODS, sync_to_thread=False)
     def static_root(request: AppRequest) -> Redirect | Response[bytes]:
@@ -298,6 +305,26 @@ def create_app(
     @route("/articles/feed.xml", http_method=_READ_METHODS, sync_to_thread=False)
     def atom_feed() -> Response[bytes]:
         return _static_response(feed, "application/atom+xml; charset=utf-8", _HOUR_CACHE)
+
+    @route("/connect", http_method=_READ_METHODS, sync_to_thread=True)
+    def connect(request: AppRequest) -> Redirect | Response[str]:
+        if _raw_path(request).endswith("/"):
+            return _redirect("/connect")
+        return render_page(
+            request,
+            PageTemplate.CONNECT,
+            connect_page,
+            {"connect_url": CONNECT_URL, "linkedin_url": LINKEDIN_URL},
+        )
+
+    @route("/connect.vcf", http_method=_READ_METHODS, sync_to_thread=False)
+    def contact() -> Response[bytes]:
+        return _static_response(
+            contact_card,
+            "text/vcard; charset=utf-8",
+            _NO_CACHE,
+            extra_headers={"content-disposition": 'attachment; filename="mederic-hurier.vcf"'},
+        )
 
     @route("/articles", http_method=_READ_METHODS, sync_to_thread=True)
     def articles_index(request: AppRequest) -> Redirect | Response[str]:
@@ -497,6 +524,7 @@ def create_app(
     application = Litestar(
         route_handlers=[
             static_asset,
+            branding_asset,
             static_root,
             health,
             root_file,
@@ -507,6 +535,8 @@ def create_app(
             llms_full_index,
             sitemap_index,
             atom_feed,
+            connect,
+            contact,
             articles_index,
             article_redirect_or_markdown,
             sites_index,

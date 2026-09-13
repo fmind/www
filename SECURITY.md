@@ -10,6 +10,10 @@ The weekly [security workflow](.github/workflows/security.yml) resolves every Cl
 
 **Review owner:** Médéric Hurier. **Last reviewed:** 2026-09-07. **Next review:** 2026-09-14, or immediately after a new fixable finding or a runtime/dependency change that affects reachability. Recheck scanner reports, Debian status, the maintained base image, and request-path applicability; rebuild and qualify an updated image when a fix becomes available. No CVE suppression was added for these findings.
 
+## Local candidate scan — 2026-09-13
+
+The local website candidate built from `python:3.14.7-slim@sha256:cad9a2c871761c413caa6fdd6441c783451e740a48aaeba60ae62a8b53525ef6` failed `mise run check:image`: Trivy reported 12 fixable Debian findings (9 HIGH, 3 CRITICAL) across `gzip`, `libpcre2-8-0`, `libsqlite3-0`, and `perl-base`. Python dependency checks passed. A fresh registry lookup of `python:3.14.7-slim` still resolved to the same pinned digest. The Dockerfile now pins the available fixes: `gzip=1.13-1+deb13u1`, `libpcre2-8-0=10.46-1~deb13u2`, `libsqlite3-0=3.46.1-7+deb13u2`, and `perl-base=5.40.1-6+deb13u1`. Remove this patch layer when a refreshed upstream digest includes the fixes. No advisory suppression was added; the image must pass its normal scan and runtime smoke test before release. This is local candidate evidence, not a new scan of deployed revisions; the dated deployed baseline below remains separate.
+
 ## Current residual package exposure
 
 The 2026-09-07 review scanned platform digest `sha256:358f3f22a66a1bd5f7170f06c00e9d5e76b27710851aea2cb46340247a215938` in `europe-west1-docker.pkg.dev/www-fmind-dev/app/www-fmind-dev`. It found 54 Debian package/advisory instances (51 HIGH, 3 CRITICAL), covering 18 unique CVEs, with no fixed version reported and no HIGH/CRITICAL Python-package finding. This is a dated baseline; the workflow artifact identifies what is serving at each subsequent scan.

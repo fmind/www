@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 
+from www.connect import CONNECT_URL
 from www.data import METADATA
 from www.models import Article, ArticleIndexView, PageMetadata, SitePage
 
@@ -14,10 +15,24 @@ def home_metadata(structured_data: str) -> PageMetadata:
         description=METADATA.description,
         canonical=f"{METADATA.site_url}/",
         image_url=f"{METADATA.site_url}/static/img/og-image.jpg",
-        image_alt=f"{METADATA.name} — {METADATA.job_title}",
+        image_alt="Fmind.dev — AI, Agents, Security",
         kind="website",
         structured_data=structured_data,
         is_home=True,
+        # Deferred sections change height during animated fragment scrolling.
+        instant_scroll=True,
+    )
+
+
+def connect_metadata(structured_data: str) -> PageMetadata:
+    return PageMetadata(
+        title=f"Connect with {METADATA.name} ({METADATA.alternate_name})",
+        description="Good to meet you. Connect on LinkedIn, save my contact details, or send me an email.",
+        canonical=CONNECT_URL,
+        image_url=f"{METADATA.site_url}/static/img/og-image.jpg",
+        image_alt="Fmind.dev — AI, Agents, Security",
+        kind="website",
+        structured_data=structured_data,
     )
 
 
@@ -35,7 +50,7 @@ def article_index_metadata(view: ArticleIndexView, structured_data: str) -> Page
         description="Articles on AI agents, MLOps, cloud architecture, security, and pragmatic engineering systems.",
         canonical=f"{METADATA.site_url}/articles/",
         image_url=f"{METADATA.site_url}/static/img/og-image.jpg",
-        image_alt=f"Articles by {METADATA.name}",
+        image_alt="Fmind.dev — AI, Agents, Security",
         kind="website",
         structured_data=structured_data,
         preload_image=preload,
@@ -83,7 +98,7 @@ def site_index_metadata(structured_data: str) -> PageMetadata:
         description="Source-backed decision tools for AI architecture, infrastructure, and operating economics.",
         canonical=f"{METADATA.site_url}/sites/",
         image_url=f"{METADATA.site_url}/static/img/og-image.jpg",
-        image_alt="Fmind Sites",
+        image_alt="Fmind.dev — AI, Agents, Security",
         kind="website",
         structured_data=structured_data,
     )
@@ -95,7 +110,7 @@ def site_page_metadata(page: SitePage, structured_data: str) -> PageMetadata:
         description=page.description,
         canonical=page.url,
         image_url=f"{METADATA.site_url}/static/img/og-image.jpg",
-        image_alt=page.title,
+        image_alt="Fmind.dev — AI, Agents, Security",
         kind="website",
         structured_data=structured_data,
         instant_scroll=True,
@@ -108,7 +123,7 @@ def not_found_metadata(structured_data: str) -> PageMetadata:
         description="The requested page could not be found.",
         canonical=f"{METADATA.site_url}/",
         image_url=f"{METADATA.site_url}/static/img/og-image.jpg",
-        image_alt=f"{METADATA.name} — {METADATA.job_title}",
+        image_alt="Fmind.dev — AI, Agents, Security",
         kind="website",
         structured_data=structured_data,
         no_index=True,

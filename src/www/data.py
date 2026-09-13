@@ -28,11 +28,11 @@ METADATA = Metadata(
     name="Médéric Hurier",
     alternate_name="Fmind",
     site_name="Fmind",
-    title="Médéric Hurier (Fmind) | AI Architect (PhD) • Freelancer",
-    job_title="AI Architect (PhD) • Freelancer",
-    headline_primary="AI Architect (PhD) • VC Expert Advisor • AAIF Ambassador • GCP Certified Cloud Architect • AI Agents, MLOps & Security",
-    headline_secondary="",
-    description="Freelance AI Architect (PhD), VC Expert Advisor, AAIF Ambassador, and GCP Certified Cloud Architect specializing in production AI Agents, MLOps, and security.",
+    title="Médéric Hurier (Fmind) | AI Security Architect",
+    job_title="AI Security Architect",
+    headline_primary="AI Security Architect (PhD) • VC Expert Advisor • AAIF Ambassador",
+    headline_secondary="GCP Certified Cloud Architect • AI, Agents & Security",
+    description="Freelance AI Security Architect (PhD), VC Expert Advisor, AAIF Ambassador, and GCP Certified Cloud Architect specializing in AI, agents, and security.",
     keywords=(
         "AI",
         "Machine Learning",
@@ -58,15 +58,18 @@ METADATA = Metadata(
     socials=(
         SocialLink("LinkedIn", "https://www.linkedin.com/in/fmind-dev/", "linkedin", True),
         SocialLink("X (Twitter)", "https://x.com/fmind_dev", "x", True),
-        SocialLink("Bluesky", "https://bsky.app/profile/fmind-dev.bsky.social", "bluesky"),
+        SocialLink("Bluesky", "https://bsky.app/profile/fmind-dev.bsky.social", "bluesky", True),
         SocialLink("Medium", "https://fmind.medium.com/", "medium", True),
         SocialLink("GitHub", "https://github.com/fmind", "github", True),
         SocialLink("YouTube", "https://www.youtube.com/@fmind-dev", "youtube", True),
+        SocialLink("Hugging Face", "https://huggingface.co/fmind", "huggingface", True),
+        SocialLink("Kaggle", "https://www.kaggle.com/freaxmind", "kaggle", True),
+        SocialLink("Credly", "https://www.credly.com/users/fmind", "credly", True),
     ),
 )
 
 BIOGRAPHY = (
-    "I am a **freelance AI Architect** with a **PhD in AI and Computer Security**. I design and industrialize **AI agents**, **MLOps platforms**, and **secure cloud foundations**, turning fast-moving research into dependable production capabilities with clear controls, observability, and measurable outcomes.",
+    "I am a **freelance AI Security Architect** with a **PhD in AI and Computer Security**. I design and industrialize **AI agents**, **MLOps platforms**, and **secure cloud foundations**, turning fast-moving research into dependable production capabilities with clear controls, observability, and measurable outcomes.",
     "My work spans strategy and delivery: enterprise agent platforms at **Decathlon**, European fraud detection for the **European Commission**, and Android malware research with **Google**. I have also delivered AI, data, and security initiatives for BNP Paribas, ArcelorMittal, SFEIR, Clearstream, and the University of Luxembourg.",
     "Beyond client work, I serve as an **AAIF Ambassador** and Luxembourg organizer and contribute to the **33N Ventures Expert Advisory Board**. As a **Google Cloud Professional Cloud Architect**, I bring a pragmatic, security-first approach to systems that must operate reliably at scale.",
 )
@@ -441,7 +444,7 @@ def get_structured_data(article: object | None = None) -> str:
         "hasOccupation": {
             "@type": "Occupation",
             "name": METADATA.job_title,
-            "skills": ["AI Agents", "MLOps", "Security", "Google Cloud"],
+            "skills": [card.title for card in EXPERTISE],
         },
         "alumniOf": {
             "@type": "CollegeOrUniversity",

@@ -30,6 +30,15 @@ ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 WORKDIR /app
+# The current Python digest predates these Debian security fixes. Pin the four
+# runtime updates until a refreshed upstream digest includes them.
+RUN apt-get update \
+  && apt-get install --yes --no-install-recommends --only-upgrade \
+    gzip=1.13-1+deb13u1 \
+    libpcre2-8-0=10.46-1~deb13u2 \
+    libsqlite3-0=3.46.1-7+deb13u2 \
+    perl-base=5.40.1-6+deb13u1 \
+  && rm -rf /var/lib/apt/lists/*
 # Runtime images install only the locked application environment; retaining pip
 # adds an unused package installer and its vendored dependency attack surface.
 RUN python -m pip uninstall --yes --root-user-action=ignore pip \

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" class="{{ '' if page.instant_scroll else 'scroll-smooth' }}">
+<html lang="en" data-theme="light" class="{{ '' if page.instant_scroll else 'scroll-smooth' }}">
   <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -15,8 +15,8 @@
         <link rel="alternate" type="text/markdown" href="/articles/{{ page.article.slug }}.md" title="Article source (Markdown)"/>
       {% endif %}
     {% endif %}
-    <meta name="theme-color" content="#ffffff"/>
-    <meta name="color-scheme" content="light dark"/>
+    <meta name="theme-color" content="#174ea6"/>
+    <meta name="color-scheme" content="light"/>
     <meta name="author" content="{{ metadata.name }} ({{ metadata.alternate_name }})"/>
     <meta name="description" content="{{ page.description }}"/>
     {% if page.no_index %}
@@ -42,45 +42,8 @@
     <meta name="twitter:description" content="{{ page.description }}"/>
     <meta name="twitter:image" content="{{ page.image_url }}"/>
     <meta name="twitter:image:alt" content="{{ page.image_alt }}"/>
-    <script nonce="{{ nonce }}">
-      (function () {
-        function setTheme(isDark) {
-          var root = document.documentElement;
-          // Only a visible theme swap needs transition suppression. Removing this
-          // class during initial load would restyle the entire document again.
-          if (document.body) {
-            root.classList.add('theme-switching');
-            requestAnimationFrame(function () {
-              requestAnimationFrame(function () { root.classList.remove('theme-switching'); });
-            });
-          }
-          try {
-            localStorage.setItem('theme', isDark ? 'dark' : 'light');
-          } catch (error) {
-            // Storage is optional: privacy settings and full quotas must not break controls.
-            if (error.name !== 'SecurityError' && error.name !== 'QuotaExceededError') throw error;
-          }
-          root.classList.toggle('dark', isDark);
-          root.setAttribute('data-theme', isDark ? 'dark' : 'light');
-          document.querySelectorAll('meta[name="theme-color"]').forEach((meta) => {
-            meta.setAttribute('content', isDark ? '#0f172a' : '#ffffff');
-          });
-        }
-        var savedTheme = null;
-        try {
-          savedTheme = localStorage.getItem('theme');
-        } catch (error) {
-          // Use the system preference when browser policy prevents reading storage.
-          if (error.name !== 'SecurityError') throw error;
-        }
-        var isDark = savedTheme === 'dark' ||
-          (savedTheme !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-        setTheme(isDark);
-        window.setTheme = setTheme;
-      })();
-    </script>
-    <link rel="preload" href="/static/fonts/Outfit-Variable.woff2" crossorigin="anonymous" as="font" type="font/woff2"/>
-    <link rel="preload" href="/static/fonts/Inter-Variable.woff2" crossorigin="anonymous" as="font" type="font/woff2"/>
+    <link rel="preload" href="/static/fonts/GoogleSans-Variable.woff2" crossorigin="anonymous" as="font" type="font/woff2"/>
+    <link rel="preload" href="/static/fonts/GoogleSansCode-Variable.woff2" crossorigin="anonymous" as="font" type="font/woff2"/>
     {% if page.preload_image %}
       {% if page.preload_image_srcset %}
         <link rel="preload" href="{{ page.preload_image }}" imagesrcset="{{ page.preload_image_srcset }}" imagesizes="{{ page.preload_image_sizes }}" fetchpriority="high" as="image"/>
@@ -101,29 +64,15 @@
   </head>
   <body class="min-h-screen bg-base-100 text-base-content font-body antialiased">
     <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-primary text-primary-content px-4 py-2 rounded-md z-[100]">Skip to content</a>
-    <header class="sticky top-0 z-40">
+    {% block header %}<header class="sticky top-0 z-40">
       {% include "partials/navigation.html" %}
-    </header>
-    <main class="min-h-screen" id="main-content" tabindex="-1">
+    </header>{% endblock %}
+    <main class="{% block main_class %}min-h-screen{% endblock %}" id="main-content" tabindex="-1">
       {% block content %}{% endblock %}
     </main>
-    {% include "partials/footer.html" %}
+    {% block footer %}{% include "partials/footer.html" %}{% endblock %}
     <script nonce="{{ nonce }}">
       (function () {
-        var toggle = document.getElementById('theme-toggle');
-        if (toggle) {
-          var syncThemeButton = function () {
-            var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-            toggle.setAttribute('aria-pressed', isDark ? 'true' : 'false');
-            toggle.setAttribute('aria-label', isDark ? 'Switch to light theme' : 'Switch to dark theme');
-          };
-          syncThemeButton();
-          toggle.addEventListener('click', function () {
-            var isDark = document.documentElement.getAttribute('data-theme') !== 'dark';
-            window.setTheme(isDark);
-            syncThemeButton();
-          });
-        }
         var menuBtn = document.getElementById('menu-toggle');
         var menu = document.getElementById('mobile-menu');
         if (menuBtn && menu) {

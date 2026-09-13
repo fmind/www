@@ -1,4 +1,4 @@
-"""Strict package-local Jinja rendering for the six HTML page types."""
+"""Strict package-local Jinja rendering for the site's HTML page types."""
 
 from __future__ import annotations
 
@@ -33,6 +33,7 @@ class PageTemplate(StrEnum):
     """Closed page-template vocabulary used by the HTTP application."""
 
     HOME = "pages/home.html"
+    CONNECT = "pages/connect.html"
     ARTICLES = "pages/articles.html"
     ARTICLE = "pages/article.html"
     SITES = "pages/sites.html"

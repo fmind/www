@@ -37,8 +37,8 @@ ROOT_FILE_SOURCES = {
 }
 
 _REQUIRED_WOFF2_FILES = (
-    "fonts/Inter-Variable.woff2",
-    "fonts/Outfit-Variable.woff2",
+    "fonts/GoogleSans-Variable.woff2",
+    "fonts/GoogleSansCode-Variable.woff2",
 )
 _WOFF2_HEADER_SIZE = 48
 

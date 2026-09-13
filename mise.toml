@@ -61,6 +61,14 @@ run = 'mkdir -p tmp && docker buildx build --platform linux/amd64 --target runne
 description = "Generate changed or missing article image derivatives"
 run = "uv run --locked python -m www.images"
 
+[tasks."build:branding"]
+description = "Rebuild navigation, favicons, and social preview from the public PNG masters"
+run = "uv run --locked python -m scripts.build_branding"
+
+[tasks."build:fonts"]
+description = "Rebuild the self-hosted WOFF2 subsets from pinned upstream releases"
+run = "uv run --script scripts/build_fonts.py"
+
 [tasks.check]
 alias = "c"
 description = "Run all static checks in parallel"

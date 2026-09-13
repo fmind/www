@@ -5,7 +5,7 @@
    "typography" include only themes the colors and needs this plugin to work. */
 @plugin "@tailwindcss/typography";
 @plugin "daisyui" {
-  themes: light, dark;
+  themes: light --default;
   include: button, card, navbar, menu, hero, avatar, badge, footer, input, select, table, alert, typography;
 }
 
@@ -13,88 +13,77 @@
 
 @source inline("badge-{warning,info,success,error} text-{warning,info,success,error}-content");
 
+/* Palette: fmind/theme checks/palette.yaml. Dark shades carry text; light
+   shades carry surfaces. The logo and primary accent share the same blue. */
 @plugin 'daisyui/theme' {
   name: 'light';
-  --color-primary: oklch(0.55 0.22 263.6);
-  --color-primary-content: oklch(0.98 0.01 263.6);
-  --color-accent: oklch(0.55 0.22 263.6);
-  /* Brand navy (background of the dark palette) doubles as text on light. */
-  --color-base-content: #0f172a;
-}
-
-/* Dark theme follows the Fmind brand palette (publications/BRANDING.md):
-   background #0F172A, panel #1E293B, border #334155, foreground #F8FAFC. */
-@plugin 'daisyui/theme' {
-  name: 'dark';
-  --color-primary: oklch(0.648 0.205 263.6);
-  --color-primary-content: oklch(0.18 0.03 263.6);
-  --color-accent: oklch(0.648 0.205 263.6);
-  --color-base-100: #0f172a;
-  --color-base-200: #1e293b;
-  --color-base-300: #334155;
-  --color-base-content: #f8fafc;
+  --color-base-100: #ffffff;
+  --color-base-200: #f1f3f4;
+  --color-base-300: #9aa0a6;
+  --color-base-content: #202124;
+  --color-primary: #174ea6;
+  --color-primary-content: #ffffff;
+  --color-secondary: #681da8;
+  --color-secondary-content: #ffffff;
+  --color-accent: #174ea6;
+  --color-accent-content: #ffffff;
+  --color-neutral: #202124;
+  --color-neutral-content: #ffffff;
+  --color-info: #00636d;
+  --color-info-content: #ffffff;
+  --color-success: #0d652d;
+  --color-success-content: #ffffff;
+  --color-warning: #934900;
+  --color-warning-content: #ffffff;
+  --color-error: #a50e0e;
+  --color-error-content: #ffffff;
 }
 
 @theme {
-  --color-brand: #646cff;
-  --color-glass-bg: rgba(15, 23, 42, 0.65);
-  --color-glass-border: rgba(255, 255, 255, 0.08);
-
-  --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-  --font-heading: 'Outfit', sans-serif;
-  --font-body: 'Inter', sans-serif;
-  --radius-glass: 24px;
+  --color-muted: #595d62;
+  --color-selection: #d2e3fc;
+  --color-blue-bright: #4285f4;
+  --color-red-bright: #ea4335;
+  --font-heading: 'Google Sans Subset', sans-serif;
+  --font-body: 'Google Sans Subset', sans-serif;
+  --font-mono: 'Google Sans Code Subset', ui-monospace, monospace;
 }
 
-/* Custom utility for premium glassmorphic cards */
-@utility glassmorphism {
-  background: var(--color-glass-bg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--color-glass-border);
-  box-shadow: var(--shadow-glass);
-  border-radius: var(--radius-glass);
+::selection {
+  background-color: var(--color-selection);
+  color: var(--color-base-content);
+}
+
+:focus-visible {
+  outline-color: var(--color-primary);
+}
+
+/* Inline code follows the same blue role as the terminal theme. The syntax
+   stylesheet owns fenced code, including plain-text and unlabelled blocks. */
+.prose :not(pre) > code {
+  color: var(--color-primary);
 }
 
 /* Preloads give the brand fonts an early start. On a slow first visit, keep
-   the fallback for that page instead of moving text after it is readable. */
+   the fallback for that page instead of moving text after it is readable.
+   The families are named for the served subset rather than for the upstream
+   release: a face sharing its name with a font installed on the reader's
+   system (Google Sans ships with ChromeOS) renders from that local copy first
+   and then swaps when this file arrives, which moves the article text. */
 @font-face {
-  font-family: 'Inter';
-  src: url('/static/fonts/Inter-Variable.woff2') format('woff2');
-  font-weight: 100 900;
+  font-family: 'Google Sans Subset';
+  src: url('/static/fonts/GoogleSans-Variable.woff2') format('woff2');
+  /* Upstream ships 400-700; declaring the real range keeps the browser from
+     synthesizing a heavier face for utilities that ask for more. */
+  font-weight: 400 700;
   font-display: optional;
 }
 
 @font-face {
-  font-family: 'Outfit';
-  src: url('/static/fonts/Outfit-Variable.woff2') format('woff2');
-  font-weight: 100 900;
+  font-family: 'Google Sans Code Subset';
+  src: url('/static/fonts/GoogleSansCode-Variable.woff2') format('woff2');
+  font-weight: 300 800;
   font-display: optional;
-}
-
-/* A theme swap repaints every color at once: animating it makes the navbar and
-   links visibly trail the rest of the page. The head script sets this class for
-   one frame around the swap so only genuine hover/focus changes transition. */
-.theme-switching *,
-.theme-switching *::before,
-.theme-switching *::after {
-  transition: none !important;
-}
-
-.theme-icon-moon {
-  display: inline-flex;
-}
-
-.theme-icon-sun {
-  display: none;
-}
-
-[data-theme='dark'] .theme-icon-moon {
-  display: none;
-}
-
-[data-theme='dark'] .theme-icon-sun {
-  display: inline-flex;
 }
 
 [data-company='Decathlon'] {
@@ -132,9 +121,9 @@
 /* Article tags. One pill style driven by a single `--tag` hue that each
    `[data-tag]` rule sets, so adding a tag means adding one color line here and
    one entry to the canonical vocabulary — never a class in the markup. Text and
-   surface are derived from that hue per theme to keep contrast above 4.5:1. */
+   surface are derived from that hue to keep contrast above 4.5:1. */
 .tag {
-  --tag: oklch(55.4% 0.046 257.417);
+  --tag: var(--color-muted);
 
   display: inline-flex;
   align-items: center;
@@ -143,7 +132,7 @@
   border-radius: 9999px;
   background-color: color-mix(in oklab, var(--tag) 10%, transparent);
   padding: 0.3rem 0.7rem;
-  color: color-mix(in oklab, var(--tag) 55%, black);
+  color: var(--tag);
   font-size: 0.75rem;
   font-weight: 600;
   line-height: 1;
@@ -173,54 +162,44 @@ a.tag:hover {
   font-weight: 700;
 }
 
-[data-theme='dark'] .tag {
-  background-color: color-mix(in oklab, var(--tag) 16%, transparent);
-  color: color-mix(in oklab, var(--tag) 72%, white);
-}
-
-[data-theme='dark'] a.tag:hover,
-[data-theme='dark'] .tag-active {
-  background-color: color-mix(in oklab, var(--tag) 28%, transparent);
-}
-
 [data-tag='Agent'] {
-  --tag: oklch(60.6% 0.25 292.717);
+  --tag: var(--color-secondary);
 }
 
 [data-tag='Coding'] {
-  --tag: oklch(71.5% 0.143 215.221);
+  --tag: var(--color-info);
 }
 
 [data-tag='LLM'] {
-  --tag: oklch(66.7% 0.295 322.15);
+  --tag: var(--color-secondary);
 }
 
 [data-tag='RAG'] {
-  --tag: oklch(65.6% 0.241 354.308);
+  --tag: var(--color-error);
 }
 
 [data-tag='MLOps'] {
-  --tag: oklch(62.3% 0.214 259.815);
+  --tag: var(--color-primary);
 }
 
 [data-tag='Cloud'] {
-  --tag: oklch(68.5% 0.169 237.323);
+  --tag: var(--color-info);
 }
 
 [data-tag='Python'] {
-  --tag: oklch(76.9% 0.188 70.08);
+  --tag: var(--color-warning);
 }
 
 [data-tag='Project'] {
-  --tag: oklch(69.6% 0.17 162.48);
+  --tag: var(--color-success);
 }
 
 [data-tag='Demo'] {
-  --tag: oklch(64.5% 0.246 16.439);
+  --tag: var(--color-error);
 }
 
 [data-tag='Guide'] {
-  --tag: oklch(70.5% 0.213 47.604);
+  --tag: var(--color-warning);
 }
 
 /* Article body figures break out of the text column. The prose measure is tuned
@@ -310,7 +289,7 @@ a.tag:hover {
   line-height: 1.6;
   text-align: center;
   text-wrap: pretty;
-  color: color-mix(in oklab, var(--color-base-content) 62%, transparent);
+  color: var(--color-muted);
 }
 
 /* A caption's link stays a link, but at the caption's own weight: the source
@@ -330,7 +309,6 @@ a.tag:hover {
 #about,
 #work-experience,
 #certifications,
-#articles,
 #projects,
 #services {
   content-visibility: auto;

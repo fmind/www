@@ -202,7 +202,6 @@ def test_renderer_renders_all_six_pages_with_real_domain_contexts() -> None:
             page=home_metadata(shared_structured_data),
             nonce=nonce,
             context={
-                "articles": articles,
                 "biography_html": tuple(markdown_to_html(paragraph) for paragraph in BIOGRAPHY),
                 "expertise": EXPERTISE,
                 "experiences": EXPERIENCES,
@@ -255,15 +254,18 @@ def test_renderer_renders_all_six_pages_with_real_domain_contexts() -> None:
 
     markers = {
         PageTemplate.HOME: '<section class="py-16 md:py-24 bg-base-100 overflow-hidden px-4" id="about">',
-        PageTemplate.ARTICLES: '<h1 class="text-4xl md:text-6xl font-heading font-black text-balance">Articles</h1>',
-        PageTemplate.ARTICLE: f'<h1 class="font-heading text-4xl md:text-6xl font-black leading-tight text-balance mt-6">{article.title}</h1>',
-        PageTemplate.SITES: '<h1 class="text-4xl md:text-6xl font-heading font-black text-balance">Sites</h1>',
+        PageTemplate.ARTICLES: '<h1 class="text-4xl md:text-6xl font-heading font-bold text-balance">Articles</h1>',
+        PageTemplate.ARTICLE: f'<h1 class="font-heading text-4xl md:text-6xl font-bold leading-tight text-balance mt-6">{article.title}</h1>',
+        PageTemplate.SITES: '<h1 class="text-4xl md:text-6xl font-heading font-bold text-balance">Sites</h1>',
         PageTemplate.LLM_SELF_HOSTING: "When does self-hosting an LLM pay off?",
-        PageTemplate.NOT_FOUND: '<h1 class="text-9xl font-black text-primary font-heading animate-bounce">404</h1>',
+        PageTemplate.NOT_FOUND: '<h1 class="text-9xl font-bold text-primary font-heading animate-bounce">404</h1>',
     }
     for template, html in rendered.items():
         assert html.startswith("<!DOCTYPE html>")
-        assert html.count(f'nonce="{nonce}"') == 3
+        assert html.count(f'<script nonce="{nonce}">') == 1
+        assert html.count(f'<style nonce="{nonce}">') == 1
+        assert 'data-theme="light"' in html
+        assert '<meta name="color-scheme" content="light"/>' in html
         assert "{{" not in html
         assert markers[template] in html
 

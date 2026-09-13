@@ -1,6 +1,6 @@
 /* TEAM */
 Author: Médéric Hurier (Fmind)
-Role: AI Architect (PhD) • VC Expert Advisor • AAIF Ambassador • GCP Certified Cloud Architect • AI Agents, MLOps & Security
+Role: AI Security Architect
 Location: Luxembourg
 Contact: contact@fmind.dev
 Website: https://www.fmind.dev
@@ -12,3 +12,10 @@ Bluesky: https://bsky.app/profile/fmind-dev.bsky.social
 Medium: https://fmind.medium.com/
 GitHub: https://github.com/fmind
 YouTube: https://www.youtube.com/@fmind-dev
+Hugging Face: https://huggingface.co/fmind
+Kaggle: https://www.kaggle.com/freaxmind
+Credly: https://www.credly.com/users/fmind
+
+/* FONTS */
+Google Sans: SIL Open Font License 1.1 — https://github.com/googlefonts/googlesans
+Google Sans Code: SIL Open Font License 1.1 — https://github.com/googlefonts/googlesans-code

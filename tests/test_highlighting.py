@@ -1,5 +1,6 @@
 import re
-from hashlib import sha256
+
+import pytest
 
 from www.highlighting import guess_language, highlight_code, highlight_css
 
@@ -49,15 +50,36 @@ def test_agentgateway_yaml_matches_frozen_chroma_markup() -> None:
     )
 
 
-def test_generated_css_is_byte_identical_to_frozen_chroma() -> None:
+def _luminance(color: str) -> float:
+    channels = [int(color[index : index + 2], 16) / 255 for index in (1, 3, 5)]
+    linear = [value / 12.92 if value <= 0.04045 else ((value + 0.055) / 1.055) ** 2.4 for value in channels]
+    return sum(value * weight for value, weight in zip(linear, (0.2126, 0.7152, 0.0722), strict=True))
+
+
+@pytest.mark.parametrize("surface", ["#ffffff", "#f1f3f4", "#d2e3fc", "#ceead6", "#fad2cf", "#feefc3"])
+def test_fmind_syntax_is_readable_on_plain_highlighted_selected_and_diff_surfaces(surface: str) -> None:
+    foregrounds = set(re.findall(r"(?<!-)color: (#[0-9a-f]{6})", highlight_css()))
+    assert foregrounds
+    for foreground in foregrounds:
+        light, dark = sorted((_luminance(foreground), _luminance(surface)), reverse=True)
+        assert (light + 0.05) / (dark + 0.05) >= 4.5, (foreground, surface)
+
+
+def test_fmind_roles_reach_real_python_tokens() -> None:
+    markup = highlight_code(
+        'class Example:\n    # A comment\n    def run(self):\n        return print("hello", 42)\n', "python"
+    )
     css = highlight_css()
-
-    assert len(css.encode()) == 4226
-    assert sha256(css.encode()).hexdigest() == "655ca49a220ca19b913c8a5bcd5ca67c09f89c90fc557b3f2b1e9b13a54820c3"
-
-
-def test_tokyo_night_contrast_fixes_are_present() -> None:
-    css = highlight_css()
-
-    assert re.search(r"\.chroma \.c\s*\{[^}]*#7c86b4", css, re.IGNORECASE)
-    assert re.search(r"\.chroma \.err\s*\{[^}]*#f7768e", css, re.IGNORECASE)
+    for token, color in {
+        "k": "#174ea6",
+        "nf": "#174ea6",
+        "nc": "#681da8",
+        "nb": "#681da8",
+        "s2": "#0d652d",
+        "mi": "#934900",
+        "c1": "#595d62",
+    }.items():
+        assert f'class="{token}"' in markup
+        assert re.search(r"\.chroma \." + token + r"\s*\{[^}]*color: " + color, css)
+    assert ".chroma { color: #202124; background-color: #ffffff;" in css
+    assert ".chroma ::selection { color: inherit; background-color: #d2e3fc" in css

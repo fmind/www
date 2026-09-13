@@ -11,7 +11,7 @@ module.exports = defineConfig({
   use: { baseURL, trace: "retain-on-failure" },
   projects: [
     { name: "desktop-light", use: { viewport: { width: 1440, height: 900 }, colorScheme: "light" } },
-    { name: "mobile-dark", use: { viewport: { width: 390, height: 844 }, colorScheme: "dark", isMobile: true } },
+    { name: "mobile-light", use: { viewport: { width: 390, height: 844 }, colorScheme: "light", isMobile: true } },
   ],
   webServer: process.env.BROWSER_BASE_URL ? undefined : {
     command: "uv run --locked www",

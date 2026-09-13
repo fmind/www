@@ -1,7 +1,7 @@
 {% from "macros/icons.html" import icon %}
 <nav class="navbar bg-base-100/90 backdrop-blur-md border-b border-base-200" aria-label="Primary navigation">
-  <div class="container mx-auto flex px-4">
-    <div class="flex-1 flex items-center gap-1 sm:gap-4">
+  <div class="container mx-auto flex flex-wrap items-center gap-y-1 px-4">
+    <div class="flex-1 flex items-center gap-1 sm:gap-2">
       <div class="2xl:hidden relative">
         <button id="menu-toggle" class="btn btn-ghost btn-circle btn-sm md:btn-md" aria-label="Menu" aria-controls="mobile-menu" aria-expanded="false">
           {{ icon("menu", "h-5 w-5") }}
@@ -22,6 +22,9 @@
               Sites
             </a>
           </li>
+          {% for label, repository in [("Theme", "theme"), ("CLI", "cli")] %}
+            <li><a class="font-semibold text-primary py-2" href="https://github.com/fmind/{{ repository }}" target="_blank" rel="noopener noreferrer" aria-label="{{ label }} (external GitHub page)" title="{{ label }} on GitHub (external page)">{{ label }}{{ icon("external_link", "h-3.5 w-3.5") }}</a></li>
+          {% endfor %}
         </ul>
       </div>
       <a class="btn btn-ghost text-xl md:text-2xl font-bold font-heading text-primary normal-case gap-2 sm:gap-4 px-1 sm:px-2" href="/">
@@ -35,31 +38,27 @@
           </li>
         {% endfor %}
       </ul>
-      <div class="hidden xl:flex items-center gap-3">
+      <div class="hidden xl:flex items-center gap-2">
         <div class="border-l border-base-content/20 h-6" aria-hidden="true"></div>
-        <a class="btn btn-sm btn-outline btn-primary rounded-xl font-semibold gap-1.5 px-4" href="/articles/">
+        <a class="btn btn-sm btn-outline btn-primary rounded-xl font-semibold gap-1.5 px-3" href="/articles/">
           {{ icon("article", "h-4 w-4") }}
           Articles
         </a>
-        <a class="btn btn-sm btn-outline btn-primary rounded-xl font-semibold gap-1.5 px-4" href="/sites/">
+        <a class="btn btn-sm btn-outline btn-primary rounded-xl font-semibold gap-1.5 px-3" href="/sites/">
           <span class="text-base leading-none select-none" aria-hidden="true">🌐</span>
           Sites
         </a>
-      </div>
-    </div>
-    <div class="flex-none flex items-center gap-1 md:gap-4">
-      <div class="flex gap-0 md:gap-2">
-        {% for social in metadata.socials if social.header %}
-          <a class="btn btn-ghost btn-circle btn-sm md:btn-md hover:bg-transparent hover:text-accent transition-colors" href="{{ social.url }}" target="_blank" rel="noopener noreferrer" aria-label="{{ social.name }}">
-            {{ icon(social.icon, "h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6") }}
-          </a>
+        {% for label, repository in [("Theme", "theme"), ("CLI", "cli")] %}
+          <a class="btn btn-sm btn-ghost rounded-xl font-semibold gap-1.5 px-2" href="https://github.com/fmind/{{ repository }}" target="_blank" rel="noopener noreferrer" aria-label="{{ label }} (external GitHub page)" title="{{ label }} on GitHub (external page)">{{ label }}{{ icon("external_link", "h-3.5 w-3.5") }}</a>
         {% endfor %}
       </div>
-      <div class="border-l border-base-content/20 h-6 md:h-8 mx-0.5 md:mx-2"></div>
-      <button id="theme-toggle" class="btn btn-ghost btn-circle btn-sm md:btn-md bg-base-200/60 border border-base-content/10" aria-label="Switch to dark theme" aria-pressed="false">
-        <span class="theme-icon-moon">{{ icon("moon", "h-5 w-5 md:h-6 md:w-6") }}</span>
-        <span class="theme-icon-sun">{{ icon("sun", "h-5 w-5 md:h-6 md:w-6") }}</span>
-      </button>
+    </div>
+    <div class="order-last mx-auto flex flex-wrap w-full max-w-52 justify-center sm:order-none sm:mx-0 sm:w-auto sm:max-w-none" role="group" aria-label="Social profiles">
+      {% for social in metadata.socials %}
+        <a class="btn btn-ghost btn-circle w-10 h-10 min-h-10 text-primary hover:bg-primary/10 transition-colors" href="{{ social.url }}" target="_blank" rel="noopener noreferrer" aria-label="{{ social.name }}" title="{{ social.name }}">
+          {{ icon(social.icon, "h-5 w-5") }}
+        </a>
+      {% endfor %}
     </div>
   </div>
 </nav>

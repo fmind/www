@@ -18,11 +18,12 @@ Python 3.14 server-rendered web application: Litestar + strict Jinja + Tailwind/
 - `mise run check:links` — network-dependent external-link check, scheduled weekly rather than used as a merge gate.
 - `mise run check:tofu` — network-dependent backend-free OpenTofu validation and tflint, run in CI on `infra/` changes.
 - `mise run test` — offline pytest suite with branch coverage of at least 85%.
-- `mise run test:browser` — pinned Chromium journeys on desktop/light and mobile/dark.
+- `mise run test:browser` — pinned Chromium journeys on desktop and mobile in light mode.
 - `mise run test:image` — bounded HTTP/MCP smoke test of the already-built production OCI archive.
 - `mise run test:lighthouse -- --base-url <origin> [--mode full|smoke]` — strict five-category audit; never part of `all`.
 - `mise run build` — compile CSS and build clean wheel and source distributions.
 - `mise run build:images` — reconcile the SHA-256 provenance lock and generate only changed, missing, tampered, or recipe-stale Pillow WebP derivatives.
+- `mise run build:fonts` — re-subset the self-hosted WOFF2 faces from the pinned upstream releases; network-dependent and never part of `all`.
 - `mise run build:image` — build the production OCI image archive at `tmp/www-image.tar`.
 - `mise run deploy <digest-ref>` — manual repository-pinned Cloud Run rollout/rollback; production-mutating and never in a hook or `all`.
 
@@ -58,7 +59,7 @@ Entries are in ASCII order: dotfiles, capitalized files, then lowercase paths.
 - `mise.toml` — tool versions, environment defaults, and canonical tasks.
 - `pyproject.toml` — Python package, dependencies, Ruff, ty, pytest, and coverage configuration.
 - `server.json` — publish-ready official MCP Registry metadata; version tracks the release tag.
-- `scripts/` — manual deploy, SDK-based image smoke, deployed-image scanning, and bounded Lighthouse qualification; excluded from the runtime image.
+- `scripts/` — manual deploy, SDK-based image smoke, deployed-image scanning, font subsetting, and bounded Lighthouse qualification; excluded from the runtime image.
 - `src/www/` — application package, composition root, domain logic, and packaged Jinja templates.
 - `static/` — compiled or final public assets copied into the runtime image.
 - `tests/` — pytest and pinned Playwright regressions.
@@ -83,12 +84,13 @@ Important package ownership:
 - Build the validated article collection, static hashes, search index, derived publications, renderer, and MCP server once at application construction. Requests must not observe partial state. Rendering validates immutable trusted markup at construction; MCP discovery is derived from registered primitives during lifespan startup.
 - Keep Jinja `StrictUndefined` and autoescape enabled. Only `src/www/rendering.py` may mark validated article HTML, biography fragments, inline CSS, or guarded JSON-LD as trusted markup.
 - Keep all Tailwind/DaisyUI classes in `src/www/templates/**/*.html`; `assets/css/input.css` scans that tree. Authored inputs belong in `assets/`; only compiled or final files belong in public `static/`.
-- Retain the two small nonce-authorized inline scripts. The theme initializer must run before first paint. Add a JS bundle only when first-party code becomes a real module graph.
+- Keep the site light-only and retain the small nonce-authorized interaction script. Add a JS bundle only when first-party code becomes a real module graph.
 - Treat the validated article collection as the only publication source for HTML, Atom, sitemap, LLM text, JSON, search, and MCP. Production discovery never includes drafts.
 - Treat this repository as owning the published body of each article; revisions start from the current site Markdown.
 - Register decision pages in `src/www/data.py:SITE_PAGES`; it feeds metadata, sitemap, LLM text, JSON, MCP discovery, and article relationships. Wire each route, template, and view builder explicitly in `src/www/app.py`, and keep formulas and validated inputs under `src/www/sites/`.
 - Add tags only through `src/www/tags.py`, a matching `[data-tag='…']` rule in `assets/css/input.css`, and at least one article use. Vocabulary construction rejects blank or untrimmed names and descriptions, and duplicate names. Article parsing rejects unknown tags; archive tests require every vocabulary tag to be used and styled.
 - Fence code blocks with a language. `src/www/highlighting.py` performs Pygments highlighting and emits the matching stylesheet; unlabeled blocks use its bounded guesser.
+- Serve fonts from `static/fonts/` only through `scripts/build_fonts.py`, which pins the upstream release, clamps the axes, and subsets to the codepoints the site renders; keep `src/www/assets.py:_REQUIRED_WOFF2_FILES`, the `@font-face` rules, and the `base.html` preloads in step, and name each face for the served subset so a font installed on the reader's system cannot render first and then swap.
 - Generate and commit article derivatives and `assets/image-derivatives.json` after image changes. Widths live in `src/www/models.py:DERIVATIVE_WIDTHS`; the lock reconciles ladder or pinned encoder-recipe changes automatically, while `check:images` never writes.
 - Keep `src/www/content.py:FIGURE_SIZES` and `.article-page` CSS aligned. Standalone images fit the figure width and never pan; unreadable diagrams must be fixed at their source.
 - Fold a paragraph into `<figcaption>` only when its text repeats the standalone image alt. Compare text rather than markup; position alone is not evidence of a caption.

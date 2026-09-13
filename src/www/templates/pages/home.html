@@ -1,5 +1,4 @@
 {% extends "base.html" %}
-{% from "macros/articles.html" import article_card %}
 {% from "macros/icons.html" import icon %}
 {% block content %}
   <div>
@@ -11,8 +10,13 @@
               <img class="object-cover w-full h-full" src="{{ static_url('static/img/avatar-192.webp') }}" srcset="{{ static_url('static/img/avatar-192.webp') }} 192w, {{ static_url('static/img/avatar-280.webp') }} 280w, {{ static_url('static/img/avatar.webp') }} 384w" sizes="(max-width: 639px) 128px, (max-width: 768px) 160px, 192px" alt="{{ metadata.name }}" width="192" height="192" fetchpriority="high"/>
             </div>
           </div>
-          <h1 class="text-5xl md:text-7xl font-heading font-black mb-4 bg-clip-text text-transparent bg-gradient-to-r from-primary to-blue-600 select-text">{{ metadata.name }}</h1>
-          <h2 class="text-xl md:text-3xl font-heading font-medium text-base-content/90 mb-10 max-w-5xl mx-auto leading-relaxed text-balance select-text">{{ metadata.headline_primary }}</h2>
+          <h1 class="text-5xl md:text-7xl font-heading font-semibold text-balance mb-4 text-primary select-text">{{ metadata.name }} <span class="font-normal">({{ metadata.alternate_name }})</span></h1>
+          <p data-hero-headline class="text-lg md:text-2xl font-heading font-medium text-base-content/80 mb-10 max-w-5xl mx-auto leading-relaxed select-text">
+            {% for line in [metadata.headline_primary, metadata.headline_secondary] %}
+              {% set first, separator, rest = line.partition(' • ') %}
+              <span class="block text-balance"><span class="block sm:inline">{{ first }}</span><span class="hidden sm:inline">{{ separator }}</span>{{ rest }}</span>
+            {% endfor %}
+          </p>
           <div class="flex flex-wrap justify-center gap-4 md:gap-8">
             <a class="btn btn-lg bg-primary/5 hover:bg-primary/10 text-primary border border-primary/20 rounded-xl shadow-lg hover:scale-105 active:scale-95 transition-transform hover:shadow-xl hover:shadow-primary/10 px-6 py-3 font-semibold" href="mailto:{{ metadata.email }}">Contact Me</a>
             <a class="btn btn-primary btn-lg bg-primary text-primary-content border-none rounded-xl shadow-lg ring-2 ring-primary/40 hover:scale-105 active:scale-95 transition-transform hover:shadow-xl hover:shadow-primary/20 px-6 py-3 font-semibold" href="{{ metadata.calendar_url }}" target="_blank" rel="noopener noreferrer">Book a Session</a>
@@ -28,17 +32,17 @@
       <div class="container mx-auto">
         <div class="text-center mb-12">
           <h2 class="text-4xl md:text-5xl font-heading font-bold mb-4 text-base-content">About <span class="text-primary">Me</span></h2>
-          <p class="text-xl text-base-content/70 max-w-3xl mx-auto leading-relaxed text-balance">Transforming AI/ML initiatives into secure, scalable, and high-impact solutions.</p>
+          <p class="text-xl text-base-content/70 max-w-3xl mx-auto leading-relaxed text-balance">AI agents, production MLOps, and cloud security—from architecture to delivery.</p>
         </div>
-        <div class="grid md:grid-cols-12 gap-8 mb-14">
-          <div class="md:col-span-10 md:col-start-2 space-y-6">
-            <div class="prose prose-lg text-base-content/80 mx-auto leading-loose [&_p]:leading-loose space-y-6 select-text">
+        <div class="max-w-6xl mx-auto mb-14">
+          <div class="space-y-6">
+            <div class="prose prose-lg max-w-none text-base-content/80 mx-auto leading-loose [&_p]:leading-loose space-y-6 select-text">
               {% for paragraph in biography_html %}<p class="select-text">{{ paragraph }}</p>{% endfor %}
             </div>
           </div>
         </div>
         <h3 class="text-xl font-bold mb-10 flex items-center justify-center gap-2"><span class="w-2 h-8 bg-primary rounded-full"></span>Core Expertise & Skills</h3>
-        {% set gradients = ["from-accent to-blue-500", "from-blue-500 to-cyan-500", "from-rose-500 to-red-500", "from-orange-500 to-amber-500", "from-cyan-500 to-blue-500", "from-emerald-500 to-teal-500"] %}
+        {% set gradients = ["from-primary to-blue-bright", "from-info to-blue-bright", "from-error to-red-bright"] %}
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6 max-w-6xl mx-auto">
           {% for card in expertise %}
             <div class="card bg-base-200/50 backdrop-blur-sm hover:bg-base-200 transition-all duration-300 hover:-translate-y-2 border border-base-300 hover:border-primary/30 overflow-hidden h-full shadow-xl hover:shadow-2xl group">
@@ -58,13 +62,13 @@
       <div class="container mx-auto">
         <div class="text-center mb-10 md:mb-16">
           <h2 class="text-4xl md:text-5xl font-heading font-bold mb-4 text-base-content">Work <span class="text-primary">Experience</span></h2>
-          <p class="text-xl text-base-content/70 max-w-3xl mx-auto leading-relaxed text-balance">A track record of engineering scale, reliability, and security for industry-leading institutions.</p>
+          <p class="text-xl text-base-content/70 max-w-3xl mx-auto leading-relaxed text-balance">AI, data, and security work across retail, finance, public institutions, and research.</p>
         </div>
         <ul class="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-8 max-w-6xl mx-auto">
           {% for item in experiences %}
             <li class="h-full">
               <div class="card card-side bg-base-100 shadow-xl border-l-4 hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 h-full flex flex-col sm:flex-row overflow-hidden group" data-company="{{ item.company }}">
-                <figure class="w-full sm:w-1/3 p-4 sm:p-6 shrink-0 flex items-center justify-center min-h-24 sm:min-h-[150px] bg-slate-50 border-r border-base-200">
+                <figure class="w-full sm:w-1/3 p-4 sm:p-6 shrink-0 flex items-center justify-center min-h-24 sm:min-h-[150px] bg-base-200 border-r border-base-200">
                   <div class="rounded-lg p-2 flex items-center justify-center w-full h-full max-h-24 max-w-[150px]">
                     <img class="object-contain w-full h-full max-h-20 filter" src="{{ static_url('static/img/companies/' ~ item.logo) }}" alt="{{ item.company }}" width="150" height="80" loading="lazy" decoding="async"/>
                   </div>
@@ -98,11 +102,11 @@
       <div class="container mx-auto">
         <div class="text-center mb-10 md:mb-16">
           <h2 class="text-4xl md:text-5xl font-heading font-bold mb-4 text-primary">Certifications</h2>
-          <p class="text-xl text-base-content/70 max-w-3xl mx-auto leading-relaxed text-balance">Validated capabilities from leading foundations, cloud providers, and academic networks.</p>
+          <p class="text-xl text-base-content/70 max-w-3xl mx-auto leading-relaxed text-balance">Cloud, machine learning, and community credentials, with links to verify each one.</p>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 justify-items-center max-w-6xl mx-auto mb-16">
           {% for badge in badges %}
-            <a class="group relative flex items-center gap-3.5 p-4 bg-base-100 rounded-2xl border-2 transition-all duration-300 w-full {% if badge.active %}border-primary shadow-lg hover:shadow-primary/20 hover:-translate-y-1{% else %}border-base-content/20 shadow-sm hover:border-base-content/40 hover:-translate-y-0.5{% endif %}" href="{{ badge.url }}" target="_blank" rel="noopener noreferrer"><div class="p-2.5 rounded-xl group-hover:bg-base-300 transition-colors shrink-0 flex items-center justify-center w-16 h-16 bg-slate-50 border border-base-200"><img class="w-11 h-11 object-contain" src="{{ static_url('static/img/certifications/' ~ badge.logo) }}" alt="{{ badge.issuer }}" width="44" height="44" loading="lazy" decoding="async"/></div><div class="flex-1 min-w-0"><h3 class="font-bold text-base md:text-md leading-tight line-clamp-2 transition-colors select-text {% if badge.active %}text-primary{% else %}text-base-content group-hover:text-accent{% endif %}">{{ badge.title }}</h3><p class="text-xs text-base-content/60 mt-1.5 truncate select-text" title="{{ badge.issuer }} • {{ badge.cert_id }}">{{ badge.issuer }} • {{ badge.cert_id }}</p></div>{% if badge.active %}{{ icon("external_link", "w-4 h-4 transition-opacity shrink-0 text-primary opacity-50 group-hover:opacity-100") }}{% else %}{{ icon("external_link", "w-4 h-4 transition-opacity shrink-0 text-accent opacity-0 group-hover:opacity-100") }}{% endif %}</a>
+            <a class="group relative flex items-center gap-3.5 p-4 bg-base-100 rounded-2xl border-2 transition-all duration-300 w-full {% if badge.active %}border-primary shadow-lg hover:shadow-primary/20 hover:-translate-y-1{% else %}border-base-content/20 shadow-sm hover:border-base-content/40 hover:-translate-y-0.5{% endif %}" href="{{ badge.url }}" target="_blank" rel="noopener noreferrer"><div class="p-2.5 rounded-xl group-hover:bg-base-300 transition-colors shrink-0 flex items-center justify-center w-16 h-16 bg-base-200 border border-base-200"><img class="w-11 h-11 object-contain" src="{{ static_url('static/img/certifications/' ~ badge.logo) }}" alt="{{ badge.issuer }}" width="44" height="44" loading="lazy" decoding="async"/></div><div class="flex-1 min-w-0"><h3 class="font-bold text-base md:text-md leading-tight line-clamp-2 transition-colors select-text {% if badge.active %}text-primary{% else %}text-base-content group-hover:text-accent{% endif %}">{{ badge.title }}</h3><p class="text-xs text-muted mt-1.5 truncate select-text" title="{{ badge.issuer }} • {{ badge.cert_id }}">{{ badge.issuer }} • {{ badge.cert_id }}</p></div>{% if badge.active %}{{ icon("external_link", "w-4 h-4 transition-opacity shrink-0 text-primary opacity-50 group-hover:opacity-100") }}{% else %}{{ icon("external_link", "w-4 h-4 transition-opacity shrink-0 text-accent opacity-0 group-hover:opacity-100") }}{% endif %}</a>
           {% endfor %}
         </div>
         <div class="relative py-8 max-w-6xl mx-auto">
@@ -121,7 +125,7 @@
       <div class="container mx-auto">
         <div class="text-center mb-10 md:mb-16">
           <h2 class="text-4xl md:text-5xl font-heading font-bold mb-4 text-primary">Projects</h2>
-          <p class="text-xl text-base-content/70 max-w-3xl mx-auto leading-relaxed text-balance">Open-source repositories and educational deep dives created to upskill engineers worldwide.</p>
+          <p class="text-xl text-base-content/70 max-w-3xl mx-auto leading-relaxed text-balance">Open-source tools and practical courses for building and operating AI systems.</p>
         </div>
         <div class="mb-16 max-w-6xl mx-auto">
           <h3 class="text-2xl font-bold mb-6 text-base-content">
@@ -130,7 +134,7 @@
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {% for project in open_source %}
               <div class="card bg-base-100 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 border border-base-300 hover:border-primary/30 group overflow-hidden">
-                <div class="h-0.5 bg-gradient-to-r from-primary to-blue-400"></div>
+                <div class="h-0.5 bg-gradient-to-r from-primary to-blue-bright"></div>
                 <div class="card-body p-6 flex flex-col justify-between">
                   <div>
                     <h3 class="card-title text-lg font-bold flex items-center gap-2 select-none">{{ icon("github", "w-5 h-5 group-hover:scale-110 transition-transform duration-300") }}<a class="text-base-content group-hover:text-primary transition-colors hover:underline decoration-2 underline-offset-4 select-text" href="{{ project.href }}" target="_blank" rel="noopener noreferrer">{{ project.title }}</a>{{ icon("external_link", "w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity shrink-0") }}</h3>
@@ -146,11 +150,11 @@
         </div>
         <div class="max-w-6xl mx-auto">
           <h3 class="text-2xl font-bold mb-6 text-base-content">
-            <a class="inline-flex items-center gap-2.5 group hover:text-accent transition-colors" href="https://www.youtube.com/@fmind-dev" target="_blank" rel="noopener noreferrer">{{ icon("youtube", "w-6 h-6 text-red-500 group-hover:text-accent transition-colors") }}<span>YouTube Series</span>{{ icon("external_link", "w-5 h-5 text-accent shrink-0") }}</a>
+            <a class="inline-flex items-center gap-2.5 group hover:text-accent transition-colors" href="https://www.youtube.com/@fmind-dev" target="_blank" rel="noopener noreferrer">{{ icon("youtube", "w-6 h-6 text-error group-hover:text-accent transition-colors") }}<span>YouTube Series</span>{{ icon("external_link", "w-5 h-5 text-accent shrink-0") }}</a>
           </h3>
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {% for playlist in youtube_series %}
-              <a class="card bg-base-100 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 border border-base-300 block group overflow-hidden" href="{{ playlist.url }}" target="_blank" rel="noopener noreferrer"><div class="h-0.5 bg-gradient-to-r from-primary to-blue-400"></div><div class="card-body p-6"><h3 class="card-title text-base-content group-hover:text-primary transition-colors flex items-center gap-1.5 select-none"><span class="font-bold text-lg">{{ playlist.title }}</span>{{ icon("external_link", "w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity shrink-0") }}</h3><p class="text-sm text-base-content/85 mt-3 leading-relaxed select-text">{{ playlist.description }}</p><div class="card-actions justify-end mt-6"><div class="btn btn-sm btn-ghost hover:bg-base-300 font-semibold gap-1">{{ playlist.cta }} <span class="group-hover:translate-x-1 transition-transform inline-block">→</span></div></div></div></a>
+              <a class="card bg-base-100 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 border border-base-300 block group overflow-hidden" href="{{ playlist.url }}" target="_blank" rel="noopener noreferrer"><div class="h-0.5 bg-gradient-to-r from-primary to-blue-bright"></div><div class="card-body p-6"><h3 class="card-title text-base-content group-hover:text-primary transition-colors flex items-center gap-1.5 select-none"><span class="font-bold text-lg">{{ playlist.title }}</span>{{ icon("external_link", "w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity shrink-0") }}</h3><p class="text-sm text-base-content/85 mt-3 leading-relaxed select-text">{{ playlist.description }}</p><div class="card-actions justify-end mt-6"><div class="btn btn-sm btn-ghost hover:bg-base-300 font-semibold gap-1">{{ playlist.cta }} <span class="group-hover:translate-x-1 transition-transform inline-block">→</span></div></div></div></a>
             {% endfor %}
           </div>
         </div>
@@ -161,7 +165,7 @@
       <div class="container mx-auto">
         <div class="text-center mb-10 md:mb-16">
           <h2 class="text-4xl md:text-5xl font-heading font-bold mb-4 text-base-content">My <span class="text-primary">Services</span></h2>
-          <p class="text-xl text-base-content/70 max-w-3xl mx-auto leading-relaxed text-balance">Bring deep AI architecture, MLOps, and security expertise to your next high-impact initiative.</p>
+          <p class="text-xl text-base-content/70 max-w-3xl mx-auto leading-relaxed text-balance">Get help with AI architecture, MLOps, and security through consulting or a focused mentoring session.</p>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
           {% for service in services %}
@@ -181,19 +185,5 @@
       </div>
     </section>
 
-    <section class="py-16 md:py-24 bg-base-200 px-4" id="articles">
-      <div class="container mx-auto">
-        <div class="text-center mb-10 md:mb-16">
-          <h2 class="text-4xl md:text-5xl font-heading font-bold mb-4 text-primary">Articles</h2>
-          <p class="text-xl text-base-content/70 max-w-3xl mx-auto leading-relaxed text-balance">Field notes on AI agents, MLOps, cloud architecture, and security — written from delivery, not theory.</p>
-        </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
-          {% for article in articles[:6] %}{{ article_card(article) }}{% endfor %}
-        </div>
-        <div class="flex justify-center mt-10 md:mt-12">
-          <a class="btn btn-primary btn-lg rounded-xl shadow-lg hover:scale-105 active:scale-95 transition-transform hover:shadow-xl hover:shadow-primary/20 font-bold" href="/articles/">{{ icon("article", "w-5 h-5 mr-2") }}Browse all {{ articles|length }} articles</a>
-        </div>
-      </div>
-    </section>
   </div>
 {% endblock %}

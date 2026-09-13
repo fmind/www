@@ -1,7 +1,7 @@
 {% macro metric_card(label, value, detail) -%}
   <div class="rounded-2xl border border-base-300 bg-base-100 p-5 shadow-sm">
     <p class="text-sm font-semibold text-base-content/65">{{ label }}</p>
-    <output class="block font-heading text-3xl font-black text-primary mt-2">{{ value }}</output>
+    <output class="block font-heading text-3xl font-bold text-primary mt-2">{{ value }}</output>
     <p class="text-sm text-base-content/65 leading-relaxed mt-2">{{ detail }}</p>
   </div>
 {%- endmacro %}
@@ -51,7 +51,7 @@
     {% for row in view.apis %}
       <article class="rounded-2xl border border-base-300 bg-base-100 p-5">
         <h4 class="font-heading font-bold"><a class="link link-primary" href="{{ row.baseline.source_url }}">{{ row.baseline.name }}</a></h4>
-        {% if row.request_issue %}<p class="font-semibold mt-3">Unavailable: {{ row.request_issue }}</p>{% else %}<p class="font-heading font-black text-3xl mt-3">{{ format_usd2(row.monthly_usd) }}<span class="text-sm font-body font-normal">/ month</span></p>{% endif %}
+        {% if row.request_issue %}<p class="font-semibold mt-3">Unavailable: {{ row.request_issue }}</p>{% else %}<p class="font-heading font-bold text-3xl mt-3">{{ format_usd2(row.monthly_usd) }}<span class="text-sm font-body font-normal">/ month</span></p>{% endif %}
         {% if not row.request_issue %}<dl class="text-sm mt-4 space-y-3">
           <div><dt class="text-base-content/70">Standard input / output per 1M tokens</dt><dd class="font-semibold">{{ format_usd2(row.baseline.input_per_million) }} / {{ format_usd2(row.baseline.output_per_million) }}</dd></div>
           <div><dt class="text-base-content/70">Per 1,000 requests</dt><dd class="font-semibold">{{ format_usd2(row.per_thousand_requests_usd) }}</dd></div>
@@ -67,7 +67,7 @@
   <section aria-labelledby="executive-result" class="space-y-6">
     <div>
       <p class="text-sm uppercase tracking-[0.18em] text-primary font-semibold">Your scenario · {{ view.demand_label }}</p>
-      <h2 id="executive-result" class="text-3xl md:text-4xl font-heading font-black mt-2 scroll-mt-24">What your demand actually costs</h2>
+      <h2 id="executive-result" class="text-3xl md:text-4xl font-heading font-bold mt-2 scroll-mt-24">What your demand actually costs</h2>
       <a class="link link-primary text-sm inline-block mt-3" href="#calculator">Change assumptions ↑</a>
       <p class="text-base-content/75 mt-3">{{ format_decimal(view.estimate.requests_month, 0) }} requests/month · {{ format_number(view.estimate.input_tokens_month) }} input tokens · {{ format_number(view.estimate.output_tokens_month) }} output tokens.</p>
     </div>
@@ -122,7 +122,7 @@
 
 {% macro precision_guide(view) -%}
   <section aria-labelledby="precision-guide" class="space-y-5">
-    <h2 id="precision-guide" class="font-heading text-3xl md:text-4xl font-black scroll-mt-24">4, 8, or 16-bit: what are you trading?</h2>
+    <h2 id="precision-guide" class="font-heading text-3xl md:text-4xl font-bold scroll-mt-24">4, 8, or 16-bit: what are you trading?</h2>
     <p class="text-base-content/75 leading-relaxed max-w-4xl">Memory and fleet cost for <strong>{{ view.selected_model.name }}</strong>, with the same fleet settings.</p>
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
       {% for row in view.precisions %}
@@ -139,13 +139,13 @@
 {%- endmacro %}
 
 {% macro cost_explorer(view) -%}
-  {% set line_classes = ["stroke-primary", "stroke-sky-600 dark:stroke-sky-400", "stroke-amber-700 dark:stroke-amber-400", "stroke-violet-600 dark:stroke-violet-400"] %}
+  {% set line_classes = ["stroke-primary", "stroke-info", "stroke-warning", "stroke-secondary"] %}
   {% set line_dashes = ["none", "12 3", "5 3", "2 3"] %}
-  {% set legend_classes = ["text-primary", "text-sky-700 dark:text-sky-400", "text-amber-800 dark:text-amber-400", "text-violet-700 dark:text-violet-400"] %}
+  {% set legend_classes = ["text-primary", "text-info", "text-warning", "text-secondary"] %}
   {% set legend_marks = ["━━", "━ ━", "– –", "···"] %}
   {% set selected_frame = view.cost_plot.frames[view.cost_plot.selected] %}
   <section aria-labelledby="cost-explorer" class="space-y-5">
-    <h2 id="cost-explorer" class="font-heading text-3xl md:text-4xl font-black scroll-mt-24">Watch demand change the cost case</h2>
+    <h2 id="cost-explorer" class="font-heading text-3xl md:text-4xl font-bold scroll-mt-24">Watch demand change the cost case</h2>
     <p class="text-base-content/75 leading-relaxed max-w-4xl">Explore the API cost curves against your fleet bill and capacity.</p>
     <figure data-cost-explorer class="rounded-2xl border border-base-300 bg-base-100 p-4 md:p-8">
       <svg viewBox="0 0 760 395" role="img" aria-labelledby="cost-plot-title cost-plot-desc" class="w-full h-auto text-base-content">
@@ -188,7 +188,7 @@
 
 {% macro sensitivity(view) -%}
   <section aria-labelledby="sensitivity" class="space-y-5">
-    <h2 id="sensitivity" class="font-heading text-3xl md:text-4xl font-black scroll-mt-24">What if demand or throughput is wrong?</h2>
+    <h2 id="sensitivity" class="font-heading text-3xl md:text-4xl font-bold scroll-mt-24">What if demand or throughput is wrong?</h2>
     <p class="text-base-content/75 leading-relaxed max-w-4xl">Try ½× or 2× demand and throughput with the same fleet. Select a scenario to apply it.</p>
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
       {% for row in view.sensitivity %}
@@ -209,7 +209,7 @@
 
 {% macro latency(view) -%}
   <section aria-labelledby="latency" class="space-y-5">
-    <h2 id="latency" class="font-heading text-3xl md:text-4xl font-black scroll-mt-24">Enough capacity. Fast enough for people?</h2>
+    <h2 id="latency" class="font-heading text-3xl md:text-4xl font-bold scroll-mt-24">Enough capacity. Fast enough for people?</h2>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
       {{ metric_card("Monthly capacity", format_go_float(view.estimate.demand_capacity_pct, 1) ~ "% needed", "A total-volume check. A month's spare capacity cannot absorb a burst that arrives in a few seconds.") }}
       {{ metric_card("Peak responsiveness", view.latency_title, view.latency_detail) }}
@@ -233,7 +233,7 @@
 
 {% macro quality(view) -%}
   <section aria-labelledby="quality-lab" class="space-y-5">
-    <h2 id="quality-lab" class="font-heading text-3xl md:text-4xl font-black scroll-mt-24">Compare cost per accepted task</h2>
+    <h2 id="quality-lab" class="font-heading text-3xl md:text-4xl font-bold scroll-mt-24">Compare cost per accepted task</h2>
     <details id="quality-settings" class="rounded-2xl border border-base-300 bg-base-100 p-6 md:p-8"{% if view.inputs.quality_enabled %} open{% endif %}>
       <summary class="cursor-pointer font-bold focus-visible:outline-2 focus-visible:outline-primary">Optional quality and human-review experiment</summary>
       <p class="text-base-content/75 leading-relaxed mt-4">Compare the same tasks and rubric. Starting values are illustrative; replace them with measurements. Calls include retries, and review covers all attempted tasks.</p>
@@ -269,7 +269,7 @@
               {% elif row.accepted == 0 %}
                 <p class="font-bold mt-2">No accepted tasks; cost per accepted task is undefined.</p>
               {% elif row.fits %}
-                <p class="font-heading text-2xl font-black text-primary mt-2">{{ format_usd2(row.per_accepted_usd) }} / accepted task</p>
+                <p class="font-heading text-2xl font-bold text-primary mt-2">{{ format_usd2(row.per_accepted_usd) }} / accepted task</p>
                 <svg viewBox="0 0 400 16" preserveAspectRatio="none" aria-hidden="true" class="w-full h-4 mt-3"><rect width="400" height="16" rx="8" class="fill-base-200"></rect><rect width="{{ format_go_float(400 * row.per_accepted_usd / task_cost_max(view.tasks), 2) }}" height="16" rx="8" class="fill-primary"></rect></svg>
               {% else %}
                 <p class="font-bold mt-2">Fleet capacity is insufficient for this task workload.</p>

@@ -80,6 +80,7 @@ def render_sitemap(articles: Sequence[Article]) -> str:
     locations = (
         f"{METADATA.site_url}/",
         f"{METADATA.site_url}/articles/",
+        f"{METADATA.site_url}/connect",
         f"{METADATA.site_url}/sites/",
         *(page.url for page in SITE_PAGES),
     )
@@ -100,9 +101,13 @@ def render_llms_txt(articles: Sequence[Article]) -> str:
         f"# {METADATA.name} — {METADATA.alternate_name}",
         "",
         f"> {METADATA.headline_primary}",
+        f"> {METADATA.headline_secondary}",
+        "",
+        METADATA.description,
         "",
         "## Machine-readable portfolio",
         "",
+        f"- [Connect]({METADATA.site_url}/connect): LinkedIn, email, and a downloadable contact card.",
         f"- [MCP server]({METADATA.site_url}/mcp): Read-only portfolio tools, resources, and prompts.",
         f"- [JSON profile]({METADATA.site_url}/api/profile): Canonical portfolio and article index.",
         f"- [Full LLM context]({METADATA.site_url}/llms-full.txt): This index plus every public article in Markdown.",
@@ -110,9 +115,11 @@ def render_llms_txt(articles: Sequence[Article]) -> str:
         f"- [Atom feed]({METADATA.site_url}/articles/feed.xml): Reverse-chronological publication feed.",
         f"- [Sitemap]({METADATA.site_url}/sitemap.xml): Canonical hosted pages.",
         "",
-        "## Sites",
+        "## Expertise",
         "",
     ]
+    lines.extend(f"- **{card.title}**: {card.description}" for card in EXPERTISE)
+    lines.extend(("", "## Sites", ""))
     lines.extend(f"- [{page.title}]({page.url}) — {page.description}" for page in SITE_PAGES)
     lines.extend(("", "## Articles", ""))
     lines.extend(

@@ -178,7 +178,7 @@ def create_mcp_server(articles: tuple[ArticleSummary, ...], index: SearchIndex) 
     """Build the immutable portfolio MCP server."""
     server: MCPServer[None] = _PortfolioMCPServer(
         name="www",
-        title="Médéric Hurier (Fmind) — AI Architect Portfolio",
+        title="Médéric Hurier (Fmind) — AI Security Architect Portfolio",
         description="Read-only portfolio tools, resources, and prompts for Fmind.",
         instructions=(
             f"Query the portfolio of {METADATA.name} ({METADATA.alternate_name}): {METADATA.headline_primary}. "
@@ -367,7 +367,7 @@ async def render_mcp_server_card(server: MCPServer[None]) -> bytes:
         "protocolVersion": MCP_PROTOCOL_VERSION,
         "serverInfo": {
             "name": "www",
-            "title": "Médéric Hurier (Fmind) — AI Architect Portfolio",
+            "title": "Médéric Hurier (Fmind) — AI Security Architect Portfolio",
             "version": build_version(),
             "websiteUrl": f"{METADATA.site_url}/",
         },

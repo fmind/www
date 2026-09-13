@@ -8,8 +8,8 @@ import pytest
 from www.assets import ROOT_FILE_SOURCES, ApplicationAssets, load_application_assets
 
 FONT_FILES = (
-    "fonts/Inter-Variable.woff2",
-    "fonts/Outfit-Variable.woff2",
+    "fonts/GoogleSans-Variable.woff2",
+    "fonts/GoogleSansCode-Variable.woff2",
 )
 
 

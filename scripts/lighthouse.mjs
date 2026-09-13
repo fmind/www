@@ -8,7 +8,7 @@ import process from "node:process";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const LIGHTHOUSE_VERSION = "13.4.1";
-const EXPECTED_PUBLIC_PATHS = 63;
+const EXPECTED_PUBLIC_PATHS = 64;
 const MAX_SITEMAP_BYTES = 2 * 1024 * 1024;
 const AUDIT_TIMEOUT_MS = 150_000;
 const PROCESS_OUTPUT_LIMIT = 64 * 1024;
@@ -37,12 +37,12 @@ Run the strict Lighthouse 13.4.1 qualification matrix with the Chromium pinned b
 
 Options:
   --base-url <origin>   Candidate origin to audit; LIGHTHOUSE_BASE_URL is the fallback.
-  --mode <full|smoke>  full audits 174 cases; smoke audits 4 cases (default: full).
+  --mode <full|smoke>  full audits 176 cases; smoke audits 4 cases (default: full).
   --output-dir <path>  Artifact directory below tmp/ (default: tmp/lighthouse).
   --plan               Validate arguments and tool pins, then print counts without network or audits.
   -h, --help           Show this help.
 
-Full mode validates exactly 63 unique sitemap paths, audits each once in desktop and mobile,
+Full mode validates exactly 64 unique sitemap paths, audits each once in desktop and mobile,
 then runs the eight representative/stress paths three more consecutive times in both modes.
 Every returned category score must be exactly 1; missing expected categories also fail.
 `;
@@ -406,7 +406,7 @@ function parseSitemapPaths(xml, baseUrl) {
     if (canonical.origin !== sitemapOrigin) {
       throw new Error(`cross-origin sitemap location rejected: ${canonical.href}`);
     }
-    if (canonical.pathname !== "/" && !canonical.pathname.endsWith("/")) {
+    if (canonical.pathname !== "/connect" && !canonical.pathname.endsWith("/")) {
       throw new Error(`sitemap page path must end in a slash: ${canonical.pathname}`);
     }
 
@@ -537,7 +537,7 @@ function buildAuditPlan(paths, mode, baseUrl) {
     }
   }
 
-  const expected = mode === "full" ? 174 : 4;
+  const expected = mode === "full" ? 176 : 4;
   if (audits.length !== expected) {
     throw new Error(`internal audit-plan mismatch: expected ${expected}, built ${audits.length}`);
   }

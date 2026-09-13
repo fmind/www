@@ -269,12 +269,12 @@ test("fetchSitemap rejects an invalid XML media type", async () => {
 });
 
 test("buildAuditPlan produces the exact smoke and full audit counts", () => {
-  const paths = Array.from({ length: 63 }, (_, index) => `/page-${index}/`);
+  const paths = Array.from({ length: 64 }, (_, index) => `/page-${index}/`);
   const full = harness.buildAuditPlan(paths, "full", BASE_URL);
-  assert.equal(full.length, 174);
-  assert.equal(full.filter((audit) => audit.phase === "sitemap").length, 126);
+  assert.equal(full.length, 176);
+  assert.equal(full.filter((audit) => audit.phase === "sitemap").length, 128);
   assert.equal(full.filter((audit) => audit.phase === "stress").length, 48);
-  assert.equal(new Set(full.map((audit) => audit.artifact)).size, 174);
+  assert.equal(new Set(full.map((audit) => audit.artifact)).size, 176);
 
   const smoke = harness.buildAuditPlan(paths, "smoke", BASE_URL);
   assert.equal(smoke.length, 4);
@@ -308,4 +308,13 @@ test("inspectReport accepts only exact categories and the audited page URL", () 
   const changedFinal = perfectReport(audit);
   changedFinal.finalDisplayedUrl = `${audit.url}?unexpected=1`;
   assert.match(harness.inspectReport(changedFinal, audit, BASE_URL).errors.join("\n"), /final URL escaped or changed/u);
+});
+
+test("sitemap accepts the canonical slashless contact page", () => {
+  const xml = "<urlset><url><loc>https://www.fmind.dev/connect</loc></url></urlset>";
+  assert.deepEqual(harness.parseSitemapPaths(xml, BASE_URL).paths, ["/connect"]);
+  assert.throws(
+    () => harness.parseSitemapPaths(xml.replace("/connect", "/unexpected"), BASE_URL),
+    /must end in a slash/u,
+  );
 });
