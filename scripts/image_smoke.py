@@ -473,6 +473,18 @@ def _assert_http_contracts(port: int) -> None:
     ):
         raise SmokeError("representative stylesheet did not return the expected CSS")
 
+    for path in ("/logo.png", "/banner.png"):
+        # Exercise Granian's pathsend extension with compression negotiation;
+        # in-process clients do not expose this production ASGI interaction.
+        download = _request(port, "GET", path, headers={"Accept-Encoding": "br, gzip"})
+        _expect_ok(download, path)
+        if (
+            download.headers.get("content-type") != "image/png"
+            or "content-encoding" in download.headers
+            or not download.body.startswith(b"\x89PNG\r\n\x1a\n")
+        ):
+            raise SmokeError(f"{path} did not return an uncompressed PNG")
+
     _probe_modern_mcp(port)
 
 

@@ -101,6 +101,7 @@ def test_brand_downloads_serve_full_resolution_pngs(client: AppClient, name: str
     response = client.get(path, follow_redirects=False)
     assert response.status_code == 200
     assert response.headers["content-type"] == "image/png"
+    assert "content-encoding" not in response.headers
     assert response.headers["x-content-type-options"] == "nosniff"
     assert "must-revalidate" in response.headers["cache-control"]
     assert response.content == Path(f"static/{name}.png").read_bytes()

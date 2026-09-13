@@ -75,7 +75,7 @@ _MCP_MAX_BODY_SIZE = 1 << 20
 # Static ETags and byte ranges describe the on-disk representation. Compressing
 # it afterward invalidates both contracts. Page CSS is inline, so HTML still
 # benefits from Brotli without needing separate encoded static representations.
-_COMPRESSION_EXCLUDE = r"^/(?:mcp|static)(?:/|$)"
+_COMPRESSION_EXCLUDE = r"^/(?:(?:mcp|static)(?:/|$)|(?:logo|banner)\.png$)"
 _READ_METHODS = (HttpMethod.GET, HttpMethod.HEAD)
 
 type AppRequest = Request[Any, Any, Any]

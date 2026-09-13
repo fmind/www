@@ -204,6 +204,11 @@ def test_http_contract_probe_uses_modern_mcp_discovery_and_lists_primitives(
             assert method == "GET"
             return HTTPResponse(200, {"content-type": "text/css; charset=utf-8"}, b"/*! tailwindcss v4")
 
+        if path in {"/logo.png", "/banner.png"}:
+            assert method == "GET"
+            assert headers == {"Accept-Encoding": "br, gzip"}
+            return HTTPResponse(200, {"content-type": "image/png"}, b"\x89PNG\r\n\x1a\n")
+
         assert path == "/mcp"
         assert method == "POST"
         assert body is not None
