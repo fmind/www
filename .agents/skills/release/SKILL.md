@@ -10,6 +10,8 @@ metadata:
 
 This workflow contains commits, pushes, a GitHub release, and a production deployment. Run it only after explicit owner authorization. Local readiness never grants publication authority, and already published tags are immutable.
 
+A deployment alone does not require a semver release. For a deploy-only request, follow the [README deployment workflow](../../../README.md#deployment), qualify the reviewed commit, and verify the serving digest without creating a tag or GitHub release.
+
 ## Preconditions
 
 - Work from `main`; inspect `git status --short --branch`, HEAD, and upstream. Separate unrelated changes and never broad-stage, reset, clean, force-push, or rewrite history.

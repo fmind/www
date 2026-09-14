@@ -3,7 +3,7 @@
   <div class="container mx-auto flex flex-wrap items-center gap-y-1 px-4">
     <div class="flex-1 flex items-center gap-1 sm:gap-2">
       <div class="2xl:hidden relative">
-        <button id="menu-toggle" class="btn btn-ghost btn-circle btn-sm md:btn-md" aria-label="Menu" aria-controls="mobile-menu" aria-expanded="false">
+        <button id="menu-toggle" class="hidden btn btn-ghost btn-circle btn-sm md:btn-md" aria-label="Menu" aria-controls="mobile-menu" aria-expanded="false">
           {{ icon("menu", "h-5 w-5") }}
         </button>
         <ul id="mobile-menu" class="menu menu-sm flex-nowrap max-h-[70dvh] overflow-y-auto overscroll-contain absolute left-0 mt-3 z-[50] p-2 shadow bg-base-100 rounded-box w-52 border border-base-200 hidden">
@@ -22,9 +22,6 @@
               Sites
             </a>
           </li>
-          {% for label, repository in [("Theme", "theme"), ("CLI", "cli")] %}
-            <li><a class="font-semibold text-primary py-2" href="https://github.com/fmind/{{ repository }}" target="_blank" rel="noopener noreferrer" aria-label="{{ label }} (external GitHub page)" title="{{ label }} on GitHub (external page)">{{ label }}{{ icon("external_link", "h-3.5 w-3.5") }}</a></li>
-          {% endfor %}
         </ul>
       </div>
       <a class="btn btn-ghost text-xl md:text-2xl font-bold font-heading text-primary normal-case gap-2 sm:gap-4 px-1 sm:px-2" href="/">
@@ -48,17 +45,23 @@
           <span class="text-base leading-none select-none" aria-hidden="true">🌐</span>
           Sites
         </a>
-        {% for label, repository in [("Theme", "theme"), ("CLI", "cli")] %}
-          <a class="btn btn-sm btn-ghost rounded-xl font-semibold gap-1.5 px-2" href="https://github.com/fmind/{{ repository }}" target="_blank" rel="noopener noreferrer" aria-label="{{ label }} (external GitHub page)" title="{{ label }} on GitHub (external page)">{{ label }}{{ icon("external_link", "h-3.5 w-3.5") }}</a>
-        {% endfor %}
       </div>
     </div>
-    <div class="order-last mx-auto flex flex-wrap w-full max-w-52 justify-center sm:order-none sm:mx-0 sm:w-auto sm:max-w-none" role="group" aria-label="Social profiles">
-      {% for social in metadata.socials %}
+    <div class="flex items-center justify-center" role="group" aria-label="Social profiles">
+      {% for social in metadata.socials if social.header %}
         <a class="btn btn-ghost btn-circle w-10 h-10 min-h-10 text-base-content hover:bg-base-200 transition-colors" href="{{ social.url }}" target="_blank" rel="noopener noreferrer" aria-label="{{ social.name }}" title="{{ social.name }}">
           {{ icon(social.icon, "h-5 w-5") }}
         </a>
       {% endfor %}
     </div>
+    <noscript>
+      <ul class="flex flex-wrap gap-x-4 gap-y-1 px-2 py-2 text-sm font-medium">
+        {% for link in nav_links %}
+          <li><a class="link inline-flex items-center min-h-11" href="{{ link.href }}">{{ link.label }}</a></li>
+        {% endfor %}
+        <li><a class="link inline-flex items-center min-h-11" href="/articles/">Articles</a></li>
+        <li><a class="link inline-flex items-center min-h-11" href="/sites/">Sites</a></li>
+      </ul>
+    </noscript>
   </div>
 </nav>

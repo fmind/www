@@ -114,13 +114,15 @@ def download(url: str) -> bytes:
 def build(font_build: FontBuild) -> tuple[int, int]:
     """Instance, subset, and write one face; return its previous and new size."""
     archive = zipfile.ZipFile(io.BytesIO(download(font_build.url)))
-    font = TTFont(io.BytesIO(archive.read(font_build.member)))
+    # Preserve the upstream timestamp through both serialization passes so a
+    # rebuild does not change immutable asset hashes just because time passed.
+    font = TTFont(io.BytesIO(archive.read(font_build.member)), recalcTimestamp=False)
     instancer.instantiateVariableFont(font, font_build.axes, inplace=True)
     # Round-trip the instance: the subsetter reads variation tables that only
     # become consistent once the clamped font has been serialized again.
     instanced = io.BytesIO()
     font.save(instanced)
-    font = TTFont(instanced)
+    font = TTFont(instanced, recalcTimestamp=False)
 
     options = subset.Options()
     options.flavor = "woff2"

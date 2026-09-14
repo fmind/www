@@ -28,11 +28,11 @@ METADATA = Metadata(
     name="Médéric Hurier",
     alternate_name="Fmind",
     site_name="Fmind",
-    title="Médéric Hurier (Fmind) | AI Architect",
+    title="Médéric Hurier (Fmind) | Freelance AI Architect",
     job_title="AI Architect",
-    headline_primary="AI Architect (PhD) • VC Expert Advisor • AAIF Ambassador",
-    headline_secondary="GCP Certified Cloud Architect • AI, Agents & Security",
-    description="Freelance AI Architect (PhD), VC Expert Advisor, AAIF Ambassador, and GCP Certified Cloud Architect specializing in AI agents, MLOps, and production AI systems.",
+    headline_primary="Freelance AI Architect • AI Agents, MLOps & Security",
+    headline_secondary="PhD • VC Expert Advisor • AAIF Ambassador",
+    description="Freelance AI Architect specializing in AI agents, MLOps, and security. PhD in AI and Computer Security, VC Expert Advisor, and AAIF Ambassador.",
     keywords=(
         "AI",
         "Machine Learning",
@@ -58,13 +58,9 @@ METADATA = Metadata(
     socials=(
         SocialLink("LinkedIn", "https://www.linkedin.com/in/fmind-dev/", "linkedin", True),
         SocialLink("X (Twitter)", "https://x.com/fmind_dev", "x", True),
-        SocialLink("Bluesky", "https://bsky.app/profile/fmind-dev.bsky.social", "bluesky", True),
-        SocialLink("Medium", "https://fmind.medium.com/", "medium", True),
         SocialLink("GitHub", "https://github.com/fmind", "github", True),
-        SocialLink("YouTube", "https://www.youtube.com/@fmind-dev", "youtube", True),
-        SocialLink("Hugging Face", "https://huggingface.co/fmind", "huggingface", True),
         SocialLink("Kaggle", "https://www.kaggle.com/freaxmind", "kaggle", True),
-        SocialLink("Credly", "https://www.credly.com/users/fmind", "credly", True),
+        SocialLink("YouTube", "https://www.youtube.com/@fmind-dev", "youtube", True),
     ),
 )
 
@@ -75,48 +71,50 @@ WORK_COUNTRY_CODE = "LU"
 LANGUAGES = (("fr", "French"), ("en", "English"))
 
 BIOGRAPHY = (
-    "I am a **freelance AI Architect** with a **PhD in AI and Computer Security**. I design and industrialize **AI agents**, **MLOps platforms**, and **secure cloud foundations**, turning fast-moving research into dependable production capabilities with clear controls, observability, and measurable outcomes.",
-    "My work spans strategy and delivery: enterprise agent platforms at **Decathlon**, European fraud detection for the **European Commission**, and Android malware research with **Google**. I have also delivered AI, data, and security initiatives for BNP Paribas, ArcelorMittal, SFEIR, Clearstream, and the University of Luxembourg.",
-    "Beyond client work, I serve as an **AAIF Ambassador** and Luxembourg organizer and contribute to the **33N Ventures Expert Advisory Board**. As a **Google Cloud Professional Cloud Architect**, I bring a pragmatic, security-first approach to systems that must operate reliably at scale.",
+    "I am a **freelance AI Architect**. I help teams design and deploy **AI agents**, **MLOps platforms**, and **secure cloud infrastructure**, from architecture decisions to production operations. My background includes a **PhD in AI and Computer Security** and certification as a **Google Cloud Professional Cloud Architect**.",
+    "My work includes enterprise agent platforms at **Decathlon**, fraud detection for the **European Commission**, and Android malware research with **Google**. I have also worked on AI, data, and security projects for BNP Paribas, ArcelorMittal, SFEIR, Clearstream, and the University of Luxembourg.",
+    "Beyond client work, I serve on the **33N Ventures Expert Advisory Board** and support the agentic AI community as an **AAIF Ambassador** and **Luxembourg community organizer**. I also share practical tools and courses on AI agents, MLOps, and Python.",
 )
 
 LEADERSHIP = (
     LeadershipRole(
         "Agentic AI Foundation Ambassador",
         "The Linux Foundation",
-        "Selected to serve as an AAIF Ambassador and help grow the open agentic AI community.",
+        "Supporting the open agentic AI community as an AAIF Ambassador.",
         "https://www.credly.com/badges/aaf051e1-202f-4b0f-bfc6-a23a3ef2e2a2",
     ),
     LeadershipRole(
         "Expert Advisory Board Member",
         "33N Ventures",
-        "Contributing AI Agents, MLOps, and security expertise to 33N's venture advisory network.",
+        "Advising 33N Ventures on AI agents, MLOps, and security.",
         "https://33n.vc/team",
     ),
     LeadershipRole(
         "Local Community Organizer",
         "AAIF Community Luxembourg",
-        "Organizing Luxembourg's local practitioner community and events around agentic AI.",
+        "Bringing practitioners together in Luxembourg through agentic AI community events.",
         "https://luma.com/aaif-luxembourg",
     ),
 )
 
 EXPERTISE = (
     ExpertiseCard(
-        "Agentic Orchestration", "🤖", "Building autonomous systems, reasoning engines, and reliable agentic workflows."
+        "Agentic Orchestration", "🤖", "Designing AI agents, tool integrations, and workflows for production use."
     ),
     ExpertiseCard(
-        "Production MLOps", "🚀", "Robust deployment patterns on GCP, AWS, Azure, and Databricks for reliability."
-    ),
-    ExpertiseCard("Security-First AI", "🛡️", "Leveraging a PhD background to build secure and trustworthy AI systems."),
-    ExpertiseCard(
-        "Technical Strategy", "🧭", "Translating complex AI capabilities into clear, scalable architectural roadmaps."
+        "Production MLOps", "🚀", "Deploying and operating ML platforms on Google Cloud, AWS, Azure, and Databricks."
     ),
     ExpertiseCard(
-        "Data Science & ML", "📊", "Engineering machine learning models and data solutions for enterprise scale."
+        "Security-First AI", "🛡️", "Applying AI and computer security research to system design and implementation."
     ),
     ExpertiseCard(
-        "Python Development", "🐍", "Building scalable applications, libraries, and tools with modern standards."
+        "Technical Strategy", "🧭", "Turning AI requirements into architecture decisions and delivery plans."
+    ),
+    ExpertiseCard(
+        "Data Science & ML", "📊", "Developing machine learning models and data pipelines for business applications."
+    ),
+    ExpertiseCard(
+        "Python Development", "🐍", "Building maintainable Python applications, libraries, and developer tools."
     ),
 )
 
@@ -228,7 +226,7 @@ EXPERIENCES = (
         "decathlon.webp",
         "AI/ML Architect",
         "#3643BA",
-        "Design and implement enterprise-scale Agents and MLOps platforms for AI/ML industrialization.",
+        "Design and implement enterprise AI agent and MLOps platforms for production use.",
         ("AI/ML", "Agents", "Gen AI", "MLOps"),
     ),
     WorkExperience(
@@ -236,7 +234,7 @@ EXPERIENCES = (
         "european-commission.webp",
         "AI/ML Engineer",
         "#004494",
-        "Contributed to Arachne, the European fraud detection system to ensure financial integrity.",
+        "Contributed to Arachne, the European Commission's data-mining and risk-scoring tool for fraud prevention.",
         ("AI/ML", "Fraud Detection", "Public Sector"),
     ),
     WorkExperience(
@@ -252,7 +250,7 @@ EXPERIENCES = (
         "bgl-bnp-paribas.webp",
         "Project Manager",
         "#00915E",
-        "Supervised the development of advanced transformer models for banking applications.",
+        "Supervised the development of transformer models for banking applications.",
         ("NLP", "Finance", "Project Management"),
     ),
     WorkExperience(
@@ -293,17 +291,17 @@ OPEN_SOURCE = (
     Project(
         "mlops-python-package",
         "https://github.com/fmind/mlops-python-package",
-        "Kickstart your MLOps initiative with a flexible, robust, and productive Python package.",
+        "A Python package example for structuring, testing, and maintaining MLOps projects.",
     ),
     Project(
         "cookiecutter-mlops-package",
         "https://github.com/fmind/cookiecutter-mlops-package",
-        "Start building and deploying Python packages and Docker images for MLOps.",
+        "A Cookiecutter template for building and deploying MLOps Python packages and Docker images.",
     ),
     Project(
         "MLOps Coding Course",
         "https://mlops-coding-course.fmind.dev/",
-        "Learn to create, develop, and maintain a state-of-the-art MLOps code base.",
+        "Learn to build, test, and maintain an MLOps codebase.",
         "https://github.com/MLOps-Courses/mlops-coding-course",
     ),
 )
@@ -312,19 +310,19 @@ YOUTUBE_SERIES = (
     Playlist(
         "Bleeding Agent",
         "https://www.youtube.com/playlist?list=PLPCnNL6Y2PbTckW80gDLnznFMDEz18HBS",
-        "Technical deep dives into the Black Box of AI Agents and emerging autonomous systems.",
+        "Technical discussions on how AI agents and autonomous systems work.",
         "View Podcast",
     ),
     Playlist(
         "AI Agents in a Nut$SHELL",
         "https://www.youtube.com/playlist?list=PLPCnNL6Y2PbT1aKOx2fMFBpicTRzeMS6f",
-        "Brief, high-signal deep dives into the core architecture and inner workings of AI Agents.",
+        "Short explanations of AI agent architecture and how the components fit together.",
         "View Playlist",
     ),
     Playlist(
         "MLOps Coding Course",
         "https://www.youtube.com/playlist?list=PLPCnNL6Y2PbQplCczUFhtQpCznEXqDZnh",
-        "Bridge the gap between robust software engineering and cutting-edge data science.",
+        "Apply software engineering practices to machine learning projects.",
         "View Course",
     ),
 )
@@ -374,7 +372,7 @@ def get_services() -> tuple[Service, ...]:
         Service(
             "🏢",
             "AI Architecture & Advisory",
-            "Engage me to assess, design, and scale AI initiatives — from agent platforms and MLOps to security and operating models.",
+            "Get help assessing and designing AI agent platforms, MLOps infrastructure, and security, with a plan for delivery and operations.",
             "🔴 Not available for new missions",
             "error",
             "✉️ Get in Touch",
@@ -383,7 +381,7 @@ def get_services() -> tuple[Service, ...]:
         Service(
             "🎓",
             "Mentoring",
-            "Book a paid 1-hour session to discuss your projects: upskilling, career mentoring, architecture review, brainstorming, and more.",
+            "Book a paid one-hour session for an architecture review, project advice, or career mentoring in AI and MLOps.",
             "💰 Paid session — 1 hour",
             "info",
             "📅 Book a Session",

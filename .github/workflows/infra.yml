@@ -1,8 +1,6 @@
-# `tofu init` downloads provider schemas, and in a working copy where someone has
-# already run a real init it also opens the state backend — so this is neither
-# offline nor credential-free, and it does not belong in the pre-commit hook that
-# every commit pays for. A fresh checkout has no backend to open, which is why
-# the plain upstream commands are enough here.
+# https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax
+# The canonical check uses a scratch TF_DATA_DIR and backend-free init, so it
+# needs network access for provider schemas but no cloud credentials or state.
 name: Infrastructure
 on:
   push:

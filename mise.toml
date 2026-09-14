@@ -1,3 +1,4 @@
+# https://mise.jdx.dev/configuration.html
 [env]
 APP_NAME = "www"
 IMAGE_ARCHIVE = "tmp/www-image.tar"

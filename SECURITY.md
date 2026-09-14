@@ -20,7 +20,11 @@ The reviewed local application image passes the fixable HIGH/CRITICAL vulnerabil
 
 The [2026-09-14 hosted security run](https://github.com/fmind/www/actions/runs/34824997460) independently scanned the serving platform digest `sha256:56c6945c32b78f69a4bfda766e1278f954688b8fd8f59dfb01e65d2710af4a37`, with revision `www-fmind-dev-00042-nnj` receiving 100% of traffic. Its retained report found the same 44 HIGH instances across 8 CVEs, no CRITICAL findings, and no available fixes. This is the pre-release baseline; rerun the hosted workflow after deployment to capture the new serving digest. The older assessment below remains historical.
 
-## Current residual package exposure
+## Pre-deployment verification — 2026-09-14
+
+The direct `mise run check:image:deployed` review of revision `www-fmind-dev-00043-2t9`, receiving 100% of traffic, scanned platform digest `sha256:8c3ffaed9ada9a848f6b98ad8c6cceb543e6938b28e7bcea5dc50ff58feeec48`. It passed the fixable vulnerability and secret gates; the unfiltered report contained 44 HIGH package/advisory instances across 8 CVEs, no CRITICAL findings, and no available fixes. This is a dated snapshot before the portfolio review deployment, not evidence for a later revision. Recheck the serving digest after rollout.
+
+## Historical package exposure — 2026-09-07
 
 The 2026-09-07 review scanned platform digest `sha256:358f3f22a66a1bd5f7170f06c00e9d5e76b27710851aea2cb46340247a215938` in `europe-west1-docker.pkg.dev/www-fmind-dev/app/www-fmind-dev`. It found 54 Debian package/advisory instances (51 HIGH, 3 CRITICAL), covering 18 unique CVEs, with no fixed version reported and no HIGH/CRITICAL Python-package finding. This is a dated baseline; the workflow artifact identifies what is serving at each subsequent scan.
 

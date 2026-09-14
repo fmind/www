@@ -18,7 +18,7 @@ Add one focused decision tool to the existing Litestar, Jinja, Tailwind, and Dai
 1. Add a page template under `src/www/templates/pages/` and shared components under `src/www/templates/macros/` or `partials/`. Reuse base inheritance, navigation, typography, DaisyUI primitives, spacing, metadata, and the central `src/www/rendering.py` renderer.
 1. Use a native GET form so scenarios are shareable and Python remains the sole formula implementation. Add JavaScript only for progressive enhancement that cannot be expressed by the server response; the page must remain useful without it.
 1. Show assumptions, units, cost boundaries, source freshness, capacity/quality/latency caveats, and decisions that still require a measured pilot. Never present a planning estimate as benchmark precision.
-1. Add deterministic calculation and handler tests covering canonical output, invalid input, 404 behavior, structured data, and every discovery surface. Extend pinned Playwright journeys for desktop/light and mobile/dark.
+1. Add deterministic calculation and handler tests covering canonical output, invalid input, 404 behavior, structured data, and every discovery surface. Extend pinned Playwright journeys for desktop and mobile in light mode; verify that a dark system preference does not change the site's light-only presentation.
 1. Run and inspect the complete local gates:
 
    ```bash

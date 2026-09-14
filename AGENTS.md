@@ -22,6 +22,7 @@ Python 3.14 server-rendered web application: Litestar + strict Jinja + Tailwind/
 - `mise run test:image` — bounded HTTP/MCP smoke test of the already-built production OCI archive.
 - `mise run test:lighthouse -- --base-url <origin> [--mode full|smoke|portfolio]` — strict five-category audit; never part of `all`.
 - `mise run build` — compile CSS and build clean wheel and source distributions.
+- `mise run build:branding` — rebuild logos, favicons, and social previews from the committed PNG masters.
 - `mise run build:images` — reconcile the SHA-256 provenance lock and generate only changed, missing, tampered, or recipe-stale Pillow WebP derivatives.
 - `mise run build:fonts` — re-subset the self-hosted WOFF2 faces from the pinned upstream releases; network-dependent and never part of `all`.
 - `mise run build:image` — build the production OCI image archive at `tmp/www-image.tar`.
@@ -70,6 +71,7 @@ Important package ownership:
 
 - `app.py` composes immutable startup state, Litestar routes, middleware, static delivery, MCP, and teardown.
 - `assets.py`, `content.py`, and `images.py` load/hash static files, parse/render articles, and generate derivatives.
+- `connect.py` derives the public vCard from portfolio data; `/connect` offers contact actions and `/scan` displays its QR code without indexing.
 - `data.py`, `models.py`, and `tags.py` own portfolio data, shared types, the site-page registry, and the closed tag vocabulary.
 - `highlighting.py`, `markdown.py`, `publications.py`, and `search.py` own Pygments output, source-preserving link rewriting, discovery artifacts, and BM25 search.
 - `middleware.py`, `log.py`, and `telemetry.py` own HTTP policy, structured logs, and OpenTelemetry.

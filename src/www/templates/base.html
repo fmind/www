@@ -76,6 +76,7 @@
         var menuBtn = document.getElementById('menu-toggle');
         var menu = document.getElementById('mobile-menu');
         if (menuBtn && menu) {
+          menuBtn.classList.remove('hidden');
           var setOpen = function (open) {
             menu.classList.toggle('hidden', !open);
             menuBtn.setAttribute('aria-expanded', open ? 'true' : 'false');

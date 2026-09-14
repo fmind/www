@@ -3,6 +3,23 @@ const { setTimeout: delay } = require("node:timers/promises");
 
 const calculator = "/sites/llm-self-hosting/";
 
+test("portfolio navigation remains usable without JavaScript", async ({ browser }, testInfo) => {
+  const context = await browser.newContext({ ...testInfo.project.use, javaScriptEnabled: false });
+  try {
+    const page = await context.newPage();
+    await page.goto("/");
+    const navigation = page.locator("noscript");
+    await expect(page.getByRole("button", { name: "Menu", exact: true })).toBeHidden();
+    await expect(navigation.getByRole("link", { name: "Services", exact: true })).toBeVisible();
+    await navigation.getByRole("link", { name: "Articles", exact: true }).click();
+    await expect(page).toHaveURL(/\/articles\/$/);
+    await navigation.getByRole("link", { name: "Sites", exact: true }).click();
+    await expect(page).toHaveURL(/\/sites\/$/);
+  } finally {
+    await context.close();
+  }
+});
+
 test.beforeEach(async ({ page }) => {
   page.on("pageerror", (error) => {
     throw error;
@@ -26,14 +43,15 @@ test("published pages render without overflow, missing images, or external asset
   expect(sitemapResponse.status()).toBe(200);
   const sitemapPaths = [...(await sitemapResponse.text()).matchAll(/<loc>([^<]+)<\/loc>/g)]
     .map(([, location]) => new URL(location).pathname);
-  // Discovery must stay closed over the same hosted pages the browser crawls.
+  // Discovery must stay closed over the indexable pages.
   expect([...new Set(sitemapPaths)].sort()).toEqual([...new Set(paths)].sort());
   expect(sitemapPaths).toHaveLength(paths.length);
   const external = [];
   page.on("request", (request) => {
     if (new URL(request.url()).origin !== new URL(baseURL).origin) external.push(request.url());
   });
-  for (const path of paths) {
+  // The QR display is intentionally noindex but needs the same rendering checks.
+  for (const path of [...paths, "/scan"]) {
     const response = await page.goto(path);
     expect(response.status(), path).toBe(200);
     await expect(page.locator("h1")).toHaveCount(1);
@@ -110,7 +128,8 @@ test("conference contact actions and QR display work without JavaScript", async 
   try {
     const page = await context.newPage();
     await page.goto("/connect");
-    await expect(page.getByRole("heading", { name: "Médéric Hurier (Fmind)" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Médéric Hurier (Fmind)", exact: true })).toBeVisible();
+    await expect(page.getByText("Médéric Hurier (Fmind)", { exact: true })).toBeVisible();
     const linkedIn = page.getByRole("link", { name: "Connect on LinkedIn" });
     await expect(linkedIn).toBeInViewport();
     await expect(linkedIn).toHaveAttribute("href", "https://www.linkedin.com/in/fmind-dev/");
@@ -122,7 +141,10 @@ test("conference contact actions and QR display work without JavaScript", async 
     expect(card.suggestedFilename()).toBe("mederic-hurier.vcf");
     expect(await card.failure()).toBeNull();
     await expect(page.getByRole("navigation", { name: "Connect with Médéric" }).getByRole("link"))
-      .toHaveText(["Connect on LinkedIn", "💾Save my contact"]);
+      .toHaveText(["Connect on LinkedIn", "Go to my website", "💾Save my contact"]);
+    const website = page.getByRole("link", { name: "Go to my website", exact: true });
+    await expect(website).toHaveAttribute("href", "/");
+    await expect(website).toBeInViewport();
     await expect(page.getByRole("link", { name: "Email me" })).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Explore my work" })).toHaveCount(0);
     const home = page.locator("header").getByRole("link", { name: "Fmind.dev", exact: true });
@@ -132,11 +154,43 @@ test("conference contact actions and QR display work without JavaScript", async 
     await page.keyboard.press("Tab");
     await expect(linkedIn).toBeFocused();
     await page.keyboard.press("Tab");
+    await expect(website).toBeFocused();
+    await page.keyboard.press("Tab");
     await expect(save).toBeFocused();
-    const qr = page.getByRole("img", { name: "QR code for https://www.fmind.dev/connect", exact: true });
+    await expect(page.getByRole("img", { name: /QR code/ })).toHaveCount(0);
+    await page.screenshot({ path: testInfo.outputPath("connect.png"), fullPage: true });
+    await website.click();
+    await expect(page).toHaveURL(/\/$/);
+    await page.goto("/scan");
+    await expect(page.getByRole("heading", { name: "Médéric Hurier (Fmind)", exact: true })).toBeVisible();
+    const qr = page.getByRole("img", { name: /QR code opening Médéric Hurier/ });
     await expect(qr).toBeVisible();
     await expect(qr).toHaveJSProperty("naturalWidth", 296);
-    await page.screenshot({ path: testInfo.outputPath("connect.png"), fullPage: true });
+    await expect(qr).toBeInViewport();
+    await page.screenshot({ path: testInfo.outputPath("scan.png"), fullPage: true });
+    const destination = page.getByRole("link", { name: "www.fmind.dev/connect", exact: true });
+    await expect(destination).toHaveAttribute("href", "https://www.fmind.dev/connect");
+    await expect(page.getByText("Open your phone’s camera to connect on LinkedIn or save my contact.")).toHaveCount(0);
+    await expect(page.getByText("Already on your phone? Tap the link above.")).toHaveCount(0);
+    await page.setViewportSize({ width: 320, height: 568 });
+    await page.evaluate(() => document.fonts.ready);
+    expect(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath("scan-small-phone.png"), fullPage: true });
+    for (const path of ["/connect", "/scan"]) {
+      await page.setViewportSize({ width: 320, height: 740 });
+      await page.goto(path);
+      await page.evaluate(() => document.fonts.ready);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      await expect(page.locator("h1")).toHaveCount(1);
+      const portrait = page.getByRole("img", { name: "Médéric Hurier", exact: true });
+      await expect(portrait).toBeVisible();
+      const headingBounds = await page.locator("h1").boundingBox();
+      const portraitBounds = await portrait.boundingBox();
+      expect(portraitBounds.y + portraitBounds.height).toBeLessThanOrEqual(headingBounds.y);
+      await expect(page.locator("h1")).toHaveCSS("color", "rgb(23, 78, 166)");
+      await expect(page.getByText("AI Agents, MLOps & Security", { exact: true })).toBeVisible();
+      await expect(page.locator("footer")).toHaveCount(0);
+    }
   } finally {
     await context.close();
   }
@@ -160,12 +214,13 @@ test("menu remains usable when storage is blocked", async ({ page }) => {
 });
 
 test("landscape mobile menu scrolls to every destination", async ({ page }) => {
-  await page.setViewportSize({ width: 667, height: 375 });
+  // The shorter primary menu needs a compact landscape viewport to exercise scrolling.
+  await page.setViewportSize({ width: 667, height: 320 });
   await page.goto("/");
   await page.getByRole("button", { name: "Menu", exact: true }).click();
   const menu = page.locator("#mobile-menu");
   const bounds = await menu.boundingBox();
-  expect(bounds.y + bounds.height).toBeLessThanOrEqual(375);
+  expect(bounds.y + bounds.height).toBeLessThanOrEqual(320);
   const last = menu.getByRole("link").last();
   await last.focus();
   await expect(last).toBeInViewport();
@@ -174,36 +229,22 @@ test("landscape mobile menu scrolls to every destination", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Menu", exact: true })).toBeFocused();
 });
 
-test("Theme and CLI follow Articles and Sites as external menu links", async ({ page }) => {
+test("Theme and CLI appear only in the footer", async ({ page }) => {
   for (const width of [page.viewportSize().width, 640, 1280, 1536]) {
     await page.setViewportSize({ width, height: 900 });
-    await page.goto("/articles/");
-    const navigation = page.getByRole("navigation", { name: "Primary navigation" });
-    const menuButton = page.getByRole("button", { name: "Menu", exact: true });
-    if (await menuButton.isVisible()) await menuButton.click();
-    for (const [label, repository] of [["Theme", "theme"], ["CLI", "cli"]]) {
-      const links = navigation.getByRole("link", { name: `${label} (external GitHub page)`, exact: true });
-      for (const link of await links.all()) {
-        await expect(link).toHaveAttribute("href", `https://github.com/fmind/${repository}`);
-        await expect(link).toHaveAttribute("rel", "noopener noreferrer");
-        await expect(link).toHaveAttribute("target", "_blank");
-      }
-      await expect(links.filter({ visible: true }).first()).toBeVisible();
-    }
-    const menu = await menuButton.isVisible() ? page.locator("#mobile-menu") : navigation;
-    const destinations = await menu.locator(
-      "a[href=\"/articles/\"], a[href=\"/sites/\"], a[href=\"https://github.com/fmind/theme\"], a[href=\"https://github.com/fmind/cli\"]",
-    )
-      .filter({ visible: true }).evaluateAll((links) => links.map((link) => link.getAttribute("href")));
-    expect(destinations).toEqual([
-      "/articles/",
-      "/sites/",
-      "https://github.com/fmind/theme",
-      "https://github.com/fmind/cli",
-    ]);
     await page.goto("/");
-    await expect(page.locator("main #theme, main #cli")).toHaveCount(0);
-    await expect(page.locator("main section").last()).toHaveAttribute("id", "services");
+    const navigation = page.getByRole("navigation", { name: "Primary navigation" });
+    const footer = page.getByRole("navigation", { name: "Footer navigation" });
+    for (const [label, repository] of [["Theme", "theme"], ["CLI", "cli"]]) {
+      const name = `${label} (external GitHub page)`;
+      await expect(navigation.getByRole("link", { name, exact: true, includeHidden: true })).toHaveCount(0);
+      const link = footer.getByRole("link", { name, exact: true });
+      await expect(link).toHaveCount(1);
+      await expect(link).toBeVisible();
+      await expect(link).toHaveAttribute("href", `https://github.com/fmind/${repository}`);
+      await expect(link).toHaveAttribute("rel", "noopener noreferrer");
+      await expect(link).toHaveAttribute("target", "_blank");
+    }
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   }
 });
@@ -212,10 +253,29 @@ test("homepage presents the headline, six skills, and accessible social header",
   await page.goto("/");
   await expect(page.locator("header").getByRole("img", { name: "Fmind.dev logo", exact: true })).toBeVisible();
   await expect(page.locator("header a[href='/'] span")).toHaveText("Fmind.dev");
+  const sections = await page.locator("main section").evaluateAll((items) => items.map((item) => item.id));
+  expect(sections).toEqual(["about", "services", "work-experience", "certifications", "projects"]);
+  const white = "rgb(255, 255, 255)";
+  const gray = await page.locator("main .hero").evaluate((element) => getComputedStyle(element).backgroundColor);
+  expect(gray).not.toBe(white);
+  const backgrounds = await page.locator("main section").evaluateAll((items) =>
+    items.map((item) => getComputedStyle(item).backgroundColor)
+  );
+  expect(backgrounds).toEqual([white, gray, white, gray, white]);
+  await expect(page.locator("#services .card").first()).toHaveCSS("background-color", white);
+  await expect(page.locator("#work-experience .card-side").first()).toHaveCSS("background-color", gray);
+  await expect(page.locator("#projects .card").first()).toHaveCSS("background-color", gray);
+  const project = page.getByRole("link", { name: "Send Email", exact: true });
+  await expect(project).toHaveAttribute("href", "mailto:contact@fmind.dev");
+  const mentoring = page.getByRole("link", { name: "Book Mentoring", exact: true });
+  await expect(page.getByText("Mentoring is a paid, one-hour session.", { exact: true })).toHaveCount(0);
+  await expect(mentoring).not.toHaveAttribute("aria-describedby");
+  await expect(mentoring).toHaveAttribute("href", /^https:\/\/calendar.google.com\//);
+  await expect(page.locator("#services")).toContainText("Not available for new missions");
   const headline = page.locator("[data-hero-headline]");
   await expect(headline.locator(":scope > span")).toHaveText([
-    "AI Architect (PhD) • VC Expert Advisor • AAIF Ambassador",
-    "GCP Certified Cloud Architect • AI, Agents & Security",
+    "Freelance AI Architect • AI Agents, MLOps & Security",
+    "PhD • VC Expert Advisor • AAIF Ambassador",
   ]);
   await expect(headline).toBeVisible();
   expect(await headline.evaluate((element) => parseFloat(getComputedStyle(element).fontSize)))
@@ -235,17 +295,15 @@ test("homepage presents the headline, six skills, and accessible social header",
     "Data Science & ML",
     "Python Development",
   ]);
+  await expect(page.locator("#certifications").getByText("Active", { exact: true })).toHaveCount(2);
+  await expect(page.locator("#certifications").getByText("Past credential", { exact: true })).toHaveCount(4);
   const socials = page.getByRole("group", { name: "Social profiles" });
   const profiles = {
     "LinkedIn": "https://www.linkedin.com/in/fmind-dev/",
-    "X (Twitter)": "https://x.com/fmind_dev",
-    "Bluesky": "https://bsky.app/profile/fmind-dev.bsky.social",
-    "Medium": "https://fmind.medium.com/",
     "GitHub": "https://github.com/fmind",
+    "X (Twitter)": "https://x.com/fmind_dev",
     "YouTube": "https://www.youtube.com/@fmind-dev",
-    "Hugging Face": "https://huggingface.co/fmind",
     "Kaggle": "https://www.kaggle.com/freaxmind",
-    "Credly": "https://www.credly.com/users/fmind",
   };
   await expect(socials.getByRole("link")).toHaveCount(Object.keys(profiles).length);
   for (const [name, url] of Object.entries(profiles)) {
@@ -268,7 +326,7 @@ test("homepage presents the headline, six skills, and accessible social header",
   if (page.viewportSize().width >= 1280) expect(biography.width).toBeGreaterThan(1000);
   await page.screenshot({ path: testInfo.outputPath("home-about.png") });
   const footer = page.locator("footer");
-  await expect(footer.locator("a[href^=\"https://\"]")).toHaveCount(0);
+  await expect(footer.locator("a[href^=\"https://\"]")).toHaveCount(2);
   await footer.scrollIntoViewIfNeeded();
   const rows = await footer.locator("p, nav").evaluateAll((elements) =>
     elements.map((element) => {
@@ -482,7 +540,7 @@ test("Fmind palette reaches page surfaces, controls, charts, and code", async ({
   await expect(page.locator("body")).toHaveCSS("color", "rgb(32, 33, 36)");
   await expect(page.locator("h1")).toHaveCSS("color", "rgb(23, 78, 166)");
   await expect(page.locator("footer")).toHaveCSS("background-color", "rgb(241, 243, 244)");
-  const button = page.getByRole("link", { name: "Book a Session", exact: true });
+  const button = page.getByRole("link", { name: "Book Mentoring", exact: true });
   await expect(button).toHaveCSS("background-color", "rgb(23, 78, 166)");
   await expect(button).toHaveCSS("color", "rgb(255, 255, 255)");
   await button.focus();
@@ -532,9 +590,27 @@ test("footer stays compact with ordered discovery links", async ({ page }) => {
   await page.goto("/");
   const footer = page.locator("body > footer");
   const links = footer.getByRole("navigation", { name: "Footer navigation" }).getByRole("link");
-  await expect(links).toHaveText(["MCP", "Connect", "JSON Profile", "For AI Agents"]);
+  await expect(links).toHaveText([
+    "MCP",
+    "Scan",
+    "Connect",
+    "JSON Profile",
+    "For AI Agents",
+    "Theme",
+    "CLI",
+  ]);
   expect(await links.evaluateAll((items) => items.map((item) => item.getAttribute("href"))))
-    .toEqual(["/mcp/server-card", "/connect", "/api/profile", "/llms.txt"]);
+    .toEqual([
+      "/mcp/server-card",
+      "/scan",
+      "/connect",
+      "/api/profile",
+      "/llms.txt",
+      "https://github.com/fmind/theme",
+      "https://github.com/fmind/cli",
+    ]);
+  const scan = footer.getByRole("link", { name: "Scan", exact: true });
+  await expect(scan).toHaveAttribute("href", "/scan");
   const padding = await footer.evaluate((element) => parseFloat(getComputedStyle(element).paddingTop));
   expect(padding).toBeLessThanOrEqual(24);
   await expect(links.first()).toHaveCSS("font-size", "14px");
@@ -559,8 +635,13 @@ test("narrow screens reflow and keep navigation reachable", async ({ page }, tes
     for (const link of await page.getByRole("group", { name: "Social profiles" }).getByRole("link").all()) {
       await expect(link).toBeInViewport();
     }
-    await page.locator("footer").scrollIntoViewIfNeeded();
-    await expect(page.getByRole("navigation", { name: "Footer navigation" })).toBeInViewport();
+    // Visit deferred homepage sections as a reader would before reaching the footer.
+    if (path === "/") {
+      for (const section of await page.locator("main section").all()) await section.scrollIntoViewIfNeeded();
+    }
+    const footerNavigation = page.getByRole("navigation", { name: "Footer navigation" });
+    await footerNavigation.scrollIntoViewIfNeeded();
+    await expect(footerNavigation).toBeInViewport();
   }
   expect(errors).toEqual([]);
   await page.goto("/");

@@ -59,6 +59,7 @@ def test_human_pages_render_complete_no_cache_documents(client: AppClient) -> No
     cases = {
         "/": ("Médéric Hurier", 200),
         "/connect": ("Connect on LinkedIn", 200),
+        "/scan": ("Médéric Hurier", 200),
         "/articles/": ("Articles", 200),
         "/articles/the-affordable-ai-agents/": ("The Affordable AI Agents", 200),
         "/sites/": ("LLM self-hosting on GKE", 200),
@@ -117,6 +118,7 @@ def test_calculator_script_is_only_delivered_on_its_page(client: AppClient) -> N
 def test_canonical_redirects_preserve_only_the_established_queries(client: AppClient) -> None:
     cases = {
         "/connect/?event=conference": "/connect",
+        "/scan/?event=conference": "/scan",
         "/articles?tag=Agent": "/articles/?tag=Agent",
         "/articles/the-affordable-ai-agents?q=agent%20cost": ("/articles/the-affordable-ai-agents/?q=agent%20cost"),
         "/sites?requests=234": "/sites/",
@@ -183,6 +185,8 @@ def test_connect_actions_and_contact_download(client: AppClient) -> None:
     assert "Explore my work" not in response.text
     assert 'href="/connect.vcf"' in response.text
     assert "example.org" not in response.text
+    assert "connect-qr.svg" not in response.text
+    assert "Go to my website" in response.text
     card = client.get("/connect.vcf")
     assert card.status_code == 200
     assert card.headers["content-type"] == "text/vcard; charset=utf-8"
@@ -196,13 +200,26 @@ def test_connect_actions_and_contact_download(client: AppClient) -> None:
     assert f"URL:{METADATA.site_url}\r\n" in card.text
     assert "URL:https://www.linkedin.com/in/fmind-dev/\r\n" in card.text
     assert "TEL:" not in card.text
-    for path in ("/connect", "/connect.vcf", "/static/img/connect-qr.svg"):
+    for path in ("/connect", "/scan", "/connect.vcf", "/static/img/connect-qr.svg"):
         assert client.get(path).status_code == 200
         head = client.head(path)
         assert head.status_code == 200
         assert not head.content
     for path in ("/sitemap.xml", "/llms.txt"):
         assert f"{METADATA.site_url}/connect" in client.get(path).text
+
+
+def test_scan_shares_the_permanent_contact_destination_without_search_indexing(client: AppClient) -> None:
+    response = client.get("/scan?next=https://example.org")
+    assert response.status_code == 200
+    assert 'content="noindex, follow"' in response.text
+    assert 'property="og:url" content="https://www.fmind.dev/scan"' in response.text
+    assert "connect-qr.svg" in response.text
+    assert 'href="https://www.fmind.dev/connect"' in response.text
+    assert "example.org" not in response.text
+    assert "Connect on LinkedIn" not in response.text
+    for path in ("/sitemap.xml", "/llms.txt"):
+        assert f"{METADATA.site_url}/scan" not in client.get(path).text
 
 
 def test_machine_surfaces_keep_content_cache_and_cors_contracts(client: AppClient) -> None:
@@ -249,6 +266,30 @@ def test_machine_surfaces_keep_content_cache_and_cors_contracts(client: AppClien
         assert response.headers.get("cache-control") == cache_control
         assert response.headers.get("access-control-allow-origin") == cors
         assert marker in response.content
+
+
+def test_public_social_profiles_match_the_selected_channels(client: AppClient) -> None:
+    profile = client.get("/api/profile").json()
+    assert {item["name"] for item in profile["metadata"]["socials"]} == {
+        "LinkedIn",
+        "GitHub",
+        "X (Twitter)",
+        "YouTube",
+        "Kaggle",
+    }
+    html = client.get("/").text
+    graph = json.loads(html.split('<script type="application/ld+json">', 1)[1].split("</script>", 1)[0])
+    person = next(item for item in graph["@graph"] if item["@type"] == "Person")
+    assert set(person["sameAs"]) == {item["url"] for item in profile["metadata"]["socials"]}
+    card = client.get("/connect.vcf").text.replace("\r\n ", "")
+    for removed in (
+        "bsky.app",
+        "huggingface.co/fmind",
+        "credly.com/users/fmind",
+        "fmind.medium.com",
+    ):
+        assert removed not in card
+        assert removed not in html
 
 
 def test_expertise_is_consistent_for_people_search_and_agents(client: AppClient) -> None:

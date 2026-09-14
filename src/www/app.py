@@ -48,6 +48,7 @@ from www.pages import (
     connect_metadata,
     home_metadata,
     not_found_metadata,
+    scan_metadata,
     site_index_metadata,
     site_page_metadata,
     site_structured_data,
@@ -173,6 +174,7 @@ def create_app(
     home_structured_data = get_structured_data()
     home_page = home_metadata(home_structured_data)
     connect_page = connect_metadata(home_structured_data)
+    scan_page = scan_metadata(home_structured_data)
     contact_card = render_contact_card(static_dir)
     not_found_page = not_found_metadata(home_structured_data)
     site_index = SitePage(
@@ -322,8 +324,14 @@ def create_app(
             request,
             PageTemplate.CONNECT,
             connect_page,
-            {"connect_url": CONNECT_URL, "linkedin_url": LINKEDIN_URL},
+            {"linkedin_url": LINKEDIN_URL},
         )
+
+    @route("/scan", http_method=_READ_METHODS, sync_to_thread=True)
+    def scan(request: AppRequest) -> Redirect | Response[str]:
+        if _raw_path(request).endswith("/"):
+            return _redirect("/scan")
+        return render_page(request, PageTemplate.SCAN, scan_page, {"connect_url": CONNECT_URL})
 
     @route("/connect.vcf", http_method=_READ_METHODS, sync_to_thread=False)
     def contact() -> Response[bytes]:
@@ -545,6 +553,7 @@ def create_app(
             sitemap_index,
             atom_feed,
             connect,
+            scan,
             contact,
             articles_index,
             article_redirect_or_markdown,

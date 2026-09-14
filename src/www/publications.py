@@ -112,7 +112,7 @@ def render_llms_txt(articles: Sequence[Article]) -> str:
         "",
         "## Machine-readable portfolio",
         "",
-        f"- [Connect]({METADATA.site_url}/connect): LinkedIn, email, and a downloadable contact card.",
+        f"- [Connect]({METADATA.site_url}/connect): LinkedIn, a downloadable contact card, and the full website.",
         f"- [MCP server]({METADATA.site_url}/mcp): Read-only portfolio tools, resources, and prompts.",
         f"- [JSON profile]({METADATA.site_url}/api/profile): Canonical portfolio and article index.",
         f"- [Profile schema]({METADATA.site_url}/api/profile/schema.json): JSON Schema for validating the profile response.",

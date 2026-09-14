@@ -34,6 +34,7 @@ class PageTemplate(StrEnum):
 
     HOME = "pages/home.html"
     CONNECT = "pages/connect.html"
+    SCAN = "pages/scan.html"
     ARTICLES = "pages/articles.html"
     ARTICLE = "pages/article.html"
     SITES = "pages/sites.html"
@@ -51,10 +52,10 @@ class NavLink:
 
 NAV_LINKS: Final = (
     NavLink("/#about", "About"),
+    NavLink("/#services", "Services"),
     NavLink("/#work-experience", "Work Experience"),
     NavLink("/#certifications", "Certifications"),
     NavLink("/#projects", "Projects"),
-    NavLink("/#services", "Services"),
 )
 
 _RESERVED_CONTEXT: Final = frozenset(

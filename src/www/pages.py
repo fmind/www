@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 
 from www.connect import CONNECT_URL
 from www.data import METADATA
@@ -27,12 +28,22 @@ def home_metadata(structured_data: str) -> PageMetadata:
 def connect_metadata(structured_data: str) -> PageMetadata:
     return PageMetadata(
         title=f"Connect with {METADATA.name} ({METADATA.alternate_name})",
-        description="Good to meet you. Connect on LinkedIn, save my contact details, or send me an email.",
+        description="Connect with Médéric Hurier, freelance AI Architect. Find me on LinkedIn or save my contact details.",
         canonical=CONNECT_URL,
         image_url=f"{METADATA.site_url}/static/img/og-image.jpg",
         image_alt="Fmind.dev — AI, Agents, Security",
         kind="website",
         structured_data=structured_data,
+    )
+
+
+def scan_metadata(structured_data: str) -> PageMetadata:
+    return replace(
+        connect_metadata(structured_data),
+        title=f"Scan to connect | {METADATA.name} ({METADATA.alternate_name})",
+        description="Scan the QR code to connect with Médéric Hurier on LinkedIn or save his contact details.",
+        canonical=f"{METADATA.site_url}/scan",
+        no_index=True,
     )
 
 

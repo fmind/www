@@ -33,6 +33,8 @@ mise run watch      # run Granian with reload alongside the Tailwind watcher
 
 The site is served at `http://localhost:8080`. Configuration is environment-driven through `.env.example`; with no environment set, it runs in `development` mode on port 8080. Use `PORT=8081 mise run watch` when the default port is occupied.
 
+`.env.example` documents the supported variables; the application does not automatically load a `.env` file. Export variables in your shell or provide them through your process manager.
+
 The server reloads on changes under `src/`, `content/`, and `static/`, including templates and compiled CSS. Browser artifacts under `tmp/`, distribution builds, and test edits do not restart workers. Restart `mise run watch` after changing environment or project configuration.
 
 `src/www/app.py` is the composition root and exports `www.app:app`. `src/www/__main__.py` validates runtime configuration and starts Granian. Jinja templates are package data, while `content/` and `static/` remain explicit deploy-time trees. The production image copies both beside the locked virtual environment under `/app`.
@@ -59,11 +61,11 @@ Navigation uses a 96px lossless WebP logo for the 48px display, while favicons a
 
 ## Conference Contact Page
 
-Share `https://www.fmind.dev/connect` at conferences. The page offers LinkedIn and a downloadable contact card. `/connect.vcf` derives its public name, nickname, role, email, work city/country, languages, professional summary, expertise, leadership roles, active credentials, social profiles, booking link, and website from the portfolio data at application startup. It embeds a JPEG copy of the public portrait with image metadata removed. The card includes a stable public identifier and source URL; labeled links also appear in its notes for importers that display every URL as a generic website.
+Share `https://www.fmind.dev/connect` at conferences. This visitor landing page offers LinkedIn, a downloadable contact card, and a link to the full website. `/connect.vcf` derives its public name, nickname, role, email, work city/country, languages, professional summary, expertise, leadership roles, active credentials, social profiles, booking link, and website from the portfolio data at application startup. It embeds a JPEG copy of the public portrait with image metadata removed. The card includes a stable public identifier and source URL; labeled links also appear in its notes for importers that display every URL as a generic website.
 
 The export stays on [vCard 3.0](https://www.rfc-editor.org/rfc/rfc2426), with UTF-8 text, CRLF endings, and lines folded at 75 octets. It contains no telephone number, street address, birthday, or precise coordinates. Add only details intended for publication: the repository and the download are public. Visitors confirm saving the contact in their own app; some Android browsers require importing the downloaded `.vcf` from Contacts. Field display and duplicate-contact handling depend on the receiving app.
 
-The page displays a QR code encoding the permanent `/connect` URL, so contact actions can change without replacing the code. The page and contact download work without JavaScript or third-party QR services.
+Open `https://www.fmind.dev/scan` to show someone the QR code. It encodes the permanent `/connect` URL, so existing printed codes still work and contact actions can change without replacing the code. The QR display includes a tappable destination and is excluded from search indexing and the sitemap; `/connect` remains discoverable. Both pages and the contact download work without JavaScript or third-party QR services.
 
 Regenerate the displayed QR asset with the pinned [Segno CLI](https://segno.readthedocs.io/en/stable/command-line.html); it is a build-time tool, with no application dependency:
 
@@ -108,6 +110,8 @@ All tasks are defined in `mise.toml` and reused by Lefthook and CI:
 Lighthouse remains an explicit, non-default audit because it needs a target origin. Full mode audits every sitemap page on desktop and mobile, then adds 48 stress audits; its count grows with the sitemap. Install Chromium first with `mise run install:browser`; if it is absent, the harness reports the equivalent `playwright install chromium` remediation. Use `mise run test:lighthouse -- --base-url http://127.0.0.1:8080 --mode smoke` for the four-audit local smoke matrix, use `--mode portfolio` for eight audits covering `/`, `/connect`, `/articles/`, and `/sites/` without article or decision-page bodies, or omit `--mode` for full qualification. `--plan` validates tools without fetching the sitemap, so full-mode totals are unknown until execution. To exercise the browser suite against production, use `BROWSER_BASE_URL=https://www.fmind.dev mise run test:browser`. Reports and traces stay under `tmp/`. Local application checks need no cloud credentials.
 
 Configuration and working-tree secret scans exclude generated `tmp/`, `.venv/`, and `dist/` trees. Secret scans of Git history keep the default rules.
+
+Asset maintenance also includes `mise run build:branding` for PNG-derived branding and `mise run build:fonts` for the pinned self-hosted font subsets. Neither runs in `all`; image derivatives are validated there without being regenerated. `watch` and `test:watch` are long-running development tasks, while `clean` deliberately removes generated files and should not be used as a verification task.
 
 Operational commands live in `scripts/deploy.py` and `scripts/image_smoke.py`, outside the shipped application package. The image smoke uses the MCP SDK with bounded loopback HTTP requests and checks image identity, non-root execution, file permissions, HTTP, tools, resources, and prompts. `mise` keeps their public task names stable. Browser tooling keeps its Node dependencies in mise installations; there is no repository Node application or runtime Plotly dependency.
 
