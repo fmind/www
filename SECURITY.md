@@ -1,6 +1,6 @@
 # Security
 
-Report suspected vulnerabilities privately to <mederic.hurier@fmind.dev>, with the affected URL or commit, reproduction steps, and expected impact. Do not include credentials or visitor data in public issues.
+Report suspected vulnerabilities privately to <contact@fmind.dev>, with the affected URL or commit, reproduction steps, and expected impact. Do not include credentials or visitor data in public issues.
 
 ## Verification policy
 
@@ -8,11 +8,17 @@ The deployment gate scans and smoke-tests the pushed immutable image before Clou
 
 The weekly [security workflow](.github/workflows/security.yml) resolves every Cloud Run revision receiving traffic and scans its exact platform digest, including unfixed HIGH/CRITICAL vulnerabilities. Its `deployed-image-advisories` artifact retains the traffic snapshot, revision-to-digest mapping, and JSON reports for 30 days. A separate read-only identity has service-level Cloud Run viewer and repository-level Artifact Registry reader grants. It cannot deploy or impersonate the runtime identity.
 
-**Review owner:** Médéric Hurier. **Last reviewed:** 2026-09-07. **Next review:** 2026-09-14, or immediately after a new fixable finding or a runtime/dependency change that affects reachability. Recheck scanner reports, Debian status, the maintained base image, and request-path applicability; rebuild and qualify an updated image when a fix becomes available. No CVE suppression was added for these findings.
+**Review owner:** Médéric Hurier. **Last reviewed:** 2026-09-14 (local candidate and hosted deployed-image evidence). **Next review:** 2026-09-21, or immediately after a new fixable finding or a runtime/dependency change that affects reachability. Recheck scanner reports, Debian status, the maintained base image, and request-path applicability; rebuild and qualify an updated image when a fix becomes available. No CVE suppression was added for these findings.
 
 ## Local candidate scan — 2026-09-13
 
 The local website candidate built from `python:3.14.7-slim@sha256:cad9a2c871761c413caa6fdd6441c783451e740a48aaeba60ae62a8b53525ef6` failed `mise run check:image`: Trivy reported 12 fixable Debian findings (9 HIGH, 3 CRITICAL) across `gzip`, `libpcre2-8-0`, `libsqlite3-0`, and `perl-base`. Python dependency checks passed. A fresh registry lookup of `python:3.14.7-slim` still resolved to the same pinned digest. The Dockerfile now pins the available fixes: `gzip=1.13-1+deb13u1`, `libpcre2-8-0=10.46-1~deb13u2`, `libsqlite3-0=3.46.1-7+deb13u2`, and `perl-base=5.40.1-6+deb13u1`. Remove this patch layer when a refreshed upstream digest includes the fixes. No advisory suppression was added; the image must pass its normal scan and runtime smoke test before release. This is local candidate evidence, not a new scan of deployed revisions; the dated deployed baseline below remains separate.
+
+## Local review — 2026-09-14
+
+The reviewed local application image passes the fixable HIGH/CRITICAL vulnerability gate and the production HTTP/MCP smoke test after the pinned Debian patch layer and the MCP 2.2.0 dependency update. An additional unfiltered HIGH/CRITICAL scan found 44 package/advisory instances covering 8 unique CVEs, all HIGH and without an available fix; there were no CRITICAL findings. Local Google Cloud credentials require interactive reauthentication, so deployed verification uses the existing read-only hosted workflow.
+
+The [2026-09-14 hosted security run](https://github.com/fmind/www/actions/runs/34824997460) independently scanned the serving platform digest `sha256:56c6945c32b78f69a4bfda766e1278f954688b8fd8f59dfb01e65d2710af4a37`, with revision `www-fmind-dev-00042-nnj` receiving 100% of traffic. Its retained report found the same 44 HIGH instances across 8 CVEs, no CRITICAL findings, and no available fixes. This is the pre-release baseline; rerun the hosted workflow after deployment to capture the new serving digest. The older assessment below remains historical.
 
 ## Current residual package exposure
 

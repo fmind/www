@@ -80,6 +80,30 @@ def test_human_pages_render_complete_no_cache_documents(client: AppClient) -> No
             assert 'content="noindex, follow"' in response.text
 
 
+def test_profile_schema_describes_the_public_response(client: AppClient) -> None:
+    from jsonschema import Draft202012Validator
+
+    response = client.get("/api/profile")
+    assert response.headers["link"] == '</api/profile/schema.json>; rel="describedby"; type="application/schema+json"'
+    schema_response = client.get("/api/profile/schema.json")
+    assert schema_response.status_code == 200
+    assert schema_response.headers["content-type"].startswith("application/schema+json")
+    assert schema_response.headers["access-control-allow-origin"] == "*"
+    schema = schema_response.json()
+    Draft202012Validator.check_schema(schema)
+    Draft202012Validator(schema).validate(response.json())
+    assert "article_slugs" not in schema["$defs"]["SitePage"]["properties"]
+    head = client.head("/api/profile/schema.json")
+    assert head.status_code == 200
+    assert head.content == b""
+
+
+def test_calculator_script_is_only_delivered_on_its_page(client: AppClient) -> None:
+    for path in ("/", "/connect", "/articles/", "/sites/", "/missing"):
+        assert "async function updateScenario" not in client.get(path).text
+    assert "async function updateScenario" in client.get("/sites/llm-self-hosting/").text
+
+
 def test_canonical_redirects_preserve_only_the_established_queries(client: AppClient) -> None:
     cases = {
         "/connect/?event=conference": "/connect",

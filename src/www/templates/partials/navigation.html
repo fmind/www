@@ -6,7 +6,7 @@
         <button id="menu-toggle" class="btn btn-ghost btn-circle btn-sm md:btn-md" aria-label="Menu" aria-controls="mobile-menu" aria-expanded="false">
           {{ icon("menu", "h-5 w-5") }}
         </button>
-        <ul id="mobile-menu" class="menu menu-sm absolute left-0 mt-3 z-[50] p-2 shadow bg-base-100 rounded-box w-52 border border-base-200 hidden">
+        <ul id="mobile-menu" class="menu menu-sm flex-nowrap max-h-[70dvh] overflow-y-auto overscroll-contain absolute left-0 mt-3 z-[50] p-2 shadow bg-base-100 rounded-box w-52 border border-base-200 hidden">
           {% for link in nav_links %}
             <li><a class="font-medium hover:text-primary py-2" href="{{ link.href }}">{{ link.label }}</a></li>
           {% endfor %}

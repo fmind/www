@@ -25,7 +25,7 @@
     <section class="text-center rounded-2xl border border-base-300 bg-base-200 p-5 sm:p-6" aria-labelledby="qr-heading">
       <h2 class="font-heading text-xl font-semibold" id="qr-heading">Scan to connect</h2>
       <p class="text-sm text-base-content/70 mt-2 mb-5">Show this code to someone you meet.</p>
-      <img class="w-full max-w-72 h-auto mx-auto rounded-lg" src="{{ static_url('static/img/connect-qr.svg') }}" alt="QR code for https://www.fmind.dev/connect" width="296" height="296"/>
+      <img class="w-full max-w-72 h-auto mx-auto rounded-lg" src="{{ static_url('static/img/connect-qr.svg') }}" alt="QR code for https://www.fmind.dev/connect" width="296" height="296" fetchpriority="high"/>
       <p class="font-mono text-sm mt-5 break-all"><a class="link link-hover" href="{{ connect_url }}">www.fmind.dev/connect</a></p>
     </section>
   </div>

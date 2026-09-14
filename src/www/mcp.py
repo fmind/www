@@ -12,7 +12,7 @@ from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.context import Context
 from mcp.server.mcpserver.exceptions import ToolError
 from mcp_types import GetPromptResult, Icon, InputRequiredResult, Prompt, ToolAnnotations
-from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
+from pydantic import BaseModel, ConfigDict, Field
 
 from www.data import (
     BADGES,
@@ -36,14 +36,13 @@ from www.models import (
     LeadershipRole,
     Metadata,
     Playlist,
-    Portfolio,
     Project,
     ResearchPaper,
     Service,
     Thesis,
     WorkExperience,
 )
-from www.publications import portfolio_snapshot
+from www.publications import render_profile_json
 from www.search import SearchIndex, normalize_search_query
 
 MCP_PROTOCOL_VERSION = "2026-07-28"
@@ -58,7 +57,6 @@ _READ_ONLY = ToolAnnotations(read_only_hint=True, open_world_hint=False)
 _CACHE_HINTS = {
     cast(CacheableMethod, method): CacheHint(ttl_ms=MCP_CACHE_TTL_MS, scope="public") for method in CACHEABLE_METHODS
 }
-_PORTFOLIO_ADAPTER = TypeAdapter(Portfolio)
 
 _PROMPT_ARGUMENT_TITLES = {
     ("assess_fit", "brief"): "Role or project brief",
@@ -81,7 +79,7 @@ class _LegacyCapabilities(ServerMiddleware[Any]):
         result = await call_next(ctx)
         if ctx.method != "initialize" or not isinstance(result, dict):
             return result
-        # MCPServer 2.1 has no public default-notification-options seam for its
+        # MCPServer 2.2 has no public default-notification-options seam for its
         # HTTP adapter. Middleware is the supported result boundary and keeps
         # existing clients' exact capability contract without private access.
         return {
@@ -95,7 +93,7 @@ class _LegacyCapabilities(ServerMiddleware[Any]):
 
 
 class _PortfolioMCPServer(MCPServer[None]):
-    """Preserve prompt metadata that MCPServer 2.1.1 does not derive."""
+    """Preserve prompt metadata that MCPServer 2.2 does not derive."""
 
     @override
     async def list_prompts(self) -> list[Prompt]:
@@ -176,6 +174,7 @@ def build_version() -> str:
 
 def create_mcp_server(articles: tuple[ArticleSummary, ...], index: SearchIndex) -> MCPServer[None]:
     """Build the immutable portfolio MCP server."""
+    profile_json = render_profile_json(articles).decode()
     server: MCPServer[None] = _PortfolioMCPServer(
         name="www",
         title="Médéric Hurier (Fmind) — AI Security Architect Portfolio",
@@ -337,23 +336,9 @@ def create_mcp_server(articles: tuple[ArticleSummary, ...], index: SearchIndex) 
         mime_type="application/json",
     )
     def profile_resource() -> str:
-        return json.dumps(serialize_portfolio(articles), ensure_ascii=False, separators=(",", ":"))
+        return profile_json
 
     return server
-
-
-def serialize_portfolio(articles: tuple[ArticleSummary, ...]) -> dict[str, Any]:
-    """Serialize the portfolio once for both JSON and MCP delivery surfaces."""
-    encoded = _PORTFOLIO_ADAPTER.dump_python(portfolio_snapshot(articles), mode="json")
-    if not isinstance(encoded, dict):  # pragma: no cover - fixed TypeAdapter root
-        msg = "portfolio serialization must produce an object"
-        raise TypeError(msg)
-    return encoded
-
-
-def render_profile_json(articles: tuple[ArticleSummary, ...]) -> bytes:
-    """Render the canonical, human-readable profile document with a final newline."""
-    return (json.dumps(serialize_portfolio(articles), ensure_ascii=False, indent=2) + "\n").encode()
 
 
 async def render_mcp_server_card(server: MCPServer[None]) -> bytes:
@@ -362,7 +347,6 @@ async def render_mcp_server_card(server: MCPServer[None]) -> bytes:
     prompts = await server.list_prompts()
     resources = await server.list_resources()
     card = {
-        "$schema": "https://static.modelcontextprotocol.io/schemas/mcp-server-card/v1.json",
         "version": "1.0",
         "protocolVersion": MCP_PROTOCOL_VERSION,
         "serverInfo": {
@@ -380,7 +364,12 @@ async def render_mcp_server_card(server: MCPServer[None]) -> bytes:
             "Use the tools for focused queries, the portfolio resource for a complete snapshot, and prompts for "
             "guided assessments."
         ),
-        "resources": [resource.model_dump(include={"name", "title", "description"}) for resource in resources],
+        "resources": [
+            resource.model_dump(
+                mode="json", by_alias=True, include={"uri", "name", "title", "description", "mime_type"}
+            )
+            for resource in resources
+        ],
         "tools": [tool.model_dump(include={"name", "title", "description"}) for tool in tools],
         "prompts": [prompt.model_dump(include={"name", "title", "description"}) for prompt in prompts],
     }

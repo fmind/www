@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import Sequence
 from datetime import UTC, datetime
 from xml.etree import ElementTree
+
+from pydantic import TypeAdapter
 
 from www.data import (
     BADGES,
@@ -25,6 +28,8 @@ from www.markdown import rewrite_markdown_links
 from www.models import Article, ArticleIndexView, ArticleSummary, ArticleYear, Portfolio
 from www.search import SearchIndex, normalize_search_query
 from www.tags import TAGS, sort_tags
+
+_PORTFOLIO_ADAPTER = TypeAdapter(Portfolio)
 
 ATOM_FULL_CONTENT_LIMIT = 15
 RELATED_ARTICLE_COUNT = 3
@@ -110,6 +115,8 @@ def render_llms_txt(articles: Sequence[Article]) -> str:
         f"- [Connect]({METADATA.site_url}/connect): LinkedIn, email, and a downloadable contact card.",
         f"- [MCP server]({METADATA.site_url}/mcp): Read-only portfolio tools, resources, and prompts.",
         f"- [JSON profile]({METADATA.site_url}/api/profile): Canonical portfolio and article index.",
+        f"- [Profile schema]({METADATA.site_url}/api/profile/schema.json): JSON Schema for validating the profile response.",
+        f"- [MCP discovery]({METADATA.site_url}/mcp/server-card): Available tools, prompts, and portfolio resource URI.",
         f"- [Full LLM context]({METADATA.site_url}/llms-full.txt): This index plus every public article in Markdown.",
         f"- Article source: append `.md` to any article slug ({METADATA.site_url}/articles/<slug>.md) for its raw Markdown.",
         f"- [Atom feed]({METADATA.site_url}/articles/feed.xml): Reverse-chronological publication feed.",
@@ -234,3 +241,18 @@ def portfolio_snapshot(articles: Sequence[ArticleSummary]) -> Portfolio:
         youtube_series=YOUTUBE_SERIES,
         services=get_services(),
     )
+
+
+def render_profile_json(articles: tuple[ArticleSummary, ...]) -> bytes:
+    """Render the canonical, human-readable profile document with a final newline."""
+    return _PORTFOLIO_ADAPTER.dump_json(portfolio_snapshot(articles), indent=2) + b"\n"
+
+
+def render_profile_schema() -> bytes:
+    """Describe the serialized public fields using the same model as the API."""
+    schema = {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": f"{METADATA.site_url}/api/profile/schema.json",
+        **_PORTFOLIO_ADAPTER.json_schema(mode="serialization"),
+    }
+    return (json.dumps(schema, ensure_ascii=False, indent=2) + "\n").encode()

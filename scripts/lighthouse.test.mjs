@@ -82,7 +82,7 @@ test("parseArguments accepts only the documented CLI contract", () => {
   assert.throws(() => harness.parseArguments(["--base-url", "--plan"], {}), /--base-url requires a value/u);
   assert.throws(
     () => harness.parseArguments(["--base-url=https://candidate.example", "--mode=quick"], {}),
-    /full or smoke/u,
+    /full, smoke, or portfolio/u,
   );
 });
 
@@ -279,6 +279,24 @@ test("buildAuditPlan produces the exact smoke and full audit counts", () => {
   const smoke = harness.buildAuditPlan(paths, "smoke", BASE_URL);
   assert.equal(smoke.length, 4);
   assert.deepEqual(new Set(smoke.map((audit) => audit.formFactor)), new Set(["desktop", "mobile"]));
+});
+
+test("full qualification grows with the sitemap while portfolio mode excludes content bodies", () => {
+  const paths = ["/", "/connect", "/articles/", "/sites/", "/articles/new/", "/sites/tool/"];
+  const full = harness.buildAuditPlan(paths, "full", BASE_URL);
+  assert.equal(full.filter((audit) => audit.phase === "sitemap").length, paths.length * 2);
+  const portfolio = harness.buildAuditPlan(paths, "portfolio", BASE_URL);
+  assert.equal(portfolio.length, 8);
+  assert.deepEqual([...new Set(portfolio.map((audit) => audit.path))], paths.slice(0, 4));
+  harness.validateSitemapScope(paths, "portfolio");
+  assert.throws(
+    () => harness.validateSitemapScope(paths.filter((path) => path !== "/connect"), "portfolio"),
+    /required path/u,
+  );
+  assert.equal(
+    harness.parseArguments(["--base-url=https://candidate.example", "--mode=portfolio"], {}).mode,
+    "portfolio",
+  );
 });
 
 test("inspectReport accepts only exact categories and the audited page URL", () => {

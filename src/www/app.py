@@ -39,7 +39,7 @@ from www.data import (
     markdown_to_html,
 )
 from www.log import configure_logging
-from www.mcp import create_mcp_server, render_mcp_server_card, render_profile_json
+from www.mcp import create_mcp_server, render_mcp_server_card
 from www.middleware import Logger, SiteMiddleware, trace_fields
 from www.models import PageMetadata, SitePage
 from www.pages import (
@@ -59,6 +59,8 @@ from www.publications import (
     render_atom_feed,
     render_llms_full,
     render_llms_txt,
+    render_profile_json,
+    render_profile_schema,
     render_sitemap,
 )
 from www.rendering import PageTemplate, Renderer
@@ -216,6 +218,7 @@ def create_app(
     }
 
     profile = render_profile_json(summaries)
+    profile_schema = render_profile_schema()
     feed = render_atom_feed(public_articles).encode()
     sitemap = render_sitemap(public_articles).encode()
     llms = render_llms_txt(public_articles)
@@ -273,7 +276,12 @@ def create_app(
             "application/json; charset=utf-8",
             _HOUR_CACHE_WITHOUT_REVALIDATION,
             cors=True,
+            extra_headers={"link": '</api/profile/schema.json>; rel="describedby"; type="application/schema+json"'},
         )
+
+    @route("/api/profile/schema.json", http_method=_READ_METHODS, sync_to_thread=False)
+    def profile_schema_api() -> Response[bytes]:
+        return _static_response(profile_schema, "application/schema+json; charset=utf-8", _HOUR_CACHE, cors=True)
 
     @route(
         ["/mcp/server-card", "/.well-known/mcp/server-card.json"],
@@ -530,6 +538,7 @@ def create_app(
             root_file,
             security_policy,
             profile_api,
+            profile_schema_api,
             mcp_server_card,
             llms_index,
             llms_full_index,

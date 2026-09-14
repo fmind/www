@@ -8,7 +8,6 @@ import process from "node:process";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const LIGHTHOUSE_VERSION = "13.4.1";
-const EXPECTED_PUBLIC_PATHS = 64;
 const MAX_SITEMAP_BYTES = 2 * 1024 * 1024;
 const AUDIT_TIMEOUT_MS = 150_000;
 const PROCESS_OUTPUT_LIMIT = 64 * 1024;
@@ -28,6 +27,7 @@ const STRESS_PATHS = [
   "/articles/how-to-configure-vs-code-for-ai-ml-and-mlops-development-in-python/",
   "/articles/hackathon-speedrun-build-deploy-a-rag-app-in-minutes-with-vertex-ai-studio-vertex-ai-search/",
 ];
+const PORTFOLIO_PATHS = ["/", "/connect", "/articles/", "/sites/"];
 const SMOKE_PATHS = ["/", "/articles/cag-vs-rag-choosing-the-right-strategy-for-your-ai-application/"];
 
 function usage() {
@@ -37,13 +37,14 @@ Run the strict Lighthouse 13.4.1 qualification matrix with the Chromium pinned b
 
 Options:
   --base-url <origin>   Candidate origin to audit; LIGHTHOUSE_BASE_URL is the fallback.
-  --mode <full|smoke>  full audits 176 cases; smoke audits 4 cases (default: full).
+  --mode <full|smoke|portfolio>  Audit all pages, 4 smoke cases, or 8 portfolio cases (default: full).
   --output-dir <path>  Artifact directory below tmp/ (default: tmp/lighthouse).
   --plan               Validate arguments and tool pins, then print counts without network or audits.
   -h, --help           Show this help.
 
-Full mode validates exactly 64 unique sitemap paths, audits each once in desktop and mobile,
+Full mode audits every unique sitemap path once in desktop and mobile,
 then runs the eight representative/stress paths three more consecutive times in both modes.
+Portfolio mode covers the homepage, contact page, and archive indexes, excluding article and site bodies.
 Every returned category score must be exactly 1; missing expected categories also fail.
 `;
 }
@@ -108,8 +109,8 @@ function parseArguments(argv, environment = process.env) {
 
   if (options.help) return options;
   if (!options.baseUrl) throw new Error("--base-url or LIGHTHOUSE_BASE_URL is required");
-  if (options.mode !== "full" && options.mode !== "smoke") {
-    throw new Error(`--mode must be full or smoke, got ${JSON.stringify(options.mode)}`);
+  if (!["full", "smoke", "portfolio"].includes(options.mode)) {
+    throw new Error(`--mode must be full, smoke, or portfolio, got ${JSON.stringify(options.mode)}`);
   }
   if (!options.outputDir) throw new Error("--output-dir must not be empty");
 
@@ -507,7 +508,7 @@ function pathKey(pathname) {
 }
 
 function buildAuditPlan(paths, mode, baseUrl) {
-  const publicPaths = mode === "full" ? paths : SMOKE_PATHS;
+  const publicPaths = mode === "full" ? paths : mode === "portfolio" ? PORTFOLIO_PATHS : SMOKE_PATHS;
   const audits = [];
 
   function addAudit(phase, pathname, formFactor, repeat) {
@@ -537,20 +538,19 @@ function buildAuditPlan(paths, mode, baseUrl) {
     }
   }
 
-  const expected = mode === "full" ? 176 : 4;
+  const expected = publicPaths.length * FORM_FACTORS.length
+    + (mode === "full" ? STRESS_PATHS.length * FORM_FACTORS.length * 3 : 0);
   if (audits.length !== expected) {
     throw new Error(`internal audit-plan mismatch: expected ${expected}, built ${audits.length}`);
   }
   return audits;
 }
 
-function validateSitemapScope(paths) {
-  if (paths.length !== EXPECTED_PUBLIC_PATHS) {
-    throw new Error(`expected ${EXPECTED_PUBLIC_PATHS} public sitemap paths, found ${paths.length}`);
-  }
+function validateSitemapScope(paths, mode) {
   const available = new Set(paths);
-  for (const pathname of STRESS_PATHS) {
-    if (!available.has(pathname)) throw new Error(`stress path is missing from sitemap: ${pathname}`);
+  const required = mode === "portfolio" ? PORTFOLIO_PATHS : STRESS_PATHS;
+  for (const pathname of required) {
+    if (!available.has(pathname)) throw new Error(`required path is missing from sitemap: ${pathname}`);
   }
 }
 
@@ -781,20 +781,21 @@ async function writeSummary(outputDirectory, manifest, results, status) {
 }
 
 function planOnlyOutput(options, baseUrl, outputDirectory, toolchain) {
-  const sitemapAudits = options.mode === "full" ? EXPECTED_PUBLIC_PATHS * FORM_FACTORS.length : SMOKE_PATHS.length * 2;
+  const selectedPaths = options.mode === "portfolio" ? PORTFOLIO_PATHS : SMOKE_PATHS;
+  const sitemapAudits = options.mode === "full" ? null : selectedPaths.length * FORM_FACTORS.length;
   const stressAudits = options.mode === "full" ? STRESS_PATHS.length * FORM_FACTORS.length * 3 : 0;
   return {
     mode: options.mode,
     baseUrl: baseUrl.href,
     outputDirectory: relative(REPOSITORY_ROOT, outputDirectory),
     networkOrAuditsStarted: false,
-    expectedPublicPaths: EXPECTED_PUBLIC_PATHS,
     sitemapAudits,
     stressAudits,
-    totalAudits: sitemapAudits + stressAudits,
+    totalAudits: sitemapAudits === null ? null : sitemapAudits + stressAudits,
     categories: CATEGORIES,
     stressPaths: STRESS_PATHS,
     smokePaths: SMOKE_PATHS,
+    portfolioPaths: PORTFOLIO_PATHS,
     ...toolchain,
   };
 }
@@ -815,7 +816,7 @@ async function run() {
   }
 
   const sitemap = await fetchSitemap(baseUrl);
-  validateSitemapScope(sitemap.paths);
+  validateSitemapScope(sitemap.paths, options.mode);
   const audits = buildAuditPlan(sitemap.paths, options.mode, baseUrl);
   const artifactDirectories = await prepareArtifactDirectories(outputDirectory);
   const manifest = {
@@ -831,6 +832,7 @@ async function run() {
     publicPaths: sitemap.paths,
     stressPaths: STRESS_PATHS,
     smokePaths: SMOKE_PATHS,
+    portfolioPaths: PORTFOLIO_PATHS,
     audits,
   };
   await writeJsonAtomic(join(artifactDirectories.outputDirectory, "plan.json"), manifest);
@@ -876,4 +878,5 @@ export {
   prepareArtifactDirectories,
   resolveOutputDirectory,
   runProcess,
+  validateSitemapScope,
 };

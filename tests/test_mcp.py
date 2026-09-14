@@ -10,7 +10,8 @@ from mcp.server.mcpserver.exceptions import ToolError
 from mcp_types import CallToolResult, InputRequiredResult, TextContent
 
 from www.content import article_summaries, load_articles, visible_articles
-from www.mcp import create_mcp_server, render_mcp_server_card, render_profile_json
+from www.mcp import create_mcp_server, render_mcp_server_card
+from www.publications import render_profile_json
 from www.search import SearchIndex
 
 
@@ -185,6 +186,8 @@ async def test_profile_resource_and_prompt_are_grounded(mcp_server: MCPServer[No
 @pytest.mark.anyio
 async def test_server_card_describes_the_same_transport_and_primitives(mcp_server: MCPServer[None]) -> None:
     card = json.loads(await render_mcp_server_card(mcp_server))
+    # This compatibility summary must not claim a nonexistent official schema.
+    assert "$schema" not in card
     assert card["tools"] == [
         tool.model_dump(include={"name", "title", "description"}) for tool in await mcp_server.list_tools()
     ]
@@ -197,6 +200,13 @@ async def test_server_card_describes_the_same_transport_and_primitives(mcp_serve
     assert len(card["tools"]) == 7
     assert len(card["prompts"]) == 2
     assert card["resources"][0]["name"] == "profile"
+    assert card["resources"][0]["uri"] == "portfolio://profile.json"
+    assert card["resources"][0]["mimeType"] == "application/json"
+    contents = await mcp_server.read_resource(card["resources"][0]["uri"])
+    assert not isinstance(contents, InputRequiredResult)
+    assert json.loads(next(iter(contents)).content) == json.loads(
+        render_profile_json(article_summaries(visible_articles(load_articles().all)))
+    )
 
 
 def test_profile_json_omits_private_and_zero_value_fields() -> None:

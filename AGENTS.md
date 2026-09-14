@@ -20,7 +20,7 @@ Python 3.14 server-rendered web application: Litestar + strict Jinja + Tailwind/
 - `mise run test` — offline pytest suite with branch coverage of at least 85%.
 - `mise run test:browser` — pinned Chromium journeys on desktop and mobile in light mode.
 - `mise run test:image` — bounded HTTP/MCP smoke test of the already-built production OCI archive.
-- `mise run test:lighthouse -- --base-url <origin> [--mode full|smoke]` — strict five-category audit; never part of `all`.
+- `mise run test:lighthouse -- --base-url <origin> [--mode full|smoke|portfolio]` — strict five-category audit; never part of `all`.
 - `mise run build` — compile CSS and build clean wheel and source distributions.
 - `mise run build:images` — reconcile the SHA-256 provenance lock and generate only changed, missing, tampered, or recipe-stale Pillow WebP derivatives.
 - `mise run build:fonts` — re-subset the self-hosted WOFF2 faces from the pinned upstream releases; network-dependent and never part of `all`.
@@ -76,6 +76,8 @@ Important package ownership:
 - `static.py` owns inventory-bound static delivery and delegates conditional byte ranges to `ranges.py`.
 - `pages.py` builds page metadata; `rendering.py` is the only Jinja environment and reviewed raw-markup boundary.
 - `sites/` separates input parsing and URLs, economics, charts, formatting, immutable sources, and view composition; import from the owning module.
+- `publications.py` also owns the canonical portfolio JSON and its serialization schema, shared by HTTP and MCP.
+- `src/www/templates/partials/calculator-script.html` owns calculator interactions; only the calculator page includes it.
 - `src/www/templates/` uses base inheritance, partials, and macros for all HTML page types.
 
 ## Conventions

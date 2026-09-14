@@ -123,7 +123,7 @@
    one entry to the canonical vocabulary — never a class in the markup. Text and
    surface are derived from that hue to keep contrast above 4.5:1. */
 .tag {
-  --tag: var(--color-muted);
+  --tag: var(--color-base-content);
 
   display: inline-flex;
   align-items: center;
@@ -153,12 +153,12 @@
 
 a.tag:hover {
   border-color: color-mix(in oklab, var(--tag) 60%, transparent);
-  background-color: color-mix(in oklab, var(--tag) 20%, transparent);
+  background-color: color-mix(in oklab, var(--tag) 14%, transparent);
 }
 
 .tag-active {
   border-color: var(--tag);
-  background-color: color-mix(in oklab, var(--tag) 22%, transparent);
+  background-color: color-mix(in oklab, var(--tag) 14%, transparent);
   font-weight: 700;
 }
 

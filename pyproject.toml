@@ -33,6 +33,7 @@ dev = [
   "anyio>=4.15.1,<5",
   "granian[reload]>=2.8.2,<3",
   "httpx>=0.28.1,<0.29",
+  "jsonschema>=4.26.0,<5",
   "pytest-cov>=7.1.0,<8",
   "pytest-watcher>=0.6.3,<0.7",
   "pytest>=9.1.1,<10",

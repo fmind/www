@@ -10,7 +10,7 @@
       </header>
       {{ search_form(view) }}
       <nav class="flex flex-wrap justify-center gap-2 mb-12" aria-label="Filter articles by tag">
-        <a class="tag{% if not view.active_tag %} tag-active{% endif %}" href="{{ article_filter_url('', view.query) }}">All</a>
+        <a class="tag{% if not view.active_tag %} tag-active{% endif %}" href="{{ article_filter_url('', view.query) }}"{% if not view.active_tag %} aria-current="page"{% endif %}>All</a>
         {% for tag in view.tags %}{{ tag_link(tag, view.active_tag == tag, view.query) }}{% endfor %}
       </nav>
       {% if view.query %}

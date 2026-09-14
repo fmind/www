@@ -149,6 +149,21 @@ test("menu remains usable when storage is blocked", async ({ page }) => {
   await expect(page.locator("#menu-toggle")).toBeFocused();
 });
 
+test("landscape mobile menu scrolls to every destination", async ({ page }) => {
+  await page.setViewportSize({ width: 667, height: 375 });
+  await page.goto("/");
+  await page.getByRole("button", { name: "Menu", exact: true }).click();
+  const menu = page.locator("#mobile-menu");
+  const bounds = await menu.boundingBox();
+  expect(bounds.y + bounds.height).toBeLessThanOrEqual(375);
+  const last = menu.getByRole("link").last();
+  await last.focus();
+  await expect(last).toBeInViewport();
+  expect(await menu.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("button", { name: "Menu", exact: true })).toBeFocused();
+});
+
 test("Theme and CLI follow Articles and Sites as external menu links", async ({ page }) => {
   for (const width of [page.viewportSize().width, 640, 1280, 1536]) {
     await page.setViewportSize({ width, height: 900 });
@@ -302,6 +317,41 @@ test("keyboard skip link reaches main content", async ({ page }) => {
   await expect(page.getByRole("link", { name: "Skip to content" })).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(page.locator("main")).toBeFocused();
+});
+
+test("selected article filters expose their state and retain readable contrast", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/articles/");
+  const filters = page.getByRole("navigation", { name: "Filter articles by tag" });
+  const destinations = await filters.locator("a").evaluateAll((links) => links.map((link) => link.href));
+  for (const destination of destinations) {
+    await page.goto(destination);
+    const current = filters.locator("[aria-current=\"page\"]");
+    await expect(current).toHaveCount(1);
+    await current.hover();
+    const contrast = await current.evaluate((element) => {
+      const canvas = document.createElement("canvas");
+      canvas.width = canvas.height = 1;
+      const context = canvas.getContext("2d");
+      const surface = getComputedStyle(element.closest("section")).backgroundColor;
+      const luminance = (color) => {
+        context.clearRect(0, 0, 1, 1);
+        context.fillStyle = surface;
+        context.fillRect(0, 0, 1, 1);
+        context.fillStyle = color;
+        context.fillRect(0, 0, 1, 1);
+        return [...context.getImageData(0, 0, 1, 1).data].slice(0, 3).map((channel) => {
+          const value = channel / 255;
+          return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+        }).reduce((sum, value, index) => sum + value * [0.2126, 0.7152, 0.0722][index], 0);
+      };
+      const style = getComputedStyle(element);
+      const foreground = luminance(style.color);
+      const background = luminance(style.backgroundColor);
+      return (Math.max(foreground, background) + 0.05) / (Math.min(foreground, background) + 0.05);
+    });
+    expect(contrast, destination).toBeGreaterThanOrEqual(4.5);
+  }
 });
 
 test("site stays light with a dark system preference and an old saved theme", async ({ page }) => {

@@ -3,7 +3,7 @@
 {%- endmacro %}
 
 {% macro tag_link(tag, active=false, query="") -%}
-  <a class="tag{% if active %} tag-active{% endif %}" data-tag="{{ tag }}" href="{{ article_filter_url(tag, query) }}">{{ tag }}</a>
+  <a class="tag{% if active %} tag-active{% endif %}" data-tag="{{ tag }}" href="{{ article_filter_url(tag, query) }}"{% if active %} aria-current="page"{% endif %}>{{ tag }}</a>
 {%- endmacro %}
 
 {% macro search_form(view) -%}

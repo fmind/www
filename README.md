@@ -1,6 +1,6 @@
 # www
 
-<!-- mcp-name: dev.fmind/portfolio -->
+<!-- mcp-name: io.github.fmind/portfolio -->
 
 The portfolio website of Médéric Hurier (Fmind). It is a fully server-rendered Python application built with [Litestar](https://litestar.dev/), [Jinja](https://jinja.palletsprojects.com/), Tailwind CSS v4, and DaisyUI v5. Small vanilla JavaScript menu and calculator controllers provide progressive enhancement. There is no client framework, Node.js application project, database, cookie, or analytics tracker.
 
@@ -77,31 +77,31 @@ The first tool, `/sites/llm-self-hosting/`, compares the current top ten open-we
 
 All tasks are defined in `mise.toml` and reused by Lefthook and CI:
 
-| Task                                                                   | Description                                                                           |
-| ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| `mise run install`                                                     | Frozen `uv` sync, Lefthook installation, and pinned Chromium installation             |
-| `mise run watch`                                                       | Granian ASGI reload server and Tailwind watcher                                       |
-| `mise run format`                                                      | Ruff Python imports/formatting, dprint, and OpenTofu formatting                       |
-| `mise run check`                                                       | Ruff, ty, metadata/lock, dependency, Dockerfile/IaC, and workflow checks              |
-| `mise run check:image`                                                 | Build and scan the exact production OCI archive (Docker with Buildx required)         |
-| `mise run check:image:deployed`                                        | Resolve and scan every serving Cloud Run revision with Trivy                          |
-| `mise run check:images`                                                | Validate all image derivatives, hashes, modes, dimensions, and recipe without writing |
-| `mise run check:typos`                                                 | Check article prose against the spelling floor                                        |
-| `mise run check:links`                                                 | Check external content links (network-dependent; scheduled weekly in CI)              |
-| `mise run check:tofu`                                                  | Validate and lint OpenTofu (network-dependent; runs in CI on `infra/` changes)        |
-| `mise run test`                                                        | Run pytest offline with branch coverage of at least 85%                               |
-| `mise run test:browser`                                                | Run Chromium journeys on desktop and mobile in light mode                             |
-| `mise run test:image`                                                  | Smoke-test the already-built production OCI archive through Docker                    |
-| `mise run test:lighthouse -- --base-url <origin> [--mode full\|smoke]` | Run the strict five-category Lighthouse matrix; never in `all`                        |
-| `mise run coverage`                                                    | Show the terminal coverage report                                                     |
-| `mise run build`                                                       | Compile Tailwind CSS and build clean wheel and source distributions                   |
-| `mise run build:images`                                                | Reconcile changed, missing, tampered, or recipe-stale Pillow derivatives              |
-| `mise run build:image`                                                 | Build the production OCI image archive at `tmp/www-image.tar`                         |
-| `mise run deploy <digest-ref>`                                         | Roll Cloud Run to one repository-pinned image digest (manual and production-mutating) |
+| Task                                                                              | Description                                                                           |
+| --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `mise run install`                                                                | Frozen `uv` sync, Lefthook installation, and pinned Chromium installation             |
+| `mise run watch`                                                                  | Granian ASGI reload server and Tailwind watcher                                       |
+| `mise run format`                                                                 | Ruff Python imports/formatting, dprint, and OpenTofu formatting                       |
+| `mise run check`                                                                  | Ruff, ty, metadata/lock, dependency, Dockerfile/IaC, and workflow checks              |
+| `mise run check:image`                                                            | Build and scan the exact production OCI archive (Docker with Buildx required)         |
+| `mise run check:image:deployed`                                                   | Resolve and scan every serving Cloud Run revision with Trivy                          |
+| `mise run check:images`                                                           | Validate all image derivatives, hashes, modes, dimensions, and recipe without writing |
+| `mise run check:typos`                                                            | Check article prose against the spelling floor                                        |
+| `mise run check:links`                                                            | Check external content links (network-dependent; scheduled weekly in CI)              |
+| `mise run check:tofu`                                                             | Validate and lint OpenTofu (network-dependent; runs in CI on `infra/` changes)        |
+| `mise run test`                                                                   | Run pytest offline with branch coverage of at least 85%                               |
+| `mise run test:browser`                                                           | Run Chromium journeys on desktop and mobile in light mode                             |
+| `mise run test:image`                                                             | Smoke-test the already-built production OCI archive through Docker                    |
+| `mise run test:lighthouse -- --base-url <origin> [--mode full\|smoke\|portfolio]` | Run the strict five-category Lighthouse matrix; never in `all`                        |
+| `mise run coverage`                                                               | Show the terminal coverage report                                                     |
+| `mise run build`                                                                  | Compile Tailwind CSS and build clean wheel and source distributions                   |
+| `mise run build:images`                                                           | Reconcile changed, missing, tampered, or recipe-stale Pillow derivatives              |
+| `mise run build:image`                                                            | Build the production OCI image archive at `tmp/www-image.tar`                         |
+| `mise run deploy <digest-ref>`                                                    | Roll Cloud Run to one repository-pinned image digest (manual and production-mutating) |
 
-`mise run all` runs sequentially: format, static checks, the package/CSS build, pytest, the exact OCI archive build and scan, its bounded runtime smoke test, one pinned Chromium installation, then browser journeys. The image smoke reuses the archive produced by `check:image`; it never builds. The final browser task skips its automatic prerequisites because `all` has already built and installed them once; standalone `test:browser` keeps its normal dependencies. Docker Engine with Buildx must be running, and a cold run needs network access as described above.
+`mise run all` runs sequentially: format, static checks, the package/CSS build, pytest, the exact OCI archive build and scan, its bounded runtime smoke test, one pinned Chromium installation, then browser journeys. The image smoke reuses the archive produced by `check:image`; it never builds. Docker Engine with Buildx must be running, and a cold run needs network access as described above.
 
-Lighthouse remains an explicit, non-default audit because it needs a target origin and runs 176 audits in full mode. Install Chromium first with `mise run install:browser`; if it is absent, the harness reports the equivalent `playwright install chromium` remediation. Use `mise run test:lighthouse -- --base-url http://127.0.0.1:8080 --mode smoke` for the four-audit local smoke matrix, or omit `--mode smoke` for full qualification. To exercise the browser suite against production, use `BROWSER_BASE_URL=https://www.fmind.dev mise run test:browser`. Reports and traces stay under `tmp/`. Local application checks need no cloud credentials.
+Lighthouse remains an explicit, non-default audit because it needs a target origin. Full mode audits every sitemap page on desktop and mobile, then adds 48 stress audits; its count grows with the sitemap. Install Chromium first with `mise run install:browser`; if it is absent, the harness reports the equivalent `playwright install chromium` remediation. Use `mise run test:lighthouse -- --base-url http://127.0.0.1:8080 --mode smoke` for the four-audit local smoke matrix, use `--mode portfolio` for eight audits covering `/`, `/connect`, `/articles/`, and `/sites/` without article or decision-page bodies, or omit `--mode` for full qualification. `--plan` validates tools without fetching the sitemap, so full-mode totals are unknown until execution. To exercise the browser suite against production, use `BROWSER_BASE_URL=https://www.fmind.dev mise run test:browser`. Reports and traces stay under `tmp/`. Local application checks need no cloud credentials.
 
 Configuration and working-tree secret scans exclude generated `tmp/`, `.venv/`, and `dist/` trees. Secret scans of Git history keep the default rules.
 
@@ -127,12 +127,18 @@ Each HTML response emits one aggregate structured record: path, status, referrer
 
 ## Connecting an AI Agent to `/mcp`
 
-After deployment, add `https://www.fmind.dev/mcp` as a custom MCP connector. The server exposes the closed-world, read-only tools `get_profile`, `list_experience`, `list_certifications`, `list_publications`, `search_articles`, `list_projects`, and `get_services`; the `portfolio://profile.json` resource; and the `assess_fit` and `brief_me` prompts. Server-card metadata is available at `/mcp/server-card` and the well-known compatibility route. Browser calls are accepted only from the same origin; non-browser clients need no authentication.
+After deployment, add `https://www.fmind.dev/mcp` as a custom MCP connector. The server exposes the closed-world, read-only tools `get_profile`, `list_experience`, `list_certifications`, `list_publications`, `search_articles`, `list_projects`, and `get_services`; the `portfolio://profile.json` resource; and the `assess_fit` and `brief_me` prompts. The JSON profile advertises `/api/profile/schema.json` through a `Link: rel="describedby"` header; its JSON Schema derives from the same public serialization model. Server-card metadata, including the resource URI and MIME type, is available at `/mcp/server-card` and the well-known compatibility route. Browser calls are accepted only from the same origin; non-browser clients need no authentication.
 
 The homepage, JSON profile, JSON-LD occupation skills, and LLM text derive expertise from the same `EXPERTISE` collection. Both headline lines and the six expertise descriptions are included in `/llms.txt` and `/llms-full.txt`. These are integration surfaces; they do not guarantee search indexing or AI citations.
 
-The checked-in `server.json` is ready for the official MCP Registry. Publication remains one explicit owner action after domain authentication:
+Use the standard `server/discover` RPC for protocol negotiation and capabilities. The static server card is a compatibility summary of the registered primitives, not an official MCP schema or an A2A Agent Card.
+
+The checked-in `server.json` describes `io.github.fmind/portfolio` in the official MCP Registry. Its version tracks the website release. After verifying that version is serving, publish with the official `mcp-publisher` CLI authenticated as the `fmind` GitHub account:
 
 ```bash
+mcp-publisher validate server.json
+mcp-publisher login github
 mcp-publisher publish
 ```
+
+Verify the published version through the [official Registry API](https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.fmind%2Fportfolio). Registry publication is an explicit owner action separate from website deployment.

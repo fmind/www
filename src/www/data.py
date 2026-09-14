@@ -449,7 +449,7 @@ def get_structured_data(article: object | None = None) -> str:
         "alumniOf": {
             "@type": "CollegeOrUniversity",
             "name": "University of Luxembourg",
-            "sameAs": "https://wwwen.uni.lu/snt/people/mederic_hurier",
+            "sameAs": "https://www.uni.lu/en/",
         },
         "hasCredential": credentials,
         "affiliation": [
