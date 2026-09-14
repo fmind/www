@@ -80,6 +80,16 @@ def test_human_pages_render_complete_no_cache_documents(client: AppClient) -> No
             assert 'content="noindex, follow"' in response.text
 
 
+def test_ai_architect_identity_is_shared_by_public_surfaces(client: AppClient) -> None:
+    profile = client.get("/api/profile").json()
+    assert profile["metadata"]["job_title"] == "AI Architect"
+    for path in ("/", "/connect", "/llms.txt", "/connect.vcf", "/humans.txt", "/mcp/server-card"):
+        body = client.get(path).text
+        assert "AI Architect" in body
+        assert "AI Security Architect" not in body
+    assert json.loads(Path("server.json").read_text())["title"] == "Fmind AI Architect Portfolio"
+
+
 def test_profile_schema_describes_the_public_response(client: AppClient) -> None:
     from jsonschema import Draft202012Validator
 
@@ -169,7 +179,8 @@ def test_connect_actions_and_contact_download(client: AppClient) -> None:
     response = client.get("/connect?next=https://example.org")
     assert '<link rel="canonical" href="https://www.fmind.dev/connect"' in response.text
     assert 'href="https://www.linkedin.com/in/fmind-dev/"' in response.text
-    assert f'href="mailto:{METADATA.email}"' in response.text
+    assert 'href="mailto:' not in response.text
+    assert "Explore my work" not in response.text
     assert 'href="/connect.vcf"' in response.text
     assert "example.org" not in response.text
     card = client.get("/connect.vcf")

@@ -148,7 +148,7 @@ _CHROMA_CSS_RULES: Final = (
     ("NameEntity", ".chroma .ni", "color: #202124"),
     ("NameException", ".chroma .ne", "color: #a50e0e; font-weight: bold"),
     ("NameLabel", ".chroma .nl", "color: #202124"),
-    ("NameNamespace", ".chroma .nn", "color: #202124"),
+    ("NameNamespace", ".chroma .nn", "color: #681da8"),
     ("NameProperty", ".chroma .py", "color: #202124"),
     ("NameTag", ".chroma .nt", "color: #174ea6; font-weight: bold"),
     ("NameBuiltin", ".chroma .nb", "color: #681da8"),

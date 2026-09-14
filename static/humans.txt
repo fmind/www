@@ -1,6 +1,6 @@
 /* TEAM */
 Author: Médéric Hurier (Fmind)
-Role: AI Security Architect
+Role: AI Architect
 Location: Luxembourg
 Contact: contact@fmind.dev
 Website: https://www.fmind.dev

@@ -1,3 +1,4 @@
+/* https://tailwindcss.com/docs/theme */
 /* Templates are the complete class source. Disable automatic repository scans
    so Python identifiers such as `rounded` cannot accidentally ship utilities. */
 @import "tailwindcss" source(none);
@@ -47,6 +48,12 @@
   --font-heading: 'Google Sans Subset', sans-serif;
   --font-body: 'Google Sans Subset', sans-serif;
   --font-mono: 'Google Sans Code Subset', ui-monospace, monospace;
+}
+
+/* Essential form boundaries use the theme control gray, not decorative gray. */
+.input,
+.select {
+  border-color: var(--color-muted);
 }
 
 ::selection {

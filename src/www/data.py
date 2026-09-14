@@ -28,11 +28,11 @@ METADATA = Metadata(
     name="Médéric Hurier",
     alternate_name="Fmind",
     site_name="Fmind",
-    title="Médéric Hurier (Fmind) | AI Security Architect",
-    job_title="AI Security Architect",
-    headline_primary="AI Security Architect (PhD) • VC Expert Advisor • AAIF Ambassador",
+    title="Médéric Hurier (Fmind) | AI Architect",
+    job_title="AI Architect",
+    headline_primary="AI Architect (PhD) • VC Expert Advisor • AAIF Ambassador",
     headline_secondary="GCP Certified Cloud Architect • AI, Agents & Security",
-    description="Freelance AI Security Architect (PhD), VC Expert Advisor, AAIF Ambassador, and GCP Certified Cloud Architect specializing in AI, agents, and security.",
+    description="Freelance AI Architect (PhD), VC Expert Advisor, AAIF Ambassador, and GCP Certified Cloud Architect specializing in AI agents, MLOps, and production AI systems.",
     keywords=(
         "AI",
         "Machine Learning",
@@ -68,8 +68,14 @@ METADATA = Metadata(
     ),
 )
 
+# Public professional details shared by structured data and the contact card.
+WORK_CITY = "Luxembourg"
+WORK_COUNTRY = "Luxembourg"
+WORK_COUNTRY_CODE = "LU"
+LANGUAGES = (("fr", "French"), ("en", "English"))
+
 BIOGRAPHY = (
-    "I am a **freelance AI Security Architect** with a **PhD in AI and Computer Security**. I design and industrialize **AI agents**, **MLOps platforms**, and **secure cloud foundations**, turning fast-moving research into dependable production capabilities with clear controls, observability, and measurable outcomes.",
+    "I am a **freelance AI Architect** with a **PhD in AI and Computer Security**. I design and industrialize **AI agents**, **MLOps platforms**, and **secure cloud foundations**, turning fast-moving research into dependable production capabilities with clear controls, observability, and measurable outcomes.",
     "My work spans strategy and delivery: enterprise agent platforms at **Decathlon**, European fraud detection for the **European Commission**, and Android malware research with **Google**. I have also delivered AI, data, and security initiatives for BNP Paribas, ArcelorMittal, SFEIR, Clearstream, and the University of Luxembourg.",
     "Beyond client work, I serve as an **AAIF Ambassador** and Luxembourg organizer and contribute to the **33N Ventures Expert Advisory Board**. As a **Google Cloud Professional Cloud Architect**, I bring a pragmatic, security-first approach to systems that must operate reliably at scale.",
 )
@@ -437,9 +443,9 @@ def get_structured_data(article: object | None = None) -> str:
         "nationality": {"@type": "Country", "name": "France"},
         "workLocation": {
             "@type": "Place",
-            "address": {"@type": "PostalAddress", "addressLocality": "Luxembourg", "addressCountry": "LU"},
+            "address": {"@type": "PostalAddress", "addressLocality": WORK_CITY, "addressCountry": WORK_COUNTRY_CODE},
         },
-        "knowsLanguage": ["fr", "en"],
+        "knowsLanguage": [code for code, _ in LANGUAGES],
         "knowsAbout": list(METADATA.keywords),
         "hasOccupation": {
             "@type": "Occupation",

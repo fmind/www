@@ -1,7 +1,7 @@
 {
   "name": "Fmind",
   "short_name": "Fmind",
-  "description": "Freelance AI Architect (PhD), VC Expert Advisor, AAIF Ambassador, and GCP Certified Cloud Architect specializing in AI Agents, MLOps, and security.",
+  "description": "Freelance AI Architect (PhD), VC Expert Advisor, AAIF Ambassador, and GCP Certified Cloud Architect specializing in AI agents, MLOps, and production AI systems.",
   "id": "/",
   "start_url": "/",
   "orientation": "any",

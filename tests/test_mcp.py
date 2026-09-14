@@ -63,6 +63,7 @@ async def test_server_lists_seven_read_only_tools_and_two_prompts(mcp_server: MC
     assert search_tool.input_schema["properties"]["limit"]["description"] == (
         "maximum number of results to return (default 10, maximum 50)"
     )
+    assert search_tool.input_schema["properties"]["limit"]["default"] == 10
     assert [prompt.name for prompt in prompts] == ["assess_fit", "brief_me"]
     assert [
         [argument.model_dump(by_alias=True, exclude_none=True) for argument in prompt.arguments or []]

@@ -1,25 +1,21 @@
 {% extends "base.html" %}
 {% from "macros/icons.html" import icon %}
 {% block header %}
-  <header class="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
-    <a class="font-heading font-bold text-xl text-primary rounded" href="/">{{ metadata.site_name }}</a>
+  <header class="max-w-4xl mx-auto px-6 py-4 flex items-center justify-center">
+    <a class="font-heading font-bold text-3xl text-primary rounded inline-flex items-center min-h-11" href="/">Fmind.dev</a>
   </header>
 {% endblock %}
 {% block main_class %}max-w-4xl mx-auto px-6 pt-4 pb-12 md:py-16{% endblock %}
 {% block content %}
   <div class="grid md:grid-cols-2 gap-12 md:gap-16 items-center">
-    <section aria-labelledby="connect-heading">
-      <img class="rounded-full w-24 h-24 mb-6 object-cover" src="{{ static_url('static/img/avatar-192.webp') }}" alt="{{ metadata.name }}" width="96" height="96" fetchpriority="high"/>
-      <p class="text-primary font-semibold mb-2">Good to meet you.</p>
+    <section class="text-center" aria-labelledby="connect-heading">
+      <img class="rounded-full w-36 h-36 mx-auto mb-6 object-cover" src="{{ static_url('static/img/avatar-280.webp') }}" srcset="{{ static_url('static/img/avatar-192.webp') }} 192w, {{ static_url('static/img/avatar-280.webp') }} 280w, {{ static_url('static/img/avatar.webp') }} 384w" sizes="144px" alt="{{ metadata.name }}" width="144" height="144" fetchpriority="high"/>
+      <p class="text-xl text-primary font-semibold mb-2">Good to meet you.</p>
       <h1 class="font-heading text-3xl sm:text-4xl font-semibold text-balance" id="connect-heading">{{ metadata.name }} <span class="text-base-content/70">({{ metadata.alternate_name }})</span></h1>
-      <p class="text-base-content/80 mt-3">{{ metadata.job_title }} • AI, Agents &amp; Security</p>
+      <p class="text-xl text-base-content/80 mt-3">{{ metadata.job_title }} • AI, Agents &amp; Security</p>
       <nav class="grid gap-3 mt-7" aria-label="Connect with Médéric">
         <a class="btn btn-primary btn-lg rounded-xl w-full" href="{{ linkedin_url }}">{{ icon("linkedin", "w-5 h-5") }}Connect on LinkedIn</a>
         <a class="btn btn-outline btn-lg rounded-xl w-full" href="/connect.vcf" download="mederic-hurier.vcf"><span aria-hidden="true">💾</span>Save my contact</a>
-        <div class="grid grid-cols-2 gap-3">
-          <a class="btn btn-outline rounded-xl bg-base-200 hover:bg-base-300 hover:text-base-content min-h-12 w-full" href="mailto:{{ metadata.email }}"><span aria-hidden="true">✉️</span>Email me</a>
-          <a class="btn btn-outline rounded-xl bg-base-200 hover:bg-base-300 hover:text-base-content min-h-12 w-full" href="/"><span aria-hidden="true">🔎</span>Explore my work</a>
-        </div>
       </nav>
     </section>
     <section class="text-center rounded-2xl border border-base-300 bg-base-200 p-5 sm:p-6" aria-labelledby="qr-heading">

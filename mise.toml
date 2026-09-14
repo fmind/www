@@ -291,4 +291,5 @@ run = "tailwindcss-extra -i assets/css/input.css -o static/dist/styles.css --wat
 [tasks."watch:server"]
 hide = true
 depends = ["build:css"]
-run = 'GRANIAN_PORT="${PORT:-8080}" uv run --locked granian --interface asgi --reload --host 0.0.0.0 www.app:app'
+# Watch startup inputs only; browser artifacts and build output must not restart workers.
+run = 'GRANIAN_PORT="${PORT:-8080}" uv run --locked granian --interface asgi --reload --reload-paths src --reload-paths content --reload-paths static --host 0.0.0.0 www.app:app'

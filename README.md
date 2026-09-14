@@ -33,6 +33,8 @@ mise run watch      # run Granian with reload alongside the Tailwind watcher
 
 The site is served at `http://localhost:8080`. Configuration is environment-driven through `.env.example`; with no environment set, it runs in `development` mode on port 8080. Use `PORT=8081 mise run watch` when the default port is occupied.
 
+The server reloads on changes under `src/`, `content/`, and `static/`, including templates and compiled CSS. Browser artifacts under `tmp/`, distribution builds, and test edits do not restart workers. Restart `mise run watch` after changing environment or project configuration.
+
 `src/www/app.py` is the composition root and exports `www.app:app`. `src/www/__main__.py` validates runtime configuration and starts Granian. Jinja templates are package data, while `content/` and `static/` remain explicit deploy-time trees. The production image copies both beside the locked virtual environment under `/app`.
 
 ## Articles
@@ -57,7 +59,9 @@ Navigation uses a 96px lossless WebP logo for the 48px display, while favicons a
 
 ## Conference Contact Page
 
-Share `https://www.fmind.dev/connect` at conferences. The page puts LinkedIn first, followed by a downloadable contact card, email, and the portfolio. `/connect.vcf` derives its public name, role, email, website, and LinkedIn from the portfolio data at application startup. Visitors confirm saving the contact in their own app; some Android browsers require importing the downloaded `.vcf` from Contacts.
+Share `https://www.fmind.dev/connect` at conferences. The page offers LinkedIn and a downloadable contact card. `/connect.vcf` derives its public name, nickname, role, email, work city/country, languages, professional summary, expertise, leadership roles, active credentials, social profiles, booking link, and website from the portfolio data at application startup. It embeds a JPEG copy of the public portrait with image metadata removed. The card includes a stable public identifier and source URL; labeled links also appear in its notes for importers that display every URL as a generic website.
+
+The export stays on [vCard 3.0](https://www.rfc-editor.org/rfc/rfc2426), with UTF-8 text, CRLF endings, and lines folded at 75 octets. It contains no telephone number, street address, birthday, or precise coordinates. Add only details intended for publication: the repository and the download are public. Visitors confirm saving the contact in their own app; some Android browsers require importing the downloaded `.vcf` from Contacts. Field display and duplicate-contact handling depend on the receiving app.
 
 The page displays a QR code encoding the permanent `/connect` URL, so contact actions can change without replacing the code. The page and contact download work without JavaScript or third-party QR services.
 

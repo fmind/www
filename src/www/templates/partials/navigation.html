@@ -28,8 +28,8 @@
         </ul>
       </div>
       <a class="btn btn-ghost text-xl md:text-2xl font-bold font-heading text-primary normal-case gap-2 sm:gap-4 px-1 sm:px-2" href="/">
-        <img class="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-full object-cover" src="{{ static_url('static/img/logo.webp') }}" alt="{{ metadata.site_name }} logo" width="48" height="48" decoding="async"/>
-        <span class="hidden sm:inline">{{ metadata.site_name }}</span>
+        <img class="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-full object-cover" src="{{ static_url('static/img/logo.webp') }}" alt="Fmind.dev logo" width="48" height="48" decoding="async"/>
+        <span class="hidden sm:inline">Fmind.dev</span>
       </a>
       <ul class="menu menu-horizontal px-1 hidden 2xl:flex gap-1">
         {% for link in nav_links %}
@@ -55,7 +55,7 @@
     </div>
     <div class="order-last mx-auto flex flex-wrap w-full max-w-52 justify-center sm:order-none sm:mx-0 sm:w-auto sm:max-w-none" role="group" aria-label="Social profiles">
       {% for social in metadata.socials %}
-        <a class="btn btn-ghost btn-circle w-10 h-10 min-h-10 text-primary hover:bg-primary/10 transition-colors" href="{{ social.url }}" target="_blank" rel="noopener noreferrer" aria-label="{{ social.name }}" title="{{ social.name }}">
+        <a class="btn btn-ghost btn-circle w-10 h-10 min-h-10 text-base-content hover:bg-base-200 transition-colors" href="{{ social.url }}" target="_blank" rel="noopener noreferrer" aria-label="{{ social.name }}" title="{{ social.name }}">
           {{ icon(social.icon, "h-5 w-5") }}
         </a>
       {% endfor %}

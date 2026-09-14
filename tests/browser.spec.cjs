@@ -121,8 +121,18 @@ test("conference contact actions and QR display work without JavaScript", async 
     const card = await cardDownload;
     expect(card.suggestedFilename()).toBe("mederic-hurier.vcf");
     expect(await card.failure()).toBeNull();
-    await expect(page.getByRole("link", { name: "Email me" })).toHaveAttribute("href", "mailto:contact@fmind.dev");
-    await expect(page.getByRole("link", { name: "Explore my work" })).toHaveAttribute("href", "/");
+    await expect(page.getByRole("navigation", { name: "Connect with Médéric" }).getByRole("link"))
+      .toHaveText(["Connect on LinkedIn", "💾Save my contact"]);
+    await expect(page.getByRole("link", { name: "Email me" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Explore my work" })).toHaveCount(0);
+    const home = page.locator("header").getByRole("link", { name: "Fmind.dev", exact: true });
+    await expect(home).toHaveAttribute("href", "/");
+    await home.focus();
+    await expect(home).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(linkedIn).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(save).toBeFocused();
     const qr = page.getByRole("img", { name: "QR code for https://www.fmind.dev/connect", exact: true });
     await expect(qr).toBeVisible();
     await expect(qr).toHaveJSProperty("naturalWidth", 296);
@@ -200,9 +210,11 @@ test("Theme and CLI follow Articles and Sites as external menu links", async ({ 
 
 test("homepage presents the headline, six skills, and accessible social header", async ({ page }, testInfo) => {
   await page.goto("/");
+  await expect(page.locator("header").getByRole("img", { name: "Fmind.dev logo", exact: true })).toBeVisible();
+  await expect(page.locator("header a[href='/'] span")).toHaveText("Fmind.dev");
   const headline = page.locator("[data-hero-headline]");
   await expect(headline.locator(":scope > span")).toHaveText([
-    "AI Security Architect (PhD) • VC Expert Advisor • AAIF Ambassador",
+    "AI Architect (PhD) • VC Expert Advisor • AAIF Ambassador",
     "GCP Certified Cloud Architect • AI, Agents & Security",
   ]);
   await expect(headline).toBeVisible();
@@ -242,7 +254,7 @@ test("homepage presents the headline, six skills, and accessible social header",
     await expect(link).toHaveAttribute("href", url);
     const bounds = await link.locator("svg").boundingBox();
     expect(await link.evaluate((element) => getComputedStyle(element).color)).toBe(
-      await page.locator("header .text-primary").first().evaluate((element) => getComputedStyle(element).color),
+      "rgb(32, 33, 36)",
     );
     expect(bounds.width).toBe(20);
     expect(bounds.height).toBe(20);
@@ -259,18 +271,21 @@ test("homepage presents the headline, six skills, and accessible social header",
   await expect(footer.locator("a[href^=\"https://\"]")).toHaveCount(0);
   await footer.scrollIntoViewIfNeeded();
   const rows = await footer.locator("p, nav").evaluateAll((elements) =>
-    elements.map((element) => element.getBoundingClientRect().y)
+    elements.map((element) => {
+      const bounds = element.getBoundingClientRect();
+      return bounds.y + bounds.height / 2;
+    })
   );
   if (page.viewportSize().width >= 1280) {
-    expect(Math.max(...rows) - Math.min(...rows)).toBeLessThan(8);
+    expect(Math.max(...rows) - Math.min(...rows)).toBeLessThan(1);
   }
   expect(await footer.evaluate((element) => element.getBoundingClientRect().height)).toBeGreaterThan(80);
   expect(await footer.locator("nav").evaluate((element) => parseFloat(getComputedStyle(element).fontSize)))
-    .toBeGreaterThanOrEqual(14);
+    .toBe(14);
   for (const link of await footer.locator("nav a").all()) {
     expect(await link.evaluate((element) => getComputedStyle(element).textDecorationLine)).toBe("underline");
     expect(await link.evaluate((element) => getComputedStyle(element).color)).toBe(
-      await page.locator("header .text-primary").first().evaluate((element) => getComputedStyle(element).color),
+      "rgb(23, 78, 166)",
     );
   }
   await footer.getByRole("link", { name: "MCP", exact: true }).focus();
@@ -489,6 +504,9 @@ test("Fmind palette reaches page surfaces, controls, charts, and code", async ({
     await expect(page.locator(selector).first()).toHaveCSS("stroke", color);
   }
 
+  await expect(page.locator("input.input").first()).toHaveCSS("border-color", "rgb(89, 93, 98)");
+  await expect(page.locator("select.select").first()).toHaveCSS("border-color", "rgb(89, 93, 98)");
+
   const profile = await (await request.get("/api/profile")).json();
   let foundCode = false;
   for (const article of profile.articles) {
@@ -508,6 +526,22 @@ test("Fmind palette reaches page surfaces, controls, charts, and code", async ({
     break;
   }
   expect(foundCode).toBe(true);
+});
+
+test("footer stays compact with ordered discovery links", async ({ page }) => {
+  await page.goto("/");
+  const footer = page.locator("body > footer");
+  const links = footer.getByRole("navigation", { name: "Footer navigation" }).getByRole("link");
+  await expect(links).toHaveText(["MCP", "Connect", "JSON Profile", "For AI Agents"]);
+  expect(await links.evaluateAll((items) => items.map((item) => item.getAttribute("href"))))
+    .toEqual(["/mcp/server-card", "/connect", "/api/profile", "/llms.txt"]);
+  const padding = await footer.evaluate((element) => parseFloat(getComputedStyle(element).paddingTop));
+  expect(padding).toBeLessThanOrEqual(24);
+  await expect(links.first()).toHaveCSS("font-size", "14px");
+  await expect(footer.locator("p").last()).toHaveCSS("font-size", "14px");
+  const navigation = await footer.locator("nav").boundingBox();
+  const bounds = await footer.boundingBox();
+  expect(Math.abs(navigation.x + navigation.width / 2 - bounds.x - bounds.width / 2)).toBeLessThan(1);
 });
 
 test("narrow screens reflow and keep navigation reachable", async ({ page }, testInfo) => {

@@ -177,7 +177,7 @@ def create_mcp_server(articles: tuple[ArticleSummary, ...], index: SearchIndex) 
     profile_json = render_profile_json(articles).decode()
     server: MCPServer[None] = _PortfolioMCPServer(
         name="www",
-        title="Médéric Hurier (Fmind) — AI Security Architect Portfolio",
+        title=f"{METADATA.name} ({METADATA.alternate_name}) — {METADATA.job_title} Portfolio",
         description="Read-only portfolio tools, resources, and prompts for Fmind.",
         instructions=(
             f"Query the portfolio of {METADATA.name} ({METADATA.alternate_name}): {METADATA.headline_primary}. "
@@ -255,7 +255,7 @@ def create_mcp_server(articles: tuple[ArticleSummary, ...], index: SearchIndex) 
         limit: Annotated[
             int,
             Field(description="maximum number of results to return (default 10, maximum 50)"),
-        ] = 0,
+        ] = DEFAULT_SEARCH_RESULTS,
     ) -> SearchArticlesResult:
         normalized = normalize_search_query(query)
         if not normalized:
@@ -351,7 +351,7 @@ async def render_mcp_server_card(server: MCPServer[None]) -> bytes:
         "protocolVersion": MCP_PROTOCOL_VERSION,
         "serverInfo": {
             "name": "www",
-            "title": "Médéric Hurier (Fmind) — AI Security Architect Portfolio",
+            "title": f"{METADATA.name} ({METADATA.alternate_name}) — {METADATA.job_title} Portfolio",
             "version": build_version(),
             "websiteUrl": f"{METADATA.site_url}/",
         },

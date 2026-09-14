@@ -173,7 +173,7 @@ def create_app(
     home_structured_data = get_structured_data()
     home_page = home_metadata(home_structured_data)
     connect_page = connect_metadata(home_structured_data)
-    contact_card = render_contact_card()
+    contact_card = render_contact_card(static_dir)
     not_found_page = not_found_metadata(home_structured_data)
     site_index = SitePage(
         slug="",
