@@ -2,6 +2,17 @@
 
 All notable changes to this project are documented in this file.
 
+## [1.6.0] - 2026-09-14
+
+### 🚀 Features
+
+- _(site)_ Refine branding, mobile layout, and agent discovery
+- _(site)_ Improve mobile access and machine-readable discovery
+
+### 🐛 Bug Fixes
+
+- _(assets)_ Exclude branding downloads from compression
+
 ## [1.5.0] - 2026-09-07
 
 ### 🚀 Features
