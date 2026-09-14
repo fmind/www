@@ -43,7 +43,9 @@
     <meta name="twitter:image" content="{{ page.image_url }}"/>
     <meta name="twitter:image:alt" content="{{ page.image_alt }}"/>
     <link rel="preload" href="/static/fonts/GoogleSans-Variable.woff2" crossorigin="anonymous" as="font" type="font/woff2"/>
-    <link rel="preload" href="/static/fonts/GoogleSansCode-Variable.woff2" crossorigin="anonymous" as="font" type="font/woff2"/>
+    {% if page.article %}
+      <link rel="preload" href="/static/fonts/GoogleSansCode-Variable.woff2" crossorigin="anonymous" as="font" type="font/woff2"/>
+    {% endif %}
     {% if page.preload_image %}
       {% if page.preload_image_srcset %}
         <link rel="preload" href="{{ page.preload_image }}" imagesrcset="{{ page.preload_image_srcset }}" imagesizes="{{ page.preload_image_sizes }}" fetchpriority="high" as="image"/>

@@ -113,6 +113,8 @@ Configuration and working-tree secret scans exclude generated `tmp/`, `.venv/`, 
 
 Asset maintenance also includes `mise run build:branding` for PNG-derived branding and `mise run build:fonts` for the pinned self-hosted font subsets. Neither runs in `all`; image derivatives are validated there without being regenerated. `watch` and `test:watch` are long-running development tasks, while `clean` deliberately removes generated files and should not be used as a verification task.
 
+Font rebuilds preserve upstream timestamps so identical inputs produce identical asset hashes. All pages preload the body font; only article pages preload the code font. Other uses, such as the QR page's destination link, load the code font through CSS when needed.
+
 Operational commands live in `scripts/deploy.py` and `scripts/image_smoke.py`, outside the shipped application package. The image smoke uses the MCP SDK with bounded loopback HTTP requests and checks image identity, non-root execution, file permissions, HTTP, tools, resources, and prompts. `mise` keeps their public task names stable. Browser tooling keeps its Node dependencies in mise installations; there is no repository Node application or runtime Plotly dependency.
 
 ## Deployment

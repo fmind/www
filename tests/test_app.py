@@ -509,11 +509,18 @@ def test_static_unknown_and_noncanonical_paths_are_not_found(client: AppClient, 
 
 
 def test_font_preloads_share_the_unversioned_font_face_cache_keys(client: AppClient) -> None:
-    response = client.get("/")
+    response = client.get("/articles/the-affordable-ai-agents/")
 
     for path in FONT_PATHS:
         assert f'<link rel="preload" href="{path}"' in response.text
         assert f'href="{path}?v=' not in response.text
+
+
+@pytest.mark.parametrize("path", ["/", "/connect", "/scan", "/articles/", "/sites/"])
+def test_non_article_pages_do_not_preload_the_code_font(client: AppClient, path: str) -> None:
+    response = client.get(path)
+    assert '<link rel="preload" href="/static/fonts/GoogleSans-Variable.woff2"' in response.text
+    assert '<link rel="preload" href="/static/fonts/GoogleSansCode-Variable.woff2"' not in response.text
 
 
 @pytest.mark.parametrize("path", FONT_PATHS)
