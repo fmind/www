@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file.
 
+## [1.8.1] - 2026-09-16
+
+### 🐛 Bug Fixes
+
+- _(ui)_ Add logo to contact and scan page headers
+
 ## [1.8.0] - 2026-09-16
 
 ### 🚀 Features
