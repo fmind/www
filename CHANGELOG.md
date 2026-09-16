@@ -2,6 +2,18 @@
 
 All notable changes to this project are documented in this file.
 
+## [1.7.0] - 2026-09-16
+
+### 🚀 Features
+
+- _(portfolio)_ Refine branding, contact export, and development reload
+- _(portfolio)_ Polish contact flow and reproducible assets
+- _(site)_ Publish agent research tools and reviewed portfolio improvements
+
+### ⚡ Performance
+
+- _(fonts)_ Avoid unused code-font preloads
+
 ## [1.6.0] - 2026-09-14
 
 ### 🚀 Features
