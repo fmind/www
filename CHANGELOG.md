@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented in this file.
 
+## [1.8.0] - 2026-09-16
+
+### 🚀 Features
+
+- _(analytics)_ Add website analytics reporting tool and skill
+
+### 🐛 Bug Fixes
+
+- _(ui)_ Simplify mobile navigation and copy article links
+
 ## [1.7.0] - 2026-09-16
 
 ### 🚀 Features
