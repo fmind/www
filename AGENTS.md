@@ -19,9 +19,12 @@ Python 3.14 server-rendered web application: Litestar + strict Jinja + Tailwind/
 - `mise run check:tofu` — network-dependent backend-free OpenTofu validation and tflint, run in CI on `infra/` changes.
 - `mise run test` — offline pytest suite with branch coverage of at least 85%.
 - `mise run test:browser` — pinned Chromium journeys on desktop and mobile in light mode.
+- `mise run test:browser:cross` — focused Firefox/WebKit journeys; install their binaries with `install:browser:cross` and provision the documented system libraries first. Separate from `all`.
+- `mise run test:lighthouse:local` — managed local server and strict ten-audit portfolio matrix; weekly/manual workflow retains reports.
 - `mise run test:image` — bounded HTTP/MCP smoke test of the already-built production OCI archive.
 - `mise run test:lighthouse -- --base-url <origin> [--mode full|smoke|portfolio]` — strict five-category audit; never part of `all`.
 - `mise run build` — compile CSS and build clean wheel and source distributions.
+- `mise run build:portrait <private-master.jpg>` — export a public JPEG with orientation and ICC profile retained, personal metadata removed; the master must stay outside `static/`.
 - `mise run build:branding` — rebuild logos, favicons, and social previews from the committed PNG masters.
 - `mise run build:images` — reconcile the SHA-256 provenance lock and generate only changed, missing, tampered, or recipe-stale Pillow WebP derivatives.
 - `mise run build:fonts` — re-subset the self-hosted WOFF2 faces from the pinned upstream releases; network-dependent and never part of `all`.
@@ -30,7 +33,7 @@ Python 3.14 server-rendered web application: Litestar + strict Jinja + Tailwind/
 
 `mise run test:lighthouse` expects the pinned Chromium to be present; run `mise run install:browser` first. The harness clearly reports `playwright install chromium` when the browser is absent.
 
-`mise run all` runs sequentially: format, check, the package/CSS build, test, the exact OCI archive build and scan, its runtime smoke test, one Chromium installation, then browser journeys. The image smoke reuses the archive and never builds it; standalone task dependencies are unchanged. The full gate requires a running Docker Engine with Buildx. A fresh checkout requires `mise install`; the first full gate needs network access for Chromium installation, the base-image pull, and scanner database refreshes. No cloud credentials are required. Browser reports and temporary outputs belong under `tmp/`.
+`mise run all` runs sequentially: format, check, the package/CSS build, test, the exact OCI archive build and scan, its runtime smoke test, one Chromium installation, then browser journeys. The image smoke reuses the archive and never builds it; `all` also reuses CSS and package outputs with `--skip-deps` for its test calls, while standalone task dependencies are unchanged. The full gate requires a running Docker Engine with Buildx. A fresh checkout requires `mise install`; the first full gate needs network access for Chromium installation, the base-image pull, and scanner database refreshes. No cloud credentials are required.
 
 ## Layout
 
@@ -69,6 +72,7 @@ Entries are in ASCII order: dotfiles, capitalized files, then lowercase paths.
 
 Important package ownership:
 
+- `agent_discovery.py` owns the public API catalog, skill digest/index, and HTML/Markdown negotiation; `agent_skills/` contains the packaged public visitor skill, separate from `.agents/` maintenance instructions.
 - `app.py` composes immutable startup state, Litestar routes, middleware, static delivery, MCP, and teardown.
 - `assets.py`, `content.py`, and `images.py` load/hash static files, parse/render articles, and generate derivatives.
 - `connect.py` derives the public vCard from portfolio data; `/connect` offers contact actions and `/scan` displays its QR code without indexing.
@@ -78,12 +82,14 @@ Important package ownership:
 - `static.py` owns inventory-bound static delivery and delegates conditional byte ranges to `ranges.py`.
 - `pages.py` builds page metadata; `rendering.py` is the only Jinja environment and reviewed raw-markup boundary.
 - `sites/` separates input parsing and URLs, economics, charts, formatting, immutable sources, and view composition; import from the owning module.
+- `sites/agent.py` validates bounded MCP calculator parameters before delegating to the existing page calculator; invalid input must fail rather than use silent defaults.
 - `publications.py` also owns the canonical portfolio JSON and its serialization schema, shared by HTTP and MCP.
 - `src/www/templates/partials/calculator-script.html` owns calculator interactions; only the calculator page includes it.
 - `src/www/templates/` uses base inheritance, partials, and macros for all HTML page types.
 
 ## Conventions
 
+- Do not create repository-local scratch folders or retain ad hoc review reports. Use an operating-system temporary directory for agent scratch work and remove it when finished.
 - Parse environment, query, Markdown, and protocol input at the boundary; use strict types and fail fast with contextual chained exceptions.
 - Build the validated article collection, static hashes, search index, derived publications, renderer, and MCP server once at application construction. Requests must not observe partial state. Rendering validates immutable trusted markup at construction; MCP discovery is derived from registered primitives during lifespan startup.
 - Keep Jinja `StrictUndefined` and autoescape enabled. Only `src/www/rendering.py` may mark validated article HTML, biography fragments, inline CSS, or guarded JSON-LD as trusted markup.

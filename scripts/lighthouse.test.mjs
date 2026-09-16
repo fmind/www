@@ -282,12 +282,12 @@ test("buildAuditPlan produces the exact smoke and full audit counts", () => {
 });
 
 test("full qualification grows with the sitemap while portfolio mode excludes content bodies", () => {
-  const paths = ["/", "/connect", "/articles/", "/sites/", "/articles/new/", "/sites/tool/"];
+  const paths = ["/", "/connect", "/privacy", "/articles/", "/sites/", "/articles/new/", "/sites/tool/"];
   const full = harness.buildAuditPlan(paths, "full", BASE_URL);
   assert.equal(full.filter((audit) => audit.phase === "sitemap").length, paths.length * 2);
   const portfolio = harness.buildAuditPlan(paths, "portfolio", BASE_URL);
-  assert.equal(portfolio.length, 8);
-  assert.deepEqual([...new Set(portfolio.map((audit) => audit.path))], paths.slice(0, 4));
+  assert.equal(portfolio.length, 10);
+  assert.deepEqual([...new Set(portfolio.map((audit) => audit.path))], paths.slice(0, 5));
   harness.validateSitemapScope(paths, "portfolio");
   assert.throws(
     () => harness.validateSitemapScope(paths.filter((path) => path !== "/connect"), "portfolio"),
@@ -335,4 +335,11 @@ test("sitemap accepts the canonical slashless contact page", () => {
     () => harness.parseSitemapPaths(xml.replace("/connect", "/unexpected"), BASE_URL),
     /must end in a slash/u,
   );
+});
+
+test("sitemap accepts the canonical privacy and agent pages", () => {
+  for (const path of ["/privacy", "/agents"]) {
+    const xml = `<urlset><url><loc>https://www.fmind.dev${path}</loc></url></urlset>`;
+    assert.deepEqual(harness.parseSitemapPaths(xml, BASE_URL).paths, [path]);
+  }
 });

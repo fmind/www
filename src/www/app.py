@@ -19,6 +19,7 @@ from litestar.response import Redirect, Response
 from litestar.types import ASGIApp, Scope
 from mcp.server.transport_security import TransportSecuritySettings
 
+from www.agent_discovery import AGENT_LINKS, AGENT_SKILL_PATH, prefers_markdown, public_skill, render_api_catalog
 from www.assets import ApplicationAssets, StaticResponse, load_application_assets
 from www.config import Config, Environment
 from www.connect import CONNECT_URL, LINKEDIN_URL, render_contact_card
@@ -43,11 +44,13 @@ from www.mcp import create_mcp_server, render_mcp_server_card
 from www.middleware import Logger, SiteMiddleware, trace_fields
 from www.models import PageMetadata, SitePage
 from www.pages import (
+    agents_metadata,
     article_index_metadata,
     article_metadata,
     connect_metadata,
     home_metadata,
     not_found_metadata,
+    privacy_metadata,
     scan_metadata,
     site_index_metadata,
     site_page_metadata,
@@ -58,6 +61,7 @@ from www.publications import (
     article_markdown_index,
     related_article_index,
     render_atom_feed,
+    render_home_markdown,
     render_llms_full,
     render_llms_txt,
     render_profile_json,
@@ -78,7 +82,7 @@ _MCP_MAX_BODY_SIZE = 1 << 20
 # Static ETags and byte ranges describe the on-disk representation. Compressing
 # it afterward invalidates both contracts. Page CSS is inline, so HTML still
 # benefits from Brotli without needing separate encoded static representations.
-_COMPRESSION_EXCLUDE = r"^/(?:(?:mcp|static)(?:/|$)|(?:logo|banner)\.png$)"
+_COMPRESSION_EXCLUDE = r"^/(?:(?:mcp|static)(?:/|$)|(?:(?:logo|banner)\.png|portrait\.jpg)$)"
 _READ_METHODS = (HttpMethod.GET, HttpMethod.HEAD)
 
 type AppRequest = Request[Any, Any, Any]
@@ -226,6 +230,9 @@ def create_app(
     llms = render_llms_txt(public_articles)
     llms_full = render_llms_full(llms, public_articles).encode()
     llms_bytes = llms.encode()
+    home_markdown = render_home_markdown(summaries)
+    api_catalog = render_api_catalog()
+    skill_body, skill_index = public_skill()
     server_card: bytes | None = None
 
     def render_page(
@@ -246,7 +253,7 @@ def create_app(
     async def static_asset(asset_path: FromPath[str], request: AppRequest) -> ASGIApp:
         return await static_asset_response(asset_path, request, application_assets, static_dir)
 
-    @route(["/banner.png", "/logo.png"], http_method=_READ_METHODS)
+    @route(["/banner.png", "/logo.png", "/portrait.jpg"], http_method=_READ_METHODS)
     async def branding_asset(request: AppRequest) -> ASGIApp:
         return await static_asset_response(request.scope["path"], request, application_assets, static_dir)
 
@@ -316,6 +323,36 @@ def create_app(
     def atom_feed() -> Response[bytes]:
         return _static_response(feed, "application/atom+xml; charset=utf-8", _HOUR_CACHE)
 
+    @route("/agents", http_method=_READ_METHODS, sync_to_thread=True)
+    def agents(request: AppRequest) -> Redirect | Response[str]:
+        if _raw_path(request).endswith("/"):
+            return _redirect("/agents")
+        return render_page(request, PageTemplate.AGENTS, agents_metadata())
+
+    @route("/.well-known/api-catalog", http_method=_READ_METHODS, sync_to_thread=False)
+    def catalog() -> Response[bytes]:
+        return _static_response(
+            api_catalog,
+            'application/linkset+json; profile="https://www.rfc-editor.org/info/rfc9727"; charset=utf-8',
+            _HOUR_CACHE,
+            cors=True,
+            extra_headers={"link": AGENT_LINKS},
+        )
+
+    @route("/.well-known/agent-skills/index.json", http_method=_READ_METHODS, sync_to_thread=False)
+    def skills_index() -> Response[bytes]:
+        return _static_response(skill_index, "application/json; charset=utf-8", _HOUR_CACHE, cors=True)
+
+    @route(AGENT_SKILL_PATH, http_method=_READ_METHODS, sync_to_thread=False)
+    def skill() -> Response[bytes]:
+        return _static_response(skill_body, "text/markdown; charset=utf-8", _HOUR_CACHE, cors=True)
+
+    @route("/privacy", http_method=_READ_METHODS, sync_to_thread=True)
+    def privacy(request: AppRequest) -> Redirect | Response[str]:
+        if _raw_path(request).endswith("/"):
+            return _redirect("/privacy")
+        return render_page(request, PageTemplate.PRIVACY, privacy_metadata())
+
     @route("/connect", http_method=_READ_METHODS, sync_to_thread=True)
     def connect(request: AppRequest) -> Redirect | Response[str]:
         if _raw_path(request).endswith("/"):
@@ -368,8 +405,16 @@ def create_app(
             article = article_collection.by_slug.get(slug)
             if article is None or (article.draft and runtime_config.environment is Environment.PRODUCTION):
                 return render_not_found(request)
+            if prefers_markdown(request.headers.get("accept", "")):
+                return _static_response(
+                    markdown_by_slug[slug].encode(),
+                    "text/markdown; charset=utf-8",
+                    _HOUR_CACHE,
+                    cors=True,
+                    extra_headers={"vary": "Accept"},
+                )
             related_sites = tuple(page for page in SITE_PAGES if page.relates_to(article.slug))
-            return render_page(
+            response = render_page(
                 request,
                 PageTemplate.ARTICLE,
                 article_metadata_by_slug[article.slug],
@@ -380,6 +425,9 @@ def create_app(
                     "related_site_pages": related_sites,
                 },
             )
+            response.headers["vary"] = "Accept"
+            response.headers["link"] = f'<{article.markdown_path()}>; rel="alternate"; type="text/markdown"'
+            return response
         if slug.endswith(".md"):
             article_slug = slug.removesuffix(".md")
             article = article_collection.by_slug.get(article_slug)
@@ -427,8 +475,15 @@ def create_app(
         )
 
     @route("/", http_method=_READ_METHODS, sync_to_thread=True)
-    def home(request: AppRequest) -> Response[str]:
-        return render_page(request, PageTemplate.HOME, home_page, home_context)
+    def home(request: AppRequest) -> Response[str] | Response[bytes]:
+        headers = {"vary": "Accept", "link": AGENT_LINKS}
+        if prefers_markdown(request.headers.get("accept", "")):
+            return _static_response(
+                home_markdown, "text/markdown; charset=utf-8", _HOUR_CACHE, cors=True, extra_headers=headers
+            )
+        response = render_page(request, PageTemplate.HOME, home_page, home_context)
+        response.headers.update(headers)
+        return response
 
     @route(
         ["/articles/{slug:str}/{nested_path:path}", "/sites/{slug:str}/{nested_path:path}"],
@@ -447,7 +502,7 @@ def create_app(
         del path
         return render_not_found(request)
 
-    mcp_server = create_mcp_server(summaries, public_search)
+    mcp_server = create_mcp_server(summaries, public_search, public_articles)
     mcp_app = mcp_server.streamable_http_app(
         streamable_http_path="/",
         json_response=True,
@@ -553,6 +608,11 @@ def create_app(
             sitemap_index,
             atom_feed,
             connect,
+            privacy,
+            agents,
+            catalog,
+            skills_index,
+            skill,
             scan,
             contact,
             articles_index,

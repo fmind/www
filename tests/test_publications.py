@@ -147,3 +147,14 @@ def test_absolute_article_html_only_rewrites_root_relative_urls() -> None:
 )
 def test_markdown_response_rewrites_only_rendered_links(source: str, expected: str) -> None:
     assert absolute_markdown_links(source) == expected
+
+
+def test_atom_section_links_target_the_article() -> None:
+    from dataclasses import replace
+
+    item = replace(article("example", 1, "Agent"), html='<h2 id="section">Section<a href="#section">#</a></h2>')
+    feed = ElementTree.fromstring(render_atom_feed((item,)))  # noqa: S314 - trusted serializer output
+    content = feed.find("{http://www.w3.org/2005/Atom}entry/{http://www.w3.org/2005/Atom}content")
+    assert content is not None
+    assert content.text is not None
+    assert f'href="{item.url}#section"' in content.text

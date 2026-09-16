@@ -92,7 +92,7 @@ A deployment alone does not require a semver release. For a deploy-only request,
 
 ## Official Skills
 
-- Use [release](~/.agents/skills/release/SKILL.md) for semver and git-cliff mechanics.
+- Use [git-delivery](~/.agents/skills/git-delivery/SKILL.md) for semver and git-cliff mechanics.
 - Use [production-readiness](~/.agents/skills/production-readiness/SKILL.md) when the release changes runtime risk.
 
 ## Documentation

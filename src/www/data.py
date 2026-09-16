@@ -375,7 +375,7 @@ def get_services() -> tuple[Service, ...]:
             "Get help assessing and designing AI agent platforms, MLOps infrastructure, and security, with a plan for delivery and operations.",
             "🔴 Not available for new missions",
             "error",
-            "✉️ Get in Touch",
+            "Send Email",
             f"mailto:{METADATA.email}",
         ),
         Service(
@@ -384,7 +384,7 @@ def get_services() -> tuple[Service, ...]:
             "Book a paid one-hour session for an architecture review, project advice, or career mentoring in AI and MLOps.",
             "💰 Paid session — 1 hour",
             "info",
-            "📅 Book a Session",
+            "Book Mentoring",
             METADATA.calendar_url,
         ),
     )

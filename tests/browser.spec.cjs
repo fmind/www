@@ -8,9 +8,13 @@ test("portfolio navigation remains usable without JavaScript", async ({ browser 
   try {
     const page = await context.newPage();
     await page.goto("/");
-    const navigation = page.locator("noscript");
-    await expect(page.getByRole("button", { name: "Menu", exact: true })).toBeHidden();
-    await expect(navigation.getByRole("link", { name: "Services", exact: true })).toBeVisible();
+    const navigation = page.getByRole("navigation", { name: "Primary navigation" });
+    if (page.viewportSize().width < 1600) await page.locator("#section-menu summary").click();
+    await page.getByRole("navigation", { name: "Portfolio sections" }).getByRole("link", {
+      name: "Services",
+      exact: true,
+    }).click();
+    await expect(page).toHaveURL(/#services$/);
     await navigation.getByRole("link", { name: "Articles", exact: true }).click();
     await expect(page).toHaveURL(/\/articles\/$/);
     await navigation.getByRole("link", { name: "Sites", exact: true }).click();
@@ -34,6 +38,8 @@ test("published pages render without overflow, missing images, or external asset
   const paths = [
     "/",
     "/connect",
+    "/privacy",
+    "/agents",
     "/articles/",
     "/sites/",
     calculator,
@@ -206,19 +212,20 @@ test("menu remains usable when storage is blocked", async ({ page }) => {
   );
   await page.goto("/");
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
-  await page.locator("#menu-toggle").click();
-  await expect(page.locator("#mobile-menu")).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.locator("#section-menu summary").click();
+  await expect(page.locator("#section-menu nav")).toBeVisible();
   await page.keyboard.press("Escape");
-  await expect(page.locator("#mobile-menu")).toBeHidden();
-  await expect(page.locator("#menu-toggle")).toBeFocused();
+  await expect(page.locator("#section-menu nav")).toBeHidden();
+  await expect(page.locator("#section-menu summary")).toBeFocused();
 });
 
 test("landscape mobile menu scrolls to every destination", async ({ page }) => {
   // The shorter primary menu needs a compact landscape viewport to exercise scrolling.
   await page.setViewportSize({ width: 667, height: 320 });
   await page.goto("/");
-  await page.getByRole("button", { name: "Menu", exact: true }).click();
-  const menu = page.locator("#mobile-menu");
+  await page.locator("#section-menu summary").click();
+  const menu = page.locator("#section-menu nav");
   const bounds = await menu.boundingBox();
   expect(bounds.y + bounds.height).toBeLessThanOrEqual(320);
   const last = menu.getByRole("link").last();
@@ -226,7 +233,7 @@ test("landscape mobile menu scrolls to every destination", async ({ page }) => {
   await expect(last).toBeInViewport();
   expect(await menu.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
   await page.keyboard.press("Escape");
-  await expect(page.getByRole("button", { name: "Menu", exact: true })).toBeFocused();
+  await expect(page.locator("#section-menu summary")).toBeFocused();
 });
 
 test("Theme and CLI appear only in the footer", async ({ page }) => {
@@ -249,10 +256,11 @@ test("Theme and CLI appear only in the footer", async ({ page }) => {
   }
 });
 
-test("homepage presents the headline, six skills, and accessible social header", async ({ page }, testInfo) => {
+test("homepage presents the headline, six skills, and responsive social links", async ({ page }, testInfo) => {
   await page.goto("/");
   await expect(page.locator("header").getByRole("img", { name: "Fmind.dev logo", exact: true })).toBeVisible();
   await expect(page.locator("header a[href='/'] span")).toHaveText("Fmind.dev");
+  await expect(page.locator("header a[href='/'] span")).toBeVisible({ visible: page.viewportSize().width >= 1280 });
   const sections = await page.locator("main section").evaluateAll((items) => items.map((item) => item.id));
   expect(sections).toEqual(["about", "services", "work-experience", "certifications", "projects"]);
   const white = "rgb(255, 255, 255)";
@@ -265,9 +273,9 @@ test("homepage presents the headline, six skills, and accessible social header",
   await expect(page.locator("#services .card").first()).toHaveCSS("background-color", white);
   await expect(page.locator("#work-experience .card-side").first()).toHaveCSS("background-color", gray);
   await expect(page.locator("#projects .card").first()).toHaveCSS("background-color", gray);
-  const project = page.getByRole("link", { name: "Send Email", exact: true });
+  const project = page.getByRole("link", { name: "Send Email", exact: true }).first();
   await expect(project).toHaveAttribute("href", "mailto:contact@fmind.dev");
-  const mentoring = page.getByRole("link", { name: "Book Mentoring", exact: true });
+  const mentoring = page.getByRole("link", { name: "Book Mentoring", exact: true }).first();
   await expect(page.getByText("Mentoring is a paid, one-hour session.", { exact: true })).toHaveCount(0);
   await expect(mentoring).not.toHaveAttribute("aria-describedby");
   await expect(mentoring).toHaveAttribute("href", /^https:\/\/calendar.google.com\//);
@@ -297,7 +305,19 @@ test("homepage presents the headline, six skills, and accessible social header",
   ]);
   await expect(page.locator("#certifications").getByText("Active", { exact: true })).toHaveCount(2);
   await expect(page.locator("#certifications").getByText("Past credential", { exact: true })).toHaveCount(4);
-  const socials = page.getByRole("group", { name: "Social profiles" });
+  const socials = page.locator("header").getByRole("group", { name: "Social profiles" });
+  await expect(page.locator("footer").getByRole("group", { name: "Social profiles" })).toHaveCount(0);
+  const brand = await page.getByRole("link", { name: "Fmind.dev home", exact: true }).boundingBox();
+  const socialBounds = await socials.boundingBox();
+  expect(brand.x + brand.width).toBeLessThanOrEqual(socialBounds.x);
+  expect(Math.abs(brand.y + brand.height / 2 - socialBounds.y - socialBounds.height / 2)).toBeLessThan(1);
+  if (page.viewportSize().width < 1280) {
+    const portfolio = await page.getByRole("navigation", { name: "Primary navigation" })
+      .getByRole("link", { name: "Portfolio", exact: true }).boundingBox();
+    expect(Math.abs(portfolio.y + portfolio.height / 2 - socialBounds.y - socialBounds.height / 2)).toBeLessThan(1);
+    expect(portfolio.x + portfolio.width).toBeLessThanOrEqual(socialBounds.x);
+    await expect(page.locator("#section-menu summary")).toHaveAccessibleName("On this page");
+  }
   const profiles = {
     "LinkedIn": "https://www.linkedin.com/in/fmind-dev/",
     "GitHub": "https://github.com/fmind",
@@ -314,12 +334,14 @@ test("homepage presents the headline, six skills, and accessible social header",
     expect(await link.evaluate((element) => getComputedStyle(element).color)).toBe(
       "rgb(32, 33, 36)",
     );
-    expect(bounds.width).toBe(20);
-    expect(bounds.height).toBe(20);
+    const iconSize = page.viewportSize().width < 640 ? 16 : 20;
+    expect(bounds.width).toBe(iconSize);
+    expect(bounds.height).toBe(iconSize);
     const target = await link.boundingBox();
-    expect(target.width).toBeGreaterThanOrEqual(40);
+    expect(target.width).toBeGreaterThanOrEqual(page.viewportSize().width < 640 ? 24 : 44);
     expect(target.height).toBeGreaterThanOrEqual(40);
   }
+  await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({ path: testInfo.outputPath("home-header.png") });
   await page.locator("#about").scrollIntoViewIfNeeded();
   const biography = await page.locator("#about .prose").boundingBox();
@@ -327,6 +349,8 @@ test("homepage presents the headline, six skills, and accessible social header",
   await page.screenshot({ path: testInfo.outputPath("home-about.png") });
   const footer = page.locator("footer");
   await expect(footer.locator("a[href^=\"https://\"]")).toHaveCount(2);
+  // Resolve deferred section heights before inspecting the footer position.
+  for (const section of await page.locator("main section").all()) await section.scrollIntoViewIfNeeded();
   await footer.scrollIntoViewIfNeeded();
   const rows = await footer.locator("p, nav").evaluateAll((elements) =>
     elements.map((element) => {
@@ -540,7 +564,7 @@ test("Fmind palette reaches page surfaces, controls, charts, and code", async ({
   await expect(page.locator("body")).toHaveCSS("color", "rgb(32, 33, 36)");
   await expect(page.locator("h1")).toHaveCSS("color", "rgb(23, 78, 166)");
   await expect(page.locator("footer")).toHaveCSS("background-color", "rgb(241, 243, 244)");
-  const button = page.getByRole("link", { name: "Book Mentoring", exact: true });
+  const button = page.getByRole("link", { name: "Book Mentoring", exact: true }).first();
   await expect(button).toHaveCSS("background-color", "rgb(23, 78, 166)");
   await expect(button).toHaveCSS("color", "rgb(255, 255, 255)");
   await button.focus();
@@ -596,6 +620,7 @@ test("footer stays compact with ordered discovery links", async ({ page }) => {
     "Connect",
     "JSON Profile",
     "For AI Agents",
+    "Privacy",
     "Theme",
     "CLI",
   ]);
@@ -605,7 +630,8 @@ test("footer stays compact with ordered discovery links", async ({ page }) => {
       "/scan",
       "/connect",
       "/api/profile",
-      "/llms.txt",
+      "/agents",
+      "/privacy",
       "https://github.com/fmind/theme",
       "https://github.com/fmind/cli",
     ]);
@@ -627,13 +653,34 @@ test("narrow screens reflow and keep navigation reachable", async ({ page }, tes
   for (const path of ["/", "/articles/", "/sites/", "/sites/llm-self-hosting/"]) {
     await page.goto(path);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    const menu = page.getByRole("button", { name: "Menu", exact: true });
-    await menu.click();
-    await expect(page.locator("#mobile-menu")).toBeInViewport();
-    await page.keyboard.press("Escape");
-    await expect(menu).toBeFocused();
-    for (const link of await page.getByRole("group", { name: "Social profiles" }).getByRole("link").all()) {
-      await expect(link).toBeInViewport();
+    const navigation = page.getByRole("navigation", { name: "Primary navigation" });
+    for (const name of ["Portfolio", "Articles", "Sites"]) {
+      await expect(navigation.getByRole("link", { name, exact: true })).toBeInViewport();
+    }
+    const headerLinks = navigation.locator("a").filter({ visible: true });
+    const boxes = await headerLinks.evaluateAll((links) =>
+      links.map((link) => {
+        const { x, y, width, height } = link.getBoundingClientRect();
+        return { x, right: x + width, center: y + height / 2 };
+      })
+    );
+    expect(boxes).toHaveLength(9);
+    for (const box of boxes) {
+      expect(box.x).toBeGreaterThanOrEqual(12);
+      expect(box.right).toBeLessThanOrEqual(308);
+      expect(box.center).toBe(boxes[0].center);
+    }
+    for (let index = 1; index < boxes.length; index++) {
+      expect(boxes[index].x).toBeGreaterThanOrEqual(boxes[index - 1].right);
+    }
+    if (path === "/") {
+      const menu = page.locator("#section-menu summary");
+      await menu.click();
+      await expect(page.locator("#section-menu nav")).toBeInViewport();
+      await page.keyboard.press("Escape");
+      await expect(menu).toBeFocused();
+    } else {
+      await expect(page.getByRole("navigation", { name: "Portfolio sections" })).toHaveCount(0);
     }
     // Visit deferred homepage sections as a reader would before reaching the footer.
     if (path === "/") {
@@ -646,4 +693,177 @@ test("narrow screens reflow and keep navigation reachable", async ({ page }, tes
   expect(errors).toEqual([]);
   await page.goto("/");
   await page.screenshot({ path: testInfo.outputPath("home-320.png") });
+  for (
+    const [width, wordmarkVisible] of [[390, false], [480, true], [540, true], [640, false], [820, true], [840, true], [
+      1024,
+      true,
+    ]]
+  ) {
+    await page.setViewportSize({ width, height: 740 });
+    const primary = page.getByRole("navigation", { name: "Primary navigation" });
+    const brand = page.getByRole("link", { name: "Fmind.dev home", exact: true });
+    await expect(brand.locator("span")).toBeVisible({ visible: wordmarkVisible });
+    const brandBounds = await brand.boundingBox();
+    const first = await primary.getByRole("link", { name: "Portfolio", exact: true }).boundingBox();
+    const last = await primary.getByRole("link", { name: "Sites", exact: true }).boundingBox();
+    const socials = await primary.getByRole("group", { name: "Social profiles" }).boundingBox();
+    const linksWidth = last.x + last.width - first.x;
+    expect(first.x).toBeGreaterThan(brandBounds.x + brandBounds.width);
+    expect(last.x + last.width).toBeLessThan(socials.x);
+    if (width === 480 || width === 540 || width >= 840) {
+      expect(first.x + linksWidth / 2).toBeCloseTo(width / 2, 0);
+    } else {
+      // When the social group prevents exact centering, use the nearest free position.
+      expect(socials.x - last.x - last.width).toBeLessThanOrEqual(8);
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width);
+  }
+});
+
+test("section links, privacy, and browser-only presentation", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.locator("link[rel=\"manifest\"]")).toHaveCount(0);
+  await expect(page.locator("#services").getByRole("link", { name: "Send Email", exact: true })).toHaveAttribute(
+    "href",
+    "mailto:contact@fmind.dev",
+  );
+  await expect(page.locator("#services").getByRole("link", { name: "Book Mentoring", exact: true })).toHaveAttribute(
+    "href",
+    /^https:\/\/calendar.google.com\//,
+  );
+  const credentials = page.locator("[data-hero-headline] > span").nth(1);
+  await expect(credentials.locator("span").first()).toHaveText("PhD • VC Expert Advisor");
+  await page.locator("footer").getByRole("link", { name: "Privacy", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Privacy", exact: true })).toBeVisible();
+  await expect(page.locator("script:not([type=\"application/ld+json\"])")).toHaveCount(0);
+  await page.goto("/articles/cag-vs-rag-choosing-the-right-strategy-for-your-ai-application/");
+  const anchor = page.locator(".heading-anchor").first();
+  const fragment = await anchor.getAttribute("href");
+  await anchor.click();
+  await expect(page).toHaveURL(new RegExp(fragment + "$"));
+  await page.reload();
+  await expect(page.locator(fragment)).toBeInViewport();
+});
+
+test("section navigation follows clicks, scrolling, and direct links", async ({ page }, testInfo) => {
+  await page.goto("/");
+  const mobile = page.viewportSize().width < 1600;
+  const navigation = page.getByRole("navigation", { name: "Portfolio sections" });
+  if (!mobile) {
+    const hero = page.locator("main .hero");
+    const initial = await hero.boundingBox();
+    expect(initial.x).toBe(0);
+    expect(initial.width).toBe(page.viewportSize().width);
+    await expect(navigation).toHaveCSS("width", "192px");
+    await expect(navigation.getByRole("link", { name: "About", exact: true }).locator("span").last()).toHaveCSS(
+      "opacity",
+      "1",
+    );
+    await navigation.getByRole("link", { name: "About", exact: true }).focus();
+    expect(await hero.boundingBox()).toEqual(initial);
+    await page.getByRole("link", { name: "Fmind.dev home", exact: true }).focus();
+    await expect(navigation).toHaveCSS("width", "192px");
+  }
+  if (mobile) await page.locator("#section-menu summary").click();
+  await navigation.getByRole("link", { name: "Services", exact: true }).click();
+  await expect(page).toHaveURL(/#services$/);
+  if (mobile) {
+    await expect(page.locator("#section-menu")).not.toHaveAttribute("open");
+    await expect(page.locator("#services")).toBeFocused();
+  }
+  const links = page.locator("[data-section-link][href=\"/#services\"]");
+  await expect(links.first()).toHaveAttribute("aria-current", "location");
+  const header = await page.locator("header").boundingBox();
+  const services = await page.locator("#services").boundingBox();
+  expect(services.y).toBeGreaterThanOrEqual(header.y + header.height);
+  if (!mobile) {
+    const bounds = await navigation.boundingBox();
+    expect(bounds.x).toBeGreaterThanOrEqual(0);
+    expect(bounds.width).toBeLessThanOrEqual(192);
+    expect(services.x).toBe(0);
+    expect(services.width).toBe(page.viewportSize().width);
+    await expect(navigation).toBeInViewport();
+  }
+  await page.locator("#work-experience").evaluate((section) => section.scrollIntoView());
+  await expect(page.locator("[data-section-link][href=\"/#work-experience\"]").first()).toHaveAttribute(
+    "aria-current",
+    "location",
+  );
+  await page.screenshot({ path: testInfo.outputPath("section-navigation.png") });
+  await page.goto("/#projects");
+  await expect.poll(async () => {
+    const target = await page.locator("#projects").boundingBox();
+    const top = await page.locator("header").boundingBox();
+    return target.y - top.y - top.height;
+  }).toBeGreaterThanOrEqual(0);
+  await expect.poll(async () => {
+    const target = await page.locator("#projects").boundingBox();
+    const top = await page.locator("header").boundingBox();
+    return target.y - top.y - top.height;
+  }).toBeLessThanOrEqual(24);
+  await expect(page.locator("[data-section-link][href=\"/#projects\"]").first()).toHaveAttribute(
+    "aria-current",
+    "location",
+  );
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await expect(page.locator("[data-section-link][aria-current]")).toHaveCount(0);
+  const primary = page.getByRole("navigation", { name: "Primary navigation" });
+  await primary.getByRole("link", { name: "Articles", exact: true }).click();
+  await expect(primary.getByRole("link", { name: "Articles", exact: true })).toHaveAttribute("aria-current", "page");
+  await expect(page.locator("[data-section-link]")).toHaveCount(0);
+  await primary.getByRole("link", { name: "Sites", exact: true }).click();
+  await expect(primary.getByRole("link", { name: "Sites", exact: true })).toHaveAttribute("aria-current", "page");
+});
+
+test("section navigation never covers portfolio text", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  for (const width of [1024, 1280, 1440, 1600, 1920]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/#about");
+    const rail = page.locator("aside");
+    if (width < 1600) {
+      await expect(rail).toBeHidden();
+      await expect(page.locator("#section-menu summary")).toBeVisible();
+    } else {
+      await expect(rail).toBeVisible();
+      const railBounds = await rail.boundingBox();
+      for (const section of ["#about", "#work-experience", "#certifications", "#projects"]) {
+        for (const element of await page.locator(`${section} p, ${section} h3, ${section} h4`).all()) {
+          // Measure actual text, not a full-width box with centered content.
+          const textRects = await element.evaluate((element) => {
+            const range = document.createRange();
+            range.selectNodeContents(element);
+            return [...range.getClientRects()].filter((rect) => rect.width > 0).map((rect) => rect.x);
+          });
+          for (const x of textRects) {
+            expect(x, `${width}px ${section}`).toBeGreaterThan(railBounds.x + railBounds.width);
+          }
+        }
+      }
+    }
+  }
+});
+
+test("homepage availability is visible beside the primary actions", async ({ page }) => {
+  await page.goto("/");
+  const availability = page.locator("[data-availability]");
+  await expect(availability).toContainText("Not available for new missions");
+  await expect(availability).toContainText("Paid session");
+  const actions = page.locator(".hero").getByRole("link", { name: "Book Mentoring", exact: true });
+  await actions.scrollIntoViewIfNeeded();
+  await expect(availability).toBeInViewport();
+});
+
+test("agent guide connects visitors to the calculator and verified skill", async ({ page, request }) => {
+  await page.goto("/");
+  await page.getByRole("link", { name: "For AI Agents", exact: true }).click();
+  await expect(page).toHaveURL(/\/agents$/);
+  await expect(page.getByRole("heading", { name: "For AI agents", exact: true })).toBeVisible();
+  const index = await (await request.get("/.well-known/agent-skills/index.json")).json();
+  const skill = await request.get(new URL(index.skills[0].url).pathname);
+  expect(skill.status()).toBe(200);
+  const { createHash } = require("node:crypto");
+  expect(index.skills[0].digest).toBe("sha256:" + createHash("sha256").update(await skill.body()).digest("hex"));
+  await page.getByRole("link", { name: "calculator's shareable URLs" }).click();
+  await expect(page).toHaveURL(/\/sites\/llm-self-hosting\/$/);
 });

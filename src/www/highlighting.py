@@ -104,7 +104,7 @@ _CHROMA_CLASSES: Final = frozenset(
 )
 
 # Keep the existing token-class contract with native Fmind styles. Roles follow
-# fmind/theme's checks/palette.yaml and ptpython/fmind.py; no sibling checkout
+# fmind/theme's checks/palette.yaml and themes/ptpython/fmind.py; no sibling checkout
 # or second style inheritance engine is needed to build the website.
 _CHROMA_CSS_RULES: Final = (
     ("Background", ".bg", "color: #202124; background-color: #ffffff"),

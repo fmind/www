@@ -253,7 +253,7 @@ def test_renderer_renders_all_six_pages_with_real_domain_contexts() -> None:
     }
 
     markers = {
-        PageTemplate.HOME: '<section class="py-16 md:py-24 bg-base-100 overflow-hidden px-4" id="about">',
+        PageTemplate.HOME: '<section class="py-16 md:py-24 bg-base-100 overflow-hidden px-4" id="about" tabindex="-1">',
         PageTemplate.ARTICLES: '<h1 class="text-4xl md:text-6xl font-heading font-bold text-balance">Articles</h1>',
         PageTemplate.ARTICLE: f'<h1 class="font-heading text-4xl md:text-6xl font-bold leading-tight text-balance mt-6">{article.title}</h1>',
         PageTemplate.SITES: '<h1 class="text-4xl md:text-6xl font-heading font-bold text-balance">Sites</h1>',
@@ -262,7 +262,9 @@ def test_renderer_renders_all_six_pages_with_real_domain_contexts() -> None:
     }
     for template, html in rendered.items():
         assert html.startswith("<!DOCTYPE html>")
-        assert html.count(f'<script nonce="{nonce}">') == 1
+        assert html.count(f'<script nonce="{nonce}">') == int(
+            template in {PageTemplate.HOME, PageTemplate.LLM_SELF_HOSTING}
+        )
         assert html.count(f'<style nonce="{nonce}">') == 1
         assert 'data-theme="light"' in html
         assert '<meta name="color-scheme" content="light"/>' in html

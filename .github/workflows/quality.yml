@@ -1,0 +1,65 @@
+# https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax
+name: Browser and Lighthouse qualification
+on:
+  schedule:
+    - cron: "41 6 * * 2"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: quality-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  browsers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4
+        with:
+          install: false
+          cache: true
+      - name: Install pinned tools
+        run: mise install --locked -y aqua:astral-sh/uv python node github:dobicinaitis/tailwind-cli-extra npm:playwright
+      - name: Install Python dependencies
+        run: uv sync --locked --all-groups
+      - name: Install browser binaries and ephemeral runner libraries
+        run: mise run install:browser:cross -- --with-deps
+      - name: Exercise Firefox and WebKit
+        run: mise run test:browser:cross
+      - name: Retain browser evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: cross-browser-results
+          path: tmp/cross-browser-results
+          retention-days: 14
+  lighthouse:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4
+        with:
+          install: false
+          cache: true
+      - name: Install pinned tools
+        run: mise install --locked -y aqua:astral-sh/uv python node github:dobicinaitis/tailwind-cli-extra npm:playwright npm:lighthouse
+      - name: Install Python dependencies
+        run: uv sync --locked --all-groups
+      - name: Install Chromium
+        run: mise run install:browser
+      - name: Qualify local portfolio pages
+        run: mise run test:lighthouse:local
+      - name: Retain exact Lighthouse reports
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: lighthouse-portfolio
+          path: tmp/lighthouse
+          retention-days: 14
+          if-no-files-found: error

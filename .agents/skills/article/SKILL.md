@@ -28,10 +28,7 @@ Published bodies are immutable unless the owner explicitly authorizes a revision
 1. Run local gates:
 
    ```bash
-   mise run format
-   mise run check
-   mise run test
-   mise run test:browser
+   mise run all
    ```
 
    Add legitimate spelling exceptions to `typos.toml`; never weaken or skip the check.

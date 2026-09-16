@@ -313,13 +313,20 @@ a.tag:hover {
   text-decoration-color: currentcolor;
 }
 
-#about,
-#work-experience,
-#certifications,
-#projects,
-#services {
+/* Long archives need not lay out every off-screen card on first paint. */
+.article-index article.card {
+  content-visibility: auto;
+  contain-intrinsic-block-size: auto 36rem;
+}
+
+.portfolio-content > section {
   content-visibility: auto;
   contain-intrinsic-size: auto 1200px;
+}
+
+/* Native fragment jumps need real preceding heights, including without JS. */
+.portfolio-content:has(> section:target) > section {
+  content-visibility: visible;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -336,4 +343,39 @@ a.tag:hover {
     transition-delay: 0ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* Always visible on touch screens and independently focusable by keyboard. */
+.article-page .heading-anchor {
+  display: inline-block;
+  margin-inline-start: 0.5em;
+  padding-inline: 0.2em;
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.article-page .heading-anchor:hover {
+  text-decoration: underline;
+}
+
+/* Keep linked sections below the sticky header. */
+.portfolio-content section[id] {
+  scroll-margin-top: 5rem;
+}
+
+.section-link[aria-current='location'] {
+  background-color: var(--color-selection);
+  border-left-color: var(--color-muted);
+  color: var(--color-base-content);
+  font-weight: 600;
+}
+
+.section-rail-link[aria-current='location'] {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.section-rail-link[aria-current='location'] .section-marker {
+  background-color: var(--color-primary);
+  height: 1.5rem;
 }

@@ -35,6 +35,8 @@ class PageTemplate(StrEnum):
     HOME = "pages/home.html"
     CONNECT = "pages/connect.html"
     SCAN = "pages/scan.html"
+    AGENTS = "pages/agents.html"
+    PRIVACY = "pages/privacy.html"
     ARTICLES = "pages/articles.html"
     ARTICLE = "pages/article.html"
     SITES = "pages/sites.html"

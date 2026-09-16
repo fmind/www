@@ -59,6 +59,7 @@ def test_human_pages_render_complete_no_cache_documents(client: AppClient) -> No
     cases = {
         "/": ("Médéric Hurier", 200),
         "/connect": ("Connect on LinkedIn", 200),
+        "/privacy": ("Aggregate visit statistics", 200),
         "/scan": ("Médéric Hurier", 200),
         "/articles/": ("Articles", 200),
         "/articles/the-affordable-ai-agents/": ("The Affordable AI Agents", 200),
@@ -154,6 +155,30 @@ def test_brand_downloads_serve_full_resolution_pngs(client: AppClient, name: str
     cached = client.get(path, headers={"if-none-match": response.headers["etag"]})
     assert cached.status_code == 304
     assert cached.content == b""
+
+
+@pytest.mark.parametrize("path", ["/portrait.jpg", "/static/portrait.jpg"])
+def test_portrait_download_serves_sanitized_jpeg(client: AppClient, path: str) -> None:
+    response = client.get(path, headers={"accept-encoding": "br, gzip"})
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "image/jpeg"
+    assert "content-encoding" not in response.headers
+    assert response.content == Path("static/portrait.jpg").read_bytes()
+    with Image.open(BytesIO(response.content)) as portrait:
+        assert portrait.format == "JPEG"
+        assert not portrait.getexif()
+        assert not {"xmp", "photoshop", "comment"}.intersection(portrait.info)
+
+    head = client.head("/portrait.jpg")
+    assert head.status_code == 200
+    assert head.content == b""
+    assert head.headers["content-length"] == str(len(response.content))
+    cached = client.get("/portrait.jpg", headers={"if-none-match": response.headers["etag"]})
+    assert cached.status_code == 304
+    partial = client.get("/portrait.jpg", headers={"range": "bytes=0-99", "accept-encoding": "br, gzip"})
+    assert partial.status_code == 206
+    assert partial.content == response.content[:100]
+    assert "content-encoding" not in partial.headers
 
 
 def test_branding_uses_small_navigation_asset_and_banner_preview(client: AppClient) -> None:

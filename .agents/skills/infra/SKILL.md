@@ -81,7 +81,7 @@ Use `path`, `referer`, or `TIMESTAMP_TRUNC(timestamp, DAY)` for other aggregates
 
 ## Official Skills
 
-- Use [terraform](~/.agents/skills/terraform/SKILL.md) for OpenTofu conventions.
+- Use [infra-as-code](~/.agents/skills/infra-as-code/SKILL.md) for OpenTofu conventions.
 - Use [gcloud](~/.agents/skills/gcloud/SKILL.md) for pinned-account Google Cloud operations.
 
 ## Documentation

@@ -245,14 +245,29 @@ def _normalize_headings(tokens: Sequence[Token]) -> None:
                     token.tag = f"h{min(6, int(token.tag[1]) + shift)}"
 
     seen: dict[str, int] = {}
+    identifiers: set[str] = set()
     for index, token in enumerate(tokens):
         if token.type != "heading_open" or index + 1 >= len(tokens):
             continue
         inline = tokens[index + 1]
         base = _heading_slug(inline.content)
         count = seen.get(base, 0)
+        identifier = base if count == 0 else f"{base}-{count}"
+        # A literal heading such as "Setup-1" can collide with a repeat of "Setup".
+        while identifier in identifiers:
+            count += 1
+            identifier = f"{base}-{count}"
         seen[base] = count + 1
-        token.attrSet("id", base if count == 0 else f"{base}-{count}")
+        identifiers.add(identifier)
+        token.attrSet("id", identifier)
+        # Append a separate link so authored links inside headings never nest.
+        link = Token("link_open", "a", 1)
+        link.attrSet("href", f"#{identifier}")
+        link.attrSet("class", "heading-anchor")
+        link.attrSet("aria-label", f"Link to section: {inline.content}")
+        marker = Token("text", "", 0)
+        marker.content = "#"
+        inline.children = [*(inline.children or []), link, marker, Token("link_close", "a", -1)]
 
 
 def _normalize_goldmark_three_backslashes(tokens: Sequence[Token]) -> None:

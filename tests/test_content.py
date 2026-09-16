@@ -419,3 +419,29 @@ def test_real_archive_loads_and_has_no_public_drafts() -> None:
             level = int(raw_level)
             assert level <= previous_level + 1, f"{item.slug}: h{previous_level} followed by h{level}"
             previous_level = level
+
+
+@pytest.mark.parametrize("body", ["## Setup\n\n## Setup-1\n\n## Setup", "## Setup\n\n## Setup\n\n## Setup-1"])
+def test_heading_links_do_not_collide_with_literal_suffixes(tmp_path: Path, body: str) -> None:
+    item = parse_article("content/articles/example.md", source(body), assets(tmp_path))
+    identifiers = re.findall(r'<h2 id="([^"]+)">', item.html)
+    assert len(identifiers) == len(set(identifiers)) == 3
+    for identifier in identifiers:
+        assert item.html.count(f'href="#{identifier}"') == 1
+
+
+def test_heading_links_preserve_formatting_and_authored_links(tmp_path: Path) -> None:
+    item = parse_article(
+        "content/articles/example.md",
+        source("## A **bold** [link](https://example.com)\n\n## A **bold** [link](https://example.com)"),
+        assets(tmp_path),
+    )
+    headings = re.findall(r'<h2 id="([^"]+)">(.*?)</h2>', item.html)
+    assert len(headings) == 2
+    for identifier, heading in headings:
+        assert f'href="#{identifier}" class="heading-anchor"' in heading
+        assert 'aria-label="Link to section:' in heading
+        assert "<strong>bold</strong>" in heading
+        assert '<a href="https://example.com">link</a>' in heading
+        assert heading.count("<a ") == heading.count("</a>") == 2
+    assert headings[0][0] != headings[1][0]

@@ -60,7 +60,6 @@
     <link rel="apple-touch-icon" sizes="180x180" href="{{ static_url('static/img/favicons/apple-touch-icon.png') }}"/>
     <link rel="icon" type="image/png" sizes="32x32" href="{{ static_url('static/img/favicons/favicon-32x32.png') }}"/>
     <link rel="icon" type="image/png" sizes="16x16" href="{{ static_url('static/img/favicons/favicon-16x16.png') }}"/>
-    <link rel="manifest" href="{{ static_url('static/site.webmanifest') }}"/>
     <style nonce="{{ nonce }}">{{ style_css }}</style>
     <script type="application/ld+json">{{ page.structured_data }}</script>
   </head>
@@ -73,35 +72,13 @@
       {% block content %}{% endblock %}
     </main>
     {% block footer %}{% include "partials/footer.html" %}{% endblock %}
-    <script nonce="{{ nonce }}">
-      (function () {
-        var menuBtn = document.getElementById('menu-toggle');
-        var menu = document.getElementById('mobile-menu');
-        if (menuBtn && menu) {
-          menuBtn.classList.remove('hidden');
-          var setOpen = function (open) {
-            menu.classList.toggle('hidden', !open);
-            menuBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
-          };
-          menuBtn.addEventListener('click', function (e) {
-            e.stopPropagation();
-            setOpen(menu.classList.contains('hidden'));
-          });
-          document.addEventListener('click', function (e) {
-            if (!menu.contains(e.target) && !menuBtn.contains(e.target)) setOpen(false);
-          });
-          document.addEventListener('keydown', function (e) {
-            if (e.key === 'Escape' && !menu.classList.contains('hidden')) {
-              setOpen(false);
-              menuBtn.focus();
-            }
-          });
-          menu.querySelectorAll('a').forEach(function (a) {
-            a.addEventListener('click', function () { setOpen(false); });
-          });
-        }
-        {% block page_scripts %}{% endblock %}
-      })();
-    </script>
+    {% set interaction_script %}{% block page_scripts %}{% endblock %}{% endset %}
+    {% if interaction_script|trim %}
+      <script nonce="{{ nonce }}">
+        (function () {
+          {{ interaction_script }}
+        })();
+      </script>
+    {% endif %}
   </body>
 </html>

@@ -1,7 +1,14 @@
 {% extends "base.html" %}
 {% from "macros/icons.html" import icon %}
 {% block content %}
-  <div>
+  <aside class="fixed left-2 top-24 z-30 hidden min-[1600px]:block">
+    <nav class="section-rail w-48 max-h-[calc(100dvh-7rem)] overflow-x-hidden overflow-y-auto rounded-2xl border border-primary/10 bg-base-100/65 backdrop-blur-md shadow-sm transition-colors duration-150 hover:bg-base-100/90 focus-within:bg-base-100/90" aria-label="Portfolio sections">
+      {% with overlay=true %}
+        {% include "partials/section-links.html" %}
+      {% endwith %}
+    </nav>
+  </aside>
+  <div class="min-w-0 portfolio-content">
     <div class="hero min-h-screen bg-base-200 relative overflow-hidden flex items-center justify-center">
       <div class="hero-content text-center z-10 relative px-4">
         <div class="max-w-5xl">
@@ -12,23 +19,24 @@
           </div>
           <h1 class="text-5xl md:text-7xl font-heading font-semibold text-balance mb-4 text-primary select-text">{{ metadata.name }} <span class="font-normal">({{ metadata.alternate_name }})</span></h1>
           <p data-hero-headline class="text-lg md:text-2xl font-heading font-medium text-base-content/80 mb-10 max-w-5xl mx-auto leading-relaxed select-text">
-            {% for line in [metadata.headline_primary, metadata.headline_secondary] %}
-              {% set first, separator, rest = line.partition(' • ') %}
-              <span class="block text-balance"><span class="block sm:inline">{{ first }}</span><span class="hidden sm:inline">{{ separator }}</span>{{ rest }}</span>
-            {% endfor %}
+            {% set first, separator, rest = metadata.headline_primary.partition(' • ') %}
+            <span class="block text-balance"><span class="block sm:inline">{{ first }}</span><span class="hidden sm:inline">{{ separator }}</span>{{ rest }}</span>
+            {% set first, separator, rest = metadata.headline_secondary.rpartition(' • ') %}
+            <span class="block text-balance"><span class="inline-block whitespace-nowrap">{{ first }}</span><span class="hidden sm:inline">{{ separator }}</span><span class="block sm:inline whitespace-nowrap">{{ rest }}</span></span>
           </p>
           <div class="flex flex-wrap justify-center gap-4 md:gap-8">
             <a class="btn btn-lg bg-primary/5 hover:bg-primary/10 text-primary border border-primary/20 rounded-xl shadow-lg hover:scale-105 active:scale-95 transition-transform hover:shadow-xl hover:shadow-primary/10 px-6 py-3 font-semibold" href="mailto:{{ metadata.email }}">Send Email</a>
             <a class="btn btn-primary btn-lg bg-primary text-primary-content border-none rounded-xl shadow-lg ring-2 ring-primary/40 hover:scale-105 active:scale-95 transition-transform hover:shadow-xl hover:shadow-primary/20 px-6 py-3 font-semibold" href="{{ metadata.calendar_url }}" target="_blank" rel="noopener noreferrer">Book Mentoring</a>
           </div>
-          <div class="mt-16 animate-bounce flex justify-center">
+          <p data-availability class="mt-4 text-sm text-muted">Consulting: {{ services[0].badge.partition(' ')[2] }}. Mentoring: {{ services[1].badge.partition(' ')[2] }}.</p>
+          <div class="mt-12 animate-bounce flex justify-center">
             <a class="text-primary hover:text-primary-focus transition-colors duration-300" href="#about" aria-label="Scroll to About section">{{ icon("arrow_down", "h-10 w-10") }}</a>
           </div>
         </div>
       </div>
     </div>
 
-    <section class="py-16 md:py-24 bg-base-100 overflow-hidden px-4" id="about">
+    <section class="py-16 md:py-24 bg-base-100 overflow-hidden px-4" id="about" tabindex="-1">
       <div class="container mx-auto">
         <div class="text-center mb-12">
           <h2 class="text-4xl md:text-5xl font-heading font-bold mb-4 text-base-content">About <span class="text-primary">Me</span></h2>
@@ -58,7 +66,7 @@
       </div>
     </section>
 
-    <section class="py-16 md:py-24 bg-base-200 overflow-hidden relative px-4" id="services">
+    <section class="py-16 md:py-24 bg-base-200 overflow-hidden relative px-4" id="services" tabindex="-1">
       <div class="container mx-auto">
         <div class="text-center mb-10 md:mb-16">
           <h2 class="text-4xl md:text-5xl font-heading font-bold mb-4 text-base-content">My <span class="text-primary">Services</span></h2>
@@ -82,7 +90,7 @@
       </div>
     </section>
 
-    <section class="py-16 md:py-24 bg-base-100 px-4" id="work-experience">
+    <section class="py-16 md:py-24 bg-base-100 px-4" id="work-experience" tabindex="-1">
       <div class="container mx-auto">
         <div class="text-center mb-10 md:mb-16">
           <h2 class="text-4xl md:text-5xl font-heading font-bold mb-4 text-base-content">Work <span class="text-primary">Experience</span></h2>
@@ -122,7 +130,7 @@
       </div>
     </section>
 
-    <section class="py-16 md:py-24 bg-base-200 px-4" id="certifications">
+    <section class="py-16 md:py-24 bg-base-200 px-4" id="certifications" tabindex="-1">
       <div class="container mx-auto">
         <div class="text-center mb-10 md:mb-16">
           <h2 class="text-4xl md:text-5xl font-heading font-bold mb-4 text-primary">Certifications</h2>
@@ -145,7 +153,7 @@
       </div>
     </section>
 
-    <section class="py-16 md:py-24 bg-base-100 px-4" id="projects">
+    <section class="py-16 md:py-24 bg-base-100 px-4" id="projects" tabindex="-1">
       <div class="container mx-auto">
         <div class="text-center mb-10 md:mb-16">
           <h2 class="text-4xl md:text-5xl font-heading font-bold mb-4 text-primary">Projects</h2>
@@ -186,4 +194,7 @@
     </section>
 
   </div>
+{% endblock %}
+{% block page_scripts %}
+  {% include "partials/section-script.html" %}
 {% endblock %}

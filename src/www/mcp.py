@@ -29,6 +29,7 @@ from www.data import (
     get_services,
 )
 from www.models import (
+    Article,
     ArticleSummary,
     CertificationBadge,
     CertificationEntry,
@@ -42,8 +43,9 @@ from www.models import (
     Thesis,
     WorkExperience,
 )
-from www.publications import render_profile_json
+from www.publications import article_sections, render_article_markdown, render_profile_json
 from www.search import SearchIndex, normalize_search_query
+from www.sites.agent import HostingResult, compare_hosting
 
 MCP_PROTOCOL_VERSION = "2026-07-28"
 MCP_PROFILE_URI = "portfolio://profile.json"
@@ -167,21 +169,41 @@ class SearchArticlesResult(_ResultModel):
     total: int
 
 
+class ArticleResult(_ResultModel):
+    article: ArticleSummary
+    canonical_url: str
+    markdown: str
+    sections: tuple[dict[str, str], ...]
+
+
 def build_version() -> str:
     """Return the package version in the server implementation format."""
     return f"v{version('www')}"
 
 
-def create_mcp_server(articles: tuple[ArticleSummary, ...], index: SearchIndex) -> MCPServer[None]:
+def create_mcp_server(
+    articles: tuple[ArticleSummary, ...], index: SearchIndex, publications: tuple[Article, ...]
+) -> MCPServer[None]:
     """Build the immutable portfolio MCP server."""
     profile_json = render_profile_json(articles).decode()
+    article_results = {
+        article.slug: ArticleResult(
+            article=article.summary(),
+            canonical_url=article.canonical_url(),
+            markdown=render_article_markdown(article),
+            sections=article_sections(article),
+        )
+        for article in publications
+        if not article.draft
+    }
     server: MCPServer[None] = _PortfolioMCPServer(
         name="www",
         title=f"{METADATA.name} ({METADATA.alternate_name}) — {METADATA.job_title} Portfolio",
-        description="Read-only portfolio tools, resources, and prompts for Fmind.",
+        description="Read-only access to Fmind's portfolio, articles, and LLM hosting calculator.",
         instructions=(
             f"Query the portfolio of {METADATA.name} ({METADATA.alternate_name}): {METADATA.headline_primary}. "
-            "Explore profile, leadership, work experience, credentials, publications, projects, and services."
+            "Explore profile, leadership, work experience, credentials, publications, projects, and services. "
+            "Search and read published articles with citations, or compare LLM hosting assumptions using the calculator."
         ),
         website_url=f"{METADATA.site_url}/",
         icons=_ICONS,
@@ -288,6 +310,42 @@ def create_mcp_server(articles: tuple[ArticleSummary, ...], index: SearchIndex) 
     def services() -> ServicesResult:
         return ServicesResult(services=get_services())
 
+    @server.tool(
+        name="get_article",
+        title="Read an article",
+        description="Read a public article's complete Markdown, dates, canonical URL, and hosted section links. Use a slug from search_articles; unknown and draft articles are unavailable.",
+        annotations=_READ_ONLY,
+        structured_output=True,
+    )
+    def get_article(
+        slug: Annotated[str, Field(min_length=1, max_length=200, pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$")],
+    ) -> ArticleResult:
+        result = article_results.get(slug)
+        if result is None:
+            raise ToolError("Article not found. Use search_articles to find a public article slug.")
+        return result
+
+    @server.tool(
+        name="compare_llm_hosting",
+        title="Compare LLM hosting costs",
+        description="Compare one GKE hosting scenario with managed API baselines using the website calculator. Call with parameters={} for defaults and supported model, node, billing, and quantization choices. Then override URL parameters as strings, e.g. requests=1000, throughput=100, tokens=500. Returns assumptions, USD costs, constraints, dated sources, and a shareable URL. Invalid inputs fail; no resources are provisioned. See /agents#calculator.",
+        annotations=_READ_ONLY,
+        structured_output=True,
+    )
+    def compare_llm_hosting(
+        parameters: Annotated[
+            dict[Annotated[str, Field(max_length=64)], Annotated[str, Field(strict=True, max_length=128)]],
+            Field(
+                max_length=64,
+                description="Calculator URL parameters as strings; use an empty object for defaults and available choices.",
+            ),
+        ],
+    ) -> HostingResult:
+        try:
+            return compare_hosting(parameters)
+        except ValueError as exc:
+            raise ToolError(str(exc)) from exc
+
     @server.prompt(
         name="assess_fit",
         title="Assess a role or project fit",
@@ -355,9 +413,9 @@ async def render_mcp_server_card(server: MCPServer[None]) -> bytes:
             "version": build_version(),
             "websiteUrl": f"{METADATA.site_url}/",
         },
-        "description": "Read-only portfolio tools, resources, and prompts for Fmind.",
+        "description": "Read-only access to Fmind's portfolio, articles, and LLM hosting calculator.",
         "iconUrl": _ICON_URL,
-        "documentationUrl": f"{METADATA.site_url}/llms.txt",
+        "documentationUrl": f"{METADATA.site_url}/agents",
         "transport": {"type": "streamable-http", "endpoint": f"{METADATA.site_url}/mcp"},
         "capabilities": {"tools": {}, "resources": {}, "prompts": {}},
         "instructions": (

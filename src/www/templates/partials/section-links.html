@@ -1,0 +1,14 @@
+<ul class="{{ 'py-2' if overlay|default(false) else 'space-y-1' }}">
+  {% for link in nav_links %}
+    <li>
+      {% if overlay|default(false) %}
+        <a data-section-link class="section-rail-link flex min-h-11 items-center gap-3 px-4 py-2 text-sm text-muted hover:text-primary focus-visible:outline-offset-[-3px]" href="{{ link.href }}">
+          <span class="section-marker w-1 h-4 shrink-0 rounded-full bg-muted/80" aria-hidden="true"></span>
+          <span class="whitespace-nowrap">{{ link.label }}</span>
+        </a>
+      {% else %}
+        <a data-section-link class="section-link flex min-h-11 items-center border-l-2 border-transparent rounded-r-lg px-3 py-2 text-sm text-muted hover:bg-base-content/5 hover:text-base-content" href="{{ link.href }}">{{ link.label }}</a>
+      {% endif %}
+    </li>
+  {% endfor %}
+</ul>

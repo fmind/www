@@ -27,7 +27,7 @@ const STRESS_PATHS = [
   "/articles/how-to-configure-vs-code-for-ai-ml-and-mlops-development-in-python/",
   "/articles/hackathon-speedrun-build-deploy-a-rag-app-in-minutes-with-vertex-ai-studio-vertex-ai-search/",
 ];
-const PORTFOLIO_PATHS = ["/", "/connect", "/articles/", "/sites/"];
+const PORTFOLIO_PATHS = ["/", "/connect", "/privacy", "/articles/", "/sites/"];
 const SMOKE_PATHS = ["/", "/articles/cag-vs-rag-choosing-the-right-strategy-for-your-ai-application/"];
 
 function usage() {
@@ -37,14 +37,14 @@ Run the strict Lighthouse 13.4.1 qualification matrix with the Chromium pinned b
 
 Options:
   --base-url <origin>   Candidate origin to audit; LIGHTHOUSE_BASE_URL is the fallback.
-  --mode <full|smoke|portfolio>  Audit all pages, 4 smoke cases, or 8 portfolio cases (default: full).
+  --mode <full|smoke|portfolio>  Audit all pages, 4 smoke cases, or 10 portfolio cases (default: full).
   --output-dir <path>  Artifact directory below tmp/ (default: tmp/lighthouse).
   --plan               Validate arguments and tool pins, then print counts without network or audits.
   -h, --help           Show this help.
 
 Full mode audits every unique sitemap path once in desktop and mobile,
 then runs the eight representative/stress paths three more consecutive times in both modes.
-Portfolio mode covers the homepage, contact page, and archive indexes, excluding article and site bodies.
+Portfolio mode covers the homepage, contact and privacy pages, and archive indexes, excluding article and site bodies.
 Every returned category score must be exactly 1; missing expected categories also fail.
 `;
 }
@@ -407,7 +407,7 @@ function parseSitemapPaths(xml, baseUrl) {
     if (canonical.origin !== sitemapOrigin) {
       throw new Error(`cross-origin sitemap location rejected: ${canonical.href}`);
     }
-    if (canonical.pathname !== "/connect" && !canonical.pathname.endsWith("/")) {
+    if (!["/agents", "/connect", "/privacy"].includes(canonical.pathname) && !canonical.pathname.endsWith("/")) {
       throw new Error(`sitemap page path must end in a slash: ${canonical.pathname}`);
     }
 

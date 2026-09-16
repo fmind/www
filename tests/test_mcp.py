@@ -18,11 +18,11 @@ from www.search import SearchIndex
 @pytest.fixture(scope="module")
 def mcp_server() -> MCPServer[None]:
     articles = visible_articles(load_articles().all)
-    return create_mcp_server(article_summaries(articles), SearchIndex(articles))
+    return create_mcp_server(article_summaries(articles), SearchIndex(articles), articles)
 
 
 @pytest.mark.anyio
-async def test_server_lists_seven_read_only_tools_and_two_prompts(mcp_server: MCPServer[None]) -> None:
+async def test_server_lists_nine_read_only_tools_and_two_prompts(mcp_server: MCPServer[None]) -> None:
     tools = await mcp_server.list_tools()
     prompts = await mcp_server.list_prompts()
 
@@ -34,6 +34,8 @@ async def test_server_lists_seven_read_only_tools_and_two_prompts(mcp_server: MC
         "search_articles",
         "list_projects",
         "get_services",
+        "get_article",
+        "compare_llm_hosting",
     ]
     assert all(tool.annotations and tool.annotations.read_only_hint is True for tool in tools)
     assert all(tool.annotations and tool.annotations.open_world_hint is False for tool in tools)
@@ -198,7 +200,7 @@ async def test_server_card_describes_the_same_transport_and_primitives(mcp_serve
         "type": "streamable-http",
         "endpoint": "https://www.fmind.dev/mcp",
     }
-    assert len(card["tools"]) == 7
+    assert len(card["tools"]) == 9
     assert len(card["prompts"]) == 2
     assert card["resources"][0]["name"] == "profile"
     assert card["resources"][0]["uri"] == "portfolio://profile.json"

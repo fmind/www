@@ -7,7 +7,8 @@
       <a class="inline-flex min-h-8 items-center text-accent underline decoration-1 underline-offset-4 hover:decoration-2 transition-colors" href="/scan">Scan</a>
       <a class="inline-flex min-h-8 items-center text-accent underline decoration-1 underline-offset-4 hover:decoration-2 transition-colors" href="/connect">Connect</a>
       <a class="inline-flex min-h-8 items-center text-accent underline decoration-1 underline-offset-4 hover:decoration-2 transition-colors" href="/api/profile">JSON Profile</a>
-      <a class="inline-flex min-h-8 items-center text-accent underline decoration-1 underline-offset-4 hover:decoration-2 transition-colors" href="/llms.txt">For AI Agents</a>
+      <a class="inline-flex min-h-8 items-center text-accent underline decoration-1 underline-offset-4 hover:decoration-2 transition-colors" href="/agents">For AI Agents</a>
+      <a class="inline-flex min-h-8 items-center text-accent underline underline-offset-4" href="/privacy">Privacy</a>
       {% for label, repository in [("Theme", "theme"), ("CLI", "cli")] %}
         <a class="inline-flex min-h-8 items-center gap-1 text-accent underline decoration-1 underline-offset-4 hover:decoration-2 transition-colors" href="https://github.com/fmind/{{ repository }}" target="_blank" rel="noopener noreferrer" aria-label="{{ label }} (external GitHub page)" title="{{ label }} on GitHub (external page)">{{ label }}{{ icon("external_link", "h-3.5 w-3.5") }}</a>
       {% endfor %}

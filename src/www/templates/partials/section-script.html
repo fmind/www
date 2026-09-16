@@ -1,0 +1,48 @@
+var sectionMenu = document.getElementById('section-menu');
+var sectionLinks = Array.from(document.querySelectorAll('[data-section-link]'));
+var sections = Array.from(document.querySelectorAll('.portfolio-content section[id]'));
+var header = document.querySelector('header');
+var updateSection = function () {
+  // Match the anchor offset; a section remains current until the next reaches it.
+  var offset = header.getBoundingClientRect().bottom + 24;
+  var current = null;
+  sections.forEach(function (section) {
+    if (section.getBoundingClientRect().top <= offset) current = section.id;
+  });
+  sectionLinks.forEach(function (link) {
+    if (link.hash === '#' + current) link.setAttribute('aria-current', 'location');
+    else link.removeAttribute('aria-current');
+  });
+};
+var pendingSectionUpdate = false;
+var scheduleSectionUpdate = function () {
+  if (pendingSectionUpdate) return;
+  pendingSectionUpdate = true;
+  requestAnimationFrame(function () {
+    pendingSectionUpdate = false;
+    updateSection();
+  });
+};
+window.addEventListener('scroll', scheduleSectionUpdate, { passive: true });
+window.addEventListener('resize', scheduleSectionUpdate);
+window.addEventListener('hashchange', scheduleSectionUpdate);
+// Deferred sections and images can change the position of the current section.
+new ResizeObserver(scheduleSectionUpdate).observe(document.querySelector('.portfolio-content'));
+sectionLinks.forEach(function (link) {
+  link.addEventListener('click', function () {
+    if (sectionMenu.open) {
+      sectionMenu.open = false;
+      document.getElementById(link.hash.slice(1)).focus({ preventScroll: true });
+    }
+  });
+});
+document.addEventListener('keydown', function (event) {
+  if (event.key === 'Escape' && sectionMenu.open) {
+    sectionMenu.open = false;
+    sectionMenu.querySelector('summary').focus();
+  }
+});
+document.addEventListener('click', function (event) {
+  if (!sectionMenu.contains(event.target)) sectionMenu.open = false;
+});
+updateSection();

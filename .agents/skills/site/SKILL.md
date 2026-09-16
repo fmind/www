@@ -22,10 +22,7 @@ Add one focused decision tool to the existing Litestar, Jinja, Tailwind, and Dai
 1. Run and inspect the complete local gates:
 
    ```bash
-   mise run format
-   mise run check
-   mise run test
-   mise run test:browser
+   mise run all
    ```
 
 ## Gotchas

@@ -37,11 +37,11 @@ run = [
   "mise run format",
   "mise run check",
   "mise run build",
-  "mise run test",
+  "mise run --skip-deps test",
   "mise run check:image",
   "mise run test:image",
   "mise run install:browser",
-  "mise run test:browser",
+  "mise run --skip-deps test:browser",
 ]
 
 [tasks.build]
@@ -294,3 +294,22 @@ hide = true
 depends = ["build:css"]
 # Watch startup inputs only; browser artifacts and build output must not restart workers.
 run = 'GRANIAN_PORT="${PORT:-8080}" uv run --locked granian --interface asgi --reload --reload-paths src --reload-paths content --reload-paths static --host 0.0.0.0 www.app:app'
+
+[tasks."build:portrait"]
+description = "Export a public portrait without personal metadata from a private JPEG master"
+raw_args = true
+run = "uv run --locked python -m scripts.build_portrait"
+
+[tasks."test:browser:cross"]
+description = "Smoke-test portfolio and contact journeys in Firefox and WebKit"
+depends = ["build"]
+run = 'NODE_PATH="$(mise where npm:playwright)/node_modules" env -u NO_COLOR playwright test --config tests/playwright.cross.config.cjs'
+
+[tasks."install:browser:cross"]
+description = "Install pinned Firefox and WebKit (requires their Linux system libraries)"
+run = "playwright install firefox webkit"
+
+[tasks."test:lighthouse:local"]
+description = "Start a temporary server and run the strict portfolio Lighthouse matrix"
+depends = ["build"]
+run = 'NODE_PATH="$(mise where npm:playwright)/node_modules" env -u NO_COLOR playwright test --config tests/playwright.lighthouse.config.cjs'

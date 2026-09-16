@@ -45,3 +45,7 @@ Consult the [Debian Security Tracker](https://security-tracker.debian.org/tracke
 ## Logs and privacy
 
 Custom analytics omit visitor identifiers and IP addresses and expire from BigQuery after 180 days. Private Cloud Run operational request logs are separate and can include IP addresses, user agents, and full request URLs; the Cloud Logging `_Default` bucket retains them for 30 days. See [README analytics](README.md#analytics) for the data-flow scope.
+
+## Public portrait metadata
+
+Keep the original photographic master outside the public static tree. `mise run build:portrait <private-master.jpg>` exports the downloadable JPEG with orientation applied and its ICC color profile retained, while removing EXIF, XMP, comments, and photographer contact records. HTTP regressions inspect both public portrait URLs for personal metadata; the vCard independently strips metadata from its embedded avatar. Do not copy a camera original directly into `static/`.

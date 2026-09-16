@@ -37,6 +37,30 @@ def connect_metadata(structured_data: str) -> PageMetadata:
     )
 
 
+def agents_metadata() -> PageMetadata:
+    return PageMetadata(
+        title="For AI agents | Médéric Hurier (Fmind)",
+        description="Connect your assistant to Fmind's public portfolio, articles, and LLM hosting calculator.",
+        canonical=f"{METADATA.site_url}/agents",
+        image_url=f"{METADATA.site_url}/static/img/og-image.jpg",
+        image_alt="Fmind.dev — AI, Agents, Security",
+        kind="website",
+        structured_data="{}",
+    )
+
+
+def privacy_metadata() -> PageMetadata:
+    return PageMetadata(
+        title="Privacy | Médéric Hurier (Fmind)",
+        description="How this website measures visits and handles personal information.",
+        canonical=f"{METADATA.site_url}/privacy",
+        image_url=f"{METADATA.site_url}/static/img/og-image.jpg",
+        image_alt="Fmind.dev — AI, Agents, Security",
+        kind="website",
+        structured_data="{}",
+    )
+
+
 def scan_metadata(structured_data: str) -> PageMetadata:
     return replace(
         connect_metadata(structured_data),

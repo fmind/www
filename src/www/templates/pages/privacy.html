@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+  <section class="max-w-3xl mx-auto px-6 py-12 prose prose-lg">
+    <h1>Privacy</h1>
+    <p>This website is operated by {{ metadata.name }} ({{ metadata.alternate_name }}). For privacy questions, <a href="mailto:{{ metadata.email }}">send me an email</a>.</p>
+    <h2>Aggregate visit statistics</h2>
+    <p>The website records aggregate pageviews to understand which pages people use and identify errors. Each record contains the page path, time, response status, referring website, campaign labels, and a bot flag. These records contain no cookies, visitor identifiers, IP addresses, full referring URLs, or browsing sessions.</p>
+    <p>Statistics are stored in Google Cloud BigQuery and expire after 180 days. They cannot identify returning visitors or reconstruct an individual's browsing history.</p>
+    <h2>Operational logs</h2>
+    <p>Google Cloud Run separately records requests to operate and secure this website. These private logs can contain IP addresses, browser information, and complete request URLs. They are retained for 30 days.</p>
+    <h2>External services</h2>
+    <p>Links to LinkedIn, Google Calendar, and other external websites take you to services with their own privacy policies. Sending an email or booking mentoring shares the information you choose to provide with the relevant service.</p>
+  </section>
+{% endblock %}
