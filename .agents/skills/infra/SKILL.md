@@ -58,18 +58,7 @@ The module owns Cloud Run, Artifact Registry, runtime and CI identities, Workloa
 
 ## Querying Analytics
 
-The first pageview creates `www-fmind-dev.website_analytics.run_googleapis_com_stderr`, partitioned by `timestamp` with a 180-day expiry. Always bound `timestamp` and exclude bots:
-
-```sql
-SELECT jsonPayload.utm_source, jsonPayload.utm_medium, jsonPayload.path, COUNT(*) AS views
-FROM `www-fmind-dev.website_analytics.run_googleapis_com_stderr`
-WHERE timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 30 DAY)
-  AND jsonPayload.bot = false
-GROUP BY 1, 2, 3
-ORDER BY views DESC
-```
-
-Use `path`, `referer`, or `TIMESTAMP_TRUNC(timestamp, DAY)` for other aggregates. `src/www/middleware.py` defines the emitted field set; adding a dimension is a privacy decision. `country` remains empty until infrastructure establishes a non-bypassable, trusted geography boundary.
+Use [website-analytics](../website-analytics/SKILL.md) for read-only text reports from the existing BigQuery export. It owns collection, metric definitions, comparisons, and reporting limits; this skill owns infrastructure changes. `src/www/middleware.py` defines the emitted field set; adding a dimension is a privacy decision. `country` remains empty until infrastructure establishes a non-bypassable, trusted geography boundary.
 
 ## Gotchas
 

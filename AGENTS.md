@@ -39,7 +39,7 @@ Python 3.14 server-rendered web application: Litestar + strict Jinja + Tailwind/
 
 Entries are in ASCII order: dotfiles, capitalized files, then lowercase paths.
 
-- `.agents/` — portable project skills: `article`, `infra`, `release`, and `site`.
+- `.agents/` — portable project skills: `article`, `infra`, `release`, `site`, and `website-analytics`.
 - `.dockerignore` — build-context exclusions.
 - `.env.example` — placeholder runtime configuration.
 - `.github/` — CI/CD, infrastructure, security, link-rot, and dependency automation.

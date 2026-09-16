@@ -6,9 +6,15 @@ Report suspected vulnerabilities privately to <contact@fmind.dev>, with the affe
 
 The deployment gate scans and smoke-tests the pushed immutable image before Cloud Run receives it. HIGH/CRITICAL vulnerabilities with an available fix and secret findings block rollout. A passing filtered gate does not mean that the image has no advisories.
 
+Trivy can emit `Using severities from other vendors for some vulnerabilities` when the preferred advisory source and NVD lack a severity rating. This is an upstream classification diagnostic, not a failed scan or a newly introduced vulnerability. Its [documented severity selection](https://trivy.dev/docs/v0.74/guide/scanner/vulnerability/#severity-selection) falls back to other available ratings rather than silently treating the finding as unknown. Review the unsuppressed JSON report and available fixes; retain automatic severity selection and normal warning output. Do not force a narrower source list or silence warnings just to remove this notice.
+
 The weekly [security workflow](.github/workflows/security.yml) resolves every Cloud Run revision receiving traffic and scans its exact platform digest, including unfixed HIGH/CRITICAL vulnerabilities. Its `deployed-image-advisories` artifact retains the traffic snapshot, revision-to-digest mapping, and JSON reports for 30 days. A separate read-only identity has service-level Cloud Run viewer and repository-level Artifact Registry reader grants. It cannot deploy or impersonate the runtime identity.
 
-**Review owner:** Médéric Hurier. **Last reviewed:** 2026-09-14 (local candidate and hosted deployed-image evidence). **Next review:** 2026-09-21, or immediately after a new fixable finding or a runtime/dependency change that affects reachability. Recheck scanner reports, Debian status, the maintained base image, and request-path applicability; rebuild and qualify an updated image when a fix becomes available. No CVE suppression was added for these findings.
+**Review owner:** Médéric Hurier. **Last reviewed:** 2026-09-16 (serving-image scan and severity-fallback review). **Next review:** 2026-09-21, or immediately after a new fixable finding or a runtime/dependency change that affects reachability. Recheck scanner reports, Debian status, the maintained base image, and request-path applicability; rebuild and qualify an updated image when a fix becomes available. No CVE suppression was added for these findings.
+
+## Production verification — 2026-09-16
+
+A fresh read-only scan of revision `www-fmind-dev-00046-9ld`, receiving 100% of traffic, verified serving platform digest `sha256:22e8b4e9d5f4c8fc7dfa0724321ea54f3b0abfe44899e34cf709f1bcf090b521`. The fixable HIGH/CRITICAL vulnerability and secret gate passed. The unsuppressed HIGH/CRITICAL report contained the same 44 HIGH package/advisory instances across eight CVEs as the September 14 baseline, no CRITICAL findings, and no available fixes. Six CVEs used fallback severity data: `CVE-2026-16742`, `CVE-2026-54369`, `CVE-2026-76642`, `CVE-2026-78408`, `CVE-2026-78409`, and `CVE-2026-78410`. Their existing applicability assessments remain below; the notice is accounted for without a severity override, warning suppression, or new ignore rule.
 
 ## Local candidate scan — 2026-09-13
 
