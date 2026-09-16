@@ -188,6 +188,17 @@ test("conference contact actions and QR display work without JavaScript", async 
       await page.goto(path);
       await page.evaluate(() => document.fonts.ready);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      const brand = page.locator("header").getByRole("link", { name: "Fmind.dev", exact: true });
+      await expect(brand).toHaveAttribute("href", "/");
+      const logo = brand.locator("img");
+      await expect(logo).toBeVisible();
+      await expect(logo).toHaveAttribute("alt", "");
+      expect(await logo.evaluate((img) => img.complete && img.naturalWidth > 0)).toBe(true);
+      const logoBounds = await logo.boundingBox();
+      const labelBounds = await brand.locator("span").boundingBox();
+      expect(logoBounds.x + logoBounds.width).toBeLessThan(labelBounds.x);
+      expect(Math.abs(logoBounds.y + logoBounds.height / 2 - labelBounds.y - labelBounds.height / 2))
+        .toBeLessThanOrEqual(1);
       await expect(page.locator("h1")).toHaveCount(1);
       const portrait = page.getByRole("img", { name: "Médéric Hurier", exact: true });
       await expect(portrait).toBeVisible();

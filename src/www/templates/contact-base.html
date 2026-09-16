@@ -1,7 +1,10 @@
 {% extends "base.html" %}
 {% block header %}
   <header class="max-w-xl mx-auto px-6 py-2 flex items-center justify-center">
-    <a class="font-heading font-bold text-3xl text-primary rounded inline-flex items-center min-h-11" href="/">Fmind.dev</a>
+    <a class="font-heading font-bold text-3xl text-primary rounded inline-flex items-center gap-2 min-h-11" href="/">
+      <img src="{{ static_url('static/img/logo.webp') }}" alt="" width="32" height="32" class="w-8 h-8 shrink-0 rounded-full"/>
+      <span>Fmind.dev</span>
+    </a>
   </header>
 {% endblock %}
 {% block main_class %}max-w-xl mx-auto px-6 pt-2 pb-4 sm:pt-8{% endblock %}
