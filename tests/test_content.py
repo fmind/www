@@ -441,6 +441,7 @@ def test_heading_links_preserve_formatting_and_authored_links(tmp_path: Path) ->
     for identifier, heading in headings:
         assert f'href="#{identifier}" class="heading-anchor"' in heading
         assert 'aria-label="Link to section:' in heading
+        assert "🔗</a>" in heading
         assert "<strong>bold</strong>" in heading
         assert '<a href="https://example.com">link</a>' in heading
         assert heading.count("<a ") == heading.count("</a>") == 2

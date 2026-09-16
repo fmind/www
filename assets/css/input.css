@@ -358,9 +358,15 @@ a.tag:hover {
   text-decoration: underline;
 }
 
-/* Keep linked sections below the sticky header. */
+/* Leave room for the header and the compact section toolbar. */
 .portfolio-content section[id] {
   scroll-margin-top: 5rem;
+}
+
+@media (min-width: 1024px) and (max-width: 1599px) {
+  .portfolio-content section[id] {
+    scroll-margin-top: 8rem;
+  }
 }
 
 .section-link[aria-current='location'] {

@@ -32,6 +32,7 @@ test("portfolio and contact pages render and reflow", async ({ page }) => {
 });
 
 test("keyboard section navigation and skip link work", async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 900 });
   await page.goto("/");
   await page.keyboard.press("Tab");
   await expect(page.getByRole("link", { name: "Skip to content" })).toBeFocused();
@@ -67,6 +68,7 @@ test("contact download and navigation work without JavaScript", async ({ browser
     expect(response.status()).toBe(200);
     expect(await response.text()).toContain("BEGIN:VCARD\r\nVERSION:3.0");
     await page.getByRole("link", { name: "Go to my website" }).click();
+    await page.setViewportSize({ width: 1024, height: 900 });
     await page.locator("#section-menu summary").click();
     await page.getByRole("navigation", { name: "Portfolio sections" }).getByRole("link", {
       name: "Services",

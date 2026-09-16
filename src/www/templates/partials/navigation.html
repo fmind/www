@@ -2,19 +2,9 @@
 <nav class="bg-base-100 border-b border-base-200" aria-label="Primary navigation">
   <div class="relative max-w-screen-2xl mx-auto grid grid-cols-[minmax(50px,1fr)_auto_minmax(max-content,1fr)] sm:grid-cols-[minmax(92px,1fr)_auto_minmax(max-content,1fr)] h-16 items-center gap-0.5 min-[380px]:gap-1 sm:gap-2 px-3 sm:px-6">
     <div class="@container/nav-brand flex min-w-0 items-center gap-0.5 min-[380px]:gap-1 sm:gap-2">
-      {% if page.is_home %}
-        <details id="section-menu" class="min-[1600px]:hidden shrink-0">
-          <summary class="flex w-6 sm:w-11 h-11 items-center justify-center list-none [&::-webkit-details-marker]:hidden rounded-lg text-primary hover:bg-selection cursor-pointer" title="On this page">
-            {{ icon("menu", "w-5 h-5") }}<span class="sr-only">On this page</span>
-          </summary>
-          <nav class="absolute left-3 right-3 top-full max-h-[calc(100dvh-5rem)] overflow-y-auto overscroll-contain rounded-xl bg-base-100 p-3 shadow-lg border border-base-300" aria-label="Portfolio sections">
-            {% include "partials/section-links.html" %}
-          </nav>
-        </details>
-      {% endif %}
       <a class="inline-flex shrink-0 items-center gap-1.5 sm:gap-3 font-heading text-base sm:text-xl font-bold text-primary" href="/" aria-label="Fmind.dev home">
         <img class="w-6 h-6 sm:w-10 sm:h-10 rounded-full object-cover" src="{{ static_url('static/img/logo.webp') }}" alt="Fmind.dev logo" width="40" height="40" decoding="async"/>
-        <span class="hidden @min-[210px]/nav-brand:inline max-sm:@min-[142px]/nav-brand:inline">Fmind.dev</span>
+        <span class="hidden @min-[156px]/nav-brand:inline max-sm:@min-[110px]/nav-brand:inline">Fmind.dev</span>
       </a>
     </div>
     <div class="flex shrink-0 items-center">

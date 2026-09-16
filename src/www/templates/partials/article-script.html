@@ -1,0 +1,23 @@
+var copyStatus = document.getElementById('copy-link-status');
+var copyTimeout;
+var copyRequest = 0;
+document.querySelectorAll('.heading-anchor').forEach(function (link) {
+  link.setAttribute('aria-label', link.getAttribute('aria-label').replace('Link to section:', 'Copy link to section:'));
+  link.title = 'Copy link to this section';
+  link.addEventListener('click', async function (event) {
+    if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    var request = ++copyRequest;
+    clearTimeout(copyTimeout);
+    copyStatus.textContent = '';
+    var message;
+    try {
+      await navigator.clipboard.writeText(link.href);
+      message = 'Link copied';
+    } catch {
+      message = 'Could not copy. Copy the link from your browser’s address bar.';
+    }
+    if (request !== copyRequest) return;
+    copyStatus.textContent = message;
+    copyTimeout = setTimeout(function () { copyStatus.textContent = ''; }, 5000);
+  });
+});

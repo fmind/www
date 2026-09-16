@@ -68,6 +68,7 @@
     {% block header %}<header class="sticky top-0 z-40">
       {% include "partials/navigation.html" %}
     </header>{% endblock %}
+    {% if page.is_home %}{% include "partials/section-menu.html" %}{% endif %}
     <main class="{% block main_class %}min-h-screen{% endblock %}" id="main-content" tabindex="-1">
       {% block content %}{% endblock %}
     </main>

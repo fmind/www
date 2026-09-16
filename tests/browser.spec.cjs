@@ -9,7 +9,8 @@ test("portfolio navigation remains usable without JavaScript", async ({ browser 
     const page = await context.newPage();
     await page.goto("/");
     const navigation = page.getByRole("navigation", { name: "Primary navigation" });
-    if (page.viewportSize().width < 1600) await page.locator("#section-menu summary").click();
+    await page.setViewportSize({ width: 1024, height: 900 });
+    await page.locator("#section-menu summary").click();
     await page.getByRole("navigation", { name: "Portfolio sections" }).getByRole("link", {
       name: "Services",
       exact: true,
@@ -212,7 +213,7 @@ test("menu remains usable when storage is blocked", async ({ page }) => {
   );
   await page.goto("/");
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
-  await page.setViewportSize({ width: 390, height: 844 });
+  await page.setViewportSize({ width: 1024, height: 844 });
   await page.locator("#section-menu summary").click();
   await expect(page.locator("#section-menu nav")).toBeVisible();
   await page.keyboard.press("Escape");
@@ -220,9 +221,9 @@ test("menu remains usable when storage is blocked", async ({ page }) => {
   await expect(page.locator("#section-menu summary")).toBeFocused();
 });
 
-test("landscape mobile menu scrolls to every destination", async ({ page }) => {
-  // The shorter primary menu needs a compact landscape viewport to exercise scrolling.
-  await page.setViewportSize({ width: 667, height: 320 });
+test("short desktop menu scrolls to every destination", async ({ page }) => {
+  // A short desktop viewport exercises the dropdown scrolling boundary.
+  await page.setViewportSize({ width: 1024, height: 320 });
   await page.goto("/");
   await page.locator("#section-menu summary").click();
   const menu = page.locator("#section-menu nav");
@@ -316,7 +317,7 @@ test("homepage presents the headline, six skills, and responsive social links", 
       .getByRole("link", { name: "Portfolio", exact: true }).boundingBox();
     expect(Math.abs(portfolio.y + portfolio.height / 2 - socialBounds.y - socialBounds.height / 2)).toBeLessThan(1);
     expect(portfolio.x + portfolio.width).toBeLessThanOrEqual(socialBounds.x);
-    await expect(page.locator("#section-menu summary")).toHaveAccessibleName("On this page");
+    await expect(page.locator("#section-menu summary")).toBeHidden();
   }
   const profiles = {
     "LinkedIn": "https://www.linkedin.com/in/fmind-dev/",
@@ -674,11 +675,7 @@ test("narrow screens reflow and keep navigation reachable", async ({ page }, tes
       expect(boxes[index].x).toBeGreaterThanOrEqual(boxes[index - 1].right);
     }
     if (path === "/") {
-      const menu = page.locator("#section-menu summary");
-      await menu.click();
-      await expect(page.locator("#section-menu nav")).toBeInViewport();
-      await page.keyboard.press("Escape");
-      await expect(menu).toBeFocused();
+      await expect(page.locator("#section-toolbar")).toBeHidden();
     } else {
       await expect(page.getByRole("navigation", { name: "Portfolio sections" })).toHaveCount(0);
     }
@@ -720,6 +717,39 @@ test("narrow screens reflow and keep navigation reachable", async ({ page }, tes
   }
 });
 
+test("section toolbar stays below the header and clears content", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  for (const width of [1024, 1280, 1440, 1599]) {
+    await page.setViewportSize({ width, height: 740 });
+    await page.goto("/");
+    const toolbar = page.locator("#section-toolbar");
+    const summary = page.locator("#section-menu summary");
+    const header = await page.locator("header").boundingBox();
+    const bounds = await toolbar.boundingBox();
+    expect(bounds.y).toBe(header.y + header.height);
+    expect((await page.locator("main").boundingBox()).y).toBeGreaterThanOrEqual(bounds.y + bounds.height);
+    await expect(page.locator("header #section-menu")).toHaveCount(0);
+    expect((await summary.boundingBox()).height).toBeGreaterThanOrEqual(44);
+    await summary.focus();
+    await page.keyboard.press("Enter");
+    await page.locator("#section-menu").getByRole("link", { name: "Services", exact: true }).click();
+    await expect(page.locator("#services")).toBeFocused();
+    await expect.poll(async () => (await page.locator("#services").boundingBox()).y)
+      .toBeGreaterThanOrEqual(bounds.y + bounds.height);
+    expect((await toolbar.boundingBox()).y).toBe(bounds.y);
+    await summary.click();
+    await page.locator("#services h2").click();
+    await expect(page.locator("#section-menu")).not.toHaveAttribute("open");
+  }
+  await page.locator("#section-menu summary").click();
+  await page.setViewportSize({ width: 1600, height: 900 });
+  await expect(page.locator("#section-toolbar")).toBeHidden();
+  await expect(page.locator("#section-menu")).not.toHaveAttribute("open");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.locator("#section-toolbar")).toBeHidden();
+  await expect(page.locator("#section-menu nav")).toBeHidden();
+});
+
 test("section links, privacy, and browser-only presentation", async ({ page }) => {
   await page.goto("/");
   await expect(page.locator("link[rel=\"manifest\"]")).toHaveCount(0);
@@ -735,6 +765,7 @@ test("section links, privacy, and browser-only presentation", async ({ page }) =
   await expect(credentials.locator("span").first()).toHaveText("PhD • VC Expert Advisor");
   await page.locator("footer").getByRole("link", { name: "Privacy", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Privacy", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Operational logs", exact: true })).toHaveCount(0);
   await expect(page.locator("script:not([type=\"application/ld+json\"])")).toHaveCount(0);
   await page.goto("/articles/cag-vs-rag-choosing-the-right-strategy-for-your-ai-application/");
   const anchor = page.locator(".heading-anchor").first();
@@ -746,6 +777,7 @@ test("section links, privacy, and browser-only presentation", async ({ page }) =
 });
 
 test("section navigation follows clicks, scrolling, and direct links", async ({ page }, testInfo) => {
+  if (page.viewportSize().width < 1024) await page.setViewportSize({ width: 1024, height: 900 });
   await page.goto("/");
   const mobile = page.viewportSize().width < 1600;
   const navigation = page.getByRole("navigation", { name: "Portfolio sections" });
@@ -794,12 +826,14 @@ test("section navigation follows clicks, scrolling, and direct links", async ({ 
   await expect.poll(async () => {
     const target = await page.locator("#projects").boundingBox();
     const top = await page.locator("header").boundingBox();
-    return target.y - top.y - top.height;
+    const toolbar = await page.locator("#section-toolbar").boundingBox();
+    return target.y - Math.max(top.y + top.height, toolbar ? toolbar.y + toolbar.height : 0);
   }).toBeGreaterThanOrEqual(0);
   await expect.poll(async () => {
     const target = await page.locator("#projects").boundingBox();
     const top = await page.locator("header").boundingBox();
-    return target.y - top.y - top.height;
+    const toolbar = await page.locator("#section-toolbar").boundingBox();
+    return target.y - Math.max(top.y + top.height, toolbar ? toolbar.y + toolbar.height : 0);
   }).toBeLessThanOrEqual(24);
   await expect(page.locator("[data-section-link][href=\"/#projects\"]").first()).toHaveAttribute(
     "aria-current",
@@ -849,6 +883,11 @@ test("homepage availability is visible beside the primary actions", async ({ pag
   const availability = page.locator("[data-availability]");
   await expect(availability).toContainText("Not available for new missions");
   await expect(availability).toContainText("Paid session");
+  const lines = availability.locator("span");
+  await expect(lines).toHaveCount(2);
+  const consulting = await lines.first().boundingBox();
+  const mentoring = await lines.last().boundingBox();
+  expect(mentoring.y).toBeGreaterThanOrEqual(consulting.y + consulting.height);
   const actions = page.locator(".hero").getByRole("link", { name: "Book Mentoring", exact: true });
   await actions.scrollIntoViewIfNeeded();
   await expect(availability).toBeInViewport();
@@ -866,4 +905,65 @@ test("agent guide connects visitors to the calculator and verified skill", async
   expect(index.skills[0].digest).toBe("sha256:" + createHash("sha256").update(await skill.body()).digest("hex"));
   await page.getByRole("link", { name: "calculator's shareable URLs" }).click();
   await expect(page).toHaveURL(/\/sites\/llm-self-hosting\/$/);
+});
+
+test("mobile reading keeps all section navigation out of the content", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  for (const width of [320, 390, 480, 768, 1023]) {
+    await page.setViewportSize({ width, height: 740 });
+    await page.goto("/");
+    await expect(page.locator("#section-toolbar")).toBeHidden();
+    await expect(page.locator("aside")).toBeHidden();
+    const header = await page.locator("body > header").boundingBox();
+    expect((await page.locator("main").boundingBox()).y).toBe(header.y + header.height);
+    await page.getByRole("link", { name: "Scroll to About section" }).click();
+    await expect(page).toHaveURL(/#about$/);
+    await expect.poll(async () => (await page.locator("#about").boundingBox()).y)
+      .toBeGreaterThanOrEqual(header.y + header.height);
+    await expect(page.locator("#section-toolbar")).toBeHidden();
+  }
+});
+
+test("article heading links copy the full section URL", async ({ page, context }) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.goto("/articles/cag-vs-rag-choosing-the-right-strategy-for-your-ai-application/");
+  const link = page.locator(".heading-anchor").first();
+  await expect(link).toHaveText("🔗");
+  await expect(link).toHaveAccessibleName(/^Copy link to section:/);
+  const destination = await link.evaluate((element) => element.href);
+  await link.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("status")).toHaveText("Link copied");
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(destination);
+  await expect(page).toHaveURL(destination);
+});
+
+test("article anchors remain useful when clipboard access is denied", async ({ page }) => {
+  await page.addInitScript(() =>
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText: () => Promise.reject(new DOMException("Denied", "NotAllowedError")) },
+    })
+  );
+  await page.goto("/articles/cag-vs-rag-choosing-the-right-strategy-for-your-ai-application/");
+  const link = page.locator(".heading-anchor").first();
+  const destination = await link.evaluate((element) => element.href);
+  await link.click();
+  await expect(page).toHaveURL(destination);
+  await expect(page.getByRole("status")).toContainText("Could not copy.");
+});
+
+test("article permalinks work without JavaScript", async ({ browser }, testInfo) => {
+  const context = await browser.newContext({ ...testInfo.project.use, javaScriptEnabled: false });
+  try {
+    const page = await context.newPage();
+    await page.goto("/articles/cag-vs-rag-choosing-the-right-strategy-for-your-ai-application/");
+    const link = page.locator(".heading-anchor").first();
+    await expect(link).toHaveAccessibleName(/^Link to section:/);
+    const destination = await link.evaluate((element) => element.href);
+    await link.click();
+    await expect(page).toHaveURL(destination);
+    await expect(page.locator(await link.getAttribute("href"))).toBeInViewport();
+  } finally {
+    await context.close();
+  }
 });

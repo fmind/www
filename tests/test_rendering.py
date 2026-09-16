@@ -263,7 +263,7 @@ def test_renderer_renders_all_six_pages_with_real_domain_contexts() -> None:
     for template, html in rendered.items():
         assert html.startswith("<!DOCTYPE html>")
         assert html.count(f'<script nonce="{nonce}">') == int(
-            template in {PageTemplate.HOME, PageTemplate.LLM_SELF_HOSTING}
+            template in {PageTemplate.HOME, PageTemplate.ARTICLE, PageTemplate.LLM_SELF_HOSTING}
         )
         assert html.count(f'<style nonce="{nonce}">') == 1
         assert 'data-theme="light"' in html

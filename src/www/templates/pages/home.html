@@ -28,7 +28,7 @@
             <a class="btn btn-lg bg-primary/5 hover:bg-primary/10 text-primary border border-primary/20 rounded-xl shadow-lg hover:scale-105 active:scale-95 transition-transform hover:shadow-xl hover:shadow-primary/10 px-6 py-3 font-semibold" href="mailto:{{ metadata.email }}">Send Email</a>
             <a class="btn btn-primary btn-lg bg-primary text-primary-content border-none rounded-xl shadow-lg ring-2 ring-primary/40 hover:scale-105 active:scale-95 transition-transform hover:shadow-xl hover:shadow-primary/20 px-6 py-3 font-semibold" href="{{ metadata.calendar_url }}" target="_blank" rel="noopener noreferrer">Book Mentoring</a>
           </div>
-          <p data-availability class="mt-4 text-sm text-muted">Consulting: {{ services[0].badge.partition(' ')[2] }}. Mentoring: {{ services[1].badge.partition(' ')[2] }}.</p>
+          <p data-availability class="mt-4 text-sm text-muted"><span class="block">Consulting: {{ services[0].badge.partition(' ')[2] }}.</span><span class="block">Mentoring: {{ services[1].badge.partition(' ')[2] }}.</span></p>
           <div class="mt-12 animate-bounce flex justify-center">
             <a class="text-primary hover:text-primary-focus transition-colors duration-300" href="#about" aria-label="Scroll to About section">{{ icon("arrow_down", "h-10 w-10") }}</a>
           </div>

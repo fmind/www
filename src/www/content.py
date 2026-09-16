@@ -266,7 +266,7 @@ def _normalize_headings(tokens: Sequence[Token]) -> None:
         link.attrSet("class", "heading-anchor")
         link.attrSet("aria-label", f"Link to section: {inline.content}")
         marker = Token("text", "", 0)
-        marker.content = "#"
+        marker.content = "🔗"
         inline.children = [*(inline.children or []), link, marker, Token("link_close", "a", -1)]
 
 
