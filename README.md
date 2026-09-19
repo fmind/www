@@ -60,6 +60,8 @@ Lighthouse stays separate: install Chromium, then use `mise run test:lighthouse 
 
 Cross-browser checks require `install:browser:cross` and [Playwright system libraries](https://playwright.dev/docs/browsers#system-dependencies), or a matching official browser container via `PW_TEST_CONNECT_WS_ENDPOINT`. The [weekly/manual quality workflow](.github/workflows/quality.yml) provisions ephemeral runners and retains evidence for 14 days. Run browser suites sequentially because they share local port 8096. Set `BROWSER_BASE_URL=https://www.fmind.dev` for production journeys; local servers otherwise start and stop automatically.
 
+Dispatch that workflow with `gh workflow run quality.yml -f target=production` after verifying the deployed commit to run Chromium, Firefox, WebKit, and the same strict Lighthouse matrix against the public site on clean runners. The default `local` target qualifies the checkout; production mode does not deploy or change the service. Use runner evidence when other workstation workloads distort performance measurements, preserving failed reports and score thresholds.
+
 ## Deployment
 
 Cloud Run serves <https://www.fmind.dev/> in project `www-fmind-dev`, region `europe-west1`. [infra/](infra/) owns service settings, registry, keyless identities, alerts, and analytics. Keep **minimum instances at 0 at both service and revision levels**, maximum 5, and request-based CPU. The qualified runtime uses 1 CPU, 512 MiB, concurrency 8, a 30-second request timeout, and six startup attempts five seconds apart. Maximum instances limits scaling; it is not a hard billing cap.

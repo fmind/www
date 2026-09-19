@@ -1,18 +1,27 @@
 # https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax
 name: Browser and Lighthouse qualification
+run-name: Browser and Lighthouse (${{ inputs.target || 'local' }})
 on:
   schedule:
     - cron: "41 6 * * 2"
   workflow_dispatch:
+    inputs:
+      target:
+        description: Qualify the checkout locally or the currently deployed public site
+        type: choice
+        options: [local, production]
+        default: local
 permissions:
   contents: read
 concurrency:
-  group: quality-${{ github.ref }}
+  group: quality-${{ github.ref }}-${{ inputs.target || 'local' }}
   cancel-in-progress: true
 jobs:
   browsers:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      BROWSER_BASE_URL: ${{ inputs.target == 'production' && 'https://www.fmind.dev' || '' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -29,12 +38,20 @@ jobs:
         run: mise run install:browser:cross -- --with-deps
       - name: Exercise Firefox and WebKit
         run: mise run test:browser:cross
+      - name: Install Chromium for production journeys
+        if: inputs.target == 'production'
+        run: mise run install:browser
+      - name: Exercise production Chromium journeys
+        if: inputs.target == 'production'
+        run: mise run --skip-deps test:browser
       - name: Retain browser evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: cross-browser-results
-          path: tmp/cross-browser-results
+          path: |
+            tmp/cross-browser-results
+            tmp/browser-results
           retention-days: 14
   lighthouse:
     runs-on: ubuntu-latest
@@ -68,7 +85,11 @@ jobs:
           EOF
           sudo apparmor_parser -r /etc/apparmor.d/www-lighthouse-chromium
       - name: Qualify local portfolio pages
+        if: inputs.target != 'production'
         run: mise run test:lighthouse:local
+      - name: Qualify production portfolio pages
+        if: inputs.target == 'production'
+        run: mise run test:lighthouse -- --base-url https://www.fmind.dev --mode portfolio
       - name: Retain exact Lighthouse reports
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

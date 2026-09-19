@@ -10,6 +10,7 @@ All notable changes to this project are documented in this file.
 
 ### 🐛 Bug Fixes
 
+- _(ci)_ Qualify production browser and Lighthouse journeys on clean runners
 - _(contact)_ Show Luxembourg location on contact and QR pages
 - _(delivery)_ Verify ready releases and parallelize browser journeys
 
