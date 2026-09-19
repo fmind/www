@@ -24,6 +24,12 @@ from www.models import (
     WorkExperience,
 )
 
+# Public professional details shared by HTML, JSON, structured data, and vCard.
+WORK_CITY = "Luxembourg"
+WORK_COUNTRY = "Luxembourg"
+WORK_COUNTRY_CODE = "LU"
+LANGUAGES = (("fr", "French"), ("en", "English"))
+
 METADATA = Metadata(
     name="Médéric Hurier",
     alternate_name="Fmind",
@@ -32,7 +38,8 @@ METADATA = Metadata(
     job_title="Freelance AI Architect",
     headline_primary="Freelance AI Architect • AI Agents, MLOps & Security",
     headline_secondary="PhD • VC Expert Advisor • AAIF Ambassador",
-    description="Freelance AI Architect specializing in AI agents, MLOps, and security. PhD in AI and Computer Security, VC Expert Advisor, and AAIF Ambassador.",
+    description="Médéric Hurier (Fmind), freelance AI architect based in Luxembourg. AI agents, MLOps, security, and mentoring. PhD in AI and Computer Security.",
+    work_location=WORK_CITY,
     keywords=(
         "AI",
         "Machine Learning",
@@ -64,14 +71,8 @@ METADATA = Metadata(
     ),
 )
 
-# Public professional details shared by structured data and the contact card.
-WORK_CITY = "Luxembourg"
-WORK_COUNTRY = "Luxembourg"
-WORK_COUNTRY_CODE = "LU"
-LANGUAGES = (("fr", "French"), ("en", "English"))
-
 BIOGRAPHY = (
-    "I am a **freelance AI Architect**. I help teams design and deploy **AI agents**, **MLOps platforms**, and **secure cloud infrastructure**, from architecture decisions to production operations. My background includes a **PhD in AI and Computer Security** and certification as a **Google Cloud Professional Cloud Architect**.",
+    f"I am a **freelance AI Architect based in {METADATA.work_location}**. I help teams design and deploy **AI agents**, **MLOps platforms**, and **secure cloud infrastructure**, from architecture decisions to production operations. My background includes a **PhD in AI and Computer Security** and certification as a **Google Cloud Professional Cloud Architect**.",
     "My work includes enterprise agent platforms at **Decathlon**, fraud detection for the **European Commission**, and Android malware research with **Google**. I have also worked on AI, data, and security projects for BNP Paribas, ArcelorMittal, SFEIR, Clearstream, and the University of Luxembourg.",
     "Beyond client work, I serve on the **33N Ventures Expert Advisory Board** and support the agentic AI community as an **AAIF Ambassador** and **Luxembourg community organizer**. I also share practical tools and courses on AI agents, MLOps, and Python.",
 )
@@ -465,7 +466,11 @@ def get_structured_data(article: object | None = None) -> str:
         "@id": website_id,
         "@type": "WebSite",
         "name": METADATA.site_name,
-        "alternateName": [METADATA.site_url.removeprefix("https://")],
+        "alternateName": [
+            METADATA.name,
+            f"{METADATA.name} ({METADATA.alternate_name})",
+            METADATA.site_url.removeprefix("https://"),
+        ],
         "url": METADATA.site_url,
         "description": METADATA.description,
         "author": {"@id": person_id},

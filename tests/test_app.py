@@ -97,7 +97,29 @@ def test_ai_architect_identity_is_shared_by_public_surfaces(client: AppClient) -
         body = client.get(path).text
         assert "AI Architect" in body
         assert "AI Security Architect" not in body
-    assert json.loads(Path("server.json").read_text())["title"] == "Fmind Freelance AI Architect Portfolio"
+    assert json.loads(Path("server.json").read_text())["title"] == "Fmind Freelance AI Architect Website"
+
+
+def test_identity_location_and_services_are_discoverable(client: AppClient) -> None:
+    profile = client.get("/api/profile").json()
+    assert profile["metadata"]["work_location"] == "Luxembourg"
+    for phrase in ("Médéric Hurier", "Fmind", "freelance AI architect", "Luxembourg", "AI agents", "security"):
+        assert phrase in profile["metadata"]["description"]
+    home = client.get("/").text
+    assert "Based in Luxembourg" in home
+    graph = json.loads(home.split('<script type="application/ld+json">', 1)[1].split("</script>", 1)[0])["@graph"]
+    person = next(item for item in graph if item["@type"] == "Person")
+    assert person["name"] == "Médéric Hurier"
+    assert person["alternateName"] == "Fmind"
+    assert person["workLocation"]["address"]["addressLocality"] == "Luxembourg"
+    for path in ("/llms.txt", "/llms-full.txt"):
+        summary = client.get(path).text
+        assert "Based in Luxembourg" in summary
+        for service in profile["services"]:
+            assert service["title"] in summary
+            assert service["description"] in summary
+            assert service["badge"] in summary
+            assert service["cta_url"] in summary
 
 
 def test_profile_schema_describes_the_public_response(client: AppClient) -> None:

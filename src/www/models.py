@@ -45,6 +45,7 @@ class Metadata:
     site_url: str
     twitter_handle: str
     socials: tuple[SocialLink, ...]
+    work_location: str
 
 
 @dataclass(frozen=True, slots=True)

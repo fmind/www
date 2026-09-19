@@ -86,4 +86,6 @@ The public [/agents](https://www.fmind.dev/agents) guide is the integration refe
 
 `/api/profile` and its JSON Schema share the startup snapshot with LLM text, feeds, sitemap, and JSON-LD. Homepage/article routes support `Accept: text/markdown` and `Vary: Accept`; HTML wins ties. Fixed article `.md` URLs remain available. The API catalog, MCP server card, and packaged visitor skill expose discovery; use `server/discover` for protocol negotiation. Visitor skills are separate from repository maintenance skills.
 
+Keep identity, Luxembourg work location, and service availability in `src/www/data.py`. The homepage, profile JSON/MCP, and LLM summaries share these facts. Article HTML and Markdown identify the author; `/llms-full.txt` retains each article's dates and canonical link. Validate search appearance with the local Lighthouse task; indexing and ranking require separate Search Console evidence after deployment.
+
 `server.json` tracks the website release for `io.github.fmind/portfolio`. MCP Registry publication is a separate owner action after live verification: `mcp-publisher validate server.json`, `mcp-publisher login github`, then `mcp-publisher publish`. Verify through the [Registry API](https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.fmind%2Fportfolio). Discovery does not guarantee client adoption or AI citations.

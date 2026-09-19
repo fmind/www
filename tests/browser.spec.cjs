@@ -891,6 +891,7 @@ test("section navigation never covers portfolio text", async ({ page }) => {
 
 test("homepage availability is visible beside the primary actions", async ({ page }) => {
   await page.goto("/");
+  await expect(page.locator(".hero").getByText("Based in Luxembourg", { exact: true })).toBeVisible();
   const availability = page.locator("[data-availability]");
   await expect(availability).toContainText("Not available for new missions");
   await expect(availability).toContainText("Paid session");
@@ -916,6 +917,16 @@ test("agent guide connects visitors to the calculator and verified skill", async
   expect(index.skills[0].digest).toBe("sha256:" + createHash("sha256").update(await skill.body()).digest("hex"));
   await page.getByRole("link", { name: "calculator's shareable URLs" }).click();
   await expect(page).toHaveURL(/\/sites\/llm-self-hosting\/$/);
+});
+
+test("article readers can identify the author and reach his services", async ({ page }) => {
+  await page.goto("/articles/the-affordable-ai-agents/");
+  const author = page.locator("article > header").getByRole("link", { name: "Médéric Hurier (Fmind)", exact: true });
+  await expect(author).toBeVisible();
+  await expect(author).toHaveAttribute("rel", "author");
+  await author.click();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.locator(".hero").getByRole("link", { name: "Send Email", exact: true })).toBeVisible();
 });
 
 test("mobile reading keeps all section navigation out of the content", async ({ page }) => {

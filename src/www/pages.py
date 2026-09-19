@@ -28,7 +28,7 @@ def home_metadata(structured_data: str) -> PageMetadata:
 def connect_metadata(structured_data: str) -> PageMetadata:
     return PageMetadata(
         title=f"Connect with {METADATA.name} ({METADATA.alternate_name})",
-        description="Connect with Médéric Hurier, freelance AI Architect. Find me on LinkedIn or save my contact details.",
+        description="Connect with Médéric Hurier (Fmind), freelance AI Architect based in Luxembourg. Find me on LinkedIn or save my contact details.",
         canonical=CONNECT_URL,
         image_url=f"{METADATA.site_url}/static/img/og-image.jpg",
         image_alt="Fmind.dev — AI, Agents, Security",
@@ -40,7 +40,7 @@ def connect_metadata(structured_data: str) -> PageMetadata:
 def agents_metadata() -> PageMetadata:
     return PageMetadata(
         title="For AI agents | Médéric Hurier (Fmind)",
-        description="Connect your assistant to Fmind's public portfolio, articles, and LLM hosting calculator.",
+        description="Explore Médéric Hurier (Fmind)'s profile, services, articles, and decision tools through free, read-only APIs and MCP.",
         canonical=f"{METADATA.site_url}/agents",
         image_url=f"{METADATA.site_url}/static/img/og-image.jpg",
         image_alt="Fmind.dev — AI, Agents, Security",

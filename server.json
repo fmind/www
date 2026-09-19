@@ -1,8 +1,8 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.fmind/portfolio",
-  "title": "Fmind Freelance AI Architect Portfolio",
-  "description": "Read-only access to Fmind's portfolio, articles, and LLM hosting calculator.",
+  "title": "Fmind Freelance AI Architect Website",
+  "description": "Read-only access to Fmind's portfolio, articles, and sites.",
   "version": "2.0.0",
   "repository": {
     "url": "https://github.com/fmind/www",

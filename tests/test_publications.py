@@ -89,7 +89,8 @@ def test_llms_and_article_markdown_surfaces_preserve_citation_metadata() -> None
     assert "## Machine-readable portfolio" in index
     assert f"[Markdown]({item.markdown_url()})" in index
     assert "## Full articles" in full
-    assert item.markdown in full
+    assert markdown in full
+    assert "- Author: [Médéric Hurier (Fmind)](https://www.fmind.dev/)" in markdown
     assert "- Updated: 2026-02-01" in markdown
     assert "- Canonical: https://example.net/original" in markdown
     assert f"]({METADATA.site_url}/articles/)" in markdown

@@ -34,7 +34,7 @@ def test_contact_card_includes_public_professional_details() -> None:
     for social in connect.METADATA.socials:
         assert f"URL:{social.url}" in lines
     note = next(line for line in lines if line.startswith("NOTE:"))
-    assert note.startswith("NOTE:Freelance AI Architect specializing in AI agents")
+    assert note.startswith("NOTE:Médéric Hurier (Fmind)\\, freelance AI architect based in Luxembourg.")
     assert "PhD in AI and Computer Security" in note
     assert "Agentic AI Foundation Ambassador" in note
     assert "33N Ventures" in note

@@ -115,6 +115,17 @@ def render_llms_txt(articles: Sequence[Article]) -> str:
         "",
         METADATA.description,
         "",
+        "## Services and contact",
+        "",
+        f"Based in {METADATA.work_location}.",
+        "",
+        *(
+            f"- **{service.title}**: {service.description} {service.badge}. [{service.cta_text}]({service.cta_url})"
+            for service in get_services()
+        ),
+        "",
+        f"- [Professional profile and experience]({METADATA.site_url}/#about)",
+        "",
         "## Machine-readable portfolio",
         "",
         f"- [Connect]({METADATA.site_url}/connect): LinkedIn, a downloadable contact card, and the full website.",
@@ -149,7 +160,7 @@ def render_llms_txt(articles: Sequence[Article]) -> str:
 def render_llms_full(index: str, articles: Sequence[Article]) -> str:
     body = index + "\n## Full articles\n"
     for article in articles:
-        body += f"\n### [{article.title}]({article.url})\n\n{article.markdown}\n"
+        body += f"\n{render_article_markdown(article)}\n"
     return body
 
 
@@ -208,6 +219,7 @@ def render_article_markdown(article: Article) -> str:
         "",
         f"> {article.description}",
         "",
+        f"- Author: [{METADATA.name} ({METADATA.alternate_name})]({METADATA.site_url}/)",
         f"- Published: {article.date.date().isoformat()}",
     ]
     if article.modified_date() > article.date:

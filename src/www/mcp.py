@@ -54,6 +54,7 @@ DEFAULT_SEARCH_RESULTS = 10
 MAXIMUM_SEARCH_RESULTS = 50
 
 _ICON_URL = f"{METADATA.site_url}/static/img/favicons/icon-192.png"
+_DESCRIPTION = f"{METADATA.description} Read-only access to the public profile, services, articles, and sites."
 _ICONS = [Icon(src=_ICON_URL, mime_type="image/png", sizes=["192x192"])]
 _READ_ONLY = ToolAnnotations(read_only_hint=True, open_world_hint=False)
 _CACHE_HINTS = {
@@ -199,7 +200,7 @@ def create_mcp_server(
     server: MCPServer[None] = _PortfolioMCPServer(
         name="www",
         title=f"{METADATA.name} ({METADATA.alternate_name}) — {METADATA.job_title} Portfolio",
-        description="Read-only access to Fmind's portfolio, articles, and LLM hosting calculator.",
+        description=_DESCRIPTION,
         instructions=(
             f"Query the portfolio of {METADATA.name} ({METADATA.alternate_name}): {METADATA.headline_primary}. "
             "Explore profile, leadership, work experience, credentials, publications, projects, and services. "
@@ -413,7 +414,7 @@ async def render_mcp_server_card(server: MCPServer[None]) -> bytes:
             "version": build_version(),
             "websiteUrl": f"{METADATA.site_url}/",
         },
-        "description": "Read-only access to Fmind's portfolio, articles, and LLM hosting calculator.",
+        "description": _DESCRIPTION,
         "iconUrl": _ICON_URL,
         "documentationUrl": f"{METADATA.site_url}/agents",
         "transport": {"type": "streamable-http", "endpoint": f"{METADATA.site_url}/mcp"},
