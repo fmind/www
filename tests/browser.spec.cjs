@@ -136,6 +136,7 @@ test("conference contact actions and QR display work without JavaScript", async 
     const page = await context.newPage();
     await page.goto("/connect");
     await expect(page.getByRole("heading", { name: "Médéric Hurier (Fmind)", exact: true })).toBeVisible();
+    await expect(page.getByText("Based in Luxembourg", { exact: true })).toBeVisible();
     await expect(page.getByText("Médéric Hurier (Fmind)", { exact: true })).toBeVisible();
     const linkedIn = page.getByRole("link", { name: "Connect on LinkedIn" });
     await expect(linkedIn).toBeInViewport();
@@ -170,6 +171,7 @@ test("conference contact actions and QR display work without JavaScript", async 
     await expect(page).toHaveURL(/\/$/);
     await page.goto("/scan");
     await expect(page.getByRole("heading", { name: "Médéric Hurier (Fmind)", exact: true })).toBeVisible();
+    await expect(page.getByText("Based in Luxembourg", { exact: true })).toBeVisible();
     const qr = page.getByRole("img", { name: /QR code opening Médéric Hurier/ });
     await expect(qr).toBeVisible();
     await expect(qr).toHaveJSProperty("naturalWidth", 296);
