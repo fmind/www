@@ -1,3 +1,4 @@
+# https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/cloud_run_v2_service
 # Cloud Run service deployment and its public-access IAM policy.
 
 resource "google_cloud_run_v2_service" "web" {
@@ -5,6 +6,12 @@ resource "google_cloud_run_v2_service" "web" {
   location            = var.region
   ingress             = "INGRESS_TRAFFIC_ALL"
   deletion_protection = true
+
+  # Bound the whole service, including traffic splits between revisions.
+  scaling {
+    min_instance_count = 0
+    max_instance_count = 5
+  }
 
   template {
     service_account = google_service_account.cloudrun_sa.email

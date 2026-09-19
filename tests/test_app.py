@@ -84,12 +84,20 @@ def test_human_pages_render_complete_no_cache_documents(client: AppClient) -> No
 
 def test_ai_architect_identity_is_shared_by_public_surfaces(client: AppClient) -> None:
     profile = client.get("/api/profile").json()
-    assert profile["metadata"]["job_title"] == "AI Architect"
+    assert profile["metadata"]["job_title"] == "Freelance AI Architect"
+    assert client.get("/site.webmanifest").json()["description"] == profile["metadata"]["description"]
+    human_socials = client.get("/humans.txt").text.split("/* SOCIAL */\n", 1)[1].split("\n\n", 1)[0]
+    assert human_socials.splitlines() == [f"{social.name}: {social.url}" for social in METADATA.socials]
+    card = client.get("/connect.vcf").text.replace("\r\n ", "")
+    assert "TITLE:Freelance AI Architect" in card
+    assert "Role: Freelance AI Architect" in client.get("/humans.txt").text
+    for path in ("/connect", "/scan"):
+        assert ">Freelance AI Architect</p>" in client.get(path).text
     for path in ("/", "/connect", "/llms.txt", "/connect.vcf", "/humans.txt", "/mcp/server-card"):
         body = client.get(path).text
         assert "AI Architect" in body
         assert "AI Security Architect" not in body
-    assert json.loads(Path("server.json").read_text())["title"] == "Fmind AI Architect Portfolio"
+    assert json.loads(Path("server.json").read_text())["title"] == "Fmind Freelance AI Architect Portfolio"
 
 
 def test_profile_schema_describes_the_public_response(client: AppClient) -> None:

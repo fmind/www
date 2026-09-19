@@ -1,8 +1,9 @@
+# https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/monitoring_alert_policy
 # Observability: notification channel and Cloud Run error alert policies.
 
 # Notification channel for error alerts.
 resource "google_monitoring_notification_channel" "email" {
-  display_name = "Médéric Hurier (Google Chat / Email)"
+  display_name = "Médéric Hurier (Email)"
   type         = "email"
   labels = {
     email_address = var.notification_email

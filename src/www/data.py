@@ -29,7 +29,7 @@ METADATA = Metadata(
     alternate_name="Fmind",
     site_name="Fmind",
     title="Médéric Hurier (Fmind) | Freelance AI Architect",
-    job_title="AI Architect",
+    job_title="Freelance AI Architect",
     headline_primary="Freelance AI Architect • AI Agents, MLOps & Security",
     headline_secondary="PhD • VC Expert Advisor • AAIF Ambassador",
     description="Freelance AI Architect specializing in AI agents, MLOps, and security. PhD in AI and Computer Security, VC Expert Advisor, and AAIF Ambassador.",
@@ -329,7 +329,7 @@ YOUTUBE_SERIES = (
 
 THESIS = Thesis(
     "Creating better ground truth to further understand Android malware",
-    "https://orbilu.uni.lu/handle/10993/39903",
+    "https://github.com/fmind/thesis",
     "University of Luxembourg (SNT) & Google, 2019",
     "AI/ML models are only as good as the data they learn from — yet Android malware ground truths are notoriously unreliable. This thesis tackles the problem by benchmarking antivirus engines, harmonizing their conflicting labels, and mining large-scale datasets to characterize malicious behavior.",
     (
@@ -341,14 +341,14 @@ THESIS = Thesis(
 PAPERS = (
     ResearchPaper(
         "Euphony: Harmonious Unification of Cacophonous Anti-Virus Vendor Labels",
-        "https://orbilu.uni.lu/handle/10993/31441",
+        "https://doi.org/10.1109/MSR.2017.57",
         "MSR 2017 • Mining Software Repositories",
         "https://github.com/fmind/euphony",
         "Euphony — Label Unification",
     ),
     ResearchPaper(
         "On the Lack of Consensus in Anti-Virus Decisions",
-        "https://orbilu.uni.lu/handle/10993/27845",
+        "https://doi.org/10.1007/978-3-319-40667-1_8",
         "DIMVA 2016 • Detection of Intrusions and Malware",
         "https://github.com/fmind/stase",
         "STASE — Statistical Metrics",
@@ -404,8 +404,7 @@ _INLINE_MARKDOWN = MarkdownIt("commonmark", {"html": False})
 
 def markdown_to_html(text: str) -> str:
     if text.lstrip().startswith("<"):
-        # This helper only renders trusted, single-paragraph portfolio copy. Keep
-        # Goldmark's fail-closed raw-HTML result for accidental markup inputs.
+        # Portfolio copy is single-paragraph Markdown; reject accidental raw HTML.
         return "<!-- raw HTML omitted -->"
     rendered = _INLINE_MARKDOWN.render(text).removesuffix("\n")
     if rendered.startswith("<p>") and rendered.endswith("</p>"):

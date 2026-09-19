@@ -82,18 +82,14 @@ def range_file_response(
                     if size:
                         await _send_error(send, method, _NO_OVERLAP_BODY, size)
                         return
-                    # Some clients send a Range field on every request. Go's
-                    # net/http serves an empty representation normally rather
-                    # than turning that harmless habit into a 416 response.
+                    # An empty representation can satisfy clients that always send Range.
                     requested_ranges = []
                 except _MalformedRangeError:
                     await _send_error(send, method, _INVALID_RANGE_BODY)
                     return
 
-                # Matching net/http's safety rule avoids turning a short file
-                # into a much larger response through overlapping ranges.
-                if sum(byte_range.length for byte_range in requested_ranges) <= size:
-                    ranges = requested_ranges
+                # Parsing already rejects overlaps and bounds every range to the file.
+                ranges = requested_ranges
 
             response_headers = [
                 (b"accept-ranges", b"bytes"),

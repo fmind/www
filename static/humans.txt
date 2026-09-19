@@ -1,20 +1,16 @@
 /* TEAM */
 Author: Médéric Hurier (Fmind)
-Role: AI Architect
+Role: Freelance AI Architect
 Location: Luxembourg
 Contact: contact@fmind.dev
 Website: https://www.fmind.dev
 
 /* SOCIAL */
 LinkedIn: https://www.linkedin.com/in/fmind-dev/
-Twitter (X): https://x.com/fmind_dev
-Bluesky: https://bsky.app/profile/fmind-dev.bsky.social
-Medium: https://fmind.medium.com/
+X (Twitter): https://x.com/fmind_dev
 GitHub: https://github.com/fmind
-YouTube: https://www.youtube.com/@fmind-dev
-Hugging Face: https://huggingface.co/fmind
 Kaggle: https://www.kaggle.com/freaxmind
-Credly: https://www.credly.com/users/fmind
+YouTube: https://www.youtube.com/@fmind-dev
 
 /* FONTS */
 Google Sans: SIL Open Font License 1.1 — https://github.com/googlefonts/googlesans

@@ -540,7 +540,7 @@ def create_app(
             OpenTelemetryPlugin(
                 OpenTelemetryConfig(
                     tracer_provider=tracer_provider,
-                    # Match net/http instrumentation's single server span.
+                    # Emit one server span per request.
                     exclude_spans=["receive", "send"],
                 )
             )
@@ -564,8 +564,7 @@ def create_app(
                 )
 
     def method_not_allowed(request: AppRequest, _: Exception) -> Response[str]:
-        # The Go router's unqualified catch-all rendered the same noindex 404
-        # document for unsupported methods instead of exposing a framework 405.
+        # Keep unsupported methods on the same noindex 404 surface as unknown paths.
         return render_not_found(request)
 
     def internal_server_error(_: AppRequest, __: Exception) -> Response[bytes]:

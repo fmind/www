@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import tomllib
 from pathlib import Path
 from typing import Any
@@ -25,3 +26,12 @@ def test_release_versions_are_synchronized() -> None:
     assert len(locked_project) == 1
     assert locked_project[0]["version"] == project_version
     assert server["version"] == project_version
+
+
+def test_python_runtime_pins_are_consistent() -> None:
+    repository = Path(__file__).resolve().parents[1]
+    mise = _load_toml(repository / "mise.toml")
+    version = mise["tools"]["python"]
+    assert (repository / ".python-version").read_text().strip() == version
+    image_versions = re.findall(r"^FROM python:([^@]+)@sha256:", (repository / "Dockerfile").read_text(), re.MULTILINE)
+    assert image_versions == [f"{version}-slim", f"{version}-slim"]

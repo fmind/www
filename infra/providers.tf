@@ -1,3 +1,4 @@
+# https://opentofu.org/docs/language/providers/requirements/
 # OpenTofu required providers and GCS state backend settings.
 #
 terraform {
@@ -7,11 +8,11 @@ terraform {
   required_providers {
     google = {
       source  = "hashicorp/google"
-      version = "= 7.43.0"
+      version = "= 8.3.0"
     }
     google-beta = {
       source  = "hashicorp/google-beta"
-      version = "= 7.43.0"
+      version = "= 8.3.0"
     }
     time = {
       source  = "hashicorp/time"

@@ -1,15 +1,5 @@
-# External link rot is a property of the web, not of a commit.
-#
-# lychee reads every link in the published content, so any article can turn this
-# red — including one that has been live for a year and that nobody is allowed to
-# rewrite. Running it on pull requests made an unrelated article's dead link, or
-# a host that simply blocks GitHub runner IPs, block a new publication: an
-# article's review pull request failed on nine cloud.google.com URLs that
-# answered 200 from a laptop and passed on a re-run with no changes at all.
-#
-# So it runs on a schedule, where a red result is a reading list rather than a
-# gate. That is the same rule the site's own article argues for: lint everything
-# that executes, and schedule what is slow or flaky.
+# https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax
+# External link rot and bot blocking are scheduled checks, not merge gates.
 name: External content links
 on:
   schedule:
@@ -29,11 +19,11 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Git Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false # the checker only reads the tree
       - name: Set up mise tools
-        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4
+        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
         with:
           install: false
           cache: true

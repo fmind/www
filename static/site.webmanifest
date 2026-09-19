@@ -1,7 +1,7 @@
 {
   "name": "Fmind",
   "short_name": "Fmind",
-  "description": "Freelance AI Architect (PhD), VC Expert Advisor, AAIF Ambassador, and GCP Certified Cloud Architect specializing in AI agents, MLOps, and production AI systems.",
+  "description": "Freelance AI Architect specializing in AI agents, MLOps, and security. PhD in AI and Computer Security, VC Expert Advisor, and AAIF Ambassador.",
   "id": "/",
   "start_url": "/",
   "orientation": "any",
@@ -10,7 +10,12 @@
   "dir": "ltr",
   "theme_color": "#174ea6",
   "background_color": "#ffffff",
-  "categories": ["business", "productivity", "security", "education"],
+  "categories": [
+    "business",
+    "productivity",
+    "security",
+    "education"
+  ],
   "icons": [
     {
       "src": "/static/img/favicons/icon-192.png",

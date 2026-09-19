@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM python:3.14.7-slim@sha256:cad9a2c871761c413caa6fdd6441c783451e740a48aaeba60ae62a8b53525ef6 AS build
+FROM python:3.14.7-slim@sha256:0097bb60d0c7a2c6af5a56e747eabc2016218f837f76daa70b9526fb883bc499 AS build
 ARG TARGETARCH
 ENV UV_COMPILE_BYTECODE=1
 ENV UV_LINK_MODE=copy
@@ -24,21 +24,12 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     -i assets/css/input.css -o static/dist/styles.css --minify \
   && chmod -R u=rwX,go=rX /app/.venv /app/content /app/static
 
-FROM python:3.14.7-slim@sha256:cad9a2c871761c413caa6fdd6441c783451e740a48aaeba60ae62a8b53525ef6 AS runner
+FROM python:3.14.7-slim@sha256:0097bb60d0c7a2c6af5a56e747eabc2016218f837f76daa70b9526fb883bc499 AS runner
 ENV ENVIRONMENT=production
 ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 WORKDIR /app
-# The current Python digest predates these Debian security fixes. Pin the four
-# runtime updates until a refreshed upstream digest includes them.
-RUN apt-get update \
-  && apt-get install --yes --no-install-recommends --only-upgrade \
-    gzip=1.13-1+deb13u1 \
-    libpcre2-8-0=10.46-1~deb13u2 \
-    libsqlite3-0=3.46.1-7+deb13u2 \
-    perl-base=5.40.1-6+deb13u1 \
-  && rm -rf /var/lib/apt/lists/*
 # Runtime images install only the locked application environment; retaining pip
 # adds an unused package installer and its vendored dependency attack surface.
 RUN python -m pip uninstall --yes --root-user-action=ignore pip \

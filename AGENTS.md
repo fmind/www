@@ -1,111 +1,43 @@
 # AGENTS.md — www
 
-Python 3.14 server-rendered web application: Litestar + strict Jinja + Tailwind/DaisyUI, served by Granian. It has no client framework, Node.js application project, or database. Jinja templates are package data; `content/` and `static/` are deploy-time trees copied into the OCI image.
+Python 3.14, Litestar, strict Jinja, Tailwind/DaisyUI, and Granian. No client framework, Node application, or database. Templates are package data; `content/` and `static/` are deployed beside the wheel.
 
-## Commands (mise)
+## Delivery
 
-`mise.toml` is the canonical task contract reused by Lefthook and CI. Run tasks from the repository root.
+- `mise.toml` is the canonical task contract for local work, hooks, and CI. See [README](README.md#tasks) and `mise tasks` for commands.
+- Definition of done: `mise run all` passes without unresolved warnings; infrastructure changes also pass `mise run check:tofu`. New behavior needs a regression test.
+- `all` runs format, check, package/CSS build, pytest (branch coverage ≥85%), OCI build/scan/smoke, Chromium install, and browser journeys sequentially. Docker Engine/Buildx and first-run network access are required; no cloud credentials are needed.
+- Network link checks, cross-browser tests, and Lighthouse are separate tasks. Run those relevant to the change; never weaken checks to get a green release.
+- Inspect Git status/diffs and preserve unrelated work and staged selections. Use OS temporary directories for agent scratch; no repository-local review reports. Remove only task-owned temporary artifacts.
+- Commit, push, release, deploy, apply infrastructure, and spend require owner authorization. Reuse authority already given. Use Conventional Commits without attribution; published tags are immutable.
+- Keep Cloud Run **service and revision minimum instances at 0**, maximum 5, and request-based CPU (`cpu_idle = true`). Raising capacity or enabling always-on instances requires explicit owner authorization.
+- OpenTofu owns service settings; CI owns only the image digest. A `main` deployment must scan and smoke-test its pushed immutable digest before rollout, then verify ready revision, traffic, health, and errors.
 
-- `mise install` — install the pinned project toolchain.
-- `mise run install` — frozen all-group `uv` sync, Lefthook install, and pinned Chromium install.
-- `mise run watch` — Granian ASGI reload server plus Tailwind watch.
-- `mise run format` — Ruff imports/format, dprint, and OpenTofu format.
-- `mise run check` — project/lock validation, Ruff, ty, dprint, secrets, dependency and Dockerfile/IaC scans, and workflow audits.
-- `mise run check:image` — build and scan the exact production OCI archive; requires Docker with Buildx.
-- `mise run check:image:deployed` — resolve and scan every serving Cloud Run revision with Trivy.
-- `mise run check:images` — read-only validation of the complete image derivative archive, provenance lock, and encoder recipe; part of `check`.
-- `mise run check:typos` — article spelling floor inside `check`, with reviewed exceptions in `typos.toml`.
-- `mise run check:links` — network-dependent external-link check, scheduled weekly rather than used as a merge gate.
-- `mise run check:tofu` — network-dependent backend-free OpenTofu validation and tflint, run in CI on `infra/` changes.
-- `mise run test` — offline pytest suite with branch coverage of at least 85%.
-- `mise run test:browser` — pinned Chromium journeys on desktop and mobile in light mode.
-- `mise run test:browser:cross` — focused Firefox/WebKit journeys; install their binaries with `install:browser:cross` and provision the documented system libraries first. Separate from `all`.
-- `mise run test:lighthouse:local` — managed local server and strict ten-audit portfolio matrix; weekly/manual workflow retains reports.
-- `mise run test:image` — bounded HTTP/MCP smoke test of the already-built production OCI archive.
-- `mise run test:lighthouse -- --base-url <origin> [--mode full|smoke|portfolio]` — strict five-category audit; never part of `all`.
-- `mise run build` — compile CSS and build clean wheel and source distributions.
-- `mise run build:portrait <private-master.jpg>` — export a public JPEG with orientation and ICC profile retained, personal metadata removed; the master must stay outside `static/`.
-- `mise run build:branding` — rebuild logos, favicons, and social previews from the committed PNG masters.
-- `mise run build:images` — reconcile the SHA-256 provenance lock and generate only changed, missing, tampered, or recipe-stale Pillow WebP derivatives.
-- `mise run build:fonts` — re-subset the self-hosted WOFF2 faces from the pinned upstream releases; network-dependent and never part of `all`.
-- `mise run build:image` — build the production OCI image archive at `tmp/www-image.tar`.
-- `mise run deploy <digest-ref>` — manual repository-pinned Cloud Run rollout/rollback; production-mutating and never in a hook or `all`.
+## Ownership
 
-`mise run test:lighthouse` expects the pinned Chromium to be present; run `mise run install:browser` first. The harness clearly reports `playwright install chromium` when the browser is absent.
+- `data.py`, `models.py`, `tags.py`: immutable portfolio, shared types, site registry, closed tag vocabulary.
+- `app.py`: startup snapshot, routes, middleware composition, MCP lifespan, teardown.
+- `content.py`, `images.py`, `assets.py`: validated publications, media derivatives, static inventory/hashes.
+- `publications.py`: canonical profile JSON/schema, feeds, sitemap, LLM text; shared by HTTP and MCP.
+- `agent_discovery.py`, `agent_skills/`: API catalog, representation negotiation, packaged visitor skill/index; separate from `.agents/` maintenance skills.
+- `connect.py`: public vCard; `/connect` is discoverable, `/scan` is a noindex QR utility.
+- `pages.py`, `rendering.py`, `templates/`: metadata, sole Jinja/trusted-markup boundary, inherited page layouts and macros.
+- `middleware.py`, `log.py`, `telemetry.py`: HTTP policy, privacy-safe analytics, logs, optional tracing.
+- `static.py`, `ranges.py`: inventory-bound static and conditional/range delivery.
+- `sites/`: input/URL parsing, formulas, charts, formatting, immutable sources, and views. Import from the owning module.
+- `scripts/`: manual operations and asset generators, excluded from the runtime image. `infra/`: service, identities, registry, monitoring, analytics.
 
-`mise run all` runs sequentially: format, check, the package/CSS build, test, the exact OCI archive build and scan, its runtime smoke test, one Chromium installation, then browser journeys. The image smoke reuses the archive and never builds it; `all` also reuses CSS and package outputs with `--skip-deps` for its test calls, while standalone task dependencies are unchanged. The full gate requires a running Docker Engine with Buildx. A fresh checkout requires `mise install`; the first full gate needs network access for Chromium installation, the base-image pull, and scanner database refreshes. No cloud credentials are required.
+## Invariants
 
-## Layout
+- Parse external input at boundaries and fail with contextual chained errors. Construct validated articles, search, assets, publications, renderer, and MCP once; requests must not observe partial state.
+- Keep Jinja `StrictUndefined` and autoescape. Only `rendering.py` may trust validated article/biography HTML, CSS, or guarded JSON-LD.
+- Keep the site light-only and assets self-hosted. Google Sans is body text, Google Sans Code is code. Use existing macros and small nonce-authorized page interactions; do not add a JS bundle without a real module graph.
+- Tailwind classes belong in `src/www/templates/**/*.html`. Authored build inputs go in `assets/`; final public artifacts go in `static/`.
+- The validated article collection is the only publication source; drafts never enter production discovery. Current Markdown is the authoritative article body.
+- Register tools in `data.py:SITE_PAGES` and wire routes/templates/views explicitly. Formulas remain server-owned. MCP calculator input rejects invalid values instead of silently applying defaults.
+- Tags require a `tags.py` entry, matching CSS rule, and article use. Generate reviewed image derivatives and provenance lock after media changes; `check:images` never writes.
+- Keep `content.py:FIGURE_SIZES` aligned with article CSS. Figures never pan; captions require repeated alt text. Diagram labels must remain about 12px or larger at 1280px and height at most about 1300px.
+- Build fonts only with `scripts/build_fonts.py`; keep required assets, CSS faces, and template preloads synchronized. Preserve subset-specific face names. Keep private portrait masters outside `static/`; export with `build:portrait`.
+- Analytics remain cookieless and aggregate, with 180-day expiry and empty `country` until a trusted geography boundary exists. The scheduled image scanner stays read-only; maintain advisory triage in `SECURITY.md`.
 
-Entries are in ASCII order: dotfiles, capitalized files, then lowercase paths.
-
-- `.agents/` — portable project skills: `article`, `infra`, `release`, `site`, and `website-analytics`.
-- `.dockerignore` — build-context exclusions.
-- `.env.example` — placeholder runtime configuration.
-- `.github/` — CI/CD, infrastructure, security, link-rot, and dependency automation.
-- `.gitignore` — local and generated exclusions.
-- `.python-version` — selected Python runtime version.
-- `.trivyignore` — reviewed scan exceptions with reasons.
-- `AGENTS.md` — agent instructions and repository invariants.
-- `CHANGELOG.md` — release history generated by git-cliff.
-- `CLAUDE.md` — Claude entry point importing this file.
-- `Dockerfile` — locked, non-root Python OCI build.
-- `LICENSE` — MIT license.
-- `README.md` — human setup, behavior, and operations.
-- `SECURITY.md` — vulnerability reporting, deployed advisory triage, and review ownership.
-- `assets/` — authored Tailwind input, working-tree scanner scope, and image provenance/encoder-recipe lock; never served directly.
-- `content/` — strict Markdown article sources.
-- `dprint.json` — JSON, Markdown, TOML, and YAML formatting.
-- `infra/` — OpenTofu for Cloud Run, identities, monitoring, and aggregate analytics.
-- `lefthook.yml` — git hooks delegating to mise tasks.
-- `lychee.toml` — external-link checker configuration.
-- `mise.lock` — pinned mise tool checksums.
-- `mise.toml` — tool versions, environment defaults, and canonical tasks.
-- `pyproject.toml` — Python package, dependencies, Ruff, ty, pytest, and coverage configuration.
-- `server.json` — publish-ready official MCP Registry metadata; version tracks the release tag.
-- `scripts/` — manual deploy, SDK-based image smoke, deployed-image scanning, font subsetting, and bounded Lighthouse qualification; excluded from the runtime image.
-- `src/www/` — application package, composition root, domain logic, and packaged Jinja templates.
-- `static/` — compiled or final public assets copied into the runtime image.
-- `tests/` — pytest and pinned Playwright regressions.
-- `typos.toml` — reviewed spelling exceptions.
-- `uv.lock` — exact Python dependency resolution.
-
-Important package ownership:
-
-- `agent_discovery.py` owns the public API catalog, skill digest/index, and HTML/Markdown negotiation; `agent_skills/` contains the packaged public visitor skill, separate from `.agents/` maintenance instructions.
-- `app.py` composes immutable startup state, Litestar routes, middleware, static delivery, MCP, and teardown.
-- `assets.py`, `content.py`, and `images.py` load/hash static files, parse/render articles, and generate derivatives.
-- `connect.py` derives the public vCard from portfolio data; `/connect` offers contact actions and `/scan` displays its QR code without indexing.
-- `data.py`, `models.py`, and `tags.py` own portfolio data, shared types, the site-page registry, and the closed tag vocabulary.
-- `highlighting.py`, `markdown.py`, `publications.py`, and `search.py` own Pygments output, source-preserving link rewriting, discovery artifacts, and BM25 search.
-- `middleware.py`, `log.py`, and `telemetry.py` own HTTP policy, structured logs, and OpenTelemetry.
-- `static.py` owns inventory-bound static delivery and delegates conditional byte ranges to `ranges.py`.
-- `pages.py` builds page metadata; `rendering.py` is the only Jinja environment and reviewed raw-markup boundary.
-- `sites/` separates input parsing and URLs, economics, charts, formatting, immutable sources, and view composition; import from the owning module.
-- `sites/agent.py` validates bounded MCP calculator parameters before delegating to the existing page calculator; invalid input must fail rather than use silent defaults.
-- `publications.py` also owns the canonical portfolio JSON and its serialization schema, shared by HTTP and MCP.
-- `src/www/templates/partials/calculator-script.html` owns calculator interactions; only the calculator page includes it.
-- `src/www/templates/` uses base inheritance, partials, and macros for all HTML page types.
-
-## Conventions
-
-- Do not create repository-local scratch folders or retain ad hoc review reports. Use an operating-system temporary directory for agent scratch work and remove it when finished.
-- Parse environment, query, Markdown, and protocol input at the boundary; use strict types and fail fast with contextual chained exceptions.
-- Build the validated article collection, static hashes, search index, derived publications, renderer, and MCP server once at application construction. Requests must not observe partial state. Rendering validates immutable trusted markup at construction; MCP discovery is derived from registered primitives during lifespan startup.
-- Keep Jinja `StrictUndefined` and autoescape enabled. Only `src/www/rendering.py` may mark validated article HTML, biography fragments, inline CSS, or guarded JSON-LD as trusted markup.
-- Keep all Tailwind/DaisyUI classes in `src/www/templates/**/*.html`; `assets/css/input.css` scans that tree. Authored inputs belong in `assets/`; only compiled or final files belong in public `static/`.
-- Keep the site light-only and retain the small nonce-authorized interaction script. Add a JS bundle only when first-party code becomes a real module graph.
-- Treat the validated article collection as the only publication source for HTML, Atom, sitemap, LLM text, JSON, search, and MCP. Production discovery never includes drafts.
-- Treat this repository as owning the published body of each article; revisions start from the current site Markdown.
-- Register decision pages in `src/www/data.py:SITE_PAGES`; it feeds metadata, sitemap, LLM text, JSON, MCP discovery, and article relationships. Wire each route, template, and view builder explicitly in `src/www/app.py`, and keep formulas and validated inputs under `src/www/sites/`.
-- Add tags only through `src/www/tags.py`, a matching `[data-tag='…']` rule in `assets/css/input.css`, and at least one article use. Vocabulary construction rejects blank or untrimmed names and descriptions, and duplicate names. Article parsing rejects unknown tags; archive tests require every vocabulary tag to be used and styled.
-- Fence code blocks with a language. `src/www/highlighting.py` performs Pygments highlighting and emits the matching stylesheet; unlabeled blocks use its bounded guesser.
-- Serve fonts from `static/fonts/` only through `scripts/build_fonts.py`, which pins the upstream release, clamps the axes, and subsets to the codepoints the site renders; keep `src/www/assets.py:_REQUIRED_WOFF2_FILES`, the `@font-face` rules, and the `base.html` preloads in step, and name each face for the served subset so a font installed on the reader's system cannot render first and then swap.
-- Generate and commit article derivatives and `assets/image-derivatives.json` after image changes. Widths live in `src/www/models.py:DERIVATIVE_WIDTHS`; the lock reconciles ladder or pinned encoder-recipe changes automatically, while `check:images` never writes.
-- Keep `src/www/content.py:FIGURE_SIZES` and `.article-page` CSS aligned. Standalone images fit the figure width and never pan; unreadable diagrams must be fixed at their source.
-- Fold a paragraph into `<figcaption>` only when its text repeats the standalone image alt. Compare text rather than markup; position alone is not evidence of a caption.
-- Preserve the diagram acceptance bar: apparent labels at least about 12px and rendered height at most about 1300px when fitted to 1280px.
-- Definition of done: `mise run all` passes warning-free; when infrastructure changes, `mise run check:tofu` also passes. New behavior has a regression test.
-- The scheduled security workflow uses a separate read-only identity to scan every serving digest and retain unfixed advisory evidence; keep `SECURITY.md` triage current.
-- A `main` deployment must scan and smoke-test the pushed immutable digest before Cloud Run receives it; local archive proof is not a substitute for the registry artifact.
-- Use Conventional Commits without attribution. Do not commit, push, publish, apply infrastructure, deploy, or incur spend without explicit authority.
+Task procedures live in `.agents/skills/`: `article`, `site`, `infra`, `release`, and `website-analytics`. Keep instructions concise and avoid repeating the README or task definitions.

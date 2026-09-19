@@ -8,93 +8,16 @@ metadata:
 
 # Release
 
-This workflow contains commits, pushes, a GitHub release, and a production deployment. Run it only after explicit owner authorization. Local readiness never grants publication authority, and already published tags are immutable.
+Use only for an explicitly authorized release. Reuse existing authorization; a green gate alone never authorizes publication. A deploy-only request follows [README deployment](../../../README.md#deployment) without creating a tag.
 
-A deployment alone does not require a semver release. For a deploy-only request, follow the [README deployment workflow](../../../README.md#deployment), qualify the reviewed commit, and verify the serving digest without creating a tag or GitHub release.
+1. Inspect `main`, upstream, staged and unstaged changes, accounts, and local/remote tags. Include only reviewed work; never move an existing release tag.
+1. Reconcile any infrastructure changes through the [infra skill](../infra/SKILL.md) before application rollout. Preserve `min_instance_count = 0` at both service and revision levels.
+1. Run `mise run all` and `mise run check:links`. Resolve failures and review warnings without suppressing them. Add `mise run check:tofu` for infrastructure changes, and browser/Lighthouse qualification appropriate to the changed pages.
+1. Commit reviewed implementation paths with Conventional Commits. Use the owner's requested version; otherwise derive the next semver with `git-cliff --config ~/.config/git-cliff/cliff.toml --bumped-version`.
+1. Set the same version in `pyproject.toml`, `uv.lock`, and `server.json` (`uv version <version>` updates the first two). Generate `CHANGELOG.md` with `git-cliff --config ~/.config/git-cliff/cliff.toml --bump <version> -o CHANGELOG.md`.
+1. Run `mise run all` on the final release candidate, inspect the diff, and commit the release metadata as `chore(release): vX.Y.Z`. Create an annotated tag and push `main` and that tag without force.
+1. Generate release notes in an OS temporary file, publish with `gh release create ... --notes-file ...`, then remove the file. Bind workflow monitoring to `git rev-parse HEAD`: `gh run list --workflow deploy.yml --commit <sha>` and `gh run watch <run-id> --exit-status`.
+1. Independently verify the ready Cloud Run revision, 100% traffic, image digest, release SHA, scale-to-zero, and recent error logs. CI must scan and smoke-test the pushed immutable digest before deployment.
+1. Verify apex redirect, `/health`, `/api/profile`, `/agents`, MCP discovery, `/llms.txt`, sitemap, feed, and archive indexes. Run `BROWSER_BASE_URL=https://www.fmind.dev mise run test:browser` and the relevant `test:lighthouse -- --base-url https://www.fmind.dev --mode portfolio` matrix. Report exact outcomes and any external limits.
 
-## Preconditions
-
-- Work from `main`; inspect `git status --short --branch`, HEAD, and upstream. Separate unrelated changes and never broad-stage, reset, clean, force-push, or rewrite history.
-- Confirm the release tools target the intended accounts and project. If `infra/` changed, complete the `infra` skill and its explicitly authorized live plan first.
-
-## Workflow
-
-1. Run the full local delivery gate and the separate network link check:
-
-   ```bash
-   mise run all
-   mise run check:links
-   git status --short
-   ```
-
-   `all` includes format, check, offline pytest with coverage, distribution and OCI builds, image scanning and smoke testing, and browser journeys. Resolve every warning, failure, and unexpected generated diff.
-
-1. Stage only reviewed implementation paths and commit them with Conventional Commits:
-
-   ```bash
-   git add -- <reviewed-path>...
-   git diff --cached --check
-   git diff --cached
-   git commit -m "<type>(<scope>): <change>"
-   ```
-
-1. Compute the next semver, synchronize package and MCP Registry metadata, and generate the changelog:
-
-   ```bash
-   NEXT_TAG=$(git-cliff --config ~/.config/git-cliff/cliff.toml --bumped-version)
-   uv version "${NEXT_TAG#v}" --no-sync
-   # Set server.json version to ${NEXT_TAG#v} with a reviewed edit.
-   git-cliff --config ~/.config/git-cliff/cliff.toml --bump -o CHANGELOG.md
-   ```
-
-   The `pyproject.toml`, `uv.lock`, and `server.json` versions must equal the tag without `v`.
-
-1. Re-run `mise run all`, inspect the exact release diff, then create and tag the release commit:
-
-   ```bash
-   git add -- pyproject.toml uv.lock server.json CHANGELOG.md
-   git diff --cached --check
-   git diff --cached
-   git commit -m "chore(release): ${NEXT_TAG}"
-   git tag -a "${NEXT_TAG}" -m "${NEXT_TAG}"
-   git push origin main "${NEXT_TAG}"
-   ```
-
-1. Publish release notes and bind monitoring to the release commit rather than the newest unrelated run:
-
-   ```bash
-   mkdir -p .agents/tmp
-   git-cliff --config ~/.config/git-cliff/cliff.toml --latest --strip all > .agents/tmp/release-notes.md
-   gh release create "${NEXT_TAG}" --title "${NEXT_TAG}" --notes-file .agents/tmp/release-notes.md
-   RELEASE_SHA=$(git rev-parse HEAD)
-   RUN_ID=$(gh run list --workflow deploy.yml --commit "${RELEASE_SHA}" --limit 1 --json databaseId --jq '.[0].databaseId')
-   gh run watch "${RUN_ID}" --exit-status
-   ```
-
-1. Verify production independently of CI. Tie the ready revision, 100% traffic, and deployed digest to the released SHA; inspect health, discovery, browser journeys, representative Lighthouse modes, and recent error logs:
-
-   ```bash
-   gcloud run services describe www-fmind-dev --project=www-fmind-dev --region=europe-west1
-   xh --headers --follow https://fmind.dev
-   xh --headers https://www.fmind.dev/health
-   BROWSER_BASE_URL=https://www.fmind.dev mise run test:browser
-   mise run test:lighthouse -- --base-url https://www.fmind.dev
-   ```
-
-   Check `/articles/`, `/sites/`, `/articles/feed.xml`, `/llms.txt`, `/sitemap.xml`, `/api/profile`, and `/.well-known/mcp/server-card.json`. Preserve exact per-page/per-mode Lighthouse results; one green page is not proof of 100 everywhere. Remove only the release-notes temporary directory after preserving evidence, then report every proof boundary separately.
-
-## Gotchas
-
-- Preserve the `vX.Y.Z` tag prefix; never delete, overwrite, or force-move a published tag.
-- The runtime is a locked, non-root Python image containing the virtual environment plus the repository's `content/` and `static/` trees; verify both through live journeys.
-- GitHub success does not prove the expected revision has traffic. A healthy endpoint does not prove the expected digest or discovery contract.
-- MCP Registry publication remains a separate owner action; a site release does not authorize `mcp-publisher publish`.
-
-## Official Skills
-
-- Use [git-delivery](~/.agents/skills/git-delivery/SKILL.md) for semver and git-cliff mechanics.
-- Use [production-readiness](~/.agents/skills/production-readiness/SKILL.md) when the release changes runtime risk.
-
-## Documentation
-
-- [GitHub CLI releases](https://cli.github.com/manual/gh_release_create)
+Keep the preceding qualified digest available for rollback through `mise run deploy <digest-ref>`. Local archive proof, exact-commit CI, publication, and live runtime are separate evidence. MCP Registry publication (`mcp-publisher publish`) remains a separate owner action.

@@ -6,45 +6,14 @@ metadata:
   author: Médéric HURIER (Fmind)
 ---
 
-# Build a Site Page
+# Decision Pages
 
-Add one focused decision tool to the existing Litestar, Jinja, Tailwind, and DaisyUI application; do not create a separate microsite.
+Build within the existing Litestar/Jinja application, with Python as the sole formula implementation.
 
-## Workflow
+1. Verify volatile prices, licenses, and benchmarks against current primary sources. Store immutable dated snapshots under `src/www/sites/`; separate sourced facts from editable assumptions.
+1. Register the page in `src/www/data.py:SITE_PAGES`, then wire its route, template, metadata, and view through `src/www/app.py` and `src/www/pages.py`. The registry feeds sitemap, JSON, LLM text, MCP, and article relationships.
+1. Keep typed parsing, formulas, and view composition in their owning `src/www/sites/` modules. Reject non-finite/out-of-range values; page fallback defaults must show validation messages, while MCP invalid input must fail. Round up whole billable resources.
+1. Reuse templates, macros, and the central renderer. Use a native GET form for shareable scenarios; JavaScript provides progressive enhancement only. Keep assumptions, units, source dates, capacity limits, and pilot requirements visible.
+1. Test calculations, invalid inputs, handlers, 404s, metadata, and discovery. Verify keyboard/no-JavaScript behavior, mobile/desktop reflow, and light mode even with a dark system preference. Run `mise run all`.
 
-1. Verify volatile claims, prices, licenses, and benchmarks against current primary sources. Store immutable source snapshots and dates under `src/www/sites/`, link every authority on the page, and separate sourced facts from editable assumptions.
-1. Add the page to `src/www/data.py:SITE_PAGES`. The registry feeds metadata, sitemap, LLM text, JSON, MCP discovery, and article relationships. Wire the Litestar route, template, and view builder explicitly through `src/www/app.py`, and use the `src/www/pages.py` metadata builders.
-1. Put typed view models and calculations in focused modules under `src/www/sites/`. Parse query values at the boundary, reject non-finite or out-of-range values, fail closed to explicit defaults with visible validation messages, and round up whole billable resources.
-1. Add a page template under `src/www/templates/pages/` and shared components under `src/www/templates/macros/` or `partials/`. Reuse base inheritance, navigation, typography, DaisyUI primitives, spacing, metadata, and the central `src/www/rendering.py` renderer.
-1. Use a native GET form so scenarios are shareable and Python remains the sole formula implementation. Add JavaScript only for progressive enhancement that cannot be expressed by the server response; the page must remain useful without it.
-1. Show assumptions, units, cost boundaries, source freshness, capacity/quality/latency caveats, and decisions that still require a measured pilot. Never present a planning estimate as benchmark precision.
-1. Add deterministic calculation and handler tests covering canonical output, invalid input, 404 behavior, structured data, and every discovery surface. Extend pinned Playwright journeys for desktop and mobile in light mode; verify that a dark system preference does not change the site's light-only presentation.
-1. Run and inspect the complete local gates:
-
-   ```bash
-   mise run all
-   ```
-
-## Gotchas
-
-- `assets/` contains authored build inputs; `static/` contains compiled or final public assets copied into the production image.
-- Tailwind classes belong in `src/www/templates/**/*.html`, the tree scanned by `assets/css/input.css`.
-- Keep Jinja autoescape and `StrictUndefined` enabled. Do not add a raw `Markup` boundary; only `src/www/rendering.py` may trust validated HTML, CSS, and JSON-LD.
-- Reuse package macros instead of duplicating cards, icons, or article links. Includes must not rely on hidden page-specific context.
-- Preserve native focus, labels, validation summaries, landmarks, keyboard behavior, and reduced-motion behavior. Verify both narrow and wide layouts.
-- Keep all static assets self-hosted. Do not add runtime CDNs, widgets, SDKs, client formula copies, cookies, or tracking.
-- License labels are planning signals, not legal conclusions. Link terms and require review where restrictions apply.
-- Keep operational GCP identifiers unchanged unless the task explicitly includes an authorized live infrastructure migration.
-
-## Official Skills
-
-- Use [technical-research](~/.agents/skills/technical-research/SKILL.md) for volatile model, cloud, or pricing claims.
-- Use [product-design-review](~/.agents/skills/product-design-review/SKILL.md) for responsive and accessibility review.
-- Use [playwright](~/.agents/skills/playwright/SKILL.md) for browser verification.
-
-## Documentation
-
-- [Litestar](https://docs.litestar.dev/)
-- [Jinja](https://jinja.palletsprojects.com/)
-- [Google Cloud pricing](https://cloud.google.com/products/calculator)
-- [Artificial Analysis models](https://artificialanalysis.ai/models)
+Use only self-hosted assets and the existing trusted-markup boundary. Planning estimates do not establish measured performance, production readiness, or legal permission. Do not add client formula copies, runtime CDNs, tracking, or a separate microsite.

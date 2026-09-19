@@ -35,7 +35,7 @@ def fold_plural(term: str) -> str:
 
 
 def tokenize(text: str) -> tuple[str, ...]:
-    # Python's \w includes underscore, while Go's letter-or-digit boundary does not.
+    # Treat underscores as word boundaries rather than part of a search token.
     fields = (part for part in _TOKEN_BOUNDARY.split(text.lower().replace("_", " ")) if part)
     return tuple(fold_plural(field) for field in fields)
 

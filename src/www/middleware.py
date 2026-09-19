@@ -260,7 +260,7 @@ class SiteMiddleware:
             and scope.get("method", "") not in _SAFE_METHODS
             and fetch_site not in _SAME_ORIGIN_FETCH_SITES
         ):
-            # Preserve the prior Go boundary: Fetch Metadata takes precedence
+            # Fetch Metadata takes precedence
             # when a browser explicitly labels a non-safe request cross-origin.
             body = b"cross-origin request detected from Sec-Fetch-Site header\n"
             await send_wrapper(

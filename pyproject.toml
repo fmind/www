@@ -3,7 +3,7 @@
 [project]
 name = "www"
 version = "1.8.1"
-description = "Server-rendered portfolio and technical publication website"
+description = "Fmind freelance AI architecture portfolio, technical articles, and read-only MCP server"
 readme = "README.md"
 requires-python = ">=3.14"
 license = "MIT"
@@ -46,7 +46,7 @@ dev = [
 www = "www.__main__:main"
 
 [build-system]
-requires = ["uv_build>=0.12.10,<0.13"]
+requires = ["uv_build==0.12.17"]
 build-backend = "uv_build"
 
 [tool.ruff]
