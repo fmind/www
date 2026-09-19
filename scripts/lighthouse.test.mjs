@@ -42,7 +42,7 @@ function perfectReport(audit) {
   return {
     categories: Object.fromEntries(CATEGORIES.map((category) => [category, { score: 1 }])),
     finalDisplayedUrl: audit.url,
-    lighthouseVersion: "13.4.1",
+    lighthouseVersion: "13.5.0",
     requestedUrl: audit.url,
   };
 }

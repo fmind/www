@@ -7,7 +7,7 @@ import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import process from "node:process";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-const LIGHTHOUSE_VERSION = "13.4.1";
+const LIGHTHOUSE_VERSION = "13.5.0";
 const MAX_SITEMAP_BYTES = 2 * 1024 * 1024;
 const AUDIT_TIMEOUT_MS = 150_000;
 const PROCESS_OUTPUT_LIMIT = 64 * 1024;
@@ -33,7 +33,7 @@ const SMOKE_PATHS = ["/", "/articles/cag-vs-rag-choosing-the-right-strategy-for-
 function usage() {
   return `Usage: node scripts/lighthouse.mjs --base-url <origin> [options]
 
-Run the strict Lighthouse 13.4.1 qualification matrix with the Chromium pinned by Playwright.
+Run the strict Lighthouse 13.5.0 qualification matrix with the Chromium pinned by Playwright.
 
 Options:
   --base-url <origin>   Candidate origin to audit; LIGHTHOUSE_BASE_URL is the fallback.

@@ -4,6 +4,7 @@
   "excludes": [
     "**/*-lock.json",
     ".git",
+    ".mise/locks/**",
     "tmp/",
     "static/dist/**"
   ],
