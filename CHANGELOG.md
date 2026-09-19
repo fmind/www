@@ -2,6 +2,21 @@
 
 All notable changes to this project are documented in this file.
 
+## [2.1.0] - 2026-09-19
+
+### 🚀 Features
+
+- _(finops)_ Add billing export configuration and analytics guidance
+
+### 🐛 Bug Fixes
+
+- _(contact)_ Show Luxembourg location on contact and QR pages
+- _(delivery)_ Verify ready releases and parallelize browser journeys
+
+### 📚 Documentation
+
+- _(release)_ Preserve published changelogs during generation
+
 ## [2.0.1] - 2026-09-19
 
 ### 🐛 Bug Fixes
