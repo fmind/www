@@ -6,7 +6,7 @@
 
 ## Development
 
-Requires [mise](https://mise.jdx.dev/), Docker Engine with Buildx, and network access for initial tool/browser installation and image/scanner downloads. Python 3.14.7 and the remaining toolchain are pinned in `mise.toml` and `mise.lock`.
+Requires [mise](https://mise.jdx.dev/), Docker Engine with Buildx, and network access for initial tool/browser installation and image/scanner downloads. Python 3.14.7 and the remaining toolchain are pinned in `mise.toml` and `mise.lock`; `.mise/locks/` records the browser tools' transitive npm dependencies and must be committed with lock updates.
 
 ```bash
 mise install
@@ -64,7 +64,7 @@ Cross-browser checks require `install:browser:cross` and [Playwright system libr
 
 Cloud Run serves <https://www.fmind.dev/> in project `www-fmind-dev`, region `europe-west1`. [infra/](infra/) owns service settings, registry, keyless identities, alerts, and analytics. Keep **minimum instances at 0 at both service and revision levels**, maximum 5, and request-based CPU. The qualified runtime uses 1 CPU, 512 MiB, concurrency 8, a 30-second request timeout, and six startup attempts five seconds apart. Maximum instances limits scaling; it is not a hard billing cap.
 
-A `main` push runs the full gate, builds a non-root image with SBOM/provenance, pushes it, scans and smoke-tests its immutable digest, then deploys through branch- and numeric-ID-restricted Workload Identity Federation. OpenTofu ignores the image field; CI never applies infrastructure. Actions are SHA-pinned and Dependabot maintains ecosystem updates.
+A `main` push runs the full gate, builds a non-root image with SBOM/provenance, pushes it, scans and smoke-tests its immutable digest, then deploys through branch- and numeric-ID-restricted Workload Identity Federation. `test:deployed` verifies that `IMAGE_REF` and `GITHUB_SHA` match the ready revision receiving 100% of traffic, preserves scale-to-zero checks, and probes public health/profile/MCP discovery. Error-log review remains an independent release check because the deployer has no log-reading role. OpenTofu ignores the image field; CI never applies infrastructure. Actions are SHA-pinned and Dependabot maintains ecosystem updates.
 
 Infrastructure changes require a reviewed saved plan and owner-authorized apply through the [infra skill](.agents/skills/infra/SKILL.md). Remote state is `gs://www-fmind-dev-tfstate/infra/state`; its bootstrap bucket is managed separately and requires versioning and enforced public-access prevention. Reconcile service changes before deploying the application.
 

@@ -110,3 +110,7 @@ jobs:
           service: ${{ env.SERVICE_NAME }}
           region: ${{ env.REGION }}
           image: ${{ env.AR_HOSTNAME }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}@${{ steps.build.outputs.digest }}
+      - name: Verify ready release and public health
+        env:
+          IMAGE_REF: ${{ env.AR_HOSTNAME }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}@${{ steps.build.outputs.digest }}
+        run: mise run test:deployed

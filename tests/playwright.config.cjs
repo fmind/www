@@ -6,7 +6,8 @@ module.exports = defineConfig({
   testDir: ".",
   testMatch: "browser.spec.cjs",
   outputDir: "../tmp/browser-results",
-  workers: 1,
+  // Each context is isolated and the shared server only serves immutable data.
+  workers: 2,
   reporter: "list",
   use: { baseURL, trace: "retain-on-failure" },
   projects: [
