@@ -7,6 +7,7 @@ All notable changes to this project are documented in this file.
 ### 🐛 Bug Fixes
 
 - Polish portfolio and harden v2 release operations
+- _(ci)_ Allow sandboxed Lighthouse Chromium on Ubuntu
 
 ## [1.8.1] - 2026-09-16
 
