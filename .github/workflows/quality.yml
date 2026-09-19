@@ -53,6 +53,20 @@ jobs:
         run: uv sync --locked --all-groups
       - name: Install Chromium
         run: mise run install:browser
+      - name: Allow the pinned Chromium sandbox
+        # Ubuntu restricts user namespaces for downloaded browsers. Grant only
+        # this executable access; retain Chromium's sandbox and host policy.
+        run: |
+          chromium_path="$(NODE_PATH="$(mise where npm:playwright)/node_modules" node -p 'require("playwright").chromium.executablePath()')"
+          test -x "$chromium_path"
+          sudo tee /etc/apparmor.d/www-lighthouse-chromium > /dev/null <<EOF
+          abi <abi/4.0>,
+          include <tunables/global>
+          profile www-lighthouse-chromium "$chromium_path" flags=(unconfined) {
+            userns,
+          }
+          EOF
+          sudo apparmor_parser -r /etc/apparmor.d/www-lighthouse-chromium
       - name: Qualify local portfolio pages
         run: mise run test:lighthouse:local
       - name: Retain exact Lighthouse reports
