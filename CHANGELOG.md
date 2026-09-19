@@ -2,12 +2,22 @@
 
 All notable changes to this project are documented in this file.
 
+## [2.0.1] - 2026-09-19
+
+### 🐛 Bug Fixes
+
+- _(discovery)_ Clarify identity location services and article attribution
+
 ## [2.0.0] - 2026-09-19
 
 ### 🐛 Bug Fixes
 
 - Polish portfolio and harden v2 release operations
 - _(ci)_ Allow sandboxed Lighthouse Chromium on Ubuntu
+
+### 📚 Documentation
+
+- _(release)_ Require CI and live proof before tagging
 
 ## [1.8.1] - 2026-09-16
 
