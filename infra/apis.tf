@@ -1,3 +1,4 @@
+# https://docs.cloud.google.com/service-usage/docs/enable-disable
 # Google Cloud service APIs activation and dependencies.
 #
 # The application image contains only public assets and holds no secrets, so Secret
@@ -12,6 +13,18 @@ resource "google_project_service" "artifactregistry" {
 resource "google_project_service" "bigquery" {
   project            = var.project_id
   service            = "bigquery.googleapis.com"
+  disable_on_destroy = false
+}
+
+resource "google_project_service" "billingbudgets" {
+  project            = var.project_id
+  service            = "billingbudgets.googleapis.com"
+  disable_on_destroy = false
+}
+
+resource "google_project_service" "cloudbilling" {
+  project            = var.project_id
+  service            = "cloudbilling.googleapis.com"
   disable_on_destroy = false
 }
 

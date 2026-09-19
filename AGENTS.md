@@ -40,4 +40,4 @@ Python 3.14, Litestar, strict Jinja, Tailwind/DaisyUI, and Granian. No client fr
 - Build fonts only with `scripts/build_fonts.py`; keep required assets, CSS faces, and template preloads synchronized. Preserve subset-specific face names. Keep private portrait masters outside `static/`; export with `build:portrait`.
 - Analytics remain cookieless and aggregate, with 180-day expiry and empty `country` until a trusted geography boundary exists. The scheduled image scanner stays read-only; maintain advisory triage in `SECURITY.md`.
 
-Task procedures live in `.agents/skills/`: `article`, `site`, `infra`, `release`, and `website-analytics`. Keep instructions concise and avoid repeating the README or task definitions.
+Task procedures live in `.agents/skills/`: `article`, `site`, `infra`, `release`, `website-analytics`, and `finops-analytics`. Keep instructions concise and avoid repeating the README or task definitions.

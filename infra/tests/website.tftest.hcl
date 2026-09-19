@@ -42,4 +42,27 @@ run "website_cost_and_recovery_contract" {
     condition     = google_bigquery_dataset.analytics.default_partition_expiration_ms == 15552000000
     error_message = "Analytics partitions must expire after 180 days."
   }
+
+  assert {
+    condition = (
+      google_bigquery_dataset.billing.location == "EU" &&
+      !google_bigquery_dataset.billing.delete_contents_on_destroy &&
+      google_bigquery_dataset.billing.default_table_expiration_ms == null &&
+      google_bigquery_dataset.billing.default_partition_expiration_ms == null
+    )
+    error_message = "Billing history must stay in the EU without automatic expiration or destructive cleanup."
+  }
+
+  assert {
+    condition = (
+      length(google_bigquery_dataset.billing.access) == 2 &&
+      alltrue([for entry in google_bigquery_dataset.billing.access :
+        entry.role == "OWNER" && (
+          entry.special_group == "projectOwners" ||
+          entry.user_by_email == "billing-export-bigquery@system.gserviceaccount.com"
+        )
+      ])
+    )
+    error_message = "Only project owners and the Google billing exporter may receive dataset access."
+  }
 }

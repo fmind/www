@@ -80,6 +80,8 @@ Use the [website-analytics skill](.agents/skills/website-analytics/SKILL.md) or 
 
 Tracing is opt-in through standard `OTEL_EXPORTER_OTLP_*` variables. Operational logs correlate trace/span IDs; analytics omit them.
 
+Use [finops-analytics](.agents/skills/finops-analytics/SKILL.md) for cloud cost, budget, and optimization reviews. OpenTofu manages the billing APIs and private EU dataset `billing_export`. Activate **Standard usage cost** in Cloud Console → Billing → Billing export, selecting project `www-fmind-dev` and this dataset; leave other export types disabled. The account-wide export needs project-filtered, on-demand queries with dry runs and a 100 MiB scan cap. Verify activation and table arrival before claiming costs are available; initial backfill can take five days.
+
 ## Agent access
 
 The public [/agents](https://www.fmind.dev/agents) guide is the integration reference. Connect an MCP client to `https://www.fmind.dev/mcp` for read-only, unauthenticated portfolio, publication, search, service, and hosting-comparison tools. Browser requests have same-origin protection; request bodies are bounded. Tools never provision, run LLMs, book services, or send messages.
