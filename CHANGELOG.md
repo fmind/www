@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file.
 
+## [2.0.0] - 2026-09-19
+
+### 🐛 Bug Fixes
+
+- Polish portfolio and harden v2 release operations
+
 ## [1.8.1] - 2026-09-16
 
 ### 🐛 Bug Fixes
