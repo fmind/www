@@ -153,6 +153,41 @@
         "agentgateway-vs-litellm/plane-vs-catalog-800.webp": "e38c652f6d1e84185e9a1325f2e169b874217283ea30e6a968c34293faa6aa78"
       }
     },
+    "agents-md-speaks-unix/cover.webp": {
+      "sha256": "1c7e8712e36c3e5f2b57e3ae7c0af13eb02803124542da14a934dee038676c79",
+      "targets": {
+        "agents-md-speaks-unix/cover-1280.webp": "6a9a6211179b28050756d37aaad2edb355022bef7094715cb1a9b24c426e297a",
+        "agents-md-speaks-unix/cover-800.webp": "9367385d4c4ca6e09f17f56527cbe2e9a00eede435f03b4a87319a36b299a325"
+      }
+    },
+    "agents-md-speaks-unix/github.webp": {
+      "sha256": "ca071fa5ad0f93ee393ad90e1bf6d3c7ae457977139ea4da4988a8f74a7d9538",
+      "targets": {
+        "agents-md-speaks-unix/github-1280.webp": "e824d6ae6eaf3553c51558c6f7083db3429420715fde0f5e545e38e36a467d33",
+        "agents-md-speaks-unix/github-800.webp": "ed8554fde239626eae6fa8466f3b01cf2b371315f6fc4d62767c4c1b7460469e"
+      }
+    },
+    "agents-md-speaks-unix/zellij-instructions.webp": {
+      "sha256": "3d4696eeff2ea20ee2a993794aa4be06f0e629410ea4a9ed04f872841a0fb108",
+      "targets": {
+        "agents-md-speaks-unix/zellij-instructions-1280.webp": "af9fec837b656d5ae898295af5dae5f4dc4ae65b357ee5350e38670c4a166216",
+        "agents-md-speaks-unix/zellij-instructions-800.webp": "e6ebf64bc32fffd6734ad92488101d92a8e0ec4a9ec4e2e7679886a600a6874d"
+      }
+    },
+    "agents-md-speaks-unix/zellij-review.webp": {
+      "sha256": "20fbe2ca5dc80b7f3fca2b6d5d2a259d4e81e1b81b6c6abb0a90215f3f0ae506",
+      "targets": {
+        "agents-md-speaks-unix/zellij-review-1280.webp": "0f463ddc169b789c36143ef24e1ae0ccbcf3033d96d4b87423a4378071e8d179",
+        "agents-md-speaks-unix/zellij-review-800.webp": "55cfb8348db1443eb240ad1f6b79203d5258c39c7c45a01bea4299d0663aab78"
+      }
+    },
+    "agents-md-speaks-unix/zellij-session-manager.webp": {
+      "sha256": "8f77150c09837891fc60ca29ed9759fc731b992bf9a06f055ba0e3bf97120c41",
+      "targets": {
+        "agents-md-speaks-unix/zellij-session-manager-1280.webp": "b90f4845383679fe8a31466871fae611f3a16fb91ee05b9ac9da61829f93bfb7",
+        "agents-md-speaks-unix/zellij-session-manager-800.webp": "52ae34efbfa6f23696d27f713f7c06a1f9f0cee321e078bec722ad86fb636246"
+      }
+    },
     "ai-agents-as-an-operating-system-rediscovering-the-linux-philosophy/02.webp": {
       "sha256": "03561d0181ec6be8867da98e2cc6d4cf973e0c4c9be1354216f0674c6a5129e9",
       "targets": {
