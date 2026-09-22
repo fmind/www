@@ -1,3 +1,5 @@
+{% from "macros/icons.html" import icon %}
+
 {% macro tag_badge(tag) -%}
   <span class="tag" data-tag="{{ tag }}">{{ tag }}</span>
 {%- endmacro %}
@@ -45,7 +47,14 @@
 {%- endmacro %}
 
 {% macro article_footer(related_articles, metadata, static_url) -%}
-  <footer class="max-w-4xl mx-auto mt-16 md:mt-20 space-y-12">
+  <footer class="max-w-4xl mx-auto mt-8 md:mt-10 space-y-12">
+    <div class="text-center">
+      <nav class="flex flex-wrap justify-center items-center gap-3" aria-label="Follow Fmind">
+        {% for social in metadata.socials if social.icon in ("linkedin", "x") %}
+          <a class="btn btn-ghost border border-base-300 rounded-full" href="{{ social.url }}" target="_blank" rel="noopener noreferrer">{{ icon(social.icon, "w-5 h-5 shrink-0") }}Follow on {{ "LinkedIn" if social.icon == "linkedin" else "X" }}</a>
+        {% endfor %}
+      </nav>
+    </div>
     <section class="card bg-base-200 border border-base-300" aria-labelledby="article-author">
       <div class="card-body p-6 md:p-8 flex flex-col sm:flex-row items-center gap-6 text-center sm:text-left">
         <img class="w-20 h-20 rounded-full object-cover ring ring-primary ring-offset-base-100 ring-offset-2 shrink-0" src="{{ static_url('static/img/avatar-192.webp') }}" alt="{{ metadata.name }}" width="80" height="80" loading="lazy" decoding="async"/>
@@ -75,7 +84,6 @@
     {% endif %}
     <div class="flex flex-wrap justify-center items-center gap-3 text-sm">
       <a class="btn btn-outline btn-primary rounded-full font-semibold" href="/articles/">All articles</a>
-      <a class="btn btn-ghost border border-base-300 rounded-full" href="/articles/feed.xml">Subscribe (Atom)</a>
     </div>
   </footer>
 {%- endmacro %}

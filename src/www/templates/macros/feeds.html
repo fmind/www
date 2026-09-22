@@ -1,0 +1,9 @@
+{% from "macros/icons.html" import icon %}
+
+{% macro feed_link(class_name, label="Subscribe via RSS") -%}
+  <a class="{{ class_name }}" href="/articles/feed.xml" type="application/atom+xml" title="Follow new articles in your RSS reader (Atom feed)">{{ icon("rss", "w-5 h-5 shrink-0") }}{{ label }}</a>
+{%- endmacro %}
+
+{% macro feed_hint() -%}
+  <p class="text-sm text-base-content/70 mt-3">Get new articles in your feed reader. Copy the RSS link into your reader to subscribe.</p>
+{%- endmacro %}

@@ -56,6 +56,27 @@ def source(body: str = "Body.", **metadata: str) -> bytes:
     return f"+++\n{header}\n+++\n\n{body}\n".encode()
 
 
+@pytest.mark.parametrize("level", ["#", "##", "###"])
+def test_article_sections_follow_normalized_h2_and_unique_anchors(tmp_path: Path, level: str) -> None:
+    body = (
+        f"{level} A **bold** [link](https://example.com) & `code`\n\n"
+        f"{level}# Nested section\n\n"
+        f"{level} A **bold** [link](https://example.com) & `code`\n\n"
+        "```markdown\n# Not a heading\n```\n"
+    )
+    item = parse_article("example.md", source(body), assets(tmp_path))
+    assert [section.label for section in item.sections] == ["A bold link & code"] * 2
+    assert len({section.identifier for section in item.sections}) == 2
+    for section in item.sections:
+        assert f'<h2 id="{section.identifier}">' in item.html
+
+
+@pytest.mark.parametrize(("body", "count"), [("Body only.", 0), ("## One section\n\nBody.", 1)])
+def test_short_article_sections(tmp_path: Path, body: str, count: int) -> None:
+    item = parse_article("example.md", source(body), assets(tmp_path))
+    assert len(item.sections) == count
+
+
 def test_parse_article_rejects_unknown_frontmatter_with_source_line(tmp_path: Path) -> None:
     data = source(surprise='"not allowed"')
 
@@ -441,7 +462,9 @@ def test_heading_links_preserve_formatting_and_authored_links(tmp_path: Path) ->
     for identifier, heading in headings:
         assert f'href="#{identifier}" class="heading-anchor"' in heading
         assert 'aria-label="Link to section:' in heading
-        assert "🔗</a>" in heading
+        assert "🔗" not in heading
+        assert 'aria-hidden="true" focusable="false"' in heading
+        assert re.sub(r"<[^>]+>", "", heading) == "A bold link"
         assert "<strong>bold</strong>" in heading
         assert '<a href="https://example.com">link</a>' in heading
         assert heading.count("<a ") == heading.count("</a>") == 2

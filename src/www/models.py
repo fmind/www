@@ -117,6 +117,12 @@ class ResearchPaper:
 
 
 @dataclass(frozen=True, slots=True)
+class ArticleSection:
+    identifier: str
+    label: str
+
+
+@dataclass(frozen=True, slots=True)
 class Article:
     """One validated Markdown publication and its safe startup-rendered HTML."""
 
@@ -129,6 +135,7 @@ class Article:
     canonical: Annotated[str, Field(exclude_if=lambda value: value == "")] = ""
     syndicated: Annotated[str, Field(exclude_if=lambda value: value == "")] = ""
     html: str = ""
+    sections: tuple[ArticleSection, ...] = ()
     url: str = ""
     image_url: str = ""
     card_image_url: str = ""

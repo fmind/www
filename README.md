@@ -28,7 +28,7 @@ Fonts are self-hosted Google Sans and Google Sans Code subsets. The font generat
 
 Share `/connect` at events; it offers LinkedIn, a vCard, and the full website. `/scan` is a noindex QR utility. The UTF-8 vCard 3.0 derives public professional details and a sanitized portrait from portfolio data, without a phone number, street address, birthday, or precise coordinates.
 
-Articles in `content/articles/` use strict TOML frontmatter. Their validated collection feeds every publication surface, excluding drafts in production. `build:images` generates responsive WebP derivatives and the SHA-256 provenance lock; `check:images` never writes. Figures fit the 1280px column; code highlighting is server-side. Follow the [article skill](.agents/skills/article/SKILL.md).
+Articles in `content/articles/` use strict TOML frontmatter. Their validated collection feeds every publication surface, excluding drafts in production. `build:images` generates responsive WebP derivatives and the SHA-256 provenance lock; `check:images` never writes. Figures fit the 1280px column; code highlighting is server-side. Articles with at least two main sections show an H2-only 256px navigation rail at viewport widths of 1920px and above, with two-line labels and full titles on hover; links work without JavaScript, which adds current-section highlighting. Follow the [article skill](.agents/skills/article/SKILL.md).
 
 Decision tools use typed Python formulas, native GET forms, dated sources, and explicit planning limits. Register them in `data.py:SITE_PAGES`; follow the [site skill](.agents/skills/site/SKILL.md). See [AGENTS.md](AGENTS.md) for module ownership and invariants.
 

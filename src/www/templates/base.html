@@ -4,12 +4,12 @@
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
     <title>{{ page.title }}</title>
+    <link rel="alternate" type="application/atom+xml" href="{{ metadata.site_url }}/articles/feed.xml" title="Fmind articles"/>
     {% if not page.no_index %}
       <link rel="canonical" href="{{ page.canonical }}"/>
       <link rel="alternate" type="application/json" href="/api/profile" title="Machine-readable portfolio"/>
       <link rel="alternate" type="text/plain" href="/llms.txt" title="LLM-ready portfolio summary"/>
       <link rel="alternate" type="text/plain" href="/llms-full.txt" title="Full LLM-ready portfolio context"/>
-      <link rel="alternate" type="application/atom+xml" href="/articles/feed.xml" title="Fmind articles"/>
       <link rel="alternate" type="application/mcp-server-card+json" href="/mcp/server-card" title="Model Context Protocol server card"/>
       {% if page.article %}
         <link rel="alternate" type="text/markdown" href="/articles/{{ page.article.slug }}.md" title="Article source (Markdown)"/>

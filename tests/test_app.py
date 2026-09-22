@@ -62,6 +62,9 @@ def test_human_pages_render_complete_no_cache_documents(client: AppClient) -> No
         "/privacy": ("Aggregate visit statistics", 200),
         "/scan": ("Médéric Hurier", 200),
         "/articles/": ("Articles", 200),
+        "/articles/?q=agents": ("Articles", 200),
+        "/articles/?tag=Agent": ("Articles", 200),
+        "/agents": ("For AI agents", 200),
         "/articles/the-affordable-ai-agents/": ("The Affordable AI Agents", 200),
         "/sites/": ("LLM self-hosting on GKE", 200),
         "/sites/llm-self-hosting/?requests=234&replicas=2": ("2 nodes · 2 GPUs", 200),
@@ -78,6 +81,10 @@ def test_human_pages_render_complete_no_cache_documents(client: AppClient) -> No
         assert response.text.startswith("<!DOCTYPE html>")
         assert marker in response.text
         assert "</html>" in response.text
+        feed_url = f"{METADATA.site_url}/articles/feed.xml"
+        discovery = f'<link rel="alternate" type="application/atom+xml" href="{feed_url}" title="Fmind articles"/>'
+        assert response.text.count(discovery) == 1, path
+        assert 'href="/articles/feed.xml" type="application/atom+xml"' in response.text, path
         if status == 404:
             assert 'content="noindex, follow"' in response.text
 

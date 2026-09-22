@@ -23,7 +23,7 @@ from PIL import Image, UnidentifiedImageError
 
 from www.data import METADATA
 from www.highlighting import highlight_code
-from www.models import DERIVATIVE_WIDTHS, Article, ArticleSummary
+from www.models import DERIVATIVE_WIDTHS, Article, ArticleSection, ArticleSummary
 from www.tags import is_tag, tag_names
 
 WORDS_PER_MINUTE = 200
@@ -232,7 +232,21 @@ def _heading_slug(text: str) -> str:
     return slug.decode() or "heading"
 
 
-def _normalize_headings(tokens: Sequence[Token]) -> None:
+def _heading_text(tokens: Sequence[Token]) -> str:
+    return "".join(
+        _heading_text(token.children)
+        if token.children
+        else " "
+        if token.type in {"softbreak", "hardbreak"}
+        else token.content
+        if token.type in {"text", "code_inline"}
+        else ""
+        for token in tokens
+    )
+
+
+def _normalize_headings(tokens: Sequence[Token]) -> tuple[ArticleSection, ...]:
+    sections: list[ArticleSection] = []
     headings = [token for token in tokens if token.type == "heading_open"]
     if headings:
         shallowest = min(int(token.tag[1]) for token in headings)
@@ -260,14 +274,23 @@ def _normalize_headings(tokens: Sequence[Token]) -> None:
         seen[base] = count + 1
         identifiers.add(identifier)
         token.attrSet("id", identifier)
+        if token.tag == "h2":
+            label = " ".join(_heading_text(inline.children or []).split())
+            sections.append(ArticleSection(identifier=identifier, label=label))
         # Append a separate link so authored links inside headings never nest.
         link = Token("link_open", "a", 1)
         link.attrSet("href", f"#{identifier}")
         link.attrSet("class", "heading-anchor")
         link.attrSet("aria-label", f"Link to section: {inline.content}")
-        marker = Token("text", "", 0)
-        marker.content = "🔗"
+        # A drawn icon keeps section controls out of copied/imported heading text.
+        marker = Token("html_inline", "", 0)
+        marker.content = (
+            '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" '
+            'fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">'
+            '<path d="M4 9h16M3 15h16M10 3 8 21M16 3l-2 18"/></svg>'
+        )
         inline.children = [*(inline.children or []), link, marker, Token("link_close", "a", -1)]
+    return tuple(sections)
 
 
 def _normalize_goldmark_three_backslashes(tokens: Sequence[Token]) -> None:
@@ -308,13 +331,17 @@ def _normalize_goldmark_three_backslashes(tokens: Sequence[Token]) -> None:
 
 
 def render_markdown(markdown: str) -> str:
+    return _render_markdown(markdown)[0]
+
+
+def _render_markdown(markdown: str) -> tuple[str, tuple[ArticleSection, ...]]:
     environment: EnvType = {}
     tokens = _ARTICLE_MARKDOWN.parse(markdown, environment)
     _normalize_goldmark_three_backslashes(tokens)
-    _normalize_headings(tokens)
+    sections = _normalize_headings(tokens)
     rendered = _ARTICLE_MARKDOWN.renderer.render(tokens, _ARTICLE_MARKDOWN.options, environment)
     # Goldmark uses the semantic HTML5 element for GFM strikethrough.
-    return rendered.replace("<s>", "<del>").replace("</s>", "</del>")
+    return rendered.replace("<s>", "<del>").replace("</s>", "</del>"), sections
 
 
 def _caption_text(fragment: str) -> str:
@@ -494,7 +521,8 @@ def parse_article(name: str, data: bytes, static_dir: Path = Path("static")) -> 
         image_path = _cover(static_dir, slug)
         card_image_path = _card_cover(static_dir, slug)
         markdown = markdown_bytes.decode("utf-8")
-        body, srcset, sizes = enhance_body_images(render_markdown(markdown), static_dir)
+        rendered, sections = _render_markdown(markdown)
+        body, srcset, sizes = enhance_body_images(rendered, static_dir)
         word_count = len(markdown.split())
         reading_minutes = max(1, (word_count + WORDS_PER_MINUTE - 1) // WORDS_PER_MINUTE)
         article_url = f"{METADATA.site_url}/articles/{slug}/"
@@ -517,6 +545,7 @@ def parse_article(name: str, data: bytes, static_dir: Path = Path("static")) -> 
             reading_minutes=reading_minutes,
             markdown=markdown,
             html=body,
+            sections=sections,
         )
     except ArticleError as error:
         if str(error).startswith(f'parse "{name}"'):

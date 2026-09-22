@@ -21,3 +21,36 @@ document.querySelectorAll('.heading-anchor').forEach(function (link) {
     copyTimeout = setTimeout(function () { copyStatus.textContent = ''; }, 5000);
   });
 });
+
+var articleNavigation = document.getElementById('article-sections');
+if (articleNavigation) {
+  var articleLinks = Array.from(articleNavigation.querySelectorAll('a'));
+  var articleHeadings = articleLinks.map(function (link) {
+    return document.getElementById(link.hash.slice(1));
+  });
+  var articleWideScreen = window.matchMedia('(min-width: 1920px)');
+  var pendingArticleUpdate = false;
+  var updateArticleSection = function () {
+    pendingArticleUpdate = false;
+    if (!articleWideScreen.matches) return;
+    var current = null;
+    articleHeadings.forEach(function (heading) {
+      var offset = parseFloat(getComputedStyle(heading).scrollMarginTop) + 1;
+      if (heading.getBoundingClientRect().top <= offset) current = heading.id;
+    });
+    articleLinks.forEach(function (link) {
+      if (link.hash === '#' + current) link.setAttribute('aria-current', 'location');
+      else link.removeAttribute('aria-current');
+    });
+  };
+  var scheduleArticleUpdate = function () {
+    if (pendingArticleUpdate || !articleWideScreen.matches) return;
+    pendingArticleUpdate = true;
+    requestAnimationFrame(updateArticleSection);
+  };
+  window.addEventListener('scroll', scheduleArticleUpdate, { passive: true });
+  window.addEventListener('resize', scheduleArticleUpdate);
+  window.addEventListener('hashchange', scheduleArticleUpdate);
+  new ResizeObserver(scheduleArticleUpdate).observe(document.querySelector('.article-page'));
+  updateArticleSection();
+}

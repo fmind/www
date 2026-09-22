@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "macros/feeds.html" import feed_hint, feed_link %}
 {% block header %}
   <header class="max-w-xl mx-auto px-6 py-2 flex items-center justify-center">
     <a class="font-heading font-bold text-3xl text-primary rounded inline-flex items-center gap-2 min-h-11" href="/">
@@ -8,4 +9,9 @@
   </header>
 {% endblock %}
 {% block main_class %}max-w-xl mx-auto px-6 pt-2 pb-4 sm:pt-8{% endblock %}
-{% block footer %}{% endblock %}
+{% block footer %}
+  <footer class="text-center px-6 py-4 text-sm">
+    {{ feed_link("inline-flex min-h-11 items-center gap-2 link link-primary") }}
+    {{ feed_hint() }}
+  </footer>
+{% endblock %}

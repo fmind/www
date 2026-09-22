@@ -305,3 +305,22 @@ def test_startup_markup_is_validated_once_but_unknown_markup_remains_guarded(mon
         )
     with pytest.raises(ValueError, match="script or style"):
         Renderer(application_assets(), article_html=("<script>bad()</script>",))
+
+
+@pytest.mark.parametrize("count", [0, 1, 2])
+def test_article_section_navigation_requires_two_sections(count: int) -> None:
+    article = next(item for item in visible_articles(load_articles().all) if len(item.sections) >= 2)
+    article = replace(article, sections=article.sections[:count])
+    renderer = Renderer(application_assets(), article_html=(article.html,))
+    rendered = renderer.render(
+        PageTemplate.ARTICLE,
+        page=article_metadata(article, get_structured_data(article)),
+        nonce="test-nonce",
+        context={
+            "article": article,
+            "article_html": article.html,
+            "related_articles": (),
+            "related_site_pages": (),
+        },
+    )
+    assert ('aria-label="On this page"' in rendered) is (count >= 2)

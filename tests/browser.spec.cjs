@@ -31,6 +31,53 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
+test("readers can subscribe and follow without JavaScript", async ({ browser }, testInfo) => {
+  const context = await browser.newContext({ ...testInfo.project.use, javaScriptEnabled: false });
+  try {
+    const page = await context.newPage();
+    await page.goto("/articles/");
+    const subscribe = page.locator("main header").getByRole("link", { name: "Subscribe via RSS" });
+    await expect(subscribe).toBeVisible();
+    await expect(subscribe.locator("svg")).toBeVisible();
+    const hint = "Get new articles in your feed reader. Copy the RSS link into your reader to subscribe.";
+    await expect(page.locator("main header").getByText(hint, { exact: true })).toBeVisible();
+    const hintBounds = await page.locator("main header").getByText(hint, { exact: true }).boundingBox();
+    const buttonBounds = await subscribe.boundingBox();
+    expect(hintBounds.y + hintBounds.height).toBeLessThanOrEqual(buttonBounds.y);
+    await subscribe.focus();
+    await expect(subscribe).toBeFocused();
+    const [response] = await Promise.all([
+      page.waitForResponse((response) => new URL(response.url()).pathname === "/articles/feed.xml"),
+      subscribe.press("Enter"),
+    ]);
+    expect(response.status()).toBe(200);
+    expect(response.headers()["content-type"]).toContain("application/atom+xml");
+    expect(await response.text()).toContain("xmlns=\"http://www.w3.org/2005/Atom\"");
+    await page.goto("/articles/the-affordable-ai-agents/");
+    await expect(page.locator("main").getByText(hint, { exact: true })).toHaveCount(0);
+    await expect(page.locator("main a[href=\"/articles/feed.xml\"]")).toHaveCount(0);
+    const follow = page.getByRole("navigation", { name: "Follow Fmind", exact: true });
+    await follow.scrollIntoViewIfNeeded();
+    for (
+      const [name, href] of [
+        ["Follow on LinkedIn", "https://www.linkedin.com/in/fmind-dev/"],
+        ["Follow on X", "https://x.com/fmind_dev"],
+      ]
+    ) {
+      const link = follow.getByRole("link", { name, exact: true });
+      await expect(link).toBeVisible();
+      await expect(link).toHaveAttribute("href", href);
+      await expect(link).toHaveAttribute("rel", "noopener noreferrer");
+      await expect(link.locator("svg")).toBeVisible();
+      await link.focus();
+      await expect(link).toBeFocused();
+    }
+    await page.locator("main footer > div").first().screenshot({ path: testInfo.outputPath("article-follow.png") });
+  } finally {
+    await context.close();
+  }
+});
+
 test("published pages render without overflow, missing images, or external assets", async ({ page, request, baseURL }) => {
   // A remote full-sitemap crawl needs headroom for network variance while each
   // navigation and image assertion remains independently bounded below.
@@ -62,6 +109,17 @@ test("published pages render without overflow, missing images, or external asset
     const response = await page.goto(path);
     expect(response.status(), path).toBe(200);
     await expect(page.locator("h1")).toHaveCount(1);
+    const feed = page.locator("head link[rel=\"alternate\"][type=\"application/atom+xml\"]");
+    await expect(feed).toHaveCount(1);
+    await expect(feed).toHaveAttribute("href", "https://www.fmind.dev/articles/feed.xml");
+    const subscribe = page.locator("a[href=\"/articles/feed.xml\"]").first();
+    await expect(subscribe).toBeVisible();
+    await expect(subscribe.locator("svg[aria-hidden=\"true\"]")).toBeVisible();
+    if (path.startsWith("/articles/") && path !== "/articles/") {
+      const follow = page.getByRole("navigation", { name: "Follow Fmind", exact: true });
+      await expect(follow.getByRole("link")).toHaveText(["Follow on LinkedIn", "Follow on X"]);
+      await expect(page.locator("main a[href=\"/articles/feed.xml\"]")).toHaveCount(0);
+    }
     const geometry = await page.evaluate(() => ({
       width: document.documentElement.clientWidth,
       content: document.documentElement.scrollWidth,
@@ -209,7 +267,7 @@ test("conference contact actions and QR display work without JavaScript", async 
       expect(portraitBounds.y + portraitBounds.height).toBeLessThanOrEqual(headingBounds.y);
       await expect(page.locator("h1")).toHaveCSS("color", "rgb(23, 78, 166)");
       await expect(page.getByText("AI Agents, MLOps & Security", { exact: true })).toBeVisible();
-      await expect(page.locator("footer")).toHaveCount(0);
+      await expect(page.getByRole("link", { name: /RSS/ })).toBeVisible();
     }
   } finally {
     await context.close();
@@ -629,6 +687,7 @@ test("footer stays compact with ordered discovery links", async ({ page }) => {
   const footer = page.locator("body > footer");
   const links = footer.getByRole("navigation", { name: "Footer navigation" }).getByRole("link");
   await expect(links).toHaveText([
+    "RSS",
     "MCP",
     "Scan",
     "Connect",
@@ -640,6 +699,7 @@ test("footer stays compact with ordered discovery links", async ({ page }) => {
   ]);
   expect(await links.evaluateAll((items) => items.map((item) => item.getAttribute("href"))))
     .toEqual([
+      "/articles/feed.xml",
       "/mcp/server-card",
       "/scan",
       "/connect",
@@ -952,7 +1012,10 @@ test("article heading links copy the full section URL", async ({ page, context }
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.goto("/articles/cag-vs-rag-choosing-the-right-strategy-for-your-ai-application/");
   const link = page.locator(".heading-anchor").first();
-  await expect(link).toHaveText("🔗");
+  await expect(link).toHaveText("");
+  await expect(link.locator("svg")).toBeVisible();
+  const heading = link.locator("..");
+  expect(await heading.textContent()).not.toContain("🔗");
   await expect(link).toHaveAccessibleName(/^Copy link to section:/);
   const destination = await link.evaluate((element) => element.href);
   await link.focus();
@@ -987,6 +1050,87 @@ test("article permalinks work without JavaScript", async ({ browser }, testInfo)
     await link.click();
     await expect(page).toHaveURL(destination);
     await expect(page.locator(await link.getAttribute("href"))).toBeInViewport();
+  } finally {
+    await context.close();
+  }
+});
+
+test("article section navigation stays clear of content and tracks H2 sections", async ({ page }, testInfo) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.setViewportSize({ width: 1920, height: 900 });
+  await page.goto("/articles/agent-evolutions-stop-guessing-the-design-evolve-it/");
+  const navigation = page.getByRole("navigation", { name: "On this page", exact: true });
+  const headings = page.locator(".article-page .prose h2[id]");
+  const expected = await headings.evaluateAll((items) =>
+    items.map((item) => ({
+      href: "#" + item.id,
+      label: item.textContent.replace(/\s+/g, " ").trim(),
+    }))
+  );
+  await expect(navigation).toBeVisible();
+  expect(
+    await navigation.locator("a").evaluateAll((items) =>
+      items.map((item) => ({
+        href: item.getAttribute("href"),
+        label: item.textContent.replace(/\s+/g, " ").trim(),
+      }))
+    ),
+  ).toEqual(expected);
+  await expect(navigation.locator("[aria-current]")).toHaveCount(0);
+  const target = navigation.locator("a").nth(2);
+  await target.focus();
+  await target.press("Enter");
+  await expect(page).toHaveURL(new RegExp(expected[2].href + "$"));
+  await expect(target).toHaveAttribute("aria-current", "location");
+  expect((await headings.nth(2).boundingBox()).y).toBeGreaterThanOrEqual(80);
+  await headings.nth(4).evaluate((heading) => heading.scrollIntoView());
+  await expect(navigation.locator("a").nth(4)).toHaveAttribute("aria-current", "location");
+  await page.goto("/articles/");
+  await page.goto("/articles/agent-evolutions-stop-guessing-the-design-evolve-it/" + expected[2].href);
+  await expect(target).toHaveAttribute("aria-current", "location");
+  for (const width of [1920, 2048, 2560]) {
+    await page.setViewportSize({ width, height: 900 });
+    const rail = await navigation.boundingBox();
+    expect(rail.width).toBe(256);
+    for (const link of await navigation.locator("a").all()) {
+      const label = link.locator("span").last();
+      const size = await label.evaluate((element) => ({
+        width: element.getBoundingClientRect().width,
+        height: element.getBoundingClientRect().height,
+        lineHeight: parseFloat(getComputedStyle(element).lineHeight),
+      }));
+      expect(size.width).toBeGreaterThanOrEqual(200);
+      expect(size.height).toBeLessThanOrEqual(size.lineHeight * 2 + 1);
+      await expect(link).toHaveAttribute("title", (await label.textContent()).trim());
+    }
+    const contentLeft = await page.locator(".article-page .prose, .article-page figure, .article-page video")
+      .evaluateAll((items) => Math.min(...items.map((item) => item.getBoundingClientRect().left)));
+    expect(rail.x + rail.width + 16).toBeLessThanOrEqual(contentLeft);
+    expect(await navigation.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+  }
+  await page.setViewportSize({ width: 1920, height: 500 });
+  expect(await navigation.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(true);
+  await navigation.locator("a").last().focus();
+  await expect(navigation.locator("a").last()).toBeInViewport();
+  await page.setViewportSize({ width: 1920, height: 900 });
+  await page.screenshot({ path: testInfo.outputPath("article-sections.png") });
+  for (const width of [1919, 1600, 1440, 1280, 768, 390, 320]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expect(navigation).toBeHidden();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  }
+});
+
+test("article section links work without JavaScript", async ({ browser }) => {
+  const context = await browser.newContext({ javaScriptEnabled: false, viewport: { width: 1920, height: 900 } });
+  try {
+    const page = await context.newPage();
+    await page.goto("/articles/agentgateway-vs-litellm/");
+    const link = page.getByRole("navigation", { name: "On this page", exact: true }).getByRole("link").nth(2);
+    const href = await link.getAttribute("href");
+    await link.click();
+    await expect(page).toHaveURL(new RegExp(href + "$"));
+    expect((await page.locator(href).boundingBox()).y).toBeGreaterThanOrEqual(80);
   } finally {
     await context.close();
   }
