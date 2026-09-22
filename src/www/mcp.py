@@ -46,6 +46,7 @@ from www.models import (
 from www.publications import article_sections, render_article_markdown, render_profile_json
 from www.search import SearchIndex, normalize_search_query
 from www.sites.agent import HostingResult, compare_hosting
+from www.tags import tag_names
 
 MCP_PROTOCOL_VERSION = "2026-07-28"
 MCP_PROFILE_URI = "portfolio://profile.json"
@@ -279,12 +280,23 @@ def create_mcp_server(
             int,
             Field(description="maximum number of results to return (default 10, maximum 50)"),
         ] = DEFAULT_SEARCH_RESULTS,
+        tag: Annotated[
+            str | None,
+            Field(
+                description=f"optionally keep only articles with this tag, case-insensitive: {', '.join(tag_names())}"
+            ),
+        ] = None,
     ) -> SearchArticlesResult:
         normalized = normalize_search_query(query)
         if not normalized:
             raise ToolError("query must not be empty")
+        wanted = None
+        if tag is not None:
+            wanted = next((name for name in tag_names() if name.casefold() == tag.strip().casefold()), None)
+            if wanted is None:
+                raise ToolError(f"unknown tag {tag!r}; use one of: {', '.join(tag_names())}")
         count = DEFAULT_SEARCH_RESULTS if limit <= 0 else min(limit, MAXIMUM_SEARCH_RESULTS)
-        ranked = index.search(normalized)
+        ranked = tuple(item for item in index.search(normalized) if wanted is None or wanted in item.tags)
         return SearchArticlesResult(
             query=normalized,
             articles=tuple(item.summary() for item in ranked[:count]),

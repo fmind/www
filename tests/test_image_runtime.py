@@ -198,11 +198,15 @@ def test_http_contract_probe_uses_modern_mcp_discovery_and_lists_primitives(
             return HTTPResponse(
                 200,
                 {"content-type": "text/html; charset=utf-8"},
-                "<title>Médéric Hurier (Fmind)".encode(),
+                '<title>Médéric Hurier (Fmind)<link rel="stylesheet" href="/styles.css?v=0123abcd"/>'.encode(),
             )
-        if path == "/static/dist/styles.css":
+        if path == "/styles.css?v=0123abcd":
             assert method == "GET"
-            return HTTPResponse(200, {"content-type": "text/css; charset=utf-8"}, b"/*! tailwindcss v4")
+            return HTTPResponse(
+                200,
+                {"content-type": "text/css; charset=utf-8", "cache-control": "public, max-age=31536000, immutable"},
+                b"/*! tailwindcss v4",
+            )
 
         if path in {"/logo.png", "/banner.png"}:
             assert method == "GET"

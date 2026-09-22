@@ -274,14 +274,16 @@ def _normalize_headings(tokens: Sequence[Token]) -> tuple[ArticleSection, ...]:
         seen[base] = count + 1
         identifiers.add(identifier)
         token.attrSet("id", identifier)
+        # Name the anchor with the rendered heading text: the raw source would
+        # expose Markdown link syntax and URLs to screen readers and MCP sections.
+        label = " ".join(_heading_text(inline.children or []).split())
         if token.tag == "h2":
-            label = " ".join(_heading_text(inline.children or []).split())
             sections.append(ArticleSection(identifier=identifier, label=label))
         # Append a separate link so authored links inside headings never nest.
         link = Token("link_open", "a", 1)
         link.attrSet("href", f"#{identifier}")
         link.attrSet("class", "heading-anchor")
-        link.attrSet("aria-label", f"Link to section: {inline.content}")
+        link.attrSet("aria-label", f"Link to section: {label}")
         # A drawn icon keeps section controls out of copied/imported heading text.
         marker = Token("html_inline", "", 0)
         marker.content = (

@@ -45,9 +45,11 @@ def test_load_assets_returns_an_isolated_immutable_snapshot(tmp_path: Path) -> N
     second = load_application_assets(static)
 
     assert first.hashes["/static/dist/styles.css"] == "15c42ab7"
-    assert first.inline_styles.startswith("body{color:red}")
+    assert first.stylesheet.startswith("body{color:red}")
     assert second.hashes["/static/dist/styles.css"] != first.hashes["/static/dist/styles.css"]
-    assert second.inline_styles.startswith("body{color:blue}")
+    assert second.stylesheet.startswith("body{color:blue}")
+    assert first.stylesheet_url == f"/styles.css?v={first.stylesheet_digest}"
+    assert second.stylesheet_digest != first.stylesheet_digest
     with pytest.raises(TypeError):
         cast(dict[str, str], first.hashes)["/static/dist/styles.css"] = "changed"
     with pytest.raises(TypeError):
@@ -56,7 +58,7 @@ def test_load_assets_returns_an_isolated_immutable_snapshot(tmp_path: Path) -> N
 
 def test_application_assets_detaches_caller_owned_mappings() -> None:
     hashes = {"/static/example.css": "original"}
-    assets = ApplicationAssets(root_files={}, hashes=hashes, inline_styles="body{}")
+    assets = ApplicationAssets(root_files={}, hashes=hashes, stylesheet="body{}")
 
     hashes["/static/example.css"] = "mutated"
 

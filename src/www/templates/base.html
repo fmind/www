@@ -60,8 +60,10 @@
     <link rel="apple-touch-icon" sizes="180x180" href="{{ static_url('static/img/favicons/apple-touch-icon.png') }}"/>
     <link rel="icon" type="image/png" sizes="32x32" href="{{ static_url('static/img/favicons/favicon-32x32.png') }}"/>
     <link rel="icon" type="image/png" sizes="16x16" href="{{ static_url('static/img/favicons/favicon-16x16.png') }}"/>
-    <style nonce="{{ nonce }}">{{ style_css }}</style>
-    <script type="application/ld+json">{{ page.structured_data }}</script>
+    <link rel="stylesheet" href="{{ stylesheet_url }}"/>
+    {% if page.structured_data %}
+      <script type="application/ld+json">{{ page.structured_data }}</script>
+    {% endif %}
   </head>
   <body class="min-h-screen bg-base-100 text-base-content font-body antialiased">
     <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-primary text-primary-content px-4 py-2 rounded-md z-[100]">Skip to content</a>

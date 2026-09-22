@@ -59,7 +59,7 @@ def test_security_headers_authorize_the_request_nonce() -> None:
 
     nonce = response.text.split('nonce="', 1)[1].split('"', 1)[0]
     assert f"script-src 'self' 'nonce-{nonce}'" in response.headers["content-security-policy"]
-    assert f"style-src 'self' 'nonce-{nonce}'" in response.headers["content-security-policy"]
+    assert "style-src 'self';" in response.headers["content-security-policy"]
     assert response.headers["x-content-type-options"] == "nosniff"
     assert response.headers["vary"] == "Accept-Encoding"
     assert "strict-transport-security" not in response.headers
@@ -122,6 +122,18 @@ def test_privacy_helpers_reject_unbounded_or_invalid_values() -> None:
     assert referer_host("not a URL") == ""
     assert is_bot("Mozilla compatible; LinkedInBot")
     assert not is_bot("Mozilla/5.0 Firefox")
+    for automated in (
+        "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; ChatGPT-User/1.0; +https://openai.com/bot",
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/140.0 Safari/537.36",
+        "curl/8.9.1",
+        "python-requests/2.32.3",
+        "Python-urllib/3.14",
+        "Go-http-client/2.0",
+        "WhatsApp/2.24.1 A",
+        "",
+    ):
+        assert is_bot(automated), automated
+    assert not is_bot("Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Safari")
 
 
 def test_etag_matching_accepts_weak_and_list_validators() -> None:

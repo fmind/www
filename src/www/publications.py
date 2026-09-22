@@ -75,6 +75,9 @@ def render_atom_feed(articles: Sequence[Article]) -> str:
         _sub(entry, "published", _atom_time(article.date))
         _sub(entry, "updated", _atom_time(article.modified_date()))
         _sub(entry, "link", href=article.url, rel="alternate", type="text/html")
+        for tag in article.tags:
+            # Feed readers filter and group by category; terms are the site's closed tag vocabulary.
+            _sub(entry, "category", term=tag, scheme=f"{METADATA.site_url}/articles/?tag=", label=tag)
         if index < ATOM_FULL_CONTENT_LIMIT:
             # Feed readers need the article URL when following a section link.
             body = absolute_article_html(article.html).replace('href="#', f'href="{article.url}#')

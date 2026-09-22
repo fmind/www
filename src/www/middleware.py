@@ -26,12 +26,33 @@ _BOT_TOKENS = (
     "bingpreview",
     "facebookexternalhit",
     "linkedinbot",
+    # AI assistants fetching on a user's behalf, which omit "bot" from their names.
+    "chatgpt-user",
+    "claude-user",
+    "perplexity-user",
+    "meta-externalagent",
+    "meta-externalfetcher",
+    # Automation and HTTP libraries rather than people.
+    "headlesschrome",
+    "chrome-lighthouse",
+    "curl/",
+    "wget/",
+    "python-requests",
+    "python-httpx",
+    "python-urllib",
+    "go-http-client",
+    "node-fetch",
+    "axios/",
+    # Link-preview fetchers.
+    "preview",
+    "whatsapp/",
 )
 
 _SILENT_PATHS = frozenset(
     {
         "/health",
         "/favicon.ico",
+        "/styles.css",
         "/robots.txt",
         "/sitemap.xml",
         "/site.webmanifest",
@@ -85,8 +106,9 @@ def referer_host(referer: str) -> str:
 
 def is_bot(user_agent: str) -> bool:
     """Classify common crawler user agents without retaining the raw value."""
-    normalized = user_agent.lower()
-    return any(token in normalized for token in _BOT_TOKENS)
+    normalized = user_agent.strip().lower()
+    # Browsers always identify themselves; an empty user agent is a script.
+    return not normalized or any(token in normalized for token in _BOT_TOKENS)
 
 
 def etag_matches(header: str, current: str) -> bool:
@@ -128,7 +150,8 @@ def _vary_accept_encoding(headers: MutableScopeHeaders) -> None:
 
 def _security_headers(nonce: str, environment: Environment) -> dict[str, str]:
     script_src = f"'self' 'nonce-{nonce}'"
-    style_src = f"'self' 'nonce-{nonce}'"
+    # Pages link one same-origin stylesheet; no inline <style> element is authorized.
+    style_src = "'self'"
     headers = {
         "content-security-policy": "; ".join(
             (

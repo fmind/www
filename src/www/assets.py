@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from hashlib import file_digest
+from hashlib import file_digest, sha256
 from pathlib import Path
 from types import MappingProxyType
 
@@ -17,16 +17,30 @@ class StaticResponse:
     body: bytes
 
 
+# Every page links one content-addressed stylesheet instead of inlining it, so
+# browsers download the ~120 KB of CSS once rather than with every no-cache page.
+STYLESHEET_PATH = "/styles.css"
+
+
 @dataclass(frozen=True, slots=True)
 class ApplicationAssets:
     root_files: Mapping[str, StaticResponse]
     hashes: Mapping[str, str]
-    inline_styles: str
+    stylesheet: str
 
     def __post_init__(self) -> None:
         """Detach the published snapshot from caller-owned mutable mappings."""
         object.__setattr__(self, "root_files", MappingProxyType(dict(self.root_files)))
         object.__setattr__(self, "hashes", MappingProxyType(dict(self.hashes)))
+
+    @property
+    def stylesheet_digest(self) -> str:
+        """Short content hash that versions the immutable stylesheet URL."""
+        return sha256(self.stylesheet.encode()).hexdigest()[:8]
+
+    @property
+    def stylesheet_url(self) -> str:
+        return f"{STYLESHEET_PATH}?v={self.stylesheet_digest}"
 
 
 ROOT_FILE_SOURCES = {
@@ -103,9 +117,8 @@ def load_application_assets(static_dir: Path = Path("static")) -> ApplicationAss
             msg = f"read root file {source}: {error}"
             raise RuntimeError(msg) from error
 
-    inline_styles = stylesheet + highlight_css()
     return ApplicationAssets(
         root_files=root_files,
         hashes=hashes,
-        inline_styles=inline_styles,
+        stylesheet=stylesheet + highlight_css(),
     )

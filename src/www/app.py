@@ -20,7 +20,7 @@ from litestar.types import ASGIApp, Scope
 from mcp.server.transport_security import TransportSecuritySettings
 
 from www.agent_discovery import AGENT_LINKS, AGENT_SKILL_PATH, prefers_markdown, public_skill, render_api_catalog
-from www.assets import ApplicationAssets, StaticResponse, load_application_assets
+from www.assets import STYLESHEET_PATH, ApplicationAssets, StaticResponse, load_application_assets
 from www.config import Config, Environment
 from www.connect import CONNECT_URL, LINKEDIN_URL, render_contact_card
 from www.content import ArticleCollection, article_summaries, load_articles, visible_articles
@@ -41,8 +41,8 @@ from www.data import (
 )
 from www.log import configure_logging
 from www.mcp import create_mcp_server, render_mcp_server_card
-from www.middleware import Logger, SiteMiddleware, trace_fields
-from www.models import PageMetadata, SitePage
+from www.middleware import Logger, SiteMiddleware, etag_matches, trace_fields
+from www.models import PageMetadata
 from www.pages import (
     agents_metadata,
     article_index_metadata,
@@ -80,8 +80,8 @@ _HOUR_CACHE_WITHOUT_REVALIDATION = "public, max-age=3600"
 _NO_CACHE = "no-cache"
 _MCP_MAX_BODY_SIZE = 1 << 20
 # Static ETags and byte ranges describe the on-disk representation. Compressing
-# it afterward invalidates both contracts. Page CSS is inline, so HTML still
-# benefits from Brotli without needing separate encoded static representations.
+# it afterward invalidates both contracts. The page stylesheet is served from
+# memory at /styles.css with a weak ETag, so it still benefits from Brotli.
 _COMPRESSION_EXCLUDE = r"^/(?:(?:mcp|static)(?:/|$)|(?:(?:logo|banner)\.png|portrait\.jpg)$)"
 _READ_METHODS = (HttpMethod.GET, HttpMethod.HEAD)
 
@@ -177,18 +177,13 @@ def create_app(
 
     home_structured_data = get_structured_data()
     home_page = home_metadata(home_structured_data)
-    connect_page = connect_metadata(home_structured_data)
-    scan_page = scan_metadata(home_structured_data)
+    connect_page = connect_metadata()
+    scan_page = scan_metadata()
     contact_card = render_contact_card(static_dir)
-    not_found_page = not_found_metadata(home_structured_data)
-    site_index = SitePage(
-        slug="",
-        title="Sites",
-        description="Source-backed decision tools for AI architecture, infrastructure, and operating economics.",
-        audience="",
-        url=f"{METADATA.site_url}/sites/",
-    )
-    site_index_page = site_index_metadata(site_structured_data(site_index))
+    not_found_page = not_found_metadata()
+    agents_page = agents_metadata()
+    privacy_page = privacy_metadata()
+    site_index_page = site_index_metadata()
     site_pages_by_slug = {page.slug: page for page in SITE_PAGES}
     site_metadata_by_slug = {
         slug: site_page_metadata(page, site_structured_data(page)) for slug, page in site_pages_by_slug.items()
@@ -207,6 +202,10 @@ def create_app(
         structured_data=(
             home_structured_data,
             site_index_page.structured_data,
+            connect_page.structured_data,
+            scan_page.structured_data,
+            agents_page.structured_data,
+            privacy_page.structured_data,
             *(page.structured_data for page in site_metadata_by_slug.values()),
             *(page.structured_data for page in article_metadata_by_slug.values()),
         ),
@@ -263,6 +262,22 @@ def create_app(
             query = _raw_query(request)
             return _redirect("/static/" + (f"?{query}" if query else ""))
         return _static_response(b"404 page not found\n", "text/plain; charset=utf-8", _NO_CACHE, status_code=404)
+
+    stylesheet_body = application_assets.stylesheet.encode()
+    stylesheet_digest = application_assets.stylesheet_digest
+    # Weak: compression may re-encode the body, but the CSS it carries is identical.
+    stylesheet_etag = f'W/"{stylesheet_digest}"'
+
+    @route(STYLESHEET_PATH, http_method=_READ_METHODS, sync_to_thread=False)
+    def stylesheet(request: AppRequest) -> Response[bytes]:
+        # Only the current content-addressed URL is immutable; any other version revalidates.
+        immutable = request.query_params.getall("v", []) == [stylesheet_digest]
+        cache_control = "public, max-age=31536000, immutable" if immutable else _DAY_CACHE
+        if etag_matches(request.headers.get("if-none-match", ""), stylesheet_etag):
+            return Response(b"", headers={"cache-control": cache_control, "etag": stylesheet_etag}, status_code=304)
+        return _static_response(
+            stylesheet_body, "text/css; charset=utf-8", cache_control, extra_headers={"etag": stylesheet_etag}
+        )
 
     # Cloud Run reserves some paths ending in "z"; keep one portable probe URL.
     @route("/health", http_method=_READ_METHODS, sync_to_thread=False)
@@ -327,7 +342,7 @@ def create_app(
     def agents(request: AppRequest) -> Redirect | Response[str]:
         if _raw_path(request).endswith("/"):
             return _redirect("/agents")
-        return render_page(request, PageTemplate.AGENTS, agents_metadata())
+        return render_page(request, PageTemplate.AGENTS, agents_page)
 
     @route("/.well-known/api-catalog", http_method=_READ_METHODS, sync_to_thread=False)
     def catalog() -> Response[bytes]:
@@ -351,7 +366,7 @@ def create_app(
     def privacy(request: AppRequest) -> Redirect | Response[str]:
         if _raw_path(request).endswith("/"):
             return _redirect("/privacy")
-        return render_page(request, PageTemplate.PRIVACY, privacy_metadata())
+        return render_page(request, PageTemplate.PRIVACY, privacy_page)
 
     @route("/connect", http_method=_READ_METHODS, sync_to_thread=True)
     def connect(request: AppRequest) -> Redirect | Response[str]:
@@ -393,7 +408,7 @@ def create_app(
         return render_page(
             request,
             PageTemplate.ARTICLES,
-            article_index_metadata(view, home_structured_data),
+            article_index_metadata(view),
             {"view": view},
         )
 
@@ -595,6 +610,7 @@ def create_app(
         route_handlers=[
             static_asset,
             branding_asset,
+            stylesheet,
             static_root,
             health,
             root_file,

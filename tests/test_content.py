@@ -461,7 +461,8 @@ def test_heading_links_preserve_formatting_and_authored_links(tmp_path: Path) ->
     assert len(headings) == 2
     for identifier, heading in headings:
         assert f'href="#{identifier}" class="heading-anchor"' in heading
-        assert 'aria-label="Link to section:' in heading
+        # The accessible name is the rendered text, never the Markdown source or its URL.
+        assert 'aria-label="Link to section: A bold link"' in heading
         assert "🔗" not in heading
         assert 'aria-hidden="true" focusable="false"' in heading
         assert re.sub(r"<[^>]+>", "", heading) == "A bold link"
@@ -469,3 +470,14 @@ def test_heading_links_preserve_formatting_and_authored_links(tmp_path: Path) ->
         assert '<a href="https://example.com">link</a>' in heading
         assert heading.count("<a ") == heading.count("</a>") == 2
     assert headings[0][0] != headings[1][0]
+
+
+def test_mcp_section_titles_use_rendered_heading_text(tmp_path: Path) -> None:
+    from www.publications import article_sections
+
+    item = parse_article(
+        "content/articles/example.md",
+        source("## [Vim](https://example.com/vim) 📝\n\n### Uses `code`"),
+        assets(tmp_path),
+    )
+    assert [section["title"] for section in article_sections(item)] == ["Vim 📝", "Uses code"]

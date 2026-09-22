@@ -155,6 +155,23 @@ async def test_search_tool_normalizes_caps_and_rejects_empty_query(mcp_server: M
 
 
 @pytest.mark.anyio
+async def test_search_tool_filters_by_a_known_tag(mcp_server: MCPServer[None]) -> None:
+    everything = await mcp_server.call_tool("search_articles", {"query": "the", "limit": 50})
+    tagged = await mcp_server.call_tool("search_articles", {"query": "the", "limit": 50, "tag": " mlops "})
+    assert isinstance(everything, CallToolResult)
+    assert isinstance(tagged, CallToolResult)
+    assert isinstance(everything.structured_content, dict)
+    assert isinstance(tagged.structured_content, dict)
+    articles = tagged.structured_content["articles"]
+    assert articles
+    assert all("MLOps" in article["tags"] for article in articles)
+    assert tagged.structured_content["total"] < everything.structured_content["total"]
+
+    with pytest.raises(ToolError, match="unknown tag 'Agents'; use one of: Agent, Coding"):
+        await mcp_server.call_tool("search_articles", {"query": "agent", "tag": "Agents"})
+
+
+@pytest.mark.anyio
 async def test_profile_resource_and_prompt_are_grounded(mcp_server: MCPServer[None]) -> None:
     resources = await mcp_server.list_resources()
     contents = await mcp_server.read_resource("portfolio://profile.json")

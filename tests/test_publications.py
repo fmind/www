@@ -159,3 +159,12 @@ def test_atom_section_links_target_the_article() -> None:
     assert content is not None
     assert content.text is not None
     assert f'href="{item.url}#section"' in content.text
+
+
+def test_atom_entries_carry_their_tags_as_categories() -> None:
+    feed = ElementTree.fromstring(render_atom_feed((article("tagged", 1, "Agent", "MLOps"),)))  # noqa: S314
+    atom = "{http://www.w3.org/2005/Atom}"
+    categories = feed.findall(f"{atom}entry/{atom}category")
+
+    assert [category.get("term") for category in categories] == ["Agent", "MLOps"]
+    assert {category.get("scheme") for category in categories} == {f"{METADATA.site_url}/articles/?tag="}

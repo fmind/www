@@ -43,10 +43,10 @@ from www.sites.calculator import build_llm_self_hosting_view
 
 def application_assets(
     *,
-    style_css: str = "body{}",
+    stylesheet: str = "body{}",
     hashes: dict[str, str] | None = None,
 ) -> ApplicationAssets:
-    return ApplicationAssets(root_files={}, hashes=hashes or {}, inline_styles=style_css)
+    return ApplicationAssets(root_files={}, hashes=hashes or {}, stylesheet=stylesheet)
 
 
 def test_environment_is_package_local_strict_and_autoescaped() -> None:
@@ -85,9 +85,6 @@ def test_renderer_fails_closed_at_markup_and_context_boundaries() -> None:
     structured_data = get_structured_data()
     page = home_metadata(structured_data)
 
-    with pytest.raises(ValueError, match="stylesheet must not close its style element"):
-        Renderer(application_assets(style_css="body{}</style><script>alert(1)</script>"))
-
     renderer = Renderer(application_assets())
     with pytest.raises(TypeError, match="article_html must be a string"):
         renderer.render(
@@ -118,7 +115,7 @@ def test_renderer_fails_closed_at_markup_and_context_boundaries() -> None:
             context={"biography_html": ("<strong>safe</strong></style>",)},
         )
     with pytest.raises(ValueError, match="nonce must not be empty"):
-        renderer.render(PageTemplate.NOT_FOUND, page=not_found_metadata(structured_data), nonce="")
+        renderer.render(PageTemplate.NOT_FOUND, page=not_found_metadata(), nonce="")
     with pytest.raises(ValueError, match="structured_data must be valid JSON"):
         renderer.render(PageTemplate.NOT_FOUND, page=replace(page, structured_data="{"), nonce="nonce")
     with pytest.raises(ValueError, match="structured_data must not close its script element"):
@@ -150,21 +147,29 @@ def test_renderer_rejects_active_content_in_validated_html(article_html: str, me
     with pytest.raises(ValueError, match=message):
         renderer.render(
             PageTemplate.ARTICLE,
-            page=not_found_metadata(get_structured_data()),
+            page=not_found_metadata(),
             nonce="nonce",
             context={"article_html": article_html},
         )
 
 
 def test_renderer_escapes_page_metadata_and_preserves_reviewed_markup() -> None:
-    renderer = Renderer(application_assets(style_css="body>main{display:block}"))
-    page = replace(not_found_metadata(get_structured_data()), title="<unsafe>")
+    assets = application_assets(stylesheet="body>main{display:block}")
+    renderer = Renderer(assets)
+    page = replace(not_found_metadata(), title="<unsafe>", structured_data=get_structured_data())
 
     rendered = renderer.render(PageTemplate.NOT_FOUND, page=page, nonce="request-nonce")
 
     assert "<title>&lt;unsafe&gt;</title>" in rendered
-    assert '<style nonce="request-nonce">body>main{display:block}</style>' in rendered
+    assert f'<link rel="stylesheet" href="/styles.css?v={assets.stylesheet_digest}"/>' in rendered
+    assert "<style" not in rendered
     assert '<script type="application/ld+json">{"@context":' in rendered
+
+
+def test_pages_without_structured_data_omit_the_json_ld_element() -> None:
+    rendered = Renderer(application_assets()).render(PageTemplate.NOT_FOUND, page=not_found_metadata(), nonce="n")
+
+    assert "application/ld+json" not in rendered
 
 
 def test_renderer_keeps_asset_snapshots_isolated_and_refreshes_the_footer_year() -> None:
@@ -174,7 +179,7 @@ def test_renderer_keeps_asset_snapshots_isolated_and_refreshes_the_footer_year()
         clock=lambda: next(years),
     )
     second = Renderer(application_assets(hashes={"/static/img/favicons/favicon-32x32.png": "second"}))
-    page = not_found_metadata(get_structured_data())
+    page = not_found_metadata()
 
     first_render = first.render(PageTemplate.NOT_FOUND, page=page, nonce="nonce")
     second_render = second.render(PageTemplate.NOT_FOUND, page=page, nonce="nonce")
@@ -215,7 +220,7 @@ def test_renderer_renders_all_six_pages_with_real_domain_contexts() -> None:
         ),
         PageTemplate.ARTICLES: renderer.render(
             PageTemplate.ARTICLES,
-            page=article_index_metadata(index, shared_structured_data),
+            page=article_index_metadata(index),
             nonce=nonce,
             context={"view": index},
         ),
@@ -232,7 +237,7 @@ def test_renderer_renders_all_six_pages_with_real_domain_contexts() -> None:
         ),
         PageTemplate.SITES: renderer.render(
             PageTemplate.SITES,
-            page=site_index_metadata(shared_structured_data),
+            page=site_index_metadata(),
             nonce=nonce,
             context={"site_pages": SITE_PAGES},
         ),
@@ -247,7 +252,7 @@ def test_renderer_renders_all_six_pages_with_real_domain_contexts() -> None:
         ),
         PageTemplate.NOT_FOUND: renderer.render(
             PageTemplate.NOT_FOUND,
-            page=not_found_metadata(shared_structured_data),
+            page=not_found_metadata(),
             nonce=nonce,
         ),
     }
@@ -265,7 +270,8 @@ def test_renderer_renders_all_six_pages_with_real_domain_contexts() -> None:
         assert html.count(f'<script nonce="{nonce}">') == int(
             template in {PageTemplate.HOME, PageTemplate.ARTICLE, PageTemplate.LLM_SELF_HOSTING}
         )
-        assert html.count(f'<style nonce="{nonce}">') == 1
+        assert html.count('<link rel="stylesheet" href="/styles.css?v=') == 1
+        assert "<style" not in html
         assert 'data-theme="light"' in html
         assert '<meta name="color-scheme" content="light"/>' in html
         assert "{{" not in html
@@ -275,7 +281,7 @@ def test_renderer_renders_all_six_pages_with_real_domain_contexts() -> None:
 def test_startup_markup_is_validated_once_but_unknown_markup_remains_guarded(monkeypatch: pytest.MonkeyPatch) -> None:
     from www import rendering
 
-    page = not_found_metadata(get_structured_data())
+    page = not_found_metadata()
     renderer = Renderer(
         application_assets(), article_html=("<p>published</p>",), structured_data=(page.structured_data,)
     )
@@ -293,8 +299,9 @@ def test_startup_markup_is_validated_once_but_unknown_markup_remains_guarded(mon
         second = renderer.render(
             PageTemplate.NOT_FOUND, page=page, nonce="second", context={"article_html": "<p>published</p>"}
         )
-        assert 'nonce="first"' in first
-        assert 'nonce="second"' in second
+        # The 404 page has no nonce-bearing element, so cached renders are identical.
+        assert first.startswith("<!DOCTYPE html>")
+        assert first == second
 
     with pytest.raises(ValueError, match="unsafe attribute"):
         renderer.render(

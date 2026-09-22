@@ -466,12 +466,19 @@ def _assert_http_contracts(port: int) -> None:
     ):
         raise SmokeError("homepage did not return the expected HTML")
 
-    stylesheet = _request(port, "GET", "/static/dist/styles.css")
-    _expect_ok(stylesheet, "/static/dist/styles.css")
+    # Pages link the in-memory, content-addressed stylesheet; check the exact URL they reference.
+    marker = b'<link rel="stylesheet" href="'
+    if marker not in homepage.body:
+        raise SmokeError("homepage does not link its stylesheet")
+    stylesheet_url = homepage.body.split(marker, 1)[1].split(b'"', 1)[0].decode()
+    stylesheet = _request(port, "GET", stylesheet_url)
+    _expect_ok(stylesheet, stylesheet_url)
     if not stylesheet.headers.get("content-type", "").startswith("text/css") or not stylesheet.body.startswith(
         b"/*! tailwindcss"
     ):
-        raise SmokeError("representative stylesheet did not return the expected CSS")
+        raise SmokeError("linked stylesheet did not return the expected CSS")
+    if "immutable" not in stylesheet.headers.get("cache-control", ""):
+        raise SmokeError("linked stylesheet is not cached as an immutable version")
 
     for path in ("/logo.png", "/banner.png"):
         # Exercise Granian's pathsend extension with compression negotiation;

@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 import json
-from dataclasses import replace
 
 from www.connect import CONNECT_URL
-from www.data import METADATA
+from www.data import METADATA, get_page_structured_data
 from www.models import Article, ArticleIndexView, PageMetadata, SitePage
 
 
@@ -25,45 +24,50 @@ def home_metadata(structured_data: str) -> PageMetadata:
     )
 
 
-def connect_metadata(structured_data: str) -> PageMetadata:
+def _web_page(page_type: str, *, title: str, description: str, canonical: str, no_index: bool = False) -> PageMetadata:
+    """Metadata for a hosted page whose JSON-LD describes that page, not the profile."""
     return PageMetadata(
-        title=f"Connect with {METADATA.name} ({METADATA.alternate_name})",
-        description="Connect with Médéric Hurier (Fmind), freelance AI Architect based in Luxembourg. Find me on LinkedIn or save my contact details.",
-        canonical=CONNECT_URL,
+        title=title,
+        description=description,
+        canonical=canonical,
         image_url=f"{METADATA.site_url}/static/img/og-image.jpg",
         image_alt="Fmind.dev — AI, Agents, Security",
         kind="website",
-        structured_data=structured_data,
+        structured_data=get_page_structured_data(page_type, canonical, title, description),
+        no_index=no_index,
+    )
+
+
+def connect_metadata() -> PageMetadata:
+    return _web_page(
+        "ContactPage",
+        title=f"Connect with {METADATA.name} ({METADATA.alternate_name})",
+        description="Connect with Médéric Hurier (Fmind), freelance AI Architect based in Luxembourg. Find me on LinkedIn or save my contact details.",
+        canonical=CONNECT_URL,
     )
 
 
 def agents_metadata() -> PageMetadata:
-    return PageMetadata(
+    return _web_page(
+        "WebPage",
         title="For AI agents | Médéric Hurier (Fmind)",
         description="Explore Médéric Hurier (Fmind)'s profile, services, articles, and decision tools through free, read-only APIs and MCP.",
         canonical=f"{METADATA.site_url}/agents",
-        image_url=f"{METADATA.site_url}/static/img/og-image.jpg",
-        image_alt="Fmind.dev — AI, Agents, Security",
-        kind="website",
-        structured_data="{}",
     )
 
 
 def privacy_metadata() -> PageMetadata:
-    return PageMetadata(
+    return _web_page(
+        "WebPage",
         title="Privacy | Médéric Hurier (Fmind)",
         description="How this website measures visits and handles personal information.",
         canonical=f"{METADATA.site_url}/privacy",
-        image_url=f"{METADATA.site_url}/static/img/og-image.jpg",
-        image_alt="Fmind.dev — AI, Agents, Security",
-        kind="website",
-        structured_data="{}",
     )
 
 
-def scan_metadata(structured_data: str) -> PageMetadata:
-    return replace(
-        connect_metadata(structured_data),
+def scan_metadata() -> PageMetadata:
+    return _web_page(
+        "ContactPage",
         title=f"Scan to connect | {METADATA.name} ({METADATA.alternate_name})",
         description="Scan the QR code to connect with Médéric Hurier on LinkedIn or save his contact details.",
         canonical=f"{METADATA.site_url}/scan",
@@ -71,7 +75,15 @@ def scan_metadata(structured_data: str) -> PageMetadata:
     )
 
 
-def article_index_metadata(view: ArticleIndexView, structured_data: str) -> PageMetadata:
+_ARTICLE_INDEX_DESCRIPTION = (
+    "Articles on AI agents, MLOps, cloud architecture, security, and pragmatic engineering systems."
+)
+_ARTICLE_INDEX_STRUCTURED_DATA = get_page_structured_data(
+    "CollectionPage", f"{METADATA.site_url}/articles/", "Articles | Médéric Hurier (Fmind)", _ARTICLE_INDEX_DESCRIPTION
+)
+
+
+def article_index_metadata(view: ArticleIndexView) -> PageMetadata:
     preload = ""
     if view.results:
         preload = view.results[0].card_image_path()
@@ -82,12 +94,12 @@ def article_index_metadata(view: ArticleIndexView, structured_data: str) -> Page
         title = f"Search: {view.query} | Articles | Médéric Hurier (Fmind)"
     return PageMetadata(
         title=title,
-        description="Articles on AI agents, MLOps, cloud architecture, security, and pragmatic engineering systems.",
+        description=_ARTICLE_INDEX_DESCRIPTION,
         canonical=f"{METADATA.site_url}/articles/",
         image_url=f"{METADATA.site_url}/static/img/og-image.jpg",
         image_alt="Fmind.dev — AI, Agents, Security",
         kind="website",
-        structured_data=structured_data,
+        structured_data=_ARTICLE_INDEX_STRUCTURED_DATA,
         preload_image=preload,
         no_index=view.searching(),
     )
@@ -127,15 +139,12 @@ def site_structured_data(page: SitePage) -> str:
     )
 
 
-def site_index_metadata(structured_data: str) -> PageMetadata:
-    return PageMetadata(
+def site_index_metadata() -> PageMetadata:
+    return _web_page(
+        "CollectionPage",
         title=f"Sites | {METADATA.site_name}",
         description="Source-backed decision tools for AI architecture, infrastructure, and operating economics.",
         canonical=f"{METADATA.site_url}/sites/",
-        image_url=f"{METADATA.site_url}/static/img/og-image.jpg",
-        image_alt="Fmind.dev — AI, Agents, Security",
-        kind="website",
-        structured_data=structured_data,
     )
 
 
@@ -152,7 +161,8 @@ def site_page_metadata(page: SitePage, structured_data: str) -> PageMetadata:
     )
 
 
-def not_found_metadata(structured_data: str) -> PageMetadata:
+def not_found_metadata() -> PageMetadata:
+    # A missing page describes nothing, so it carries no JSON-LD graph.
     return PageMetadata(
         title="Page not found | Fmind",
         description="The requested page could not be found.",
@@ -160,6 +170,5 @@ def not_found_metadata(structured_data: str) -> PageMetadata:
         image_url=f"{METADATA.site_url}/static/img/og-image.jpg",
         image_alt="Fmind.dev — AI, Agents, Security",
         kind="website",
-        structured_data=structured_data,
         no_index=True,
     )

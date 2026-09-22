@@ -413,10 +413,9 @@ def markdown_to_html(text: str) -> str:
     return rendered
 
 
-def get_structured_data(article: object | None = None) -> str:
-    """Build the connected Person/WebSite/ProfilePage or BlogPosting graph."""
+def _identity_graph() -> list[dict[str, object]]:
+    """Return the Person and WebSite nodes every page graph connects to."""
     person_id = f"{METADATA.site_url}/#person"
-    profile_id = f"{METADATA.site_url}/#profile"
     website_id = f"{METADATA.site_url}/#website"
     credentials = [
         {
@@ -475,7 +474,37 @@ def get_structured_data(article: object | None = None) -> str:
         "description": METADATA.description,
         "author": {"@id": person_id},
     }
-    graph: list[dict[str, object]] = [person, website]
+    return [person, website]
+
+
+def _json_ld(graph: list[dict[str, object]]) -> str:
+    return json.dumps({"@context": "https://schema.org", "@graph": graph}, ensure_ascii=False, separators=(",", ":"))
+
+
+def get_page_structured_data(page_type: str, url: str, name: str, description: str) -> str:
+    """Build a connected WebPage-family graph for a hosted page other than the profile."""
+    return _json_ld(
+        [
+            *_identity_graph(),
+            {
+                "@id": f"{url}#webpage",
+                "@type": page_type,
+                "url": url,
+                "name": name,
+                "description": description,
+                "isPartOf": {"@id": f"{METADATA.site_url}/#website"},
+                "about": {"@id": f"{METADATA.site_url}/#person"},
+            },
+        ]
+    )
+
+
+def get_structured_data(article: object | None = None) -> str:
+    """Build the connected Person/WebSite/ProfilePage or BlogPosting graph."""
+    person_id = f"{METADATA.site_url}/#person"
+    profile_id = f"{METADATA.site_url}/#profile"
+    website_id = f"{METADATA.site_url}/#website"
+    graph = _identity_graph()
     if article is None:
         graph.append(
             {
@@ -511,4 +540,4 @@ def get_structured_data(article: object | None = None) -> str:
                 "keywords": list(article.tags),
             }
         )
-    return json.dumps({"@context": "https://schema.org", "@graph": graph}, ensure_ascii=False, separators=(",", ":"))
+    return _json_ld(graph)

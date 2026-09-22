@@ -61,10 +61,9 @@ NAV_LINKS: Final = (
 )
 
 _RESERVED_CONTEXT: Final = frozenset(
-    {"current_year", "metadata", "nav_links", "nonce", "page", "style_css"},
+    {"current_year", "metadata", "nav_links", "nonce", "page", "stylesheet_url"},
 )
 _SCRIPT_END = re.compile(r"</\s*script\b", re.IGNORECASE)
-_STYLE_END = re.compile(r"</\s*style\b", re.IGNORECASE)
 _UNSAFE_FRAGMENT_ELEMENTS: Final = frozenset({"base", "embed", "iframe", "link", "meta", "object", "script", "style"})
 _UNSAFE_URL_PREFIXES: Final = ("data:", "javascript:", "vbscript:")
 _URL_ATTRIBUTES: Final = frozenset({"action", "formaction", "href", "poster", "src", "xlink:href"})
@@ -123,7 +122,7 @@ def _format_go_float(value: float, digits: int) -> str:
 class Renderer:
     """Render complete pages while keeping every raw-HTML decision explicit."""
 
-    __slots__ = ("_clock", "_environment", "_html", "_json_ld", "_style_css")
+    __slots__ = ("_clock", "_environment", "_html", "_json_ld", "_stylesheet_url")
 
     def __init__(
         self,
@@ -135,7 +134,7 @@ class Renderer:
         structured_data: Sequence[str] = (),
     ) -> None:
         self._environment = create_environment(assets.hashes)
-        self._style_css = _trusted_stylesheet(assets.inline_styles)
+        self._stylesheet_url = assets.stylesheet_url
         self._clock = clock or _utc_now
         # Only startup-owned values enter these bounded snapshots. Request data
         # still passes validation and can never grow a shared markup cache.
@@ -172,7 +171,7 @@ class Renderer:
             nav_links=NAV_LINKS,
             nonce=nonce,
             page=trusted_page,
-            style_css=self._style_css,
+            stylesheet_url=self._stylesheet_url,
         )
         return self._environment.get_template(template.value).render(page_context)
 
@@ -261,22 +260,15 @@ def _trust_html_context(context: MutableMapping[str, object], known: Mapping[str
     context["biography_html"] = tuple(_trusted_html(item, "biography_html", known) for item in biography_html)
 
 
-def _trusted_stylesheet(value: object) -> Markup:
-    if type(value) is not str:
-        msg = "stylesheet must be a string"
-        raise TypeError(msg)
-    if _STYLE_END.search(value):
-        msg = "stylesheet must not close its style element"
-        raise ValueError(msg)
-    return Markup(value)  # noqa: S704
-
-
 def _trusted_json_ld(value: object, known: Mapping[str, Markup] | None = None) -> Markup:
     if type(value) is not str:
         msg = "structured_data must be a string"
         raise TypeError(msg)
     if known is not None and value in known:
         return known[value]
+    if value == "":
+        # Pages without a graph (such as 404) omit the script element entirely.
+        return Markup()
     try:
         json.loads(value)
     except json.JSONDecodeError as error:

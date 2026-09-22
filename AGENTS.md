@@ -11,7 +11,7 @@ Python 3.14, Litestar, strict Jinja, Tailwind/DaisyUI, and Granian. No client fr
 - Inspect Git status/diffs and preserve unrelated work and staged selections. Use OS temporary directories for agent scratch; no repository-local review reports. Remove only task-owned temporary artifacts.
 - Commit, push, release, deploy, apply infrastructure, and spend require owner authorization. Reuse authority already given. Use Conventional Commits without attribution; published tags are immutable.
 - Keep Cloud Run **service and revision minimum instances at 0**, maximum 5, and request-based CPU (`cpu_idle = true`). Raising capacity or enabling always-on instances requires explicit owner authorization.
-- OpenTofu owns service settings; CI owns only the image digest. A `main` deployment must scan and smoke-test its pushed immutable digest before rollout, then verify ready revision, traffic, health, and errors.
+- OpenTofu owns service settings; CI owns only the image digest and traffic promotion. A `main` deployment must scan and smoke-test its pushed immutable digest, verify a no-traffic `candidate` revision, then promote exactly that revision and verify ready revision, traffic, health, and errors.
 
 ## Ownership
 
@@ -30,9 +30,9 @@ Python 3.14, Litestar, strict Jinja, Tailwind/DaisyUI, and Granian. No client fr
 ## Invariants
 
 - Parse external input at boundaries and fail with contextual chained errors. Construct validated articles, search, assets, publications, renderer, and MCP once; requests must not observe partial state.
-- Keep Jinja `StrictUndefined` and autoescape. Only `rendering.py` may trust validated article/biography HTML, CSS, or guarded JSON-LD.
+- Keep Jinja `StrictUndefined` and autoescape. Only `rendering.py` may trust validated article/biography HTML or guarded JSON-LD.
 - Keep the site light-only and assets self-hosted. Google Sans is body text, Google Sans Code is code. Use existing macros and small nonce-authorized page interactions; do not add a JS bundle without a real module graph.
-- Tailwind classes belong in `src/www/templates/**/*.html`. Authored build inputs go in `assets/`; final public artifacts go in `static/`.
+- Tailwind classes belong in `src/www/templates/**/*.html`. Authored build inputs go in `assets/`; final public artifacts go in `static/`. Pages link one content-addressed stylesheet, `/styles.css?v=<hash>` (Tailwind output plus syntax colors, served from memory); CSP allows no inline `<style>`.
 - The validated article collection is the only publication source; drafts never enter production discovery. Current Markdown is the authoritative article body.
 - Register tools in `data.py:SITE_PAGES` and wire routes/templates/views explicitly. Formulas remain server-owned. MCP calculator input rejects invalid values instead of silently applying defaults.
 - Tags require a `tags.py` entry, matching CSS rule, and article use. Generate reviewed image derivatives and provenance lock after media changes; `check:images` never writes.
