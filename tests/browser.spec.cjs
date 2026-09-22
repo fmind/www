@@ -1109,7 +1109,8 @@ test("article section navigation stays clear of content and tracks H2 sections",
     expect(await navigation.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
   }
   await page.setViewportSize({ width: 1920, height: 500 });
-  expect(await navigation.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(true);
+  // Dynamic viewport units can settle after the resize command completes.
+  await expect.poll(() => navigation.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(true);
   await navigation.locator("a").last().focus();
   await expect(navigation.locator("a").last()).toBeInViewport();
   await page.setViewportSize({ width: 1920, height: 900 });
