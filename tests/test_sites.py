@@ -60,7 +60,7 @@ def test_invalid_required_query_values_fall_back_independently() -> None:
     assert result.inputs.tokens_per_second == DEFAULT_HOSTING_INPUTS.tokens_per_second
     assert result.validation == (
         "model was not recognized; the default was used",
-        "replicas must be between 1 and 8; the default was used",
+        "replicas must be a whole number between 1 and 8; the default was used",
         "throughput must be between 0.1 and 1e+06; the default was used",
     )
 

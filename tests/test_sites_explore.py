@@ -143,7 +143,7 @@ def test_cost_chart_has_round_labels_and_workloads_with_exact_costs(query) -> No
             assert str(int(daily)).rstrip("0") in {"1", "2", "5"}
         assert 1 <= daily <= 10_000_000
         assert frame.requests == daily * result.inputs.active_days
-        assert "requests/day" in frame.label
+        assert f"{format_number(daily)} {'request' if daily == 1 else 'requests'}/day" in frame.label
         for api in result.apis:
             cost = api_monthly_cost(result.inputs, api.baseline, frame.requests)[0]
             assert f"{api.baseline.name} {format_usd2(cost)}" in frame.summary
@@ -221,7 +221,7 @@ def test_optional_input_validation_uses_explicit_defaults() -> None:
     assert result.inputs == DEFAULT_HOSTING_INPUTS
     assert result.validation == (
         "api-mode was not recognized; the default was used",
-        "cache-requests must be between 1 and 1000000; the default was used",
+        "cache-requests must be a whole number between 1 and 1000000; the default was used",
         "quality was not recognized; the default was used",
         "measured-first must be between 0 and 3600; the default was used",
         "quality-0-acceptance must be between 0 and 100; the default was used",

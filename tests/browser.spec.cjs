@@ -567,6 +567,73 @@ test("calculator reports network failure and recovers on retry", async ({ page }
   await expect(page.locator("[data-update-status]")).toHaveText("Comparison updated.");
 });
 
+test("calculator keeps edits made while an update is in flight", async ({ page }) => {
+  await page.goto(calculator);
+  let release;
+  const held = new Promise((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/sites/llm-self-hosting/?*", async (route) => {
+    await held;
+    // The edit aborts this request, so the late continuation may be rejected.
+    await route.continue().catch(() => {});
+  });
+  await page.locator("#requests").fill("234");
+  await page.locator("#requests").press("Enter");
+  await expect(page.locator("[data-hosting-calculator]")).toHaveAttribute("aria-busy", "true");
+  await page.locator("#days").fill("5");
+  await expect(page.locator("[data-hosting-calculator]")).not.toHaveAttribute("aria-busy", "true");
+  release();
+  await delay(300);
+  await expect(page.locator("#days")).toHaveValue("5");
+  await expect(page.locator("#days")).toBeFocused();
+  await expect(page.locator("#requests")).toHaveValue("234");
+  await page.unroute("**/sites/llm-self-hosting/?*");
+  await page.locator("#days").press("Enter");
+  await expect(page.locator("[data-update-status]")).toHaveText("Comparison updated.");
+  await expect(page.locator("#days")).toHaveValue("5");
+  await expect(page.locator("#days")).toBeFocused();
+  expect(new URL(page.url()).searchParams.get("days")).toBe("5");
+  // The single status node lives outside the replaced calculator markup.
+  await expect(page.locator("[data-update-status]")).toHaveCount(1);
+  await expect(page.locator("[data-hosting-calculator] [data-update-status]")).toHaveCount(0);
+});
+
+test("calculator submits exact decimal scenarios without browser step errors", async ({ page }) => {
+  await page.goto(`${calculator}?requests=1234567&throughput=123.4567&duty=50.55&overhead=12.5&platform=99.99`);
+  await expect(page.locator("#requests")).toHaveValue("1234567");
+  await expect(page.locator("#throughput")).toHaveValue("123.4567");
+  await expect(page.locator("#duty")).toHaveValue("50.55");
+  expect(await page.locator("#calculator").evaluate((form) => form.checkValidity())).toBe(true);
+  await page.locator("#preset-department").click();
+  await expect(page.locator("[data-update-status]")).toHaveText("Comparison updated.");
+  expect(new URL(page.url()).searchParams.get("throughput")).toBe("123.4567");
+  expect(new URL(page.url()).searchParams.get("duty")).toBe("50.55");
+});
+
+test("cost slider stays synchronized after back navigation", async ({ page }) => {
+  await page.goto(calculator);
+  await page.locator("#cost-volume").focus();
+  await page.locator("#cost-volume").press("ArrowRight");
+  await page.goto("/sites/");
+  await page.goBack();
+  const state = await page.locator("[data-cost-explorer]").evaluate((chart) => {
+    const range = chart.querySelector("[data-cost-range]");
+    const frame = chart.querySelectorAll("[data-cost-frame]")[Number(range.value)];
+    return {
+      expected: frame.dataset.summary,
+      output: chart.querySelector("[data-cost-output]").textContent,
+      cursor: chart.querySelector("[data-cost-cursor]").getAttribute("x1"),
+      x: frame.dataset.x,
+      href: chart.querySelector("[data-cost-apply]").getAttribute("href"),
+      url: frame.dataset.url,
+    };
+  });
+  expect(state.output).toBe(state.expected);
+  expect(state.cursor).toBe(state.x);
+  expect(state.href).toBe(state.url);
+});
+
 test("invalid optional inputs open their disclosure before receiving focus", async ({ page }) => {
   await page.goto(calculator);
   await page.locator("#latency-settings > summary").click();

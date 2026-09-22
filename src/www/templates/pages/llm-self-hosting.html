@@ -1,8 +1,9 @@
 {% extends "base.html" %}
 {% from "macros/sites.html" import api_options, cost_explorer, demand_form, fleet_form, latency, precision_guide, quality, related_articles as related_articles_section, results, sensitivity %}
 {% block content %}
+  {# The status stays outside the swapped region so assistive technology observes it before updates. #}
+  <p data-update-status class="sr-only" role="status"></p>
   <section data-hosting-calculator class="bg-base-200 min-h-screen px-4 py-10 md:py-16">
-    <p data-update-status class="sr-only" role="status"></p>
     <div class="container mx-auto max-w-7xl space-y-10 md:space-y-14">
       <nav aria-label="Breadcrumb" class="text-sm text-base-content/70">
         <a class="link hover:text-primary" href="/sites/">Sites</a>
@@ -48,9 +49,9 @@
             <tbody>
               {% for row in view.comparison %}
                 <tr>
-                  <th scope="row"><a class="link link-primary font-semibold" href="{{ row.model.analysis_url }}" target="_blank" rel="noopener noreferrer">#{{ row.model.rank }} · {{ row.model.name }}</a><span class="block text-xs font-normal text-base-content/60 mt-1">{{ row.model.creator }} · {{ format_go_float(row.model.parameters_b, 0) }}B parameters</span></th>
+                  <th scope="row"><a class="link link-primary font-semibold" href="{{ row.model.analysis_url }}" target="_blank" rel="noopener noreferrer">#{{ row.model.rank }} · {{ row.model.name }}</a><span class="block text-xs font-normal text-base-content/70 mt-1">{{ row.model.creator }} · {{ format_go_float(row.model.parameters_b, 0) }}B parameters</span></th>
                   <td>{{ format_go_float(row.model.intelligence, 1) }}</td>
-                  <td><a class="link" href="{{ row.model.weights_url }}" target="_blank" rel="noopener noreferrer">{{ row.model.license }}</a><span class="block text-xs text-base-content/60">{{ row.model.license_class }}</span></td>
+                  <td><a class="link" href="{{ row.model.weights_url }}" target="_blank" rel="noopener noreferrer">{{ row.model.license }}</a><span class="block text-xs text-base-content/70">{{ row.model.license_class }}</span></td>
                   <td>{{ format_go_float(row.estimate.required_memory_gb, 0) }} GB</td>
                   <td>{{ format_count(row.estimate.total_nodes, "node") }} / {{ format_count(row.estimate.total_gpus, "GPU") }}</td>
                   <td>{{ format_usd(row.estimate.total_monthly_usd) }}</td>

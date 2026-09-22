@@ -1,13 +1,13 @@
 {% macro metric_card(label, value, detail) -%}
   <div class="rounded-2xl border border-base-300 bg-base-100 p-5 shadow-sm">
     <p class="text-sm font-semibold text-base-content/65">{{ label }}</p>
-    <output class="block font-heading text-3xl font-bold text-primary mt-2">{{ value }}</output>
+    <p class="font-heading text-3xl font-bold text-primary mt-2">{{ value }}</p>
     <p class="text-sm text-base-content/65 leading-relaxed mt-2">{{ detail }}</p>
   </div>
 {%- endmacro %}
 
 {% macro number_input(id, label, value, minimum, maximum, step, help) -%}
-  <div class="min-w-0"><label class="block font-semibold text-sm mb-2" for="{{ id }}">{{ label }}</label> <input class="input input-bordered w-full min-w-0" id="{{ id }}" name="{{ id }}" form="calculator" type="number" min="{{ minimum }}" max="{{ maximum }}" step="{{ step }}" value="{{ '%g'|format(value) }}" aria-describedby="{{ id }}-help"/><p id="{{ id }}-help" class="text-sm text-base-content/70 leading-relaxed mt-2">{{ help }}</p></div>
+  <div class="min-w-0"><label class="block font-semibold text-sm mb-2" for="{{ id }}">{{ label }}</label> <input class="input input-bordered w-full min-w-0" id="{{ id }}" name="{{ id }}" form="calculator" type="number" min="{{ minimum }}" max="{{ maximum }}" step="{{ step }}" value="{{ value }}" aria-describedby="{{ id }}-help"/><p id="{{ id }}-help" class="text-sm text-base-content/70 leading-relaxed mt-2">{{ help }}</p></div>
 {%- endmacro %}
 
 {% macro demand_form(view) -%}
@@ -15,11 +15,11 @@
         {%- for preset in view.presets -%}
           <button type="submit" id="preset-{{ preset.id }}" name="preset" value="{{ preset.id }}" aria-pressed="{{ (view.demand_label == preset.name)|lower }}" class="min-w-0 rounded-xl border border-base-300 p-4 text-left hover:border-primary hover:bg-primary/5 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary aria-pressed:border-primary aria-pressed:bg-primary/5 transition-colors"><span class="block font-bold text-primary">{{ preset.name }}</span> <span class="block text-sm text-base-content/75 leading-relaxed mt-2">{{ preset.description }}</span></button>
         {%- endfor -%}
-      </div><div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 mt-6">{{ number_input("requests", "Requests per active day", view.inputs.requests_per_day, "1", "10000000", "any", "Include every model call in agent and tool loops.") -}}{{ number_input("days", "Active days per month", view.inputs.active_days, "1", "31", "1", "1 for a one-off job; 22 for workdays; 30 for daily traffic.") -}}{{ number_input("input-tokens", "Input tokens per request", view.inputs.input_tokens_request, "1", "1000000", "1", "Include instructions, retrieved context, history, and tool results.") -}}{{ number_input("tokens", "Output tokens per request", view.inputs.output_tokens_request, "1", "1000000", "1", "Include billed reasoning tokens; use observed usage.") }}</div></fieldset></div>
+      </div><div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 mt-6">{{ number_input("requests", "Requests per active day", view.form_values["requests"], "1", "10000000", "any", "Include every model call in agent and tool loops.") -}}{{ number_input("days", "Active days per month", view.form_values["days"], "1", "31", "1", "1 for a one-off job; 22 for workdays; 30 for daily traffic.") -}}{{ number_input("input-tokens", "Input tokens per request", view.form_values["input-tokens"], "1", "1000000", "1", "Include instructions, retrieved context, history, and tool results.") -}}{{ number_input("tokens", "Output tokens per request", view.form_values["tokens"], "1", "1000000", "1", "Include billed reasoning tokens; use observed usage.") }}</div></fieldset></div>
 {%- endmacro %}
 
 {% macro fleet_form(view) -%}
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6"><div class="min-w-0 rounded-2xl border border-base-300 bg-base-100 p-6 md:p-8 shadow-sm"><fieldset class="min-w-0 space-y-5"><legend class="font-heading text-2xl font-bold mb-5">2 · Choose a model and precision</legend><div><label class="block font-semibold text-sm mb-2" for="model">Open-weight model</label> <select class="select select-bordered w-full min-w-0" id="model" name="model" aria-describedby="model-help">{% for model in view.models %}<option data-hardware="{{ format_count(model.minimum_nodes, 'node') }} per replica · {% for node in view.node_pools if node.id == model.minimum_node_id %}{{ node.name }}{% endfor %}" data-multi-host="{{ (model.minimum_nodes > 1)|lower }}" value="{{ model.id }}"{% if model.id == view.inputs.model_id %} selected{% endif %}>#{{ model.rank }} · {{ model.name }}</option>{% endfor %}</select><p id="model-help" class="text-sm text-base-content/70 leading-relaxed mt-2">Choose the smallest model that meets your quality bar.</p></div><div><label class="block font-semibold text-sm mb-2" for="quant">Weight precision</label> <select class="select select-bordered w-full min-w-0" id="quant" name="quant" aria-describedby="quant-help">{% for quantization in view.quantizations %}<option value="{{ quantization.id }}"{% if quantization.id == view.inputs.quantization_id %} selected{% endif %}>{{ quantization.name }}</option>{% endfor %}</select><p id="quant-help" class="text-sm text-base-content/70 leading-relaxed mt-2">Start with 8-bit; test 4-bit for memory savings or 16-bit as a precision reference. <a class="link link-primary" href="#precision-guide">See the trade-offs for this model.</a></p></div>{{ number_input("overhead", "Runtime memory reserve (%)", view.inputs.memory_overhead_pct, "0", "50", "1", "Reserve above weight memory; long context and concurrency need extra KV cache.") }}
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6"><div class="min-w-0 rounded-2xl border border-base-300 bg-base-100 p-6 md:p-8 shadow-sm"><fieldset class="min-w-0 space-y-5"><legend class="font-heading text-2xl font-bold mb-5">2 · Choose a model and precision</legend><div><label class="block font-semibold text-sm mb-2" for="model">Open-weight model</label> <select class="select select-bordered w-full min-w-0" id="model" name="model" aria-describedby="model-help">{% for model in view.models %}<option data-hardware="{{ format_count(model.minimum_nodes, 'node') }} per replica · {% for node in view.node_pools if node.id == model.minimum_node_id %}{{ node.name }}{% endfor %}" data-multi-host="{{ (model.minimum_nodes > 1)|lower }}" value="{{ model.id }}"{% if model.id == view.inputs.model_id %} selected{% endif %}>#{{ model.rank }} · {{ model.name }}</option>{% endfor %}</select><p id="model-help" class="text-sm text-base-content/70 leading-relaxed mt-2">Choose the smallest model that meets your quality bar.</p></div><div><label class="block font-semibold text-sm mb-2" for="quant">Weight precision</label> <select class="select select-bordered w-full min-w-0" id="quant" name="quant" aria-describedby="quant-help">{% for quantization in view.quantizations %}<option value="{{ quantization.id }}"{% if quantization.id == view.inputs.quantization_id %} selected{% endif %}>{{ quantization.name }}</option>{% endfor %}</select><p id="quant-help" class="text-sm text-base-content/70 leading-relaxed mt-2">Start with 8-bit; test 4-bit for memory savings or 16-bit as a precision reference. <a class="link link-primary" href="#precision-guide">See the trade-offs for this model.</a></p></div>{{ number_input("overhead", "Runtime memory reserve (%)", view.form_values["overhead"], "0", "50", "any", "Reserve above weight memory; long context and concurrency need extra KV cache.") }}
       <div id="hardware-guidance" class="rounded-xl border border-base-300 p-4 text-sm leading-relaxed">
         <p class="font-semibold">Hardware starting point</p>
         <p class="mt-2" aria-live="polite">Minimum: <span data-hardware-minimum>{{ format_count(view.hardware_guidance.nodes_per_replica, "node") }} per replica · {{ view.hardware_guidance.node.name }}</span>.</p>
@@ -39,15 +39,15 @@
         </select>
         <p id="billing-help" class="text-sm text-base-content/70 leading-relaxed mt-2">{% if view.selected_price.committed %}Full-term commitment: {{ format_usd2(view.selected_price.hourly_usd * 730) }}/node/month, even while idle. GPU reservation required; operations and GKE fees are not discounted.{% elif view.inputs.billing_plan == "flex" %}Flex-start queues provisioning for bounded jobs. Do not assume continuous online availability.{% else %}On-demand keeps a pilot flexible. Resource CUDs trade a one- or three-year commitment for lower rates.{% endif %}</p>
       </div>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">{{ number_input("replicas", "Serving replicas", view.inputs.replicas, "1", "8", "1", "Complete model copies; validate failover capacity separately.") }}{{ number_input("duty", "Fleet running time (%)", view.inputs.duty_cycle_percent, "0.1", "100", "0.1", "100% = 730 h/month. Stopping on-demand nodes saves compute; commitments stay billed.") }}</div>{{ number_input("platform", "Additional hosting operations ($/month)", view.inputs.platform_monthly_usd, "0", "10000000", "1", "Hosting labor, software, and support beyond costs common to both options.") }}</fieldset></div></div><div class="rounded-2xl border border-base-300 bg-base-100 p-6 md:p-8"><h2 class="font-heading text-xl font-bold">Capacity assumptions</h2><p class="text-sm text-base-content/75 leading-relaxed mt-3">100 tokens/s is illustrative. Re-measure after changing the model, GPU, precision, or workload.</p><div class="grid grid-cols-1 sm:grid-cols-2 gap-5 mt-5">{{ number_input("throughput", "Assumed output tokens/s per replica", view.inputs.tokens_per_second, "0.1", "1000000", "any", "Aggregate output across concurrent requests, measured end to end.") }}{{ number_input("utilization", "Usable share of measured throughput (%)", view.inputs.target_utilization, "1", "95", "1", "Planning margin for bursts and overhead; actual demand is separate.") }}</div></div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">{{ number_input("replicas", "Serving replicas", view.form_values["replicas"], "1", "8", "1", "Complete model copies; validate failover capacity separately.") }}{{ number_input("duty", "Fleet running time (%)", view.form_values["duty"], "0.1", "100", "any", "100% = 730 h/month. Stopping on-demand nodes saves compute; commitments stay billed.") }}</div>{{ number_input("platform", "Additional hosting operations ($/month)", view.form_values["platform"], "0", "10000000", "any", "Hosting labor, software, and support beyond costs common to both options.") }}</fieldset></div></div><div class="rounded-2xl border border-base-300 bg-base-100 p-6 md:p-8"><h2 class="font-heading text-xl font-bold">Capacity assumptions</h2><p class="text-sm text-base-content/75 leading-relaxed mt-3">100 tokens/s is illustrative. Re-measure after changing the model, GPU, precision, or workload.</p><div class="grid grid-cols-1 sm:grid-cols-2 gap-5 mt-5">{{ number_input("throughput", "Assumed output tokens/s per replica", view.form_values["throughput"], "0.1", "1000000", "any", "Aggregate output across concurrent requests, measured end to end.") }}{{ number_input("utilization", "Usable share of measured throughput (%)", view.form_values["utilization"], "1", "95", "any", "Planning margin for bursts and overhead; actual demand is separate.") }}</div></div>
 {%- endmacro %}
 
 {% macro api_options(view) -%}
-  <div class="rounded-2xl border border-base-300 bg-base-100 p-6 md:p-8"><fieldset class="min-w-0"><legend class="font-heading text-2xl font-bold">API delivery and reuse</legend> <label class="block font-semibold mt-4 mb-2" for="api-mode">API pricing mode</label> <select id="api-mode" name="api-mode" class="select select-bordered w-full" aria-describedby="api-mode-help"><option value="standard"{% if view.inputs.api_mode == "standard" %} selected{% endif %}>Standard · interactive requests</option> <option value="batch"{% if view.inputs.api_mode == "batch" %} selected{% endif %}>Batch · flexible deadlines</option> <option value="cached"{% if view.inputs.api_mode == "cached" %} selected{% endif %}>Cached prefix · repeated context</option></select><p id="api-mode-help" class="text-sm text-base-content/75 leading-relaxed mt-3">Batch: 50% off, with up to 24-hour completion. Caching: reuse an exact prefix. Discounts are not stacked.</p><div class="grid grid-cols-1 sm:grid-cols-2 gap-5 mt-5">{{ number_input("cache-prefix", "Shared prefix tokens (cached mode)", view.inputs.cache_prefix_tokens, "0", "1000000", "1", "Minimum: 4,096 for Gemini; 1,024 for Claude and Astra. Ineligible requests use standard rates.") }}{{ number_input("cache-requests", "Calls per cache group (cached mode)", view.inputs.cache_requests, "1", "1000000", "1", "Calls sharing an exact prefix within five minutes, including the first. Each group pays write or storage fees.") }}</div><p class="text-sm text-base-content/75 leading-relaxed mt-4">Assumes no misses within each group: Gemini five-minute storage, Claude five-minute writes, and Astra 30-minute retention.</p></fieldset></div>
+  <div class="rounded-2xl border border-base-300 bg-base-100 p-6 md:p-8"><fieldset class="min-w-0"><legend class="font-heading text-2xl font-bold">API delivery and reuse</legend> <label class="block font-semibold mt-4 mb-2" for="api-mode">API pricing mode</label> <select id="api-mode" name="api-mode" class="select select-bordered w-full" aria-describedby="api-mode-help"><option value="standard"{% if view.inputs.api_mode == "standard" %} selected{% endif %}>Standard · interactive requests</option> <option value="batch"{% if view.inputs.api_mode == "batch" %} selected{% endif %}>Batch · flexible deadlines</option> <option value="cached"{% if view.inputs.api_mode == "cached" %} selected{% endif %}>Cached prefix · repeated context</option></select><p id="api-mode-help" class="text-sm text-base-content/75 leading-relaxed mt-3">Batch: 50% off, with up to 24-hour completion. Caching: reuse an exact prefix. Discounts are not stacked.</p><div class="grid grid-cols-1 sm:grid-cols-2 gap-5 mt-5">{{ number_input("cache-prefix", "Shared prefix tokens (cached mode)", view.form_values["cache-prefix"], "0", "1000000", "1", "Minimum: 4,096 for Gemini; 1,024 for Claude and Astra. Ineligible requests use standard rates.") }}{{ number_input("cache-requests", "Calls per cache group (cached mode)", view.form_values["cache-requests"], "1", "1000000", "1", "Calls sharing an exact prefix within five minutes, including the first. Each group pays write or storage fees.") }}</div><p class="text-sm text-base-content/75 leading-relaxed mt-4">Assumes no misses within each group: Gemini five-minute storage, Claude five-minute writes, and Astra 30-minute retention.</p></fieldset></div>
 {%- endmacro %}
 
 {% macro api_cards(view) -%}
-  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 md:hidden" aria-label="API monthly cost cards">
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 md:hidden" role="group" aria-label="API monthly cost cards">
     {% for row in view.apis %}
       <article class="rounded-2xl border border-base-300 bg-base-100 p-5">
         <h4 class="font-heading font-bold"><a class="link link-primary" href="{{ row.baseline.source_url }}">{{ row.baseline.name }}</a></h4>
@@ -76,7 +76,7 @@
       {{ metric_card("Fleet footprint", format_count(view.estimate.total_nodes, "node") ~ " · " ~ format_count(view.estimate.total_gpus, "GPU"), view.selected_model.name ~ " · " ~ format_go_float(view.estimate.required_memory_gb, 1) ~ " GB memory floor per replica · " ~ format_count(view.estimate.nodes_per_replica, "node") ~ " per replica.") }}
       {{ metric_card("Share of modeled capacity needed", format_go_float(view.estimate.demand_capacity_pct, 1) ~ "%", "Demand / usable output capacity of " ~ format_number(view.estimate.capacity_tokens_month) ~ " tokens/month. Over 100% means this fleet is too small.") }}
     </div>
-    <div class="rounded-2xl border border-primary/30 bg-primary/5 p-6" role="status">
+    <div class="rounded-2xl border border-primary/30 bg-primary/5 p-6">
       <p class="font-heading text-xl font-bold">{{ hosting_decision_title(view) }}</p>
       <p class="text-base-content/80 leading-relaxed mt-2">{{ hosting_decision_copy(view) }}</p>
       <p class="text-sm text-base-content/75 mt-3">{{ view.selected_node.name }} · {{ view.selected_price.label }} at {{ format_usd2(view.selected_price.hourly_usd) }}/node-hour. {{ view.selected_node.operational }}</p>
@@ -143,36 +143,41 @@
   {% set line_dashes = ["none", "12 3", "5 3", "2 3"] %}
   {% set legend_classes = ["text-primary", "text-info", "text-warning", "text-secondary"] %}
   {% set legend_marks = ["━━", "━ ━", "– –", "···"] %}
+  {# Series 0 is the fleet; API series cycle through the remaining styles for any baseline count. #}
+  {% set api_styles = line_classes|length - 1 %}
   {% set selected_frame = view.cost_plot.frames[view.cost_plot.selected] %}
   <section aria-labelledby="cost-explorer" class="space-y-5">
     <h2 id="cost-explorer" class="font-heading text-3xl md:text-4xl font-bold scroll-mt-24">Watch demand change the cost case</h2>
     <p class="text-base-content/75 leading-relaxed max-w-4xl">Explore the API cost curves against your fleet bill and capacity.</p>
-    <figure data-cost-explorer class="rounded-2xl border border-base-300 bg-base-100 p-4 md:p-8">
-      <svg viewBox="0 0 760 395" role="img" aria-labelledby="cost-plot-title cost-plot-desc" class="w-full h-auto text-base-content">
-        <title id="cost-plot-title">Monthly cost versus demand for one fixed GKE fleet and three APIs</title>
-        <desc id="cost-plot-desc">Both axes use logarithmic spacing with round labels. The vertical dashed line is the fleet's capacity, when within the plotted range. Circles mark API break-even. The solid cursor marks the explored volume. Exact costs appear below.</desc>
-        {% if view.cost_plot.capacity_x %}<rect x="{{ view.cost_plot.capacity_x }}" y="35" width="{{ view.cost_plot.capacity_width }}" height="265" class="fill-warning/10"></rect>{% endif %}
-        {% for tick in view.cost_plot.y_ticks %}
-          <line x1="130" y1="{{ tick.position }}" x2="720" y2="{{ tick.position }}" stroke="currentColor" opacity="0.12"></line>
-          <text x="120" y="{{ tick.position }}" text-anchor="end" dominant-baseline="middle" fill="currentColor" class="text-[36px] sm:text-[16px] lg:text-[12px]">{{ tick.label }}</text>
-        {% endfor %}
-        {% for tick in view.cost_plot.x_ticks %}
-          <text x="{{ tick.position }}" y="342" text-anchor="{% if loop.first %}start{% elif loop.last %}end{% else %}middle{% endif %}" fill="currentColor" class="text-[36px] sm:text-[16px] lg:text-[12px]{% if loop.index0 % 2 == 1 and not loop.last %} hidden sm:block{% endif %}">{{ tick.label }}</text>
-        {% endfor %}
-        <text x="425" y="387" text-anchor="middle" fill="currentColor" class="text-[36px] sm:text-[16px] lg:text-[12px]">Requests per month</text>
-        <text x="130" y="32" fill="currentColor" class="text-[36px] sm:text-[16px] lg:text-[12px]">USD / month</text>
-        {% for line in view.cost_plot.lines %}<polyline points="{{ line.points }}" fill="none" stroke-width="3" vector-effect="non-scaling-stroke" class="{{ line_classes[loop.index0] }}" stroke-dasharray="{{ line_dashes[loop.index0] }}"><title>{{ line.name }}</title></polyline>{% endfor %}
-        {% if view.cost_plot.capacity_x %}<line x1="{{ view.cost_plot.capacity_x }}" x2="{{ view.cost_plot.capacity_x }}" y1="30" y2="300" stroke="currentColor" stroke-dasharray="4 4" stroke-width="2"><title>Fleet capacity: {{ view.cost_plot.capacity_label }}</title></line>{% endif %}
-        {% for point in view.cost_plot.break_evens %}<circle cx="{{ point.position }}" cy="{{ view.cost_plot.fleet_y }}" r="5" class="fill-base-100 stroke-primary" stroke-width="2"><title>{{ point.label }}</title></circle>{% endfor %}
-        <line data-cost-cursor x1="{{ selected_frame.x }}" x2="{{ selected_frame.x }}" y1="30" y2="300" stroke="currentColor" opacity="0.5"></line>
-      </svg>
-      <ul class="flex flex-wrap gap-x-6 gap-y-2 text-sm font-semibold mt-3" aria-label="Chart legend">
-        {% for line in view.cost_plot.lines %}<li class="{{ legend_classes[loop.index0] }}">{{ legend_marks[loop.index0] }} {{ line.name }}</li>{% endfor %}
-      </ul>
-      <figcaption class="text-sm text-base-content/75 leading-relaxed mt-4">
-        Logarithmic spacing: each decade is 10× larger (cost uses USD + 1). Fleet cost stays fixed; API cost grows with demand. Circles: break-even.
-        {% if view.cost_plot.capacity_x %}<span>Dashed line: capacity of {{ view.cost_plot.capacity_label }}. Shading exceeds fleet capacity.</span>{% else %}<span>Capacity of {{ view.cost_plot.capacity_label }} is outside the plotted range.</span>{% endif %}
-      </figcaption>
+    <div data-cost-explorer class="rounded-2xl border border-base-300 bg-base-100 p-4 md:p-8">
+      <figure>
+        <svg viewBox="0 0 760 395" role="img" aria-labelledby="cost-plot-title cost-plot-desc" class="w-full h-auto text-base-content">
+          <title id="cost-plot-title">Monthly cost versus demand for one fixed GKE fleet and {{ format_count(view.cost_plot.lines|length - 1, "managed API") }}</title>
+          <desc id="cost-plot-desc">Both axes use logarithmic spacing with round labels. The vertical dashed line is the fleet's capacity, when within the plotted range. Circles mark API break-even. The solid cursor marks the explored volume. Exact costs appear below.</desc>
+          {% if view.cost_plot.capacity_x %}<rect x="{{ view.cost_plot.capacity_x }}" y="35" width="{{ view.cost_plot.capacity_width }}" height="265" class="fill-warning/10"></rect>{% endif %}
+          {% for tick in view.cost_plot.y_ticks %}
+            <line x1="130" y1="{{ tick.position }}" x2="720" y2="{{ tick.position }}" stroke="currentColor" opacity="0.12"></line>
+            <text x="120" y="{{ tick.position }}" text-anchor="end" dominant-baseline="middle" fill="currentColor" class="text-[36px] sm:text-[16px] lg:text-[12px]">{{ tick.label }}</text>
+          {% endfor %}
+          {% for tick in view.cost_plot.x_ticks %}
+            <text x="{{ tick.position }}" y="342" text-anchor="{% if loop.first %}start{% elif loop.last %}end{% else %}middle{% endif %}" fill="currentColor" class="text-[36px] sm:text-[16px] lg:text-[12px]{% if loop.index0 % 2 == 1 and not loop.last %} hidden sm:block{% endif %}">{{ tick.label }}</text>
+          {% endfor %}
+          <text x="425" y="387" text-anchor="middle" fill="currentColor" class="text-[36px] sm:text-[16px] lg:text-[12px]">Requests per month</text>
+          <text x="130" y="32" fill="currentColor" class="text-[36px] sm:text-[16px] lg:text-[12px]">USD / month</text>
+          {% for line in view.cost_plot.lines %}{% set style = 0 if line.series == 0 else 1 + (line.series - 1) % api_styles %}<polyline points="{{ line.points }}" fill="none" stroke-width="3" vector-effect="non-scaling-stroke" class="{{ line_classes[style] }}" stroke-dasharray="{{ line_dashes[style] }}"><title>{{ line.name }}</title></polyline>{% endfor %}
+          {% if view.cost_plot.capacity_x %}<line x1="{{ view.cost_plot.capacity_x }}" x2="{{ view.cost_plot.capacity_x }}" y1="30" y2="300" stroke="currentColor" stroke-dasharray="4 4" stroke-width="2"><title>Fleet capacity: {{ view.cost_plot.capacity_label }}</title></line>{% endif %}
+          {% for point in view.cost_plot.break_evens %}<circle cx="{{ point.position }}" cy="{{ view.cost_plot.fleet_y }}" r="5" class="fill-base-100 stroke-primary" stroke-width="2"><title>{{ point.label }}</title></circle>{% endfor %}
+          <line data-cost-cursor x1="{{ selected_frame.x }}" x2="{{ selected_frame.x }}" y1="30" y2="300" stroke="currentColor" opacity="0.5"></line>
+        </svg>
+        <ul class="flex flex-wrap gap-x-6 gap-y-2 text-sm font-semibold mt-3" aria-label="Chart legend">
+          {% for line in view.cost_plot.lines %}{% set style = 0 if line.series == 0 else 1 + (line.series - 1) % api_styles %}<li class="{{ legend_classes[style] }}">{{ legend_marks[style] }} {{ line.name }}</li>{% endfor %}
+          {% for note in view.cost_plot.unavailable %}<li class="font-normal text-base-content/75">Not plotted · {{ note }}</li>{% endfor %}
+        </ul>
+        <figcaption class="text-sm text-base-content/75 leading-relaxed mt-4">
+          Logarithmic spacing: each decade is 10× larger (cost uses USD + 1). Fleet cost stays fixed; API cost grows with demand. Circles: break-even.
+          {% if view.cost_plot.capacity_x %}<span>Dashed line: capacity of {{ view.cost_plot.capacity_label }}. Shading exceeds fleet capacity.</span>{% else %}<span>Capacity of {{ view.cost_plot.capacity_label }} is outside the plotted range.</span>{% endif %}
+        </figcaption>
+      </figure>
       <div data-cost-controls class="hidden mt-6">
         <label for="cost-volume" class="block font-semibold">Explore monthly demand</label>
         <input id="cost-volume" data-cost-range type="range" min="0" max="{{ view.cost_plot.frames|length - 1 }}" value="{{ view.cost_plot.selected }}" disabled class="w-full mt-3 accent-primary" aria-describedby="cost-slider-help" aria-valuetext="{{ selected_frame.label }}"/>
@@ -182,7 +187,7 @@
       <a id="apply-demand" data-scenario-link data-cost-apply class="btn btn-primary rounded-xl mt-4" href="{{ selected_frame.url }}">Apply this demand</a>
       <div hidden>{% for frame in view.cost_plot.frames %}<span data-cost-frame data-x="{{ frame.x }}" data-label="{{ frame.label }}" data-summary="{{ frame.summary }}" data-url="{{ frame.url }}"></span>{% endfor %}</div>
       <noscript><p class="text-sm mt-3">The figure shows your current scenario. Use the scenario grid below to explore other volumes without JavaScript.</p></noscript>
-    </figure>
+    </div>
   </section>
 {%- endmacro %}
 
@@ -197,7 +202,7 @@
           <h3 class="font-heading text-lg font-bold">{{ row.label }}</h3>
           <div class="space-y-3 mt-4">
             {% for cell in row.cells %}
-              <a id="scenario-{{ row_index }}-{{ loop.index0 }}" data-scenario-link href="{{ cell.url }}" class="block rounded-xl border p-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary hover:border-primary {% if cell.fits %}border-base-300 bg-primary/5{% else %}border-warning/50 bg-warning/10{% endif %}"><p class="text-sm font-semibold">{{ format_number(cell.inputs.requests_per_day * cell.inputs.active_days) }} requests/mo · {{ format_decimal(cell.inputs.tokens_per_second, 1) }} tokens/s</p><p class="font-bold mt-2">{{ cell.verdict }}</p><p class="text-sm mt-1">{{ format_decimal(cell.capacity_pct, 1) }}% of capacity needed</p><p class="text-sm text-base-content/75 mt-1">Lowest API: {{ format_usd2(cell.cheapest_api_usd) }}/mo</p><span class="block text-sm font-semibold text-primary mt-3">Try this scenario →</span></a>
+              <a id="scenario-{{ row_index }}-{{ loop.index0 }}" data-scenario-link href="{{ cell.url }}" class="block rounded-xl border p-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary hover:border-primary {% if cell.fits %}border-base-300 bg-primary/5{% else %}border-warning/50 bg-warning/10{% endif %}"><p class="text-sm font-semibold">{{ format_number(cell.inputs.requests_per_day * cell.inputs.active_days) }} requests/mo · {{ format_decimal(cell.inputs.tokens_per_second, 1) }} tokens/s</p><p class="font-bold mt-2">{{ cell.verdict }}</p><p class="text-sm mt-1">{{ format_decimal(cell.capacity_pct, 1) }}% of capacity needed</p><p class="text-sm text-base-content/75 mt-1">{% if cell.cheapest_api_usd is none %}Lowest API: none accepts this request{% else %}Lowest API: {{ format_usd2(cell.cheapest_api_usd) }}/mo{% endif %}</p><span class="block text-sm font-semibold text-primary mt-3">Try this scenario →</span></a>
             {% endfor %}
           </div>
         </section>
@@ -218,12 +223,12 @@
       <summary class="cursor-pointer font-bold focus-visible:outline-2 focus-visible:outline-primary">Enter latency targets and pilot measurements (optional)</summary>
       <p class="text-base-content/75 leading-relaxed mt-4">Use p95 measurements from the same configuration at peak concurrency. Zero means unmeasured.</p>
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mt-5">
-        {{ number_input("concurrency", "Target simultaneous requests", view.inputs.concurrency, "1", "100000", "1", "Peak in-flight requests, not total team members.") }}
-        {{ number_input("target-first", "Target p95 first token (seconds)", view.inputs.target_first_token, "0.1", "3600", "any", "An editable user-experience target, not a measured benchmark.") }}
-        {{ number_input("target-complete", "Target p95 completion (seconds)", view.inputs.target_completion, "0.1", "86400", "any", "Choose a target suitable for the task and answer length.") }}
-        {{ number_input("measured-concurrency", "Pilot simultaneous requests", view.inputs.measured_concurrency, "0", "100000", "1", "Record the concurrency actually sustained during the pilot.") }}
-        {{ number_input("measured-first", "Measured p95 first token (seconds)", view.inputs.measured_first_token, "0", "3600", "any", "Use the full workload, including prompt processing and network delay.") }}
-        {{ number_input("measured-complete", "Measured p95 completion (seconds)", view.inputs.measured_completion, "0", "86400", "any", "Measure the whole response; aggregate tokens/s cannot predict this.") }}
+        {{ number_input("concurrency", "Target simultaneous requests", view.form_values["concurrency"], "1", "100000", "1", "Peak in-flight requests, not total team members.") }}
+        {{ number_input("target-first", "Target p95 first token (seconds)", view.form_values["target-first"], "0.1", "3600", "any", "An editable user-experience target, not a measured benchmark.") }}
+        {{ number_input("target-complete", "Target p95 completion (seconds)", view.form_values["target-complete"], "0.1", "86400", "any", "Choose a target suitable for the task and answer length.") }}
+        {{ number_input("measured-concurrency", "Pilot simultaneous requests", view.form_values["measured-concurrency"], "0", "100000", "1", "Record the concurrency actually sustained during the pilot.") }}
+        {{ number_input("measured-first", "Measured p95 first token (seconds)", view.form_values["measured-first"], "0", "3600", "any", "Use the full workload, including prompt processing and network delay.") }}
+        {{ number_input("measured-complete", "Measured p95 completion (seconds)", view.form_values["measured-complete"], "0", "86400", "any", "Measure the whole response; aggregate tokens/s cannot predict this.") }}
       </div>
       {% if view.inputs.pilot_config %}<input type="hidden" form="calculator" name="pilot" value="{{ view.inputs.pilot_config }}"/>{% endif %}
       <button id="update-latency" type="submit" form="calculator" name="confirm-pilot" value="{{ view.current_pilot_config }}" class="btn btn-primary rounded-xl mt-5">Check recorded latency</button>
@@ -239,17 +244,17 @@
       <p class="text-base-content/75 leading-relaxed mt-4">Compare the same tasks and rubric. Starting values are illustrative; replace them with measurements. Calls include retries, and review covers all attempted tasks.</p>
       <label class="flex items-center gap-3 mt-5 font-semibold"><input type="checkbox" form="calculator" id="quality" name="quality" value="on"{% if view.inputs.quality_enabled %} checked{% endif %} class="checkbox checkbox-primary"/> Enable the accepted-task comparison</label>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 mt-5">
-        {{ number_input("tasks", "Attempted tasks per month", view.inputs.tasks_per_month, "1", "10000000", "1", "A separate task workload for this experiment. Required calls = tasks × each candidate's calls per task.") }}
-        {{ number_input("review-rate", "Human review cost ($/hour)", view.inputs.review_hourly_usd, "0", "10000", "any", "Use a loaded labor cost. Do not count hosting operations labor again here.") }}
+        {{ number_input("tasks", "Attempted tasks per month", view.form_values["tasks"], "1", "10000000", "1", "A separate task workload for this experiment. Required calls = tasks × each candidate's calls per task.") }}
+        {{ number_input("review-rate", "Human review cost ($/hour)", view.form_values["review-rate"], "0", "10000", "any", "Use a loaded labor cost. Do not count hosting operations labor again here.") }}
       </div>
       <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 mt-6">
         {% for row in view.tasks %}
           <div class="min-w-0 rounded-xl bg-base-200 p-4">
             <fieldset class="min-w-0 space-y-4">
               <legend class="font-bold">{{ row.name }}</legend>
-              {{ number_input(row.id ~ "-acceptance", "Accepted tasks (%)", row.quality.acceptance_percent, "0", "100", "any", "Final acceptance after all retries and review.") }}
-              {{ number_input(row.id ~ "-calls", "Average calls per task", row.quality.calls_per_task, "1", "100", "any", "Includes every retry and model call in a tool loop.") }}
-              {{ number_input(row.id ~ "-review", "Review minutes per task", row.quality.review_minutes, "0", "480", "any", "Average across all attempted tasks, including rejected ones.") }}
+              {{ number_input(row.id ~ "-acceptance", "Accepted tasks (%)", view.form_values[row.id ~ "-acceptance"], "0", "100", "any", "Final acceptance after all retries and review.") }}
+              {{ number_input(row.id ~ "-calls", "Average calls per task", view.form_values[row.id ~ "-calls"], "1", "100", "any", "Includes every retry and model call in a tool loop.") }}
+              {{ number_input(row.id ~ "-review", "Review minutes per task", view.form_values[row.id ~ "-review"], "0", "480", "any", "Average across all attempted tasks, including rejected ones.") }}
             </fieldset>
           </div>
         {% endfor %}

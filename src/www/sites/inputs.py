@@ -107,10 +107,25 @@ def _parse_bounded_int(
         value = minimum - 1
     if value < minimum or value > maximum:
         validation.append(
-            f"{key} must be between {minimum} and {maximum}; the default was used",
+            f"{key} must be a whole number between {minimum} and {maximum}; the default was used",
         )
         return fallback
     return value
+
+
+def _parse_bounded_count(
+    query: Query,
+    key: str,
+    fallback: float,
+    minimum: int,
+    maximum: int,
+    validation: list[str],
+) -> float:
+    """Parse a whole quantity stored as a float, matching the form's integer step."""
+    # The out-of-range marker distinguishes a missing or rejected value from a parsed one.
+    marker = minimum - 1
+    value = _parse_bounded_int(query, key, marker, minimum, maximum, validation)
+    return fallback if value == marker else float(value)
 
 
 def _apply_demand_preset(
@@ -199,7 +214,7 @@ def parse_inputs(query: Query) -> tuple[HostingInputs, tuple[str, ...]]:
             95,
             validation,
         ),
-        output_tokens_request=_parse_bounded_float(
+        output_tokens_request=_parse_bounded_count(
             query,
             "tokens",
             defaults.output_tokens_request,
@@ -207,7 +222,7 @@ def parse_inputs(query: Query) -> tuple[HostingInputs, tuple[str, ...]]:
             1_000_000,
             validation,
         ),
-        input_tokens_request=_parse_bounded_float(
+        input_tokens_request=_parse_bounded_count(
             query,
             "input-tokens",
             defaults.input_tokens_request,
@@ -223,7 +238,7 @@ def parse_inputs(query: Query) -> tuple[HostingInputs, tuple[str, ...]]:
             10_000_000,
             validation,
         ),
-        active_days=_parse_bounded_float(
+        active_days=_parse_bounded_count(
             query,
             "days",
             defaults.active_days,
@@ -309,13 +324,29 @@ def _parse_hosting_options(
             == "on"
         ),
     )
-    float_fields = (
+    count_fields = (
         ("cache_prefix_tokens", "cache-prefix", 0, 1_000_000),
+        ("tasks_per_month", "tasks", 1, 10_000_000),
+    )
+    for attribute, key, minimum, maximum in count_fields:
+        inputs = replace(
+            inputs,
+            **{
+                attribute: _parse_bounded_count(
+                    query,
+                    key,
+                    getattr(inputs, attribute),
+                    minimum,
+                    maximum,
+                    validation,
+                ),
+            },
+        )
+    float_fields = (
         ("target_first_token", "target-first", 0.1, 3600),
         ("target_completion", "target-complete", 0.1, 86_400),
         ("measured_first_token", "measured-first", 0, 3600),
         ("measured_completion", "measured-complete", 0, 86_400),
-        ("tasks_per_month", "tasks", 1, 10_000_000),
         ("review_hourly_usd", "review-rate", 0, 10_000),
     )
     for attribute, key, minimum, maximum in float_fields:
@@ -443,7 +474,8 @@ def _float_for_url(value: float) -> str:
     return format(Decimal(repr(value)), "f")
 
 
-def hosting_url(inputs: HostingInputs) -> str:
+def scenario_parameters(inputs: HostingInputs) -> dict[str, str]:
+    """Serialize inputs exactly; URLs, agent parameters, and form values share this."""
     values = {
         "model": inputs.model_id,
         "node": inputs.node_pool_id,
@@ -481,4 +513,8 @@ def hosting_url(inputs: HostingInputs) -> str:
         )
         values[f"quality-{index}-calls"] = _float_for_url(quality.calls_per_task)
         values[f"quality-{index}-review"] = _float_for_url(quality.review_minutes)
-    return "/sites/llm-self-hosting/?" + urlencode(sorted(values.items()))
+    return dict(sorted(values.items()))
+
+
+def hosting_url(inputs: HostingInputs) -> str:
+    return "/sites/llm-self-hosting/?" + urlencode(scenario_parameters(inputs))

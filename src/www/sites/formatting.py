@@ -29,16 +29,22 @@ def format_usd2(value: float) -> str:
     return "$" + format_decimal(value, 2)
 
 
+_NUMBER_UNITS = (("", 1.0, 0), ("k", 1e3, 1), ("M", 1e6, 2), ("B", 1e9, 2), ("T", 1e12, 2))
+
+
+def _scaled(value: float, scale: float, digits: int) -> float:
+    factor = 10**digits
+    return _round_away_from_zero(value / scale * factor) / factor
+
+
 def format_number(value: float) -> str:
-    if value >= 1e12:
-        return f"{value / 1e12:.2f}T"
-    if value >= 1e9:
-        return f"{value / 1e9:.2f}B"
-    if value >= 1e6:
-        return f"{value / 1e6:.2f}M"
-    if value >= 1e3:
-        return f"{value / 1e3:.1f}k"
-    return f"{value:.0f}"
+    """Abbreviate a quantity, rounding half away from zero like `format_decimal`."""
+    # Choose the unit after rounding so 999.6 becomes 1.0k rather than 1000.
+    suffix, scale, digits = next(
+        (unit for unit in _NUMBER_UNITS[:-1] if abs(_scaled(value, unit[1], unit[2])) < 1000),
+        _NUMBER_UNITS[-1],
+    )
+    return f"{_scaled(value, scale, digits):.{digits}f}{suffix}"
 
 
 def format_count(value: int, noun: str) -> str:

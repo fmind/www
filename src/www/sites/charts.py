@@ -30,6 +30,11 @@ def _chart_number(value: float) -> str:
     return f"{value:g}"
 
 
+def _per(value: float, unit: str) -> str:
+    text = format_number(value) if unit == "day" else format_decimal(value, 0)
+    return f"{text} {'request' if text == '1' else 'requests'}/{unit}"
+
+
 def _sparse_ticks(values: list[float]) -> list[float]:
     # At most five labels keeps the same chart readable on a phone.
     return [values[round(index * (len(values) - 1) / 4)] for index in range(5)] if len(values) > 5 else values
@@ -41,7 +46,9 @@ def hosting_cost_plot(
     apis: tuple[APIComparison, ...],
 ) -> CostPlot:
     capacity = estimate.capacity_tokens_month / inputs.output_tokens_request
-    max_break_even = max(api.break_even_requests for api in apis)
+    # APIs that cannot accept this request have no meaningful cost curve.
+    available = tuple((series, api) for series, api in enumerate(apis, start=1) if not api.request_issue)
+    max_break_even = max((api.break_even_requests for _, api in available), default=0.0)
     max_daily = min(
         10_000_000,
         max(
@@ -61,8 +68,10 @@ def hosting_cost_plot(
         )
 
     max_cost = max(
-        estimate.total_monthly_usd,
-        *(api_monthly_cost(inputs, api.baseline, max_requests)[0] for api in apis),
+        (
+            estimate.total_monthly_usd,
+            *(api_monthly_cost(inputs, api.baseline, max_requests)[0] for _, api in available),
+        ),
     )
 
     max_cost = 10 ** ceil(log10(max(1, max_cost)))
@@ -91,29 +100,31 @@ def hosting_cost_plot(
             x(api.break_even_requests),
             f"{api.baseline.name}: {format_decimal(api.break_even_requests, 0)} requests/month",
         )
-        for api in apis
+        for _, api in available
         if min_requests <= api.break_even_requests <= max_requests
     )
 
-    paths: list[list[str]] = [[], [], [], []]
+    paths: dict[int, list[str]] = {series: [] for series in (0, *(series for series, _ in available))}
     frames: list[CostFrame] = []
     selected = 0
     # Curves use a dense sampling independently of the human-readable slider steps.
     for index in range(61):
         requests = min_requests * 10 ** (log_span * index / 60)
         paths[0].append(f"{x(requests)},{y(estimate.total_monthly_usd)}")
-        for api_index, api in enumerate(apis):
+        for series, api in available:
             total = api_monthly_cost(inputs, api.baseline, requests)[0]
-            paths[api_index + 1].append(f"{x(requests)},{y(total)}")
+            paths[series].append(f"{x(requests)},{y(total)}")
     for index, daily in enumerate(sorted(daily_values)):
         scenario = replace(inputs, requests_per_day=daily)
         requests = daily * inputs.active_days
-        label = f"{format_number(daily)} requests/day · {format_decimal(requests, 0)} requests/month"
+        label = f"{_per(daily, 'day')} · {_per(requests, 'month')}"
         fit = "within modeled capacity" if requests <= capacity else "beyond this fleet's capacity"
         summary = f"{label} · {fit}. GKE fleet {format_usd2(estimate.total_monthly_usd)}"
         for api in apis:
-            total = api_monthly_cost(inputs, api.baseline, requests)[0]
-            summary += f" · {api.baseline.name} {format_usd2(total)}"
+            if api.request_issue:
+                summary += f" · {api.baseline.name} unavailable"
+            else:
+                summary += f" · {api.baseline.name} {format_usd2(api_monthly_cost(inputs, api.baseline, requests)[0])}"
         frames.append(
             CostFrame(
                 x=x(requests),
@@ -126,8 +137,10 @@ def hosting_cost_plot(
         if daily == inputs.requests_per_day:
             selected = index
 
-    names = ("GKE fleet", *(api.baseline.name for api in apis))
-    lines = tuple(PlotLine(name=name, points=" ".join(paths[index])) for index, name in enumerate(names))
+    names = {0: "GKE fleet", **{series: api.baseline.name for series, api in available}}
+    lines = tuple(
+        PlotLine(name=names[series], points=" ".join(points), series=series) for series, points in paths.items()
+    )
     request_ticks = [float(10**exponent) for exponent in range(int(log10(min_requests)), int(log10(max_requests)) + 1)]
     cost_ticks = [0.0, *(float(10**exponent) for exponent in range(int(log10(max_cost)) + 1))]
     x_ticks = tuple(PlotTick(x(requests), _chart_number(requests)) for requests in _sparse_ticks(request_ticks))
@@ -143,4 +156,5 @@ def hosting_cost_plot(
         y_ticks=tuple(y_ticks),
         break_evens=tuple(break_evens),
         selected=selected,
+        unavailable=tuple(f"{api.baseline.name}: {api.request_issue}" for api in apis if api.request_issue),
     )

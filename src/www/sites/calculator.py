@@ -34,6 +34,7 @@ from .inputs import (
     hosting_url,
     parse_inputs,
     pilot_configuration_id,
+    scenario_parameters,
 )
 from .models import (
     APIBaseline,
@@ -209,6 +210,19 @@ def _hosting_latency(inputs: HostingInputs) -> tuple[str, str]:
     )
 
 
+def _sensitivity_verdict(estimate: HostingEstimate, cheapest: float | None) -> str:
+    """Name the first blocker so the verdict agrees with the cell's qualified styling."""
+    if estimate.context_issue:
+        return "Exceeds model context"
+    if not estimate.topology_confirmed:
+        return "Needs a multi-host pilot"
+    if not estimate.demand_fits:
+        return "Fleet too small"
+    if cheapest is None:
+        return "No API accepts this request"
+    return "Fleet has a cost case" if estimate.total_monthly_usd <= cheapest else "API costs less"
+
+
 def _hosting_sensitivity(
     inputs: HostingInputs,
     baselines: tuple[APIBaseline, ...],
@@ -237,16 +251,19 @@ def _hosting_sensitivity(
                 find_quantization(inputs.quantization_id),
                 scenario,
             )
-            cheapest = min(api_monthly_cost(scenario, baseline, estimate.requests_month)[0] for baseline in baselines)
-            verdict = "API costs less"
-            if estimate.total_monthly_usd <= cheapest:
-                verdict = "Fleet has a cost case"
-            if not estimate.demand_fits:
-                verdict = "Fleet too small"
+            # Only APIs that accept this request can be the lowest-cost alternative.
+            cheapest = min(
+                (
+                    api_monthly_cost(scenario, baseline, estimate.requests_month)[0]
+                    for baseline in baselines
+                    if not api_request_issue(scenario, baseline)
+                ),
+                default=None,
+            )
             cells.append(
                 SensitivityCell(
                     url=hosting_url(scenario),
-                    verdict=verdict,
+                    verdict=_sensitivity_verdict(estimate, cheapest),
                     inputs=scenario,
                     capacity_pct=estimate.demand_capacity_pct,
                     cheapest_api_usd=cheapest,
@@ -332,4 +349,5 @@ def build_llm_self_hosting_view(
         price_source_url=PRICE_SOURCE_URL,
         current_pilot_config=current_pilot_config,
         comparison_ready=estimate.qualified and any(not row.request_issue for row in apis),
+        form_values=scenario_parameters(inputs),
     )

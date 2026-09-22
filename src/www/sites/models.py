@@ -218,6 +218,8 @@ class TaskComparison:
 class PlotLine:
     name: str
     points: str
+    # 0 is the fleet; API series keep their baseline position so styles stay stable.
+    series: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -247,6 +249,7 @@ class CostPlot:
     y_ticks: tuple[PlotTick, ...]
     break_evens: tuple[PlotTick, ...]
     selected: int
+    unavailable: tuple[str, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -255,7 +258,7 @@ class SensitivityCell:
     verdict: str
     inputs: HostingInputs
     capacity_pct: float
-    cheapest_api_usd: float
+    cheapest_api_usd: float | None
     fits: bool
 
 
@@ -295,3 +298,5 @@ class LLMSelfHostingView:
     price_source_url: str
     current_pilot_config: str
     comparison_ready: bool
+    # Exact serialized values keep resubmitted forms identical to shareable URLs.
+    form_values: dict[str, str]

@@ -8,6 +8,7 @@ function initializeCostCharts(container) {
     var apply = chart.querySelector('[data-cost-apply]');
     var selectFrame = function () {
       var frame = frames[Number(range.value)];
+      if (!frame) return;
       cursor.setAttribute('x1', frame.dataset.x);
       cursor.setAttribute('x2', frame.dataset.x);
       output.textContent = frame.dataset.summary;
@@ -16,10 +17,17 @@ function initializeCostCharts(container) {
     };
     range.addEventListener('input', selectFrame);
     range.disabled = false;
+    selectFrame();
     chart.querySelector('[data-cost-controls]').classList.remove('hidden');
   });
 }
 initializeCostCharts(document);
+// Back/forward form restoration can change the range after initialization without an input event.
+window.addEventListener('pageshow', function () {
+  document.querySelectorAll('[data-cost-range]').forEach(function (range) {
+    range.dispatchEvent(new Event('input'));
+  });
+});
 
 // Invalid optional controls must be visible before the browser focuses them.
 document.addEventListener('invalid', function (event) {
@@ -30,20 +38,38 @@ document.addEventListener('invalid', function (event) {
   }
 }, true);
 if (document.querySelector('[data-hosting-calculator]')) {
-  var pendingScenario;
+  var pendingScenario = null;
+  var updateStatus = document.querySelector('[data-update-status]');
+  var announcement;
+  var formState = function () {
+    return new URLSearchParams(new FormData(document.getElementById('calculator'))).toString();
+  };
+  var cancelScenario = function () {
+    pendingScenario.controller.abort();
+    pendingScenario = null;
+    document.querySelector('[data-hosting-calculator]').removeAttribute('aria-busy');
+  };
+  // The persistent status is already observed; a later task makes repeated messages audible.
+  var announce = function (message) {
+    clearTimeout(announcement);
+    updateStatus.textContent = '';
+    announcement = setTimeout(function () { updateStatus.textContent = message; }, 100);
+  };
   async function updateScenario(url, source) {
     // Only this same-origin, server-rendered calculator supplies replacement markup.
     if (url.origin !== location.origin || url.pathname !== location.pathname) return;
-    if (pendingScenario) pendingScenario.abort();
-    var request = new AbortController();
+    if (pendingScenario) cancelScenario();
+    var request = { controller: new AbortController(), state: formState() };
     pendingScenario = request;
     var current = document.querySelector('[data-hosting-calculator]');
+    current.querySelectorAll('[data-update-error]').forEach(function (error) { error.remove(); });
     current.setAttribute('aria-busy', 'true');
     try {
-      var response = await fetch(url, { signal: request.signal });
+      var response = await fetch(url, { signal: request.controller.signal });
       if (!response.ok) throw new Error('Calculator response: ' + response.status);
       var html = await response.text();
-      if (pendingScenario !== request) return;
+      // Never discard edits made while the request was in flight.
+      if (pendingScenario !== request || formState() !== request.state) return;
       var next = new DOMParser().parseFromString(html, 'text/html').querySelector('[data-hosting-calculator]');
       if (!next) throw new Error('Calculator markup is missing');
       // Keep deliberate disclosures and the active control in the same viewport position.
@@ -51,25 +77,30 @@ if (document.querySelector('[data-hosting-calculator]')) {
         var replacement = next.querySelector('#' + details.id);
         if (replacement) replacement.open = details.open;
       });
-      var top = source.getBoundingClientRect().top;
-      var sourceID = source.id;
+      // Restore focus where the user is now, and never pull it back from outside the calculator.
+      var active = document.activeElement;
+      var inside = active && current.contains(active);
+      var anchor = inside && active.id ? active : source;
+      var restoreFocus = inside || !active || active === document.body;
+      var top = anchor.getBoundingClientRect().top;
       current.replaceWith(next);
       initializeCostCharts(next);
-      var replacement = document.getElementById(sourceID);
+      var replacement = anchor.id ? document.getElementById(anchor.id) : null;
       if (replacement) {
-        replacement.focus({ preventScroll: true });
+        if (restoreFocus) replacement.focus({ preventScroll: true });
         window.scrollBy({ top: replacement.getBoundingClientRect().top - top, behavior: 'instant' });
       }
       url.hash = '';
       history.replaceState(history.state, '', url);
-      next.querySelector('[data-update-status]').textContent = 'Comparison updated.';
+      announce('Comparison updated.');
     } catch (error) {
-      if (error.name !== 'AbortError') {
-        var status = current.querySelector('[data-update-status]');
-        status.classList.remove('sr-only');
-        status.setAttribute('role', 'alert');
-        status.textContent = 'Could not update the comparison. Please try again.';
-        source.insertAdjacentElement('afterend', status);
+      if (error.name !== 'AbortError' && pendingScenario === request) {
+        var alert = document.createElement('p');
+        alert.setAttribute('role', 'alert');
+        alert.setAttribute('data-update-error', '');
+        alert.className = 'font-semibold mt-3';
+        alert.textContent = 'Could not update the comparison. Please try again.';
+        source.insertAdjacentElement('afterend', alert);
       }
     } finally {
       if (pendingScenario === request) {
@@ -78,7 +109,14 @@ if (document.querySelector('[data-hosting-calculator]')) {
       }
     }
   }
+  var formEdited = function (event) {
+    // Editing the scenario supersedes a pending update instead of being overwritten by it.
+    var form = event.target.form;
+    if (pendingScenario && form && form.id === 'calculator' && formState() !== pendingScenario.state) cancelScenario();
+  };
+  document.addEventListener('input', formEdited);
   document.addEventListener('change', function (event) {
+    formEdited(event);
     if (event.target.id !== 'model') return;
     // Display the server-owned static reference without changing the scenario.
     var option = event.target.selectedOptions[0];

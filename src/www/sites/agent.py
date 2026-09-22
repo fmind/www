@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from urllib.parse import parse_qsl, urlsplit
 
 from pydantic import BaseModel, ConfigDict
 
@@ -11,7 +10,7 @@ from www.data import METADATA
 from www.sites.calculator import build_llm_self_hosting_view
 from www.sites.data import DEFAULT_HOSTING_INPUTS
 from www.sites.economics import MONTHLY_HOURS
-from www.sites.inputs import hosting_url, parse_inputs
+from www.sites.inputs import hosting_url, parse_inputs, scenario_parameters
 from www.sites.models import (
     APIComparison,
     DemandPreset,
@@ -28,7 +27,7 @@ from www.sites.models import (
 
 def hosting_parameters(inputs: HostingInputs = DEFAULT_HOSTING_INPUTS) -> dict[str, str]:
     """Use the URL serializer as the public parameter vocabulary."""
-    return dict(parse_qsl(urlsplit(hosting_url(inputs)).query))
+    return scenario_parameters(inputs)
 
 
 class HostingResult(BaseModel):
