@@ -207,13 +207,15 @@ depends = ["test"]
 run = "uv run --locked coverage report"
 
 [tasks.deploy]
-description = "Deploy one immutable Artifact Registry digest to Cloud Run"
+description = "Deploy one immutable Artifact Registry digest and its commit SHA to Cloud Run"
 raw_args = true
 # On demand only, never from a hook or `all`: this mutates production. CI owns
 # the routine path (push to main); this is for manual rollout and rollback, so
-# it sets only the image — OpenTofu still owns the rest of the service shape.
-# The typed boundary rejects tags, foreign repositories, missing digests, and
-# extra flags before constructing a fixed project/region/service gcloud argv.
+# it sets only the image and its `commit-sha` revision label, then routes all
+# traffic to the new revision (CI pins traffic to verified revisions). OpenTofu
+# still owns the rest of the service shape. The typed boundary rejects tags,
+# foreign repositories, missing digests, non-SHA commits, and extra flags
+# before constructing fixed project/region/service gcloud argv.
 run = "uv run --locked python -m scripts.deploy"
 
 [tasks.format]
@@ -274,6 +276,10 @@ run = 'NODE_PATH="$(mise where npm:playwright)/node_modules" env -u NO_COLOR pla
 description = "Smoke-test the already-built production OCI archive or remote digest"
 raw_args = true
 run = "uv run --locked --no-dev --group ops python -m scripts.image_smoke"
+
+[tasks."test:candidate"]
+description = "Verify the no-traffic CANDIDATE_TAG revision is IMAGE_REF/GITHUB_SHA and serves health/discovery"
+run = "uv run --locked --no-dev --group ops python -m scripts.verify_deployment candidate"
 
 [tasks."test:deployed"]
 description = "Verify IMAGE_REF and GITHUB_SHA own ready production traffic and public health"

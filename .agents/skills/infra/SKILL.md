@@ -25,6 +25,8 @@ tofu -chdir=infra apply /absolute/temporary/plan.tfplan
 
 State uses `gs://www-fmind-dev-tfstate/infra/state`. The bootstrap bucket is outside this state: verify object versioning and enforced public-access prevention after recovery or migration. Never commit state, plans, credentials, or tfvars. Remove task-owned scratch files after verification.
 
-Workload Identity Federation is restricted to `main` and numeric GitHub owner/repository IDs. The scheduled scanner has read-only service/registry access; never create service-account keys. Keep analytics cookieless with 180-day partition expiry and `country` empty until a non-bypassable trusted geography source exists. Use [website-analytics](../website-analytics/SKILL.md) for reports.
+Workload Identity Federation is restricted to `main`, numeric GitHub owner/repository IDs, and the `deploy.yml`/`security.yml` workflow files; each service account trusts exactly one of them through `attribute.workflow_ref`. Renaming either workflow or adding a federating one needs a reviewed apply first. Apply identity changes when no deploy or security run is in flight. The scheduled scanner has read-only service/registry access; never create service-account keys.
+
+CI pins traffic to the verified revision, and OpenTofu keeps that traffic. A service-template apply therefore creates a revision without traffic; it serves after the next deploy promotes a verified revision. Registry cleanup keeps the 30 most recent versions (about ten pushes) so the rollback digest survives failed candidates. Keep analytics cookieless with 180-day partition expiry and `country` empty until a non-bypassable trusted geography source exists. Use [website-analytics](../website-analytics/SKILL.md) for reports.
 
 See [OpenTofu](https://opentofu.org/docs/cli/) and [Cloud Run scaling](https://docs.cloud.google.com/run/docs/configuring/min-instances) for current provider/platform behavior.

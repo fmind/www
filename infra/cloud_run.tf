@@ -86,6 +86,9 @@ resource "google_cloud_run_v2_service" "web" {
       # the service shape, not the image tag.
       template[0].containers[0].image,
       template[0].labels,
+      # CI pins traffic to the exact verified revision and moves the candidate
+      # tag; an apply must never route traffic to an unverified revision.
+      traffic,
     ]
   }
 

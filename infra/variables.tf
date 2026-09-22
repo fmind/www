@@ -6,6 +6,12 @@ variable "analytics_location" {
   default     = "EU"
 }
 
+variable "apex_domain" {
+  description = "The registered domain; Cloud Run serves it and its www host"
+  type        = string
+  default     = "fmind.dev"
+}
+
 variable "github_repository" {
   description = "The GitHub repository in the format owner/repo"
   type        = string

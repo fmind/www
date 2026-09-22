@@ -18,6 +18,8 @@ env:
   AR_HOSTNAME: europe-west1-docker.pkg.dev
   WORKLOAD_IDENTITY_PROVIDER: "projects/997496187785/locations/global/workloadIdentityPools/github-actions-pool/providers/github-provider"
   SERVICE_ACCOUNT: "github-actions@www-fmind-dev.iam.gserviceaccount.com"
+  # Stable traffic tag: each deploy moves it to the new no-traffic revision.
+  CANDIDATE_TAG: candidate
 jobs:
   verify:
     runs-on: ubuntu-latest
@@ -37,9 +39,20 @@ jobs:
           install: true
           cache: true
       - name: Install dependencies
-        run: mise run install
+        # `all` installs Chromium itself; installing it here would repeat that.
+        run: mise run install:python
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Select the daily Trivy database cache
+        id: trivy-cache
+        run: echo "key=trivy-db-${RUNNER_OS}-$(date -u +%F)" >> "$GITHUB_OUTPUT"
+      - name: Cache the Trivy vulnerability database
+        # Trivy still refreshes a cached database once its NextUpdate passes.
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/trivy/db
+          key: ${{ steps.trivy-cache.outputs.key }}
+          restore-keys: trivy-db-${{ runner.os }}-
       - name: Full canonical gate (including production image scan)
         run: mise run all
       - name: Verify the quality gate left the checkout unchanged
@@ -48,7 +61,7 @@ jobs:
     needs: verify
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     permissions:
       contents: read
       id-token: write
@@ -96,6 +109,17 @@ jobs:
           tags: ${{ env.AR_HOSTNAME }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+      - name: Select the daily Trivy database cache
+        id: trivy-cache
+        run: echo "key=trivy-db-${RUNNER_OS}-$(date -u +%F)" >> "$GITHUB_OUTPUT"
+      - name: Restore the Trivy vulnerability database
+        # Restore-only: the privileged job never writes shared caches. Entries
+        # for main are written only by main-branch runs of the verify job.
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/trivy/db
+          key: ${{ steps.trivy-cache.outputs.key }}
+          restore-keys: trivy-db-${{ runner.os }}-
       - name: Scan pushed image digest
         env:
           IMAGE_REF: ${{ env.AR_HOSTNAME }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}@${{ steps.build.outputs.digest }}
@@ -104,12 +128,30 @@ jobs:
         env:
           IMAGE_REF: ${{ env.AR_HOSTNAME }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}@${{ steps.build.outputs.digest }}
         run: mise run test:image "$IMAGE_REF"
-      - name: Deploy to Cloud Run
+      - name: Deploy candidate revision without traffic
         uses: google-github-actions/deploy-cloudrun@2028e2d7d30a78c6910e0632e48dd561b064884d # v3
         with:
           service: ${{ env.SERVICE_NAME }}
           region: ${{ env.REGION }}
           image: ${{ env.AR_HOSTNAME }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}@${{ steps.build.outputs.digest }}
+          # `gcloud run deploy --no-traffic --tag`: pins current traffic to the
+          # serving revision and exposes the new one only on its tagged URL.
+          no_traffic: true
+          tag: ${{ env.CANDIDATE_TAG }}
+      - name: Verify candidate revision on its tagged URL
+        id: candidate
+        env:
+          IMAGE_REF: ${{ env.AR_HOSTNAME }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}@${{ steps.build.outputs.digest }}
+        run: mise run test:candidate
+      - name: Promote the verified revision
+        # Route traffic to the exact verified revision, not to "latest", so a
+        # revision created after verification can never receive it.
+        env:
+          REVISION: ${{ steps.candidate.outputs.revision }}
+        run: >-
+          gcloud run services update-traffic "$SERVICE_NAME"
+          --project "$PROJECT_ID" --billing-project "$PROJECT_ID" --region "$REGION"
+          --to-revisions "$REVISION=100" --quiet
       - name: Verify ready release and public health
         env:
           IMAGE_REF: ${{ env.AR_HOSTNAME }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}@${{ steps.build.outputs.digest }}

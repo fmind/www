@@ -36,8 +36,13 @@ jobs:
         run: uv sync --locked --all-groups
       - name: Install browser binaries and ephemeral runner libraries
         run: mise run install:browser:cross -- --with-deps
-      - name: Exercise Firefox and WebKit
+      - name: Exercise local Firefox and WebKit
+        if: inputs.target != 'production'
         run: mise run test:browser:cross
+      - name: Exercise production Firefox and WebKit
+        # Like the Chromium step below, production journeys need no local build.
+        if: inputs.target == 'production'
+        run: mise run --skip-deps test:browser:cross
       - name: Install Chromium for production journeys
         if: inputs.target == 'production'
         run: mise run install:browser

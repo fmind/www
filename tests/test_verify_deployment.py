@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+from pathlib import Path
 from typing import Any
 
 import httpx2
@@ -155,3 +156,146 @@ def test_missing_release_environment_fails_safely(
     monkeypatch.delenv("IMAGE_REF", raising=False)
     assert verify_deployment.main() == 1
     assert "deployment verification failed" in capsys.readouterr().err
+
+
+TAG = "candidate"
+CANDIDATE_URL = "https://candidate---www-fmind-dev-ba55y5pbla-ew.a.run.app"
+PREVIOUS = "www-fmind-dev-00000-old"
+
+
+@pytest.fixture
+def candidate(service: dict[str, Any]) -> dict[str, Any]:
+    service["metadata"]["name"] = "www-fmind-dev"
+    service["status"]["traffic"] = [
+        {"revisionName": PREVIOUS, "percent": 100},
+        {"revisionName": REVISION, "tag": TAG, "url": CANDIDATE_URL},
+    ]
+    return service
+
+
+def verify(candidate: dict[str, Any]) -> tuple[str, str]:
+    return verify_deployment.verify_candidate(candidate, IMAGE, COMMIT, tag=TAG, service_name="www-fmind-dev")
+
+
+def test_candidate_without_traffic_is_verified_on_its_tagged_url(candidate: dict[str, Any]) -> None:
+    assert verify(candidate) == (REVISION, CANDIDATE_URL)
+    with pytest.raises(ValueError, match="all traffic"):
+        verify_service(candidate, IMAGE, COMMIT)
+
+
+@pytest.mark.parametrize(
+    ("entry", "message"),
+    [
+        ({"revisionName": PREVIOUS, "tag": TAG, "url": CANDIDATE_URL}, "does not address"),
+        ({"revisionName": REVISION, "tag": "other", "url": CANDIDATE_URL}, "does not address"),
+        ({"revisionName": REVISION, "tag": TAG}, "no run.app URL"),
+        ({"revisionName": REVISION, "tag": TAG, "url": "https://candidate---www-fmind-dev.example.com"}, "run.app"),
+        ({"revisionName": REVISION, "tag": TAG, "url": "https://candidate---other-ba55y5pbla-ew.a.run.app"}, "run.app"),
+    ],
+    ids=("stale-tag", "missing-tag", "missing-url", "foreign-host", "foreign-service"),
+)
+def test_candidate_tag_must_address_this_service_revision(
+    candidate: dict[str, Any], entry: dict[str, str], message: str
+) -> None:
+    candidate["status"]["traffic"][1] = entry
+    with pytest.raises(ValueError, match=message):
+        verify(candidate)
+
+
+def test_candidate_with_stale_commit_label_fails(candidate: dict[str, Any]) -> None:
+    candidate["spec"]["template"]["metadata"]["labels"]["commit-sha"] = "c" * 40
+    with pytest.raises(ValueError, match="commit differs"):
+        verify(candidate)
+
+
+def test_candidate_revision_must_belong_to_service(candidate: dict[str, Any]) -> None:
+    for field in ("latestReadyRevisionName", "latestCreatedRevisionName"):
+        candidate["status"][field] = "other-00001-abc"
+    candidate["status"]["traffic"][1]["revisionName"] = "other-00001-abc"
+    with pytest.raises(ValueError, match="does not belong"):
+        verify(candidate)
+
+
+@pytest.mark.parametrize("healthy", [True, False])
+def test_candidate_command_probes_tagged_url_and_records_revision(
+    candidate: dict[str, Any],
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+    healthy: bool,
+) -> None:
+    output = tmp_path / "github-output"
+    for key, value in {
+        "REGION": "europe-west1",
+        "PROJECT_ID": "www-fmind-dev",
+        "REPOSITORY": "app",
+        "SERVICE_NAME": "www-fmind-dev",
+        "IMAGE_REF": IMAGE,
+        "GITHUB_SHA": COMMIT,
+        "CANDIDATE_TAG": TAG,
+        "GITHUB_OUTPUT": str(output),
+    }.items():
+        monkeypatch.setenv(key, value)
+
+    def describe(command: tuple[str, ...], **_kwargs: object) -> subprocess.CompletedProcess[str]:
+        return subprocess.CompletedProcess(command, 0, json.dumps(candidate), "")
+
+    monkeypatch.setattr(verify_deployment.shutil, "which", lambda _: "/usr/bin/gcloud")
+    monkeypatch.setattr(verify_deployment.subprocess, "run", describe)
+    hosts: set[str] = set()
+
+    def respond(request: httpx2.Request) -> httpx2.Response:
+        hosts.add(request.url.host)
+        return httpx2.Response(200 if healthy else 503, json={"status": "ok"})
+
+    client = httpx2.Client(transport=httpx2.MockTransport(respond))
+    monkeypatch.setattr(verify_deployment.httpx2, "Client", lambda **_kwargs: client)
+
+    assert verify_deployment.main(("candidate",)) == (0 if healthy else 1)
+    assert hosts == {"candidate---www-fmind-dev-ba55y5pbla-ew.a.run.app"}
+    if healthy:
+        assert output.read_text(encoding="utf-8") == f"revision={REVISION}\n"
+        assert "Verified candidate" in capsys.readouterr().out
+    else:
+        assert not output.exists()
+        assert "HTTPStatusError" in capsys.readouterr().err
+
+
+def test_invalid_candidate_tag_fails_before_gcloud(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    for key, value in {
+        "REGION": "europe-west1",
+        "PROJECT_ID": "www-fmind-dev",
+        "REPOSITORY": "app",
+        "SERVICE_NAME": "www-fmind-dev",
+        "IMAGE_REF": IMAGE,
+        "GITHUB_SHA": COMMIT,
+        "CANDIDATE_TAG": "Bad\nrevision=x",
+    }.items():
+        monkeypatch.setenv(key, value)
+    monkeypatch.setattr(verify_deployment.shutil, "which", pytest.fail)
+    assert verify_deployment.main(("candidate",)) == 1
+    assert "CANDIDATE_TAG is invalid" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("commit", ["B" * 40, "b" * 39])
+def test_invalid_expected_commit_fails_with_safe_reason(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], commit: str
+) -> None:
+    for key, value in {
+        "REGION": "europe-west1",
+        "PROJECT_ID": "www-fmind-dev",
+        "REPOSITORY": "app",
+        "SERVICE_NAME": "www-fmind-dev",
+        "IMAGE_REF": IMAGE,
+        "GITHUB_SHA": commit,
+    }.items():
+        monkeypatch.setenv(key, value)
+    assert verify_deployment.main() == 1
+    assert "40-character lowercase SHA" in capsys.readouterr().err
+
+
+def test_unknown_mode_is_a_usage_error(capsys: pytest.CaptureFixture[str]) -> None:
+    assert verify_deployment.main(("promote",)) == 2
+    assert capsys.readouterr().err.startswith("usage:")

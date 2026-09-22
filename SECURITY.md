@@ -4,7 +4,7 @@ Report vulnerabilities privately to <contact@fmind.dev> with the affected URL/co
 
 ## Release policy
 
-Deployment scans and smoke-tests the pushed immutable digest before Cloud Run receives it. Fixable HIGH/CRITICAL vulnerabilities and secrets block rollout. The weekly [security workflow](.github/workflows/security.yml) scans every serving digest through a read-only identity and retains unfiltered advisory evidence for 30 days. Passing the filtered gate does not mean zero advisories.
+Deployment scans and smoke-tests the pushed immutable digest before Cloud Run receives it, then verifies the new revision on a no-traffic tagged URL before promoting that exact revision. Fixable HIGH/CRITICAL vulnerabilities and secrets block rollout. The weekly [security workflow](.github/workflows/security.yml) scans every serving digest through a separate read-only identity and retains unfiltered advisory evidence for 30 days. Passing the filtered gate does not mean zero advisories.
 
 Trivy may warn about third-party SBOM metadata or [fallback severity sources](https://trivy.dev/docs/v0.74/guide/scanner/vulnerability/#severity-selection). Review the full findings and package inventory; do not silence diagnostics, narrow severity sources, or add ignores merely to produce a quiet log.
 
@@ -30,4 +30,4 @@ Analytics omit visitor identifiers and expire after 180 days. Private Cloud Run 
 
 Keep private portrait masters outside `static/`; `build:portrait` removes EXIF/XMP/comments while retaining orientation and ICC color. Tests inspect both download URLs and the vCard portrait.
 
-The state bucket is private, versioned, and protected by public-access prevention; verify those bootstrap settings after migration or recovery. Use keyless Workload Identity Federation, keep runtime/scanner/deployer roles separate, and retain the preceding qualified image digest for rollback.
+The state bucket is private, versioned, and protected by public-access prevention; verify those bootstrap settings after migration or recovery. Use keyless Workload Identity Federation, keep runtime/scanner/deployer roles separate, and retain the preceding qualified image digest for rollback. Federation accepts only `main` tokens from the numeric repository/owner IDs, and each service account trusts one workflow file: only `deploy.yml` can assume the deployer and only `security.yml` the read-only scanner, so no other workflow on `main` inherits deploy rights.

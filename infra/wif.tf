@@ -3,6 +3,18 @@
 #
 # GitHub's OIDC token impersonates a dedicated service account (no long-lived
 # keys) that may push to Artifact Registry and deploy the Cloud Run service.
+# Each service account trusts exactly one workflow file on main.
+
+locals {
+  # GitHub documents `workflow_ref` for every run as
+  # OWNER/REPO/.github/workflows/FILE@REF (docs.github.com, OIDC reference);
+  # `job_workflow_ref` is documented only for reusable workflows, which this
+  # repository does not use. Renaming either file requires a reviewed apply.
+  github_workflow_refs = {
+    deploy   = "${var.github_repository}/.github/workflows/deploy.yml@refs/heads/main"
+    security = "${var.github_repository}/.github/workflows/security.yml@refs/heads/main"
+  }
+}
 
 resource "google_service_account" "github_actions_sa" {
   account_id   = "github-actions"
@@ -18,9 +30,10 @@ resource "google_artifact_registry_repository_iam_member" "repo_writer" {
   member     = "serviceAccount:${google_service_account.github_actions_sa.email}"
 }
 
-# Deploy new revisions of this one service. Binding roles/run.developer on the
-# service instead of the project means CI cannot create, delete, or SSH into any
-# other Cloud Run service, job, or worker pool here.
+# Deploy new revisions of this one service and move its traffic
+# (run.services.update covers `gcloud run services update-traffic`). Binding
+# roles/run.developer on the service instead of the project means CI cannot
+# create, delete, or SSH into any other Cloud Run service, job, or worker pool.
 resource "google_cloud_run_v2_service_iam_member" "github_actions_run_developer" {
   location = google_cloud_run_v2_service.web.location
   name     = google_cloud_run_v2_service.web.name
@@ -62,26 +75,41 @@ resource "google_iam_workload_identity_pool_provider" "github_provider" {
 
   attribute_mapping = {
     "google.subject"                = "assertion.sub"
-    "attribute.actor"               = "assertion.actor"
-    "attribute.ref"                 = "assertion.ref"
     "attribute.repository"          = "assertion.repository"
     "attribute.repository_id"       = "assertion.repository_id"
     "attribute.repository_owner_id" = "assertion.repository_owner_id"
+    "attribute.workflow_ref"        = "assertion.workflow_ref"
   }
 
-  # Numeric IDs prevent a reused repository or owner name inheriting cloud access.
-  attribute_condition = "assertion.repository == '${var.github_repository}' && assertion.repository_id == '${var.github_repository_numeric_id}' && assertion.repository_owner_id == '${var.github_owner_numeric_id}' && assertion.ref == 'refs/heads/main'"
+  # Numeric IDs prevent a reused repository or owner name inheriting cloud
+  # access; every binding below therefore inherits them. Only the two workflow
+  # files that federate may exchange a token at all.
+  attribute_condition = join(" && ", [
+    "assertion.repository == '${var.github_repository}'",
+    "assertion.repository_id == '${var.github_repository_numeric_id}'",
+    "assertion.repository_owner_id == '${var.github_owner_numeric_id}'",
+    "assertion.ref == 'refs/heads/main'",
+    "(${join(" || ", [for ref in values(local.github_workflow_refs) : "assertion.workflow_ref == '${ref}'"])})",
+  ])
 
   oidc {
     issuer_uri = "https://token.actions.githubusercontent.com"
   }
 }
 
-# Allow only this repository's workflows to impersonate the deployer SA.
+# Only the main-branch deployment workflow may impersonate the deployer SA.
 resource "google_service_account_iam_member" "wif_impersonate" {
   service_account_id = google_service_account.github_actions_sa.name
   role               = "roles/iam.workloadIdentityUser"
-  member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github_pool.name}/attribute.repository/${var.github_repository}"
+  member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github_pool.name}/attribute.workflow_ref/${local.github_workflow_refs.deploy}"
+
+  # The member is immutable, so narrowing it replaces the binding. Create the
+  # workflow binding after the provider maps workflow_ref and before removing
+  # the old binding, so the apply never opens a window without deploy access.
+  depends_on = [google_iam_workload_identity_pool_provider.github_provider]
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 # Scheduled scans can read the serving revisions and pull images, never deploy.
@@ -105,8 +133,14 @@ resource "google_cloud_run_v2_service_iam_member" "security_run_viewer" {
   member   = "serviceAccount:${google_service_account.github_security_sa.email}"
 }
 
+# Only the main-branch security workflow may impersonate the scanner SA.
 resource "google_service_account_iam_member" "security_wif_impersonate" {
   service_account_id = google_service_account.github_security_sa.name
   role               = "roles/iam.workloadIdentityUser"
-  member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github_pool.name}/attribute.repository_id/${var.github_repository_numeric_id}"
+  member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github_pool.name}/attribute.workflow_ref/${local.github_workflow_refs.security}"
+
+  depends_on = [google_iam_workload_identity_pool_provider.github_provider]
+  lifecycle {
+    create_before_destroy = true
+  }
 }

@@ -5,6 +5,11 @@ output "analytics_dataset_id" {
   value       = google_bigquery_dataset.analytics.dataset_id
 }
 
+output "apex_dns_records" {
+  description = "Records to publish at the DNS host so the apex reaches Cloud Run"
+  value       = try(google_cloud_run_domain_mapping.apex.status[0].resource_records, [])
+}
+
 output "github_actions_service_account_email" {
   description = "The service account email for GitHub Actions"
   value       = google_service_account.github_actions_sa.email
