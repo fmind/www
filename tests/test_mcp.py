@@ -171,7 +171,7 @@ async def test_profile_resource_and_prompt_are_grounded(mcp_server: MCPServer[No
     assert not isinstance(contents, InputRequiredResult)
     portfolio = json.loads(next(iter(contents)).content)
     assert portfolio["metadata"]["alternate_name"] == "Fmind"
-    assert len(portfolio["articles"]) == 59
+    assert len(portfolio["articles"]) == 60
     assert not isinstance(prompt, InputRequiredResult)
     assert prompt.description == "A structured, evidence-based fit assessment using the portfolio tools."
     prompt_content = prompt.messages[0].content
