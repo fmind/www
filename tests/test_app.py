@@ -764,9 +764,10 @@ def test_mcp_mount_is_stateless_bounded_and_origin_protected(
         assert response.status_code == 200
         assert response.json()["result"]["serverInfo"]["name"] == "www"
         assert response.json()["result"]["capabilities"] == {
-            "prompts": {"listChanged": True},
-            "resources": {"listChanged": True},
-            "tools": {"listChanged": True},
+            "experimental": {},
+            "prompts": {"listChanged": False},
+            "resources": {"listChanged": False, "subscribe": False},
+            "tools": {"listChanged": False},
         }
         assert response.headers["cache-control"] == "no-cache, no-transform"
         assert response.headers["vary"] == "Accept-Encoding"
@@ -808,6 +809,20 @@ def test_mcp_mount_is_stateless_bounded_and_origin_protected(
         assert test_client.post("/mcp", json=initialize, headers=headers).status_code == 200
     request_log = next(values for event, values in logger.records if event == "http request processed")
     assert request_log["path"] == "/mcp"
+
+
+@pytest.mark.parametrize("path", ["/mcp", "/mcp/"])
+@pytest.mark.parametrize("method", ["GET", "HEAD"])
+def test_mcp_notification_streams_are_rejected(client: AppClient, path: str, method: str) -> None:
+    response = client.request(method, path, headers={"accept": "text/event-stream"})
+    assert response.status_code == 405
+    assert response.headers["allow"] == "POST"
+    assert response.headers["cache-control"] == "no-cache, no-transform"
+    assert "content-security-policy" in response.headers
+    assert response.content if method == "GET" else not response.content
+
+    assert client.request(method, path, headers={"origin": "https://evil.example"}).status_code == 403
+    assert client.request(method, path, headers={"host": "evil.example"}).status_code == 421
 
 
 def test_opentelemetry_is_opt_in_and_correlates_request_logs(

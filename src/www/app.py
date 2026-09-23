@@ -17,7 +17,6 @@ from litestar.params import FromPath
 from litestar.plugins.opentelemetry import OpenTelemetryConfig, OpenTelemetryPlugin
 from litestar.response import Redirect, Response
 from litestar.types import ASGIApp, Scope
-from mcp.server.transport_security import TransportSecuritySettings
 
 from www.agent_discovery import AGENT_LINKS, AGENT_SKILL_PATH, prefers_markdown, public_skill, render_api_catalog
 from www.assets import STYLESHEET_PATH, ApplicationAssets, StaticResponse, load_application_assets
@@ -40,7 +39,7 @@ from www.data import (
     markdown_to_html,
 )
 from www.log import configure_logging
-from www.mcp import create_mcp_server, render_mcp_server_card
+from www.mcp import create_mcp_http_app, create_mcp_server, render_mcp_server_card
 from www.middleware import Logger, SiteMiddleware, etag_matches, trace_fields
 from www.models import PageMetadata
 from www.pages import (
@@ -78,7 +77,6 @@ _DAY_CACHE = "public, max-age=86400, must-revalidate"
 _HOUR_CACHE = "public, max-age=3600, must-revalidate"
 _HOUR_CACHE_WITHOUT_REVALIDATION = "public, max-age=3600"
 _NO_CACHE = "no-cache"
-_MCP_MAX_BODY_SIZE = 1 << 20
 # Static ETags and byte ranges describe the on-disk representation. Compressing
 # it afterward invalidates both contracts. The page stylesheet is served from
 # memory at /styles.css with a weak ETag, so it still benefits from Brotli.
@@ -518,36 +516,7 @@ def create_app(
         return render_not_found(request)
 
     mcp_server = create_mcp_server(summaries, public_search, public_articles)
-    mcp_app = mcp_server.streamable_http_app(
-        streamable_http_path="/",
-        json_response=True,
-        stateless_http=True,
-        max_request_body_size=_MCP_MAX_BODY_SIZE,
-        transport_security=TransportSecuritySettings(
-            allowed_hosts=[
-                "www.fmind.dev",
-                "www.fmind.dev:*",
-                "fmind.dev",
-                "fmind.dev:*",
-                "testserver.local",
-                "testserver.local:*",
-                "localhost",
-                "localhost:*",
-                "127.0.0.1",
-                "127.0.0.1:*",
-            ],
-            allowed_origins=[
-                "https://www.fmind.dev",
-                "https://fmind.dev",
-                "http://testserver.local",
-                "http://testserver.local:*",
-                "http://localhost",
-                "http://localhost:*",
-                "http://127.0.0.1",
-                "http://127.0.0.1:*",
-            ],
-        ),
-    )
+    mcp_app = create_mcp_http_app(mcp_server)
     mcp_route = asgi("/mcp", is_mount=True, copy_scope=True)(mcp_app)
     tracer_provider = configure_telemetry()
     plugins = (

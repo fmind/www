@@ -7,12 +7,16 @@ from importlib.metadata import version
 from typing import Annotated, Any, cast, override
 
 from mcp.server.caching import CACHEABLE_METHODS, CacheableMethod, CacheHint
-from mcp.server.context import CallNext, HandlerResult, ServerMiddleware, ServerRequestContext
 from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.context import Context
 from mcp.server.mcpserver.exceptions import ToolError
+from mcp.server.transport_security import TransportSecurityMiddleware, TransportSecuritySettings
 from mcp_types import GetPromptResult, Icon, InputRequiredResult, Prompt, ToolAnnotations
 from pydantic import BaseModel, ConfigDict, Field
+from starlette.applications import Starlette
+from starlette.requests import Request
+from starlette.responses import Response
+from starlette.routing import Route
 
 from www.data import (
     BADGES,
@@ -70,30 +74,6 @@ _PROMPT_RESULT_DESCRIPTIONS = {
     "assess_fit": "A structured, evidence-based fit assessment using the portfolio tools.",
     "brief_me": "An audience-specific briefing grounded in the full portfolio.",
 }
-
-
-class _LegacyCapabilities(ServerMiddleware[Any]):
-    """Retain the established handshake-era discovery shape."""
-
-    async def __call__(
-        self,
-        ctx: ServerRequestContext[Any, Any],
-        call_next: CallNext,
-    ) -> HandlerResult:
-        result = await call_next(ctx)
-        if ctx.method != "initialize" or not isinstance(result, dict):
-            return result
-        # MCPServer 2.2 has no public default-notification-options seam for its
-        # HTTP adapter. Middleware is the supported result boundary and keeps
-        # existing clients' exact capability contract without private access.
-        return {
-            **result,
-            "capabilities": {
-                "prompts": {"listChanged": True},
-                "resources": {"listChanged": True},
-                "tools": {"listChanged": True},
-            },
-        }
 
 
 class _PortfolioMCPServer(MCPServer[None]):
@@ -211,7 +191,6 @@ def create_mcp_server(
         icons=_ICONS,
         version=build_version(),
         cache_hints=_CACHE_HINTS,
-        middleware=[_LegacyCapabilities()],
     )
 
     @server.tool(
@@ -445,3 +424,55 @@ async def render_mcp_server_card(server: MCPServer[None]) -> bytes:
         "prompts": [prompt.model_dump(include={"name", "title", "description"}) for prompt in prompts],
     }
     return (json.dumps(card, ensure_ascii=False, indent=2) + "\n").encode()
+
+
+def create_mcp_http_app(server: MCPServer[None]) -> Starlette:
+    """Serve finite MCP requests without opening unused notification streams."""
+    security = TransportSecuritySettings(
+        allowed_hosts=[
+            "www.fmind.dev",
+            "www.fmind.dev:*",
+            "fmind.dev",
+            "fmind.dev:*",
+            "testserver.local",
+            "testserver.local:*",
+            "localhost",
+            "localhost:*",
+            "127.0.0.1",
+            "127.0.0.1:*",
+        ],
+        allowed_origins=[
+            "https://www.fmind.dev",
+            "https://fmind.dev",
+            "http://testserver.local",
+            "http://testserver.local:*",
+            "http://localhost",
+            "http://localhost:*",
+            "http://127.0.0.1",
+            "http://127.0.0.1:*",
+        ],
+    )
+    app = server.streamable_http_app(
+        streamable_http_path="/",
+        json_response=True,
+        stateless_http=True,
+        max_request_body_size=1 << 20,
+        transport_security=security,
+    )
+    validator = TransportSecurityMiddleware(security)
+
+    async def reject_stream(request: Request) -> Response:
+        rejected = await validator.validate_request(request)
+        if rejected is not None:
+            return rejected
+        # Legacy Streamable HTTP explicitly permits 405 when no GET stream is
+        # offered. An idle SDK stream otherwise reaches Cloud Run's timeout.
+        return Response(
+            "MCP requests use POST; notification streams are not supported.\n",
+            status_code=405,
+            headers={"Allow": "POST"},
+            media_type="text/plain",
+        )
+
+    app.router.routes.insert(0, Route("/", reject_stream, methods=["GET", "HEAD"]))
+    return app

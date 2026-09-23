@@ -10,9 +10,9 @@ Trivy may warn about third-party SBOM metadata or [fallback severity sources](ht
 
 ## Current advisory review
 
-**Owner:** Médéric Hurier. **Reviewed:** 2026-09-19. **Next review:** 2026-09-26, or immediately on a new fixable finding or relevant runtime change.
+**Owner:** Médéric Hurier. **Reviewed:** 2026-09-23. **Next review:** 2026-09-30, or immediately on a new fixable finding or relevant runtime change.
 
-The current candidate uses refreshed `python:3.14.7-slim@sha256:caaf356f40667c496d405780745b9ac25771c189a51dfcc42430d531ea09f8a2`; upstream now includes the security fixes previously installed by a separate Debian patch layer. The fixable vulnerability/secret gate and HTTP/MCP image smoke pass. The unfiltered scan reports 44 HIGH package/advisory instances across eight CVEs, no CRITICAL findings, and no available fixes. These are candidate results; the deployed-image workflow establishes serving-digest evidence after rollout.
+The current candidate uses refreshed `python:3.14.7-slim@sha256:caaf356f40667c496d405780745b9ac25771c189a51dfcc42430d531ea09f8a2`; upstream now includes the security fixes previously installed by a separate Debian patch layer. The fixable vulnerability/secret gate and HTTP/MCP image smoke pass. The unfiltered scan reports 44 HIGH package/advisory instances across eight CVEs, no CRITICAL findings, and no available fixes. The September 23 deployed-image scan confirmed the same advisory set on the serving 2.2.0 release. Each new rollout still needs its own serving-digest evidence.
 
 | Residual advisories                                                        | Application exposure assessment                                                                           |
 | -------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |

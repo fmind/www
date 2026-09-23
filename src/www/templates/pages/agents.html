@@ -7,6 +7,7 @@
     <p>In an assistant that supports remote MCP servers, add a custom server with the URL below, select Streamable HTTP when asked, and choose no authentication. Connection settings vary by client.</p>
     <pre><code>https://www.fmind.dev/mcp</code></pre>
     <p>Use your client's MCP discovery to list tools and their schemas. The <a href="/.well-known/mcp/server-card.json">server card</a> is a compatibility summary; it is not an A2A Agent Card. Browser MCP requests must come from this website's origin; connect external assistants through their server-side MCP client.</p>
+    <p>The server answers MCP POST requests with JSON. It does not offer subscriptions or notification streams; GET and HEAD return <code>405 Method Not Allowed</code> with <code>Allow: POST</code>. Use <a href="/health">/health</a> for a browser or uptime check.</p>
     <h3>Try these requests</h3>
     <ul>
       <li>“Brief me about Fmind for an engineering leadership meeting.”</li>

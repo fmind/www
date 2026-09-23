@@ -89,7 +89,7 @@ Use [finops-analytics](.agents/skills/finops-analytics/SKILL.md) for cloud cost,
 
 ## Agent access
 
-The public [/agents](https://www.fmind.dev/agents) guide is the integration reference. Connect an MCP client to `https://www.fmind.dev/mcp` for read-only, unauthenticated portfolio, publication, search, service, and hosting-comparison tools. Browser requests have same-origin protection; request bodies are bounded. Tools never provision, run LLMs, book services, or send messages.
+The public [/agents](https://www.fmind.dev/agents) guide is the integration reference. Connect an MCP client to `https://www.fmind.dev/mcp` for read-only, unauthenticated portfolio, publication, search, service, and hosting-comparison tools. Browser requests have same-origin protection; request bodies are bounded. MCP uses finite JSON responses to POST requests. GET/HEAD return `405` with `Allow: POST`; this service does not offer notification streams or subscriptions. Tools never provision, run LLMs, book services, or send messages.
 
 `/api/profile` and its JSON Schema share the startup snapshot with LLM text, feeds, sitemap, and JSON-LD. Homepage/article routes support `Accept: text/markdown` and `Vary: Accept`; HTML wins ties. Fixed article `.md` URLs remain available. The API catalog, MCP server card, and packaged visitor skill expose discovery; use `server/discover` for protocol negotiation. Visitor skills are separate from repository maintenance skills.
 

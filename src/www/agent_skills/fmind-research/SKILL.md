@@ -5,7 +5,7 @@ description: Research Fmind's published articles and compare LLM hosting scenari
 
 # Fmind Research
 
-Connect an MCP client using Streamable HTTP to `https://www.fmind.dev/mcp`. No account or token is required. Discover the tools and their input schemas before calling them. [Connection and HTTP documentation](https://www.fmind.dev/agents) provides alternatives when MCP is unavailable.
+Connect an MCP client using Streamable HTTP to `https://www.fmind.dev/mcp`. No account or token is required. Use MCP POST operations; GET/HEAD return 405 because this server offers no notification stream. This does not mean the MCP endpoint is unavailable. Discover the tools and their input schemas before calling them. [Connection and HTTP documentation](https://www.fmind.dev/agents) provides alternatives when MCP is unavailable.
 
 ## Research articles
 

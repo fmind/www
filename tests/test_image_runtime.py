@@ -214,6 +214,9 @@ def test_http_contract_probe_uses_modern_mcp_discovery_and_lists_primitives(
             return HTTPResponse(200, {"content-type": "image/png"}, b"\x89PNG\r\n\x1a\n")
 
         assert path == "/mcp"
+        if method in {"GET", "HEAD"}:
+            assert headers == {"Accept": "text/event-stream"}
+            return HTTPResponse(405, {"allow": "POST"}, b"")
         assert method == "POST"
         assert body is not None
         payload = json.loads(body)

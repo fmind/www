@@ -17,6 +17,7 @@ Python 3.14, Litestar, strict Jinja, Tailwind/DaisyUI, and Granian. No client fr
 
 - `data.py`, `models.py`, `tags.py`: immutable portfolio, shared types, site registry, closed tag vocabulary.
 - `app.py`: startup snapshot, routes, middleware composition, MCP lifespan, teardown.
+- `mcp.py`: read-only tools, finite HTTP transport, capabilities, and discovery. GET/HEAD must return 405 instead of opening idle notification streams; retain SDK host/origin validation.
 - `content.py`, `images.py`, `assets.py`: validated publications, media derivatives, static inventory/hashes.
 - `publications.py`: canonical profile JSON/schema, feeds, sitemap, LLM text; shared by HTTP and MCP.
 - `agent_discovery.py`, `agent_skills/`: API catalog, representation negotiation, packaged visitor skill/index; separate from `.agents/` maintenance skills.

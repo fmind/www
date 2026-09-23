@@ -492,6 +492,11 @@ def _assert_http_contracts(port: int) -> None:
         ):
             raise SmokeError(f"{path} did not return an uncompressed PNG")
 
+    for method in ("GET", "HEAD"):
+        stream = _request(port, method, "/mcp", headers={"Accept": "text/event-stream"})
+        if stream.status != 405 or stream.headers.get("allow") != "POST":
+            raise SmokeError(f"MCP {method} must reject notification streams with 405 and Allow: POST")
+
     _probe_modern_mcp(port)
 
 
