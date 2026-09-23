@@ -2,6 +2,23 @@
 
 All notable changes to this project are documented in this file.
 
+## [2.2.0] - 2026-09-22
+
+### 🚀 Features
+
+- _(articles)_ Add section navigation and feed discovery
+- _(articles)_ Publish agents-md-speaks-unix (#31)
+- _(delivery)_ Promote verified candidates and scope CI identities
+- _(site)_ Link a cached stylesheet and describe pages accurately
+
+### 🐛 Bug Fixes
+
+- _(sites)_ Keep calculator scenarios exact and accessible
+
+### 🧪 Testing
+
+- _(browser)_ Wait for article rail resize layout
+
 ## [2.1.0] - 2026-09-19
 
 ### 🚀 Features
