@@ -86,6 +86,9 @@ resource "google_cloud_run_v2_service" "web" {
       # the service shape, not the image tag.
       template[0].containers[0].image,
       template[0].labels,
+      # Cloud Run assigns this identity when CI rolls the image. Resetting it
+      # to the unset configuration would otherwise cause perpetual plan drift.
+      template[0].revision,
       # CI pins traffic to the exact verified revision and moves the candidate
       # tag; an apply must never route traffic to an unverified revision.
       traffic,

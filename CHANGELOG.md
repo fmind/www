@@ -7,6 +7,7 @@ All notable changes to this project are documented in this file.
 ### 🐛 Bug Fixes
 
 - Harden startup, deployment, calculator evidence, and caching
+- Keep generated Cloud Run revision names out of infrastructure drift plans
 
 ### 🧹 Miscellaneous
 
