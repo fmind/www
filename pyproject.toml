@@ -46,7 +46,7 @@ dev = [
 www = "www.__main__:main"
 
 [build-system]
-requires = ["uv_build==0.12.17"]
+requires = ["uv_build==0.12.19"]
 build-backend = "uv_build"
 
 [tool.ruff]
