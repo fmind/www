@@ -11,15 +11,15 @@ REGION = "europe-west1"
 run_auto_install = false
 
 [tools]
-"aqua:astral-sh/uv" = "0.12.17"
-"github:dobicinaitis/tailwind-cli-extra" = "2.10.28"
+"aqua:astral-sh/uv" = "0.12.19"
+"github:dobicinaitis/tailwind-cli-extra" = "2.10.31"
 actionlint = "1.7.12"
 dprint = "0.57.4"
 gitleaks = "8.30.1"
 hadolint = "2.15.1"
 lefthook = "2.1.14"
 lychee = "0.24.2"
-node = "26.9.0"
+node = "26.10.0"
 "npm:lighthouse" = "13.5.0"
 "npm:playwright" = "1.63.0"
 opentofu = "1.12.6"
@@ -211,8 +211,8 @@ description = "Deploy one immutable Artifact Registry digest and its commit SHA 
 raw_args = true
 # On demand only, never from a hook or `all`: this mutates production. CI owns
 # the routine path (push to main); this is for manual rollout and rollback, so
-# it sets only the image and its `commit-sha` revision label, then routes all
-# traffic to the new revision (CI pins traffic to verified revisions). OpenTofu
+# it creates a named no-traffic candidate and verifies health/digest/commit before
+# routing traffic to that exact revision. OpenTofu
 # still owns the rest of the service shape. The typed boundary rejects tags,
 # foreign repositories, missing digests, non-SHA commits, and extra flags
 # before constructing fixed project/region/service gcloud argv.

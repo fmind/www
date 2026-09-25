@@ -4,12 +4,12 @@ ARG TARGETARCH
 ENV UV_COMPILE_BYTECODE=1
 ENV UV_LINK_MODE=copy
 WORKDIR /app
-COPY --from=ghcr.io/astral-sh/uv:0.12.17@sha256:10787c682e4184e4f290de1171fd4703dc63de99221f10fe1c99002ce7fa9acc /uv /uvx /bin/
-ADD --chmod=0755 --checksum=sha256:686a44e232bf6f766e327717e186914d5b1b7076af37eb3016abe89eb43cacdd \
-  https://github.com/dobicinaitis/tailwind-cli-extra/releases/download/v2.10.28/tailwindcss-extra-linux-x64 \
+COPY --from=ghcr.io/astral-sh/uv:0.12.19@sha256:04d046b13e60d6bcec73cbc5e1cad25d680dea90c8573340950a0ac2d1aef424 /uv /uvx /bin/
+ADD --chmod=0755 --checksum=sha256:aca04df159cc3b2c4a984c58ddb066ca892ac5fda21755207ff08ac081cb9854 \
+  https://github.com/dobicinaitis/tailwind-cli-extra/releases/download/v2.10.31/tailwindcss-extra-linux-x64 \
   /usr/local/lib/tailwindcss-extra-amd64
-ADD --chmod=0755 --checksum=sha256:894ce587d4473c502352df28f90f5f7372c2345a8215f040aaffe1064166ec62 \
-  https://github.com/dobicinaitis/tailwind-cli-extra/releases/download/v2.10.28/tailwindcss-extra-linux-arm64 \
+ADD --chmod=0755 --checksum=sha256:0d3c4830e87f8e0c17c8d70190c13055f19181c8ca29cc6520ae1ff7eb2947e2 \
+  https://github.com/dobicinaitis/tailwind-cli-extra/releases/download/v2.10.31/tailwindcss-extra-linux-arm64 \
   /usr/local/lib/tailwindcss-extra-arm64
 RUN --mount=type=cache,target=/root/.cache/uv \
   --mount=type=bind,source=uv.lock,target=uv.lock \
