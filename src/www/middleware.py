@@ -114,7 +114,7 @@ def is_bot(user_agent: str) -> bool:
 def etag_matches(header: str, current: str) -> bool:
     """Apply weak comparison to a comma-separated If-None-Match field."""
     return any(
-        candidate == "*" or candidate.removeprefix("W/") == current
+        candidate == "*" or candidate.removeprefix("W/") == current.removeprefix("W/")
         for item in header.split(",")
         if (candidate := item.strip())
     )

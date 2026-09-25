@@ -158,8 +158,8 @@ def main(arguments: Sequence[str] = ()) -> int:
             revision, url = verify_candidate(
                 describe_service(target), image, commit, tag=tag, service_name=target.service_name
             )
-            # A zero-traffic revision may cold start; allow the 30s startup-probe budget.
-            probe(url, timeout=35)
+            # A zero-traffic revision may cold start; allow the 60s startup-probe budget.
+            probe(url, timeout=65)
             _record_output(revision, os.environ)
             sys.stdout.write(f"Verified candidate {revision}: {commit}, {image}, tagged health/discovery\n")
         else:

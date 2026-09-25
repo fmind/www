@@ -9,6 +9,7 @@ from collections.abc import Sequence
 
 import pytest
 
+from scripts import deploy, verify_deployment
 from scripts.deploy import DeploymentTarget, Runner, build_deploy_commands, main
 
 TARGET = DeploymentTarget(
@@ -19,6 +20,7 @@ TARGET = DeploymentTarget(
 )
 VALID_IMAGE = f"{TARGET.image_repository}@sha256:{'a' * 64}"
 VALID_COMMIT = "0123456789abcdef0123456789abcdef01234567"
+VERIFY_CREATED_REVISION = deploy.verify_created_revision
 SCOPE = (
     "www-fmind-dev",
     "--project",
@@ -28,6 +30,11 @@ SCOPE = (
     "--region",
     "europe-west1",
 )
+
+
+@pytest.fixture(autouse=True)
+def offline_verification(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(deploy, "verify_created_revision", lambda *_: None)
 
 
 class RecordingRunner:
@@ -51,7 +58,7 @@ class MissingExecutableRunner:
 
 
 def test_valid_release_restamps_commit_and_routes_traffic_to_the_new_revision() -> None:
-    assert build_deploy_commands((VALID_IMAGE, VALID_COMMIT), TARGET) == (
+    assert build_deploy_commands((VALID_IMAGE, VALID_COMMIT), TARGET, revision_suffix="manual-test") == (
         (
             "gcloud",
             "run",
@@ -61,9 +68,20 @@ def test_valid_release_restamps_commit_and_routes_traffic_to_the_new_revision() 
             "--image",
             VALID_IMAGE,
             f"--update-labels=commit-sha={VALID_COMMIT}",
+            "--revision-suffix=manual-test",
+            "--no-traffic",
+            "--tag=manual-candidate",
             "--quiet",
         ),
-        ("gcloud", "run", "services", "update-traffic", *SCOPE, "--to-latest", "--quiet"),
+        (
+            "gcloud",
+            "run",
+            "services",
+            "update-traffic",
+            *SCOPE,
+            "--to-revisions=www-fmind-dev-manual-test=100",
+            "--quiet",
+        ),
     )
 
 
@@ -128,6 +146,61 @@ def test_failed_traffic_promotion_is_reported() -> None:
 
     assert main((VALID_IMAGE, VALID_COMMIT), target=TARGET, runner=runner) == 7
     assert [command[3] for command in runner.commands] == ["update", "update-traffic"]
+
+
+def test_concurrent_revision_after_verification_never_receives_manual_traffic() -> None:
+    runner = RecordingRunner()
+    checked: list[str] = []
+
+    def verify(target: DeploymentTarget, image: str, commit: str, revision: str) -> None:
+        assert (target, image, commit) == (TARGET, VALID_IMAGE, VALID_COMMIT)
+        assert len(runner.commands) == 1
+        checked.append(revision)
+        # A concurrent deploy can now become latest; promotion must use the
+        # already verified name without another lookup of mutable service state.
+
+    assert main((VALID_IMAGE, VALID_COMMIT), target=TARGET, runner=runner, verifier=verify) == 0
+    assert f"--to-revisions={checked[0]}=100" in runner.commands[1]
+    assert "--to-latest" not in runner.commands[1]
+
+
+@pytest.mark.parametrize("replaced", [False, True])
+def test_manual_verifier_checks_expected_revision_before_probing(
+    monkeypatch: pytest.MonkeyPatch, replaced: bool
+) -> None:
+    expected = "www-fmind-dev-manual-test"
+    actual = "www-fmind-dev-concurrent" if replaced else expected
+    url = "https://manual-candidate---www-fmind-dev-example.run.app"
+    monkeypatch.setattr(verify_deployment, "describe_service", lambda _: {})
+    monkeypatch.setattr(verify_deployment, "verify_candidate", lambda *_args, **_kwargs: (actual, url))
+    probes: list[str] = []
+    monkeypatch.setattr(verify_deployment, "probe", lambda origin, **_: probes.append(origin))
+    if replaced:
+        with pytest.raises(ValueError, match="replaced"):
+            VERIFY_CREATED_REVISION(TARGET, VALID_IMAGE, VALID_COMMIT, expected)
+        assert not probes
+    else:
+        VERIFY_CREATED_REVISION(TARGET, VALID_IMAGE, VALID_COMMIT, expected)
+        assert probes == [url]
+
+
+def test_failed_candidate_verification_never_promotes_or_exposes_diagnostics(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    runner = RecordingRunner()
+
+    def fail(*_args: object) -> None:
+        raise ValueError("private provider diagnostics")
+
+    assert main((VALID_IMAGE, VALID_COMMIT), target=TARGET, runner=runner, verifier=fail) == 1
+    assert len(runner.commands) == 1
+    assert capsys.readouterr().err == "candidate verification failed: ValueError; traffic was not promoted\n"
+
+
+@pytest.mark.parametrize("suffix", ["bad,value", "UPPER", "a" * 64])
+def test_invalid_revision_suffix_fails_before_deployment(suffix: str) -> None:
+    with pytest.raises(ValueError, match="revision suffix"):
+        build_deploy_commands((VALID_IMAGE, VALID_COMMIT), TARGET, revision_suffix=suffix)
 
 
 def test_missing_gcloud_is_a_safe_nonzero_failure(capsys: pytest.CaptureFixture[str]) -> None:

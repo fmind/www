@@ -5,6 +5,7 @@ from urllib.parse import parse_qs, urlsplit
 
 import pytest
 
+from www.sites.agent import compare_hosting
 from www.sites.calculator import build_llm_self_hosting_view
 from www.sites.formatting import hosting_decision_title
 from www.sites.inputs import hosting_url
@@ -80,6 +81,33 @@ def test_partial_multi_host_pilot_cannot_qualify_the_configuration() -> None:
     assert not partial.estimate.topology_confirmed
     assert not partial.estimate.qualified
     assert "unproved" in partial.latency_title
+
+
+@pytest.mark.parametrize("model", ["qwen3-8-27b", "kimi-k3"])
+def test_mcp_comparisons_cannot_borrow_another_configuration_pilot(model: str) -> None:
+    parameters = {"model": model, "node": "a3-high", "quant": "fp4", "requests": "1"}
+    baseline = compare_hosting(parameters)
+    result = compare_hosting(
+        {
+            **parameters,
+            "confirm-pilot": baseline.pilot_configuration,
+            "measured-first": "1",
+            "measured-complete": "5",
+            "measured-concurrency": str(baseline.inputs.concurrency),
+        }
+    )
+    assert not result.validation
+    assert result.estimate.topology_confirmed
+    for row in result.model_comparisons:
+        if row.estimate.nodes_per_replica > 1:
+            assert row.estimate.topology_confirmed == (row.model.id == model)
+            if row.model.id != model:
+                assert not row.estimate.qualified
+    for precision in result.precision_comparisons:
+        if precision.estimate.nodes_per_replica > 1:
+            assert precision.estimate.topology_confirmed == (precision.quantization.id == "fp4")
+            if precision.quantization.id != "fp4":
+                assert not precision.estimate.qualified
 
 
 def test_task_profile_capacity_is_independent_from_top_level_demand() -> None:

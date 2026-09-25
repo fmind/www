@@ -36,6 +36,15 @@ run "website_cost_and_recovery_contract" {
 
   assert {
     condition = (
+      google_cloud_run_v2_service.web.template[0].containers[0].startup_probe[0].failure_threshold *
+      google_cloud_run_v2_service.web.template[0].containers[0].startup_probe[0].period_seconds >= 60 &&
+      google_cloud_run_v2_service.web.template[0].containers[0].startup_probe[0].http_get[0].path == "/health"
+    )
+    error_message = "Cold starts need at least a 60-second HTTP readiness budget without raising minimum instances."
+  }
+
+  assert {
+    condition = (
       google_cloud_run_v2_service.web.deletion_protection &&
       !google_bigquery_dataset.analytics.delete_contents_on_destroy &&
       google_logging_project_sink.analytics.deletion_policy == "PREVENT"

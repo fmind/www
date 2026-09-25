@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
 from html.parser import HTMLParser
 from xml.etree import ElementTree
@@ -160,10 +160,10 @@ def render_llms_txt(articles: Sequence[Article]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def render_llms_full(index: str, articles: Sequence[Article]) -> str:
+def render_llms_full(index: str, articles: Sequence[Article], markdown_by_slug: Mapping[str, str]) -> str:
     body = index + "\n## Full articles\n"
     for article in articles:
-        body += f"\n{render_article_markdown(article)}\n"
+        body += f"\n{markdown_by_slug[article.slug]}\n"
     return body
 
 

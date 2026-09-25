@@ -225,7 +225,7 @@ def create_app(
     feed = render_atom_feed(public_articles).encode()
     sitemap = render_sitemap(public_articles).encode()
     llms = render_llms_txt(public_articles)
-    llms_full = render_llms_full(llms, public_articles).encode()
+    llms_full = render_llms_full(llms, public_articles, markdown_by_slug).encode()
     llms_bytes = llms.encode()
     home_markdown = render_home_markdown(summaries)
     api_catalog = render_api_catalog()
@@ -515,7 +515,7 @@ def create_app(
         del path
         return render_not_found(request)
 
-    mcp_server = create_mcp_server(summaries, public_search, public_articles)
+    mcp_server = create_mcp_server(summaries, public_search, public_articles, markdown_by_slug)
     mcp_app = create_mcp_http_app(mcp_server)
     mcp_route = asgi("/mcp", is_mount=True, copy_scope=True)(mcp_app)
     tracer_provider = configure_telemetry()

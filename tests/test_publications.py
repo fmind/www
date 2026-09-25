@@ -83,7 +83,7 @@ def test_llms_and_article_markdown_surfaces_preserve_citation_metadata() -> None
         syndicated="https://medium.example/example",
     )
     index = render_llms_txt((item,))
-    full = render_llms_full(index, (item,))
+    full = render_llms_full(index, (item,), article_markdown_index((item,)))
     markdown = render_article_markdown(item)
 
     assert "## Machine-readable portfolio" in index

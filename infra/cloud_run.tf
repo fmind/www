@@ -60,9 +60,9 @@ resource "google_cloud_run_v2_service" "web" {
         initial_delay_seconds = 0
         timeout_seconds       = 3
         period_seconds        = 5
-        # Six constrained starts of the already-loaded production candidate
-        # reached /health in 5.7-11.1s. Allow 30s for platform variance.
-        failure_threshold = 6
+        # Production cold starts reached ~27s and one exhausted six probes.
+        # Keep scale-to-zero while allowing 60s for startup variance.
+        failure_threshold = 12
         http_get {
           path = "/health"
         }

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from importlib.metadata import version
 from typing import Annotated, Any, cast, override
 
@@ -47,7 +48,7 @@ from www.models import (
     Thesis,
     WorkExperience,
 )
-from www.publications import article_sections, render_article_markdown, render_profile_json
+from www.publications import article_sections, render_profile_json
 from www.search import SearchIndex, normalize_search_query
 from www.sites.agent import HostingResult, compare_hosting
 from www.tags import tag_names
@@ -164,7 +165,10 @@ def build_version() -> str:
 
 
 def create_mcp_server(
-    articles: tuple[ArticleSummary, ...], index: SearchIndex, publications: tuple[Article, ...]
+    articles: tuple[ArticleSummary, ...],
+    index: SearchIndex,
+    publications: tuple[Article, ...],
+    markdown_by_slug: Mapping[str, str],
 ) -> MCPServer[None]:
     """Build the immutable portfolio MCP server."""
     profile_json = render_profile_json(articles).decode()
@@ -172,7 +176,7 @@ def create_mcp_server(
         article.slug: ArticleResult(
             article=article.summary(),
             canonical_url=article.canonical_url(),
-            markdown=render_article_markdown(article),
+            markdown=markdown_by_slug[article.slug],
             sections=article_sections(article),
         )
         for article in publications

@@ -9,6 +9,7 @@ from math import ceil
 from .data import (
     API_BASELINES,
 )
+from .inputs import pilot_configuration_id
 from .models import (
     APIBaseline,
     APIMode,
@@ -61,7 +62,12 @@ def estimate_hosting(
             f"The request needs {inputs.input_tokens_request + inputs.output_tokens_request:,.0f} tokens, "
             f"above {model.name}'s {model.context_tokens:,}-token context limit"
         )
-    topology_confirmed = nodes_per_replica == 1 or (bool(inputs.pilot_config) and pilot_measurements_complete(inputs))
+    # Comparison rows may change the model or precision without changing the
+    # selected inputs. Pilot evidence belongs only to the actual configuration.
+    scenario = replace(inputs, model_id=model.id, node_pool_id=node.id, quantization_id=quantization.id)
+    topology_confirmed = nodes_per_replica == 1 or (
+        inputs.pilot_config == pilot_configuration_id(scenario) and pilot_measurements_complete(inputs)
+    )
     qualified = output_tokens <= capacity and not context_issue and topology_confirmed
     return HostingEstimate(
         weight_memory_gb=weight_memory,

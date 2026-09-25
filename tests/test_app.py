@@ -18,6 +18,7 @@ from opentelemetry.sdk.trace import TracerProvider
 from PIL import Image
 
 import www.app as app_module
+import www.publications as publications_module
 from www.app import app, create_app
 from www.assets import ApplicationAssets, load_application_assets
 from www.config import Config, Environment
@@ -53,6 +54,52 @@ def client() -> Iterator[AppClient]:
 @pytest.fixture(scope="module")
 def snapshots() -> tuple[ApplicationAssets, ArticleCollection]:
     return load_application_assets(), load_articles()
+
+
+def test_startup_renders_article_markdown_once_for_all_public_consumers(
+    snapshots: tuple[ApplicationAssets, ArticleCollection], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    assets, collection = snapshots
+    rendered: list[str] = []
+    original = publications_module.render_article_markdown
+
+    def render(article):
+        rendered.append(article.slug)
+        return original(article)
+
+    monkeypatch.setattr(publications_module, "render_article_markdown", render)
+    with TestClient(create_app(assets=assets, collection=collection)) as client:
+        article = next(item for item in collection.all if not item.draft)
+        markdown = client.get(article.markdown_path()).text
+        assert markdown in client.get("/llms-full.txt").text
+        result = client.post(
+            "/mcp",
+            headers={"accept": "application/json, text/event-stream"},
+            json={
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "tools/call",
+                "params": {
+                    "name": "get_article",
+                    "arguments": {"slug": article.slug},
+                },
+            },
+        ).json()
+        assert result["result"]["structuredContent"]["markdown"] == markdown
+    assert sorted(rendered) == sorted(item.slug for item in collection.all)
+
+
+@pytest.mark.parametrize("method", ["GET", "HEAD"])
+@pytest.mark.parametrize("weak", [True, False])
+def test_stylesheet_revalidation_accepts_weak_and_strong_etags(client: AppClient, method: str, weak: bool) -> None:
+    first = client.get("/styles.css")
+    etag = first.headers["etag"]
+    validator = etag if weak else etag.removeprefix("W/")
+    response = client.request(method, "/styles.css", headers={"if-none-match": f'"stale", {validator}'})
+    assert response.status_code == 304
+    assert response.content == b""
+    assert response.headers["etag"] == etag
+    assert client.get("/styles.css", headers={"if-none-match": 'W/"stale"'}).status_code == 200
 
 
 def test_human_pages_render_complete_no_cache_documents(client: AppClient) -> None:

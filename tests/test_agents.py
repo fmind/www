@@ -18,6 +18,7 @@ from www.agent_discovery import AGENT_SKILL_PATH, prefers_markdown
 from www.app import create_app
 from www.content import article_summaries, load_articles, visible_articles
 from www.mcp import create_mcp_server
+from www.publications import article_markdown_index
 from www.search import SearchIndex
 from www.sites.agent import compare_hosting
 from www.sites.calculator import build_llm_self_hosting_view
@@ -199,7 +200,9 @@ def test_mcp_search_read_cite_workflow_over_http(client: TestClient[Any]) -> Non
 async def test_mcp_article_reader_never_exposes_drafts() -> None:
     public = visible_articles(load_articles().all)
     draft = replace(public[0], slug="private-draft", draft=True, markdown="private text")
-    server = create_mcp_server(article_summaries(public), SearchIndex(public), (*public, draft))
+    server = create_mcp_server(
+        article_summaries(public), SearchIndex(public), (*public, draft), article_markdown_index(public)
+    )
     with pytest.raises(ToolError, match="Article not found"):
         await server.call_tool("get_article", {"slug": draft.slug})
     result = await server.call_tool("get_article", {"slug": public[0].slug})

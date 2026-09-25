@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import re
+import secrets
 import subprocess
 import sys
 from collections.abc import Callable, Mapping, Sequence
@@ -16,6 +17,7 @@ _CONFIG_NAMES = ("REGION", "PROJECT_ID", "REPOSITORY", "SERVICE_NAME")
 # The CI deploy action labels revisions `commit-sha=<GITHUB_SHA>`; release
 # verification reads the same label, so a manual rollout must restamp it.
 COMMIT_LABEL = "commit-sha"
+MANUAL_TAG = "manual-candidate"
 _USAGE = "usage: mise run deploy <digest-ref> <commit-sha>\n"
 
 
@@ -50,6 +52,7 @@ class DeploymentTarget:
 
 
 type Runner = Callable[[Sequence[str]], int]
+type Verifier = Callable[[DeploymentTarget, str, str, str], None]
 
 
 def run_command(arguments: Sequence[str]) -> int:
@@ -72,19 +75,22 @@ def validate_commit(commit: str) -> str:
     return commit
 
 
-def build_deploy_commands(arguments: Sequence[str], target: DeploymentTarget) -> tuple[tuple[str, ...], ...]:
+def build_deploy_commands(
+    arguments: Sequence[str], target: DeploymentTarget, *, revision_suffix: str
+) -> tuple[tuple[str, ...], ...]:
     """Validate one digest and its commit, then return the fixed gcloud argv sequence.
 
-    The first command creates a revision with the qualified image and restamps
-    the commit label that release verification reads. CI pins traffic to its
-    verified revision, so a new revision would otherwise receive no traffic;
-    the second command routes all traffic to the revision just created.
+    Create a uniquely named no-traffic candidate, then promote only that name.
+    The caller must verify the candidate between these two commands.
     """
     if len(arguments) != 2:
         raise DeploymentUsageError("exactly one image reference and one commit SHA are required")
 
     image_reference = validate_image_reference(arguments[0], target)
     commit = validate_commit(arguments[1])
+    revision = f"{target.service_name}-{revision_suffix}"
+    if not _CONFIG_VALUE.fullmatch(revision_suffix) or len(revision) > 63:
+        raise DeploymentUsageError("revision suffix must produce a valid revision name of at most 63 characters")
     scope = (
         target.service_name,
         "--project",
@@ -104,10 +110,25 @@ def build_deploy_commands(arguments: Sequence[str], target: DeploymentTarget) ->
             "--image",
             image_reference,
             f"--update-labels={COMMIT_LABEL}={commit}",
+            f"--revision-suffix={revision_suffix}",
+            "--no-traffic",
+            f"--tag={MANUAL_TAG}",
             "--quiet",
         ),
-        ("gcloud", "run", "services", "update-traffic", *scope, "--to-latest", "--quiet"),
+        ("gcloud", "run", "services", "update-traffic", *scope, f"--to-revisions={revision}=100", "--quiet"),
     )
+
+
+def verify_created_revision(target: DeploymentTarget, image: str, commit: str, expected_revision: str) -> None:
+    """Reuse CI acceptance without a module-level cycle with its argument types."""
+    from scripts.verify_deployment import describe_service, probe, verify_candidate
+
+    revision, url = verify_candidate(
+        describe_service(target), image, commit, tag=MANUAL_TAG, service_name=target.service_name
+    )
+    if revision != expected_revision:
+        raise DeploymentUsageError("manual candidate was replaced by another deployment; traffic was not promoted")
+    probe(url, timeout=65)
 
 
 def main(
@@ -115,24 +136,38 @@ def main(
     *,
     target: DeploymentTarget | None = None,
     runner: Runner | None = None,
+    verifier: Verifier | None = None,
 ) -> int:
     """Validate first, then run each gcloud step, stopping at the first failure."""
     try:
         deployment_target = target or DeploymentTarget.from_environment()
-        commands = build_deploy_commands(sys.argv[1:] if arguments is None else arguments, deployment_target)
+        release_arguments = tuple(sys.argv[1:] if arguments is None else arguments)
+        suffix = f"manual-{secrets.token_hex(6)}"
+        commands = build_deploy_commands(release_arguments, deployment_target, revision_suffix=suffix)
     except DeploymentUsageError as error:
         sys.stderr.write(f"{_USAGE}deploy: {error}\n")
         return 2
 
     execute = runner or run_command
     try:
-        for command in commands:
-            if returncode := execute(command):
-                return returncode
+        if returncode := execute(commands[0]):
+            return returncode
+        try:
+            (verifier or verify_created_revision)(
+                deployment_target,
+                release_arguments[0],
+                release_arguments[1],
+                f"{deployment_target.service_name}-{suffix}",
+            )
+        except Exception as error:
+            # Provider/HTTP diagnostics may contain private data. Fail closed
+            # and report the cause's type without reflecting its unsafe text.
+            sys.stderr.write(f"candidate verification failed: {type(error).__name__}; traffic was not promoted\n")
+            return 1
+        return execute(commands[1])
     except FileNotFoundError:
         sys.stderr.write("deployment failed: gcloud is not installed or executable\n")
         return 127
-    return 0
 
 
 if __name__ == "__main__":

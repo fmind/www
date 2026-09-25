@@ -11,14 +11,16 @@ from mcp_types import CallToolResult, InputRequiredResult, TextContent
 
 from www.content import article_summaries, load_articles, visible_articles
 from www.mcp import create_mcp_server, render_mcp_server_card
-from www.publications import render_profile_json
+from www.publications import article_markdown_index, render_profile_json
 from www.search import SearchIndex
 
 
 @pytest.fixture(scope="module")
 def mcp_server() -> MCPServer[None]:
     articles = visible_articles(load_articles().all)
-    return create_mcp_server(article_summaries(articles), SearchIndex(articles), articles)
+    return create_mcp_server(
+        article_summaries(articles), SearchIndex(articles), articles, article_markdown_index(articles)
+    )
 
 
 @pytest.mark.anyio
