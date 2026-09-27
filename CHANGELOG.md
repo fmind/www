@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file.
 
+## [2.2.3] - 2026-09-27
+
+### 🐛 Bug Fixes
+
+- _(agents)_ Clarify article reading fallbacks and bulk exports
+
 ## [2.2.2] - 2026-09-25
 
 ### 🐛 Bug Fixes
