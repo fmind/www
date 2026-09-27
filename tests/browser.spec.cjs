@@ -342,9 +342,18 @@ test("homepage presents the headline, six skills, and responsive social links", 
     items.map((item) => getComputedStyle(item).backgroundColor)
   );
   expect(backgrounds).toEqual([white, gray, white, gray, white]);
-  await expect(page.locator("#services .card").first()).toHaveCSS("background-color", white);
-  await expect(page.locator("#work-experience .card-side").first()).toHaveCSS("background-color", gray);
-  await expect(page.locator("#projects .card").first()).toHaveCSS("background-color", gray);
+  for (
+    const [selector, color] of [
+      ["#services .card", white],
+      ["#work-experience .card-side", gray],
+      ["#projects .card", gray],
+    ]
+  ) {
+    const card = page.locator(selector).first();
+    // content-visibility defers off-screen rendering, including color transitions.
+    await card.scrollIntoViewIfNeeded();
+    await expect(card).toHaveCSS("background-color", color);
+  }
   const project = page.getByRole("link", { name: "Send Email", exact: true }).first();
   await expect(project).toHaveAttribute("href", "mailto:contact@fmind.dev");
   const mentoring = page.getByRole("link", { name: "Book Mentoring", exact: true }).first();
