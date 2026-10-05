@@ -29,16 +29,14 @@ async def static_asset_response(
     # and files added after startup must not become public accidentally.
     path = (static_root / relative_path).resolve() if digest is not None else None
     if path is None or not path.is_relative_to(static_root) or not path.is_file():
-        response = Response(
-            b"404 page not found\n",
-            headers={"cache-control": "no-cache", "content-type": "text/plain; charset=utf-8"},
-            status_code=404,
-        )
-        return response.to_asgi_response(
-            app=None,
-            request=request,
-            is_head_response=request.method == HttpMethod.HEAD,
-        )
+        body = b"404 page not found\n"
+        is_head = request.method == HttpMethod.HEAD
+        headers = {"cache-control": "no-cache", "content-type": "text/plain; charset=utf-8"}
+        if is_head:
+            # Litestar rejects content on HEAD responses; keep GET's length without the body.
+            headers["content-length"] = str(len(body))
+        response = Response(b"" if is_head else body, headers=headers, status_code=404)
+        return response.to_asgi_response(app=None, request=request, is_head_response=is_head)
 
     # The startup snapshot hashes every regular asset, so the ETag also
     # provides the strong validator required for a safe If-Range response.

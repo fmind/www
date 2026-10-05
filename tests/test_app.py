@@ -611,10 +611,15 @@ def test_static_validators_and_ranges_identify_the_same_bytes(client: AppClient,
 )
 def test_static_unknown_and_noncanonical_paths_are_not_found(client: AppClient, path: str) -> None:
     response = client.get(path)
+    # HEAD previously raised inside Litestar and answered 500 in production.
+    head = client.head(path)
 
-    assert response.status_code == 404
-    assert response.headers["cache-control"] == "no-cache"
-    assert response.headers["x-content-type-options"] == "nosniff"
+    for answer in (response, head):
+        assert answer.status_code == 404
+        assert answer.headers["cache-control"] == "no-cache"
+        assert answer.headers["x-content-type-options"] == "nosniff"
+    assert head.content == b""
+    assert head.headers["content-length"] == response.headers["content-length"] == str(len(response.content))
 
 
 def test_font_preloads_share_the_unversioned_font_face_cache_keys(client: AppClient) -> None:
