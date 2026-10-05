@@ -14,6 +14,7 @@ The flat `infra/` root owns Cloud Run, Artifact Registry, keyless CI identities,
 1. Run `mise run format`, `mise run check`, and `mise run check:tofu`. The last task uses a separate backend-free data directory and mocked plan tests; it needs provider downloads but no cloud credentials.
 1. For an authorized live review, verify the account and pin project `www-fmind-dev`, region `europe-west1`, and quota project. Do not start interactive login if existing credentials work.
 1. Initialize OpenTofu, save a plan in an OS temporary directory, and inspect every action. Provider upgrades require a no-op or fully explained live plan. Stop on unexpected replacement, deletion, IAM expansion, or added spend.
+1. A service-template change after a CI deploy fails with `409 Revision named ... with different configuration already exists`: OpenTofu resends the ignored CI revision name. Plan once with `template[0].revision` removed from `ignore_changes` (the plan must show only the intended change and `revision -> null`), apply that saved plan, restore the file and confirm a clean plan.
 1. Apply only the reviewed saved plan within existing owner authorization. Read back state, readiness, traffic, scaling, IAM, and relevant logs; an accepted apply alone does not prove application delivery.
 
 ```bash
