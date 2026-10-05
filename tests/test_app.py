@@ -23,7 +23,7 @@ from www.app import app, create_app
 from www.assets import ApplicationAssets, load_application_assets
 from www.config import Config, Environment
 from www.content import ArticleCollection, article_summaries, load_articles, visible_articles
-from www.data import METADATA, OPEN_SOURCE, SITE_PAGES
+from www.data import METADATA, OPEN_SOURCE, SAME_AS_PROFILES, SITE_PAGES
 from www.rendering import Renderer
 
 type AppClient = TestClient[Any]
@@ -389,8 +389,13 @@ def test_public_social_profiles_match_the_selected_channels(client: AppClient) -
     html = client.get("/").text
     graph = json.loads(html.split('<script type="application/ld+json">', 1)[1].split("</script>", 1)[0])
     person = next(item for item in graph["@graph"] if item["@type"] == "Person")
-    assert set(person["sameAs"]) == {item["url"] for item in profile["metadata"]["socials"]}
+    channels = {item["url"] for item in profile["metadata"]["socials"]}
+    assert set(person["sameAs"]) == channels | set(SAME_AS_PROFILES)
+    assert len(person["sameAs"]) == len(set(person["sameAs"]))
+    assert not channels & set(SAME_AS_PROFILES)
     card = client.get("/connect.vcf").text.replace("\r\n ", "")
+    head, _, tail = html.partition('<script type="application/ld+json">')
+    visible = head + tail.partition("</script>")[2]
     for removed in (
         "bsky.app",
         "huggingface.co/fmind",
@@ -398,7 +403,7 @@ def test_public_social_profiles_match_the_selected_channels(client: AppClient) -
         "fmind.medium.com",
     ):
         assert removed not in card
-        assert removed not in html
+        assert removed not in visible
 
 
 def test_expertise_is_consistent_for_people_search_and_agents(client: AppClient) -> None:

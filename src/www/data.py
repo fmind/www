@@ -71,6 +71,20 @@ METADATA = Metadata(
     ),
 )
 
+# Profiles that identify the same person for search and AI answers (schema.org sameAs) without joining the
+# visible header, footer or contact-card channels, which stay the curated `METADATA.socials` selection.
+# Add a profile only once it is live and shows this identity; ORCID joins once it lists works.
+SAME_AS_PROFILES = (
+    "https://bsky.app/profile/fmind-dev.bsky.social",
+    "https://dev.to/fmind",
+    "https://hackernoon.com/u/fmind",
+    "https://news.ycombinator.com/user?id=fmind-dev",
+    "https://huggingface.co/fmind",
+    "https://pypi.org/user/fmind/",
+    "https://www.credly.com/users/fmind",
+    "https://luma.com/user/fmind",
+)
+
 BIOGRAPHY = (
     f"I am a **freelance AI Architect based in {METADATA.work_location}**. I help teams design and deploy **AI agents**, **MLOps platforms**, and **secure cloud infrastructure**, from architecture decisions to production operations. My background includes a **PhD in AI and Computer Security** and certification as a **Google Cloud Professional Cloud Architect**.",
     "My work includes enterprise agent platforms at **Decathlon**, fraud detection for the **European Commission**, and Android malware research with **Google**. I have also worked on AI, data, and security projects for BNP Paribas, ArcelorMittal, SFEIR, Clearstream, and the University of Luxembourg.",
@@ -459,7 +473,7 @@ def _identity_graph() -> list[dict[str, object]]:
             {"@type": "Organization", "name": "Agentic AI Foundation"},
             {"@type": "Organization", "name": "33N Ventures", "sameAs": "https://33n.vc/"},
         ],
-        "sameAs": [social.url for social in METADATA.socials],
+        "sameAs": [*(social.url for social in METADATA.socials), *SAME_AS_PROFILES],
     }
     website = {
         "@id": website_id,
