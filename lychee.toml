@@ -13,9 +13,12 @@ user_agent = "Mozilla/5.0 (compatible; lychee link-checker; +https://www.fmind.d
 # The site's own apex/www origin is validated by the live deployment, not from
 # CI (it isn't reachable before deploy). A few authoritative/authenticated sites
 # reject or time out automated HEAD clients while remaining browser-accessible.
+# Google Cloud docs redirect GitHub-hosted runners to google.com/sorry (abuse
+# check), so every cloud.google.com link fails in CI while passing locally.
 exclude = [
   "^https?://(www\\.)?fmind\\.dev",
   "^https://api\\.openai\\.com/",
+  "^https://cloud\\.google\\.com/",
   "^https://docs\\.google\\.com/",
   "^https://docs\\.zenml\\.io/",
   "^https://unsplash\\.com/",
