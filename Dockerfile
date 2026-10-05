@@ -30,6 +30,11 @@ ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 WORKDIR /app
+# Debian security fixes can lag the pinned base image by weeks (OpenSSL and
+# PCRE2 on 2026-10-05); apply them so the scanned, deployed digest carries them.
+RUN apt-get update \
+  && apt-get upgrade --yes --no-install-recommends \
+  && rm -rf /var/lib/apt/lists/*
 # Runtime images install only the locked application environment; retaining pip
 # adds an unused package installer and its vendored dependency attack surface.
 RUN python -m pip uninstall --yes --root-user-action=ignore pip \
