@@ -16,10 +16,13 @@ resource "google_cloud_run_v2_service" "web" {
   template {
     service_account = google_service_account.cloudrun_sa.email
 
-    # One CPU sustains near-identical Python throughput at eight rather than 80
-    # concurrent renders, with much lower tail latency. Keep the bounded
-    # concurrency even though memory has independent headroom below.
-    max_instance_request_concurrency = 8
+    # At eight, one page view's parallel image requests or a scanner burst
+    # exceeded an instance during its 20-35s cold start, and Cloud Run aborted
+    # requests with "no available instance" (September 2026, also at the
+    # five-instance cap). Thirty-two absorbs a burst on one instance: locally,
+    # throughput held while p99 article latency grew from 31ms to 124ms and
+    # memory stayed near 210 MiB, and CPU-based autoscaling still adds instances.
+    max_instance_request_concurrency = 32
 
     # No request legitimately runs long, so cap Cloud Run's request timeout well
     # below the 300s default to fail fast at the platform boundary.
