@@ -67,14 +67,27 @@ def _inline_destination_edit(
     return _Edit(position, parsed.pos, target)
 
 
-def _rewrite_inline(segment: str, env: dict[str, object], rewrite: LinkRewriter) -> list[_Edit]:
-    markdown = _parser()
-    edits: list[_Edit] = []
+class _InlineRewriter:
+    """One instrumented inline parser per document, reused for each inline segment.
 
-    def track(
-        rule: Callable[[StateInline, bool], bool], marker: str, token_type: str, attribute: str
+    Building a parser costs more than parsing a short segment, and articles hold
+    thousands of segments that are rewritten at startup. Edits and the current
+    segment reset per parse, so segments of one document never share state.
+    """
+
+    def __init__(self, rewrite: LinkRewriter) -> None:
+        self._rewrite = rewrite
+        self._segment = ""
+        self._edits: list[_Edit] = []
+        self._markdown = _parser()
+        self._markdown.inline.ruler.at("link", self._track(link_rule, "[", "link_open", "href"))
+        self._markdown.inline.ruler.at("image", self._track(image_rule, "![", "image", "src"))
+
+    def _track(
+        self, rule: Callable[[StateInline, bool], bool], marker: str, token_type: str, attribute: str
     ) -> Callable[[StateInline, bool], bool]:
         def tracked(state: StateInline, silent: bool) -> bool:
+            segment = self._segment
             old_position = state.pos
             # parseLinkLabel requires `[`: probing arbitrary punctuation spends
             # the parser's nesting budget before later links are reached.
@@ -93,24 +106,24 @@ def _rewrite_inline(segment: str, env: dict[str, object], rewrite: LinkRewriter)
             if token is None:
                 return matched
             source = _string_attr(token, attribute)
-            target = rewrite(source)
+            target = self._rewrite(source)
             if target == source:
                 return matched
             if label_end >= 0 and label_end + 1 < len(segment) and segment[label_end + 1] == "(":
                 edit = _inline_destination_edit(state, label_end, target)
                 if edit is not None:
-                    edits.append(edit)
+                    self._edits.append(edit)
             else:
-                edits.append(_Edit(label_end, state.pos, _reference_suffix(target, _string_attr(token, "title"))))
+                self._edits.append(_Edit(label_end, state.pos, _reference_suffix(target, _string_attr(token, "title"))))
             return matched
 
         return tracked
 
-    markdown.inline.ruler.at("link", track(link_rule, "[", "link_open", "href"))
-    markdown.inline.ruler.at("image", track(image_rule, "![", "image", "src"))
-    tokens: list[Token] = []
-    markdown.inline.parse(segment, markdown, env, tokens)
-    return edits
+    def edits(self, segment: str, env: dict[str, object]) -> list[_Edit]:
+        self._segment, self._edits = segment, []
+        tokens: list[Token] = []
+        self._markdown.inline.parse(segment, self._markdown, env, tokens)
+        return self._edits
 
 
 def rewrite_markdown_links(text: str, rewrite: LinkRewriter) -> str:
@@ -121,6 +134,7 @@ def rewrite_markdown_links(text: str, rewrite: LinkRewriter) -> str:
     tokens = _parser().parse(text, env)
     offsets = [0, *(index + 1 for index, character in enumerate(text) if character == "\n"), len(text)]
 
+    inline = _InlineRewriter(rewrite)
     edits: list[_Edit] = []
     for token in tokens:
         if token.type != "inline" or token.map is None:
@@ -129,8 +143,7 @@ def rewrite_markdown_links(text: str, rewrite: LinkRewriter) -> str:
         # lets an unmatched backtick hide real links in a later paragraph.
         start, end = (offsets[line] for line in token.map)
         edits.extend(
-            _Edit(start + edit.start, start + edit.end, edit.replacement)
-            for edit in _rewrite_inline(text[start:end], env, rewrite)
+            _Edit(start + edit.start, start + edit.end, edit.replacement) for edit in inline.edits(text[start:end], env)
         )
 
     for edit in sorted(edits, key=lambda item: item.start, reverse=True):
