@@ -359,7 +359,7 @@ test("homepage presents the headline, six skills, and responsive social links", 
   const mentoring = page.getByRole("link", { name: "Book Mentoring", exact: true }).first();
   await expect(page.getByText("Mentoring is a paid, one-hour session.", { exact: true })).toHaveCount(0);
   await expect(mentoring).not.toHaveAttribute("aria-describedby");
-  await expect(mentoring).toHaveAttribute("href", /^https:\/\/calendar.google.com\//);
+  await expect(mentoring).toHaveAttribute("href", /^https:\/\/calendar\.google\.com\//);
   await expect(page.locator("#services")).toContainText("Not available for new missions");
   const headline = page.locator("[data-hero-headline]");
   await expect(headline.locator(":scope > span")).toHaveText([
@@ -908,7 +908,7 @@ test("section links, privacy, and browser-only presentation", async ({ page }) =
   );
   await expect(page.locator("#services").getByRole("link", { name: "Book Mentoring", exact: true })).toHaveAttribute(
     "href",
-    /^https:\/\/calendar.google.com\//,
+    /^https:\/\/calendar\.google\.com\//,
   );
   const credentials = page.locator("[data-hero-headline] > span").nth(1);
   await expect(credentials.locator("span").first()).toHaveText("PhD • VC Expert Advisor");
