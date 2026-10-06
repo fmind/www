@@ -43,7 +43,7 @@
     <meta name="twitter:image" content="{{ page.image_url }}"/>
     <meta name="twitter:image:alt" content="{{ page.image_alt }}"/>
     <link rel="preload" href="/static/fonts/GoogleSans-Variable.woff2" crossorigin="anonymous" as="font" type="font/woff2"/>
-    {% if page.article %}
+    {% if page.preload_code_font %}
       <link rel="preload" href="/static/fonts/GoogleSansCode-Variable.woff2" crossorigin="anonymous" as="font" type="font/woff2"/>
     {% endif %}
     {% if page.preload_image %}

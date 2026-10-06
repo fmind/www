@@ -635,11 +635,14 @@ def test_font_preloads_share_the_unversioned_font_face_cache_keys(client: AppCli
         assert f'href="{path}?v=' not in response.text
 
 
-@pytest.mark.parametrize("path", ["/", "/connect", "/scan", "/articles/", "/sites/"])
-def test_non_article_pages_do_not_preload_the_code_font(client: AppClient, path: str) -> None:
+@pytest.mark.parametrize(
+    ("path", "code_font"),
+    [("/", False), ("/connect", False), ("/articles/", False), ("/sites/", False), ("/scan", True), ("/agents", True)],
+)
+def test_only_pages_with_monospace_text_preload_the_code_font(client: AppClient, path: str, code_font: bool) -> None:
     response = client.get(path)
     assert '<link rel="preload" href="/static/fonts/GoogleSans-Variable.woff2"' in response.text
-    assert '<link rel="preload" href="/static/fonts/GoogleSansCode-Variable.woff2"' not in response.text
+    assert ('<link rel="preload" href="/static/fonts/GoogleSansCode-Variable.woff2"' in response.text) is code_font
 
 
 @pytest.mark.parametrize("path", FONT_PATHS)

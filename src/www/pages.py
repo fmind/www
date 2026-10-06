@@ -24,7 +24,15 @@ def home_metadata(structured_data: str) -> PageMetadata:
     )
 
 
-def _web_page(page_type: str, *, title: str, description: str, canonical: str, no_index: bool = False) -> PageMetadata:
+def _web_page(
+    page_type: str,
+    *,
+    title: str,
+    description: str,
+    canonical: str,
+    no_index: bool = False,
+    preload_code_font: bool = False,
+) -> PageMetadata:
     """Metadata for a hosted page whose JSON-LD describes that page, not the profile."""
     return PageMetadata(
         title=title,
@@ -35,6 +43,7 @@ def _web_page(page_type: str, *, title: str, description: str, canonical: str, n
         kind="website",
         structured_data=get_page_structured_data(page_type, canonical, title, description),
         no_index=no_index,
+        preload_code_font=preload_code_font,
     )
 
 
@@ -53,6 +62,7 @@ def agents_metadata() -> PageMetadata:
         title="For AI agents | Médéric Hurier (Fmind)",
         description="Explore Médéric Hurier (Fmind)'s profile, services, articles, and decision tools through free, read-only APIs and MCP.",
         canonical=f"{METADATA.site_url}/agents",
+        preload_code_font=True,
     )
 
 
@@ -72,6 +82,7 @@ def scan_metadata() -> PageMetadata:
         description="Scan the QR code to connect with Médéric Hurier on LinkedIn or save his contact details.",
         canonical=f"{METADATA.site_url}/scan",
         no_index=True,
+        preload_code_font=True,
     )
 
 
@@ -118,6 +129,7 @@ def article_metadata(article: Article, structured_data: str) -> PageMetadata:
         preload_image=article.image_path(),
         preload_image_srcset=article.cover_srcset,
         preload_image_sizes=article.cover_sizes,
+        preload_code_font=True,
         no_index=article.draft,
     )
 

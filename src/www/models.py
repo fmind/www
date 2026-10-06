@@ -234,6 +234,8 @@ class PageMetadata:
     preload_image: str = ""
     preload_image_srcset: str = ""
     preload_image_sizes: str = ""
+    # Pages that render monospace text above the fold; `font-display: optional` drops a late face.
+    preload_code_font: bool = False
     no_index: bool = False
     is_home: bool = False
     instant_scroll: bool = False
