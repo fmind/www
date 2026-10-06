@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 from PIL import Image, ImageCms
 
-from scripts.build_portrait import STATIC, export_portrait
+from scripts.build_portrait import MAX_SIDE, STATIC, export_portrait
 
 
 def test_export_drops_personal_metadata_and_preserves_orientation_and_profile(tmp_path: Path) -> None:
@@ -30,6 +30,19 @@ def test_export_drops_personal_metadata_and_preserves_orientation_and_profile(tm
     first = output.read_bytes()
     export_portrait(master, output)
     assert output.read_bytes() == first
+
+
+def test_export_bounds_the_longest_side_without_upscaling(tmp_path: Path) -> None:
+    master = tmp_path / "master.jpg"
+    Image.new("RGB", (MAX_SIDE * 2, MAX_SIDE), "blue").save(master)
+    export_portrait(master, tmp_path / "large.jpg")
+    with Image.open(tmp_path / "large.jpg") as result:
+        assert result.size == (MAX_SIDE, MAX_SIDE // 2)
+
+    Image.new("RGB", (40, 20), "blue").save(master)
+    export_portrait(master, tmp_path / "small.jpg")
+    with Image.open(tmp_path / "small.jpg") as result:
+        assert result.size == (40, 20)
 
 
 def test_export_rejects_a_public_master(tmp_path: Path) -> None:

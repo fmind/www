@@ -6,6 +6,8 @@ from pathlib import Path
 from PIL import Image, ImageOps
 
 STATIC = Path(__file__).resolve().parent.parent / "static"
+# 2048px covers retina and press use; the 3771px master exported to a 3 MB download.
+MAX_SIDE = 2048
 
 
 def export_portrait(source: Path, destination: Path) -> None:
@@ -18,8 +20,9 @@ def export_portrait(source: Path, destination: Path) -> None:
                 raise ValueError("portrait master must be a JPEG image")
             profile = original.info.get("icc_profile")
             portrait = ImageOps.exif_transpose(original).convert("RGB")
+            portrait.thumbnail((MAX_SIDE, MAX_SIDE), Image.Resampling.LANCZOS)
             portrait.info.clear()
-            portrait.save(destination, "JPEG", quality=95, optimize=True, progressive=True, icc_profile=profile)
+            portrait.save(destination, "JPEG", quality=90, optimize=True, progressive=True, icc_profile=profile)
     except OSError as error:
         raise RuntimeError("cannot export portrait: check the JPEG master and destination permissions") from error
 
