@@ -122,7 +122,7 @@ depends = ["build:image"]
 run = 'env -u TRIVY_CONFIG trivy image --input "$IMAGE_ARCHIVE" --platform linux/amd64 --exit-code=1 --severity HIGH,CRITICAL --ignore-unfixed --scanners vuln,secret'
 
 [tasks."check:image:deployed"]
-description = "Resolve and scan every serving Cloud Run revision with Trivy"
+description = "Resolve and scan every serving or tagged Cloud Run revision with Trivy"
 run = "python -m scripts.scan_deployed"
 
 [tasks."check:image:digest"]

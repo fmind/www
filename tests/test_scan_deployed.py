@@ -109,6 +109,13 @@ def test_extract_serving_revisions_handles_various_formats_and_filters_zero_perc
     data_list = [{"percent": 100, "revisionName": "rev-d"}]
     assert extract_serving_revisions(data_list) == ["rev-d"]
 
+    # A failed candidate keeps its public tag URL at 0% traffic, so it stays in scope.
+    data_tagged = [
+        {"percent": 100, "revisionName": "rev-d"},
+        {"percent": 0, "revisionName": "rev-f", "tag": "candidate"},
+    ]
+    assert extract_serving_revisions(data_tagged) == ["rev-d", "rev-f"]
+
     with pytest.raises(ScanError, match="no serving revision"):
         extract_serving_revisions({"status": {"traffic": [{"percent": 0, "revisionName": "rev-idle"}]}})
 

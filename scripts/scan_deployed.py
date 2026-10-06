@@ -64,7 +64,7 @@ def resolve_target(environment: Mapping[str, str] = os.environ) -> DeploymentTar
 
 
 def extract_serving_revisions(service_data: object) -> list[str]:
-    """Extract sorted, unique revision names receiving traffic greater than 0%."""
+    """Extract sorted, unique revision names receiving traffic or reachable through a public tag URL."""
     traffic_items: object = None
     if isinstance(service_data, dict):
         status = service_data.get("status")
@@ -82,7 +82,8 @@ def extract_serving_revisions(service_data: object) -> list[str]:
         percent = item.get("percent", 0)
         if type(percent) is not int or not 0 <= percent <= 100:
             raise ScanError("invalid traffic percentage in service description")
-        if percent > 0:
+        # A tagged revision stays public on its tag URL even at 0%, such as a failed candidate.
+        if percent > 0 or item.get("tag"):
             name = item.get("revisionName")
             if not isinstance(name, str) or not name:
                 raise ScanError("serving traffic entry has no revision name")
