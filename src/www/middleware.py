@@ -233,7 +233,8 @@ class SiteMiddleware:
                 log_values.update(trace_fields())
                 self.logger.info("http request processed", **log_values)
 
-            if content_type.startswith("text/html") and not 300 <= status < 400:
+            # HEAD probes (link checkers, unfurlers) fetch no page, so they are not pageviews.
+            if scope.get("method") == "GET" and content_type.startswith("text/html") and not 300 <= status < 400:
                 query = parse_qs(scope.get("query_string", b"").decode("utf-8", "replace"), keep_blank_values=True)
 
                 def first(name: str) -> str:

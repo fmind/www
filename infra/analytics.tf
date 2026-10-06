@@ -1,5 +1,5 @@
 # Privacy-preserving pageview analytics. The application emits one structured
-# record per HTML response; this sink routes only those records to BigQuery.
+# record per HTML GET response; this sink routes only those records to BigQuery.
 
 locals {
   analytics_event = "analytics_pageview"

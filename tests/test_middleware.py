@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Any, cast
 
 import pytest
-from litestar import Litestar, Request, get
+from litestar import HttpMethod, Litestar, Request, route
 from litestar.middleware import DefineMiddleware
 from litestar.response import Response
 from litestar.testing import TestClient
@@ -39,7 +39,7 @@ class RecordingLogger:
 def client(environment: Environment = Environment.DEVELOPMENT) -> tuple[TestClient[Any], RecordingLogger]:
     logger = RecordingLogger()
 
-    @get("/", sync_to_thread=False)
+    @route("/", http_method=[HttpMethod.GET, HttpMethod.HEAD], sync_to_thread=False)
     def home(request: Request[Any, Any, Any]) -> Response[str]:
         nonce = request.scope["state"]["csp_nonce"]
         return Response(f'<html><script nonce="{nonce}"></script></html>', media_type="text/html")
@@ -78,6 +78,14 @@ def test_production_apex_redirect_keeps_query_and_security_headers() -> None:
     assert response.headers["strict-transport-security"].startswith("max-age=63072000")
     assert response.headers["vary"] == "Accept-Encoding"
     assert logger.records == []
+
+
+def test_head_requests_are_not_pageviews() -> None:
+    test_client, logger = client()
+    with test_client:
+        assert test_client.head("/").status_code == 200
+
+    assert [event for event, _ in logger.records] == ["http request processed"]
 
 
 def test_pageview_log_keeps_only_bounded_dimensions() -> None:
