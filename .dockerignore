@@ -1,4 +1,6 @@
 **/.agents
+**/.cache
+**/.claude
 **/.git
 **/.mise
 **/.pytest_cache
@@ -20,6 +22,7 @@ Dockerfile
 dist
 dprint.json
 gha-creds-*.json
+htmlcov
 infra
 lefthook.yml
 lychee.toml
