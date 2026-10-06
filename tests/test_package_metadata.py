@@ -35,3 +35,17 @@ def test_python_runtime_pins_are_consistent() -> None:
     assert (repository / ".python-version").read_text().strip() == version
     image_versions = re.findall(r"^FROM python:([^@]+)@sha256:", (repository / "Dockerfile").read_text(), re.MULTILINE)
     assert image_versions == [f"{version}-slim", f"{version}-slim"]
+
+
+def test_image_build_tool_pins_match_mise() -> None:
+    repository = Path(__file__).resolve().parents[1]
+    tools = _load_toml(repository / "mise.toml")["tools"]
+    dockerfile = (repository / "Dockerfile").read_text()
+    build_system = _load_toml(repository / "pyproject.toml")["build-system"]
+
+    # The image builds CSS and the wheel with its own copies of these tools.
+    uv_version = tools["aqua:astral-sh/uv"]
+    assert re.findall(r"ghcr\.io/astral-sh/uv:([^@]+)@sha256:", dockerfile) == [uv_version]
+    assert build_system["requires"] == [f"uv_build=={uv_version}"]
+    tailwind_version = tools["github:dobicinaitis/tailwind-cli-extra"]
+    assert re.findall(r"tailwind-cli-extra/releases/download/v([^/]+)/", dockerfile) == [tailwind_version] * 2
