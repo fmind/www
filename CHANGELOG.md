@@ -2,6 +2,60 @@
 
 All notable changes to this project are documented in this file.
 
+## [2.3.0] - 2026-10-06
+
+### 🚀 Features
+
+- _(seo)_ Publish the full sameAs profile list in the identity graph
+
+### 🐛 Bug Fixes
+
+- _(static)_ Answer HEAD for unknown assets with 404
+- _(image)_ Apply Debian security updates in the runtime stage
+- _(mcp)_ Stop serving unbounded subscription streams
+- _(feed)_ Make srcset image candidates absolute
+- _(css)_ Style daisyUI links and checkboxes
+- _(sites)_ Reject non-ASCII numbers and report MCP rejections plainly
+- _(analytics)_ Stop counting HEAD requests as pageviews
+- _(security)_ Scan tagged Cloud Run revisions
+- _(fonts)_ Verify font archives against pinned digests
+- _(content)_ Repoint the dot mise configuration link
+
+### ⚡ Performance
+
+- _(markdown)_ Reuse one inline parser per document
+- _(infra)_ Raise Cloud Run request concurrency from 8 to 32
+- _(portrait)_ Bound the public portrait to 2048px
+- _(fonts)_ Preload the code font on monospace pages
+
+### ♻️ Refactor
+
+- Remove unused rendering and search helpers
+
+### 📚 Documentation
+
+- _(infra)_ Record concurrency 32 and the revision-name apply workaround
+- Refresh advisory review, document manual rollback, and trim duplication
+
+### 🧪 Testing
+
+- _(browser)_ Escape dots in the calendar hostname pattern
+- Cover draft exclusion, page CSP, and exact archive totals
+
+### ⚙️ Build & CI
+
+- _(links)_ Skip cloud.google.com links that GitHub runners cannot reach
+- _(deploy)_ Rebuild the runtime stage so security updates apply
+
+### 🧹 Miscellaneous
+
+- _(deps)_ Upgrade mise tools to latest
+- _(deps)_ Upgrade Python dependencies to latest
+- _(deps)_ Upgrade OpenTofu providers to latest
+- _(deps)_ Upgrade GitHub Actions to latest
+- _(deps)_ Upgrade dprint plugins to latest
+- Drop the CLAUDE.md bridge and widen ignore files
+
 ## [2.2.3] - 2026-09-27
 
 ### 🐛 Bug Fixes
