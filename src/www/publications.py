@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
 from html.parser import HTMLParser
@@ -52,9 +53,22 @@ def _atom_time(value: datetime) -> str:
     return value.astimezone(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
 
 
+_ROOT_RELATIVE_ATTRIBUTE = re.compile(r'\b(href|src)="/(?!/)')
+_SRCSET_ATTRIBUTE = re.compile(r'\bsrcset="([^"]*)"')
+
+
+def _absolute_srcset(candidates: str) -> str:
+    absolute = (
+        METADATA.site_url + candidate if candidate.startswith("/") and not candidate.startswith("//") else candidate
+        for candidate in (item.strip() for item in candidates.split(","))
+    )
+    return ", ".join(absolute)
+
+
 def absolute_article_html(body: str) -> str:
-    body = body.replace('href="/', f'href="{METADATA.site_url}/')
-    return body.replace('src="/', f'src="{METADATA.site_url}/')
+    """Make root-relative links and images, including srcset candidates, work off-site."""
+    body = _ROOT_RELATIVE_ATTRIBUTE.sub(lambda match: f'{match[1]}="{METADATA.site_url}/', body)
+    return _SRCSET_ATTRIBUTE.sub(lambda match: f'srcset="{_absolute_srcset(match[1])}"', body)
 
 
 def render_atom_feed(articles: Sequence[Article]) -> str:

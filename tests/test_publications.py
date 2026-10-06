@@ -117,12 +117,17 @@ def test_related_articles_rank_shared_tags_then_collection_order() -> None:
 
 
 def test_absolute_article_html_only_rewrites_root_relative_urls() -> None:
-    body = '<a href="/x"><img src="/y"></a><a href="https://example.com">x</a>'
+    body = (
+        '<a href="/x"><img src="/y" srcset="/y-800.webp 800w, /y-1280.webp 1280w"></a>'
+        '<a href="https://example.com">x</a><img src="//cdn.example/z" srcset="//cdn.example/z 1x">'
+    )
     rendered = absolute_article_html(body)
 
     assert f'href="{METADATA.site_url}/x"' in rendered
     assert f'src="{METADATA.site_url}/y"' in rendered
+    assert f'srcset="{METADATA.site_url}/y-800.webp 800w, {METADATA.site_url}/y-1280.webp 1280w"' in rendered
     assert 'href="https://example.com"' in rendered
+    assert 'src="//cdn.example/z" srcset="//cdn.example/z 1x"' in rendered
 
 
 @pytest.mark.parametrize(
