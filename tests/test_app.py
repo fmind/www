@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 from collections.abc import Iterator
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from io import BytesIO
 from pathlib import Path
+from types import MappingProxyType
 from typing import Any
 
 import pytest
@@ -933,6 +935,64 @@ def test_incomplete_telemetry_shutdown_is_reported(
         "telemetry shutdown incomplete",
         {"timeout_seconds": app_module.TELEMETRY_SHUTDOWN_TIMEOUT_SECONDS},
     ) in logger.records
+
+
+@pytest.mark.parametrize("environment", [Environment.PRODUCTION, Environment.DEVELOPMENT])
+def test_drafts_never_enter_production_discovery(
+    snapshots: tuple[ApplicationAssets, ArticleCollection], environment: Environment
+) -> None:
+    assets, collection = snapshots
+    draft = replace(collection.all[0], slug="private-draft-probe", title="Private draft probe", draft=True)
+    drafted = ArticleCollection((*collection.all, draft), MappingProxyType({**collection.by_slug, draft.slug: draft}))
+    application = create_app(
+        config=Config(environment=environment), assets=assets, collection=drafted, logger=RecordingLogger()
+    )
+
+    with TestClient(application) as test_client:
+        # Machine-readable discovery is public-only in every environment.
+        for path in ("/sitemap.xml", "/articles/feed.xml", "/llms.txt", "/llms-full.txt", "/api/profile"):
+            assert draft.slug not in test_client.get(path).text, path
+        archive = test_client.get("/articles/", params={"q": "Private draft probe"}).text
+        pages = [
+            test_client.get(f"/articles/{draft.slug}/"),
+            test_client.get(f"/articles/{draft.slug}/", headers={"accept": "text/markdown"}),
+            test_client.get(f"/articles/{draft.slug}.md"),
+        ]
+
+    if environment is Environment.PRODUCTION:
+        assert draft.slug not in archive
+        assert [page.status_code for page in pages] == [404, 404, 404]
+    else:
+        # Development previews drafts on human pages only.
+        assert draft.slug in archive
+        assert [page.status_code for page in pages] == [200, 200, 200]
+
+
+def test_every_page_template_satisfies_the_inline_csp(client: AppClient) -> None:
+    article = visible_articles(load_articles().all)[0]
+    # One served path per PageTemplate, so a new inline style or script on any page fails here.
+    paths = (
+        "/",
+        "/connect",
+        "/scan",
+        "/agents",
+        "/privacy",
+        "/articles/",
+        f"/articles/{article.slug}/",
+        "/sites/",
+        "/sites/llm-self-hosting/",
+        "/missing",
+    )
+    for path in paths:
+        response = client.get(path)
+        assert response.status_code == (404 if path == "/missing" else 200), path
+        nonce = re.search(r"'nonce-([^']+)'", response.headers["content-security-policy"])
+        assert nonce is not None, path
+        html = response.text
+        assert "<style" not in html, path
+        assert not re.search(r"\sstyle=", html), path
+        for script in re.findall(r"<script\b[^>]*>", html):
+            assert 'type="application/ld+json"' in script or f'nonce="{nonce[1]}"' in script, (path, script)
 
 
 def test_mcp_serves_no_subscription_streams(client: AppClient) -> None:

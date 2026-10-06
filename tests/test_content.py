@@ -1,4 +1,5 @@
 import re
+from datetime import UTC, datetime
 from io import BytesIO
 from pathlib import Path
 
@@ -344,7 +345,9 @@ def test_unrecognized_body_image_keeps_contextual_article_error(tmp_path: Path) 
 def test_real_webp_dimensions_match_pillow() -> None:
     paths = sorted(Path("static/img/articles").rglob("*.webp"))
 
-    assert len(paths) == 758
+    # Published articles are immutable, so the archive only grows: a floor catches lost
+    # derivatives without failing every new publication's push.
+    assert len(paths) >= 758
     for path in paths:
         with Image.open(path) as source_image:
             expected = source_image.size
@@ -426,12 +429,15 @@ def test_load_articles_sorts_and_filters_drafts(tmp_path: Path) -> None:
 def test_real_archive_loads_and_has_no_public_drafts() -> None:
     collection = load_articles()
 
-    assert len(collection.all) == 60
+    # Exact totals over the archive as of 2026-09-20 catch renderer drift in either
+    # direction, while a newer article needs no test edit before it can be pushed.
+    archived = [item for item in collection.all if item.date <= datetime(2026, 9, 20, tzinfo=UTC)]
+    assert len(archived) == 60
     assert all(item.html.strip() and item.reading_minutes >= 1 for item in collection.all)
     assert not any(item.draft for item in collection.all)
-    assert sum(item.html.count("<figure>") for item in collection.all) == 306
-    assert sum(item.html.count("<figcaption>") for item in collection.all) == 248
-    assert sum(item.html.count('<pre class="chroma">') for item in collection.all) == 156
+    assert sum(item.html.count("<figure>") for item in archived) == 306
+    assert sum(item.html.count("<figcaption>") for item in archived) == 248
+    assert sum(item.html.count('<pre class="chroma">') for item in archived) == 156
     assert not any(re.search(r"<a\b[^>]*>\s*</a>", item.html) for item in collection.all)
 
     for item in collection.all:
