@@ -4,15 +4,15 @@
 terraform {
   # Track the OpenTofu version mise pins for this repository, so a machine with
   # an older engine fails at init instead of at apply.
-  required_version = "~> 1.12"
+  required_version = "~> 1.13"
   required_providers {
     google = {
       source  = "hashicorp/google"
-      version = "= 8.3.0"
+      version = "= 8.5.0"
     }
     google-beta = {
       source  = "hashicorp/google-beta"
-      version = "= 8.3.0"
+      version = "= 8.5.0"
     }
     time = {
       source  = "hashicorp/time"
