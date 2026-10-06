@@ -109,6 +109,9 @@ jobs:
           tags: ${{ env.AR_HOSTNAME }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          # Rebuild the small runtime stage so its `apt-get upgrade` layer picks up
+          # Debian security fixes instead of replaying a cached, older result.
+          no-cache-filters: runner
       - name: Select the daily Trivy database cache
         id: trivy-cache
         run: echo "key=trivy-db-${RUNNER_OS}-$(date -u +%F)" >> "$GITHUB_OUTPUT"
