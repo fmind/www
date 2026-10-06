@@ -20,8 +20,6 @@ from .models import (
     Quantization,
 )
 
-# Source-faithful UI copy intentionally uses multiplication signs.
-
 MONTHLY_HOURS = 730.0
 SECONDS_PER_MONTH = MONTHLY_HOURS * 60 * 60
 SECONDS_PER_DAY = 24 * 60 * 60

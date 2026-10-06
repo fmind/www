@@ -167,7 +167,7 @@ def test_configuration_changes_invalidate_a_previous_pilot(change: dict[str, str
     assert result.inputs.measured_concurrency == 0
     assert not result.inputs.pilot_config
     assert "unproved" in result.latency_title
-    assert any("pilot measurements were cleared" in item for item in result.validation)
+    assert any("pilot measurements belong to a different serving configuration" in item for item in result.validation)
 
 
 def test_billing_and_monthly_demand_do_not_invalidate_runtime_measurements() -> None:

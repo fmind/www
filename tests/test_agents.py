@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Iterator
 from dataclasses import replace
 from hashlib import sha256
@@ -254,6 +255,8 @@ def test_calculator_matches_web_arithmetic_and_round_trips(parameters: dict[str,
         {"api-mode": "imaginary"},
         {"requests": ""},
         {"requests": " 100"},
+        {"requests": "1_000"},
+        {"requests": "\u0661\u0660\u0660"},
         {"preset": "imaginary"},
         {"measured-first": "20", "measured-complete": "10"},
         {"measured-first": "1", "pilot": "old-configuration"},
@@ -262,6 +265,31 @@ def test_calculator_matches_web_arithmetic_and_round_trips(parameters: dict[str,
 def test_calculator_rejects_invalid_inputs(parameters: dict[str, str]) -> None:
     with pytest.raises(ValueError, match=r"[Cc]alculator parameter"):
         compare_hosting(parameters)
+
+
+def test_calculator_rejection_never_claims_a_default_was_used() -> None:
+    with pytest.raises(ValueError, match="calculator parameters") as error:
+        compare_hosting({"model": "imaginary", "requests": "0"})
+
+    assert str(error.value) == (
+        "Invalid calculator parameters: model was not recognized; requests must be between 1 and 10000000"
+    )
+
+
+@pytest.mark.parametrize(
+    "parameters",
+    [
+        {"node": "a4", "billing": "on-demand"},
+        {"preset": "imaginary"},
+        {"measured-first": "20", "measured-complete": "10"},
+        {"measured-first": "1", "pilot": "old-configuration"},
+    ],
+)
+def test_calculator_rejections_describe_no_web_fallback(parameters: dict[str, str]) -> None:
+    with pytest.raises(ValueError, match="calculator parameters") as error:
+        compare_hosting(parameters)
+
+    assert not re.search(r"\b(used|kept|cleared)\b", str(error.value)), str(error.value)
 
 
 def test_calculator_schema_and_structured_results_over_http(client: TestClient[Any]) -> None:

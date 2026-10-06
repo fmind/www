@@ -27,8 +27,6 @@ from .models import (
     TaskQuality,
 )
 
-# Source-faithful UI copy intentionally uses multiplication signs.
-
 type QueryValue = str | Sequence[str]
 type Query = Mapping[str, QueryValue]
 
@@ -42,8 +40,9 @@ def _first(query: Query, key: str) -> str | None:
     return raw[0] if raw else None
 
 
-def _go_general(value: float) -> str:
-    return format(value, ".6g")
+def _format_bound(value: float) -> str:
+    # Plain digits, never exponent notation, so bounds read like the whole-number messages.
+    return format(Decimal(repr(value)).normalize(), "f")
 
 
 def _parse_choice(
@@ -74,14 +73,15 @@ def _parse_bounded_float(
     if raw is None or raw == "":
         return fallback
     try:
-        if raw.strip() != raw:
+        # float() also accepts underscores, non-ASCII digits, and inf/nan spellings.
+        if fullmatch(r"[+-]?(?:[0-9]+\.?[0-9]*|\.[0-9]+)(?:[eE][+-]?[0-9]+)?", raw) is None:
             raise ValueError
         value = float(raw)
     except ValueError:
         value = float("nan")
     if not isfinite(value) or value < minimum or value > maximum:
         validation.append(
-            f"{key} must be between {_go_general(minimum)} and {_go_general(maximum)}; the default was used",
+            f"{key} must be between {_format_bound(minimum)} and {_format_bound(maximum)}; the default was used",
         )
         return fallback
     return value
@@ -455,7 +455,7 @@ def _bind_pilot_measurements(
     if saved == current or confirmation == current:
         return replace(inputs, pilot_config=current)
     if saved or confirmation:
-        validation.append("The pilot measurements were cleared because the serving configuration changed")
+        validation.append("The pilot measurements belong to a different serving configuration; they were cleared")
         return replace(
             inputs,
             measured_concurrency=0,

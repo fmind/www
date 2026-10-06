@@ -65,7 +65,10 @@ def compare_hosting(parameters: dict[str, str]) -> HostingResult:
         raise ValueError("Calculator parameter values must be nonempty and have no surrounding whitespace.")
     _, errors = parse_inputs(parameters)
     if errors:
-        raise ValueError("Invalid calculator parameters: " + "; ".join(errors))
+        # Validation messages read "<reason>; <fallback applied by the web form>". MCP
+        # rejects instead of falling back, so it reports only the reason.
+        reasons = (error.partition("; ")[0] for error in errors)
+        raise ValueError("Invalid calculator parameters: " + "; ".join(reasons))
     now = datetime.now(UTC)
     view = build_llm_self_hosting_view(parameters, now=now)
     return HostingResult(

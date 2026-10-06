@@ -1,4 +1,4 @@
-"""Self-hosting calculator calculator."""
+"""Self-hosting calculator."""
 
 from __future__ import annotations
 
