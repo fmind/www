@@ -78,7 +78,7 @@ _PROMPT_RESULT_DESCRIPTIONS = {
 
 
 class _PortfolioMCPServer(MCPServer[None]):
-    """Preserve prompt metadata that MCPServer 2.2 does not derive."""
+    """Preserve prompt metadata that MCPServer does not derive."""
 
     @override
     async def list_prompts(self) -> list[Prompt]:
@@ -195,6 +195,9 @@ def create_mcp_server(
         icons=_ICONS,
         version=build_version(),
         cache_hints=_CACHE_HINTS,
+        # Immutable snapshots never notify; serving subscriptions/listen would let any
+        # anonymous POST hold an SSE stream and a request slot until the platform timeout.
+        subscriptions=False,
     )
 
     @server.tool(

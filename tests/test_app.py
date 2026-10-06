@@ -930,3 +930,34 @@ def test_incomplete_telemetry_shutdown_is_reported(
         "telemetry shutdown incomplete",
         {"timeout_seconds": app_module.TELEMETRY_SHUTDOWN_TIMEOUT_SECONDS},
     ) in logger.records
+
+
+def test_mcp_serves_no_subscription_streams(client: AppClient) -> None:
+    meta = {
+        "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+        "io.modelcontextprotocol/clientCapabilities": {},
+    }
+
+    def post(method: str, params: dict[str, Any]) -> Any:
+        return client.post(
+            "/mcp",
+            json={"jsonrpc": "2.0", "id": 1, "method": method, "params": {**params, "_meta": meta}},
+            headers={
+                "accept": "application/json, text/event-stream",
+                "mcp-protocol-version": "2026-07-28",
+                "mcp-method": method,
+            },
+        )
+
+    # The SDK derives these flags from whether subscriptions/listen is served, so this
+    # assertion fails before the listen request below could hold an endless stream.
+    discovered = post("server/discover", {}).json()["result"]["capabilities"]
+    assert discovered == {
+        "prompts": {"listChanged": False},
+        "resources": {"listChanged": False, "subscribe": False},
+        "tools": {"listChanged": False},
+    }
+
+    listen = post("subscriptions/listen", {"notifications": {"toolsListChanged": True}})
+    assert listen.headers["content-type"].startswith("application/json")
+    assert listen.json()["error"]["code"] == -32601
