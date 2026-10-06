@@ -6,7 +6,7 @@ Python 3.14, Litestar, strict Jinja, Tailwind/DaisyUI, and Granian. No client fr
 
 - `mise.toml` is the canonical task contract for local work, hooks, and CI. See [README](README.md#tasks) and `mise tasks` for commands.
 - Definition of done: `mise run all` passes without unresolved warnings; infrastructure changes also pass `mise run check:tofu`. New behavior needs a regression test.
-- `all` runs format, check, package/CSS build, pytest (branch coverage ≥85%), OCI build/scan/smoke, Chromium install, and browser journeys sequentially. Docker Engine/Buildx and first-run network access are required; no cloud credentials are needed.
+- `all` needs Docker Engine/Buildx and first-run network access, but no cloud credentials.
 - Network link checks, cross-browser tests, and Lighthouse are separate tasks. Run those relevant to the change; never weaken checks to get a green release.
 - Inspect Git status/diffs and preserve unrelated work and staged selections. Use OS temporary directories for agent scratch; no repository-local review reports. Remove only task-owned temporary artifacts.
 - Commit, push, release, deploy, apply infrastructure, and spend require owner authorization. Reuse authority already given. Use Conventional Commits without attribution; published tags are immutable.

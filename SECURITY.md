@@ -4,15 +4,15 @@ Report vulnerabilities privately to <contact@fmind.dev> with the affected URL/co
 
 ## Release policy
 
-Deployment scans and smoke-tests the pushed immutable digest before Cloud Run receives it, then verifies the new revision on a no-traffic tagged URL before promoting that exact revision. Fixable HIGH/CRITICAL vulnerabilities and secrets block rollout. The weekly [security workflow](.github/workflows/security.yml) scans every serving digest through a separate read-only identity and retains unfiltered advisory evidence for 30 days. Passing the filtered gate does not mean zero advisories.
+Deployment scans and smoke-tests the pushed immutable digest before Cloud Run receives it, then verifies the new revision on a no-traffic tagged URL before promoting that exact revision. Fixable HIGH/CRITICAL vulnerabilities and secrets block rollout. The weekly [security workflow](.github/workflows/security.yml) scans every serving or tagged revision digest through a separate read-only identity and retains unfiltered advisory evidence for 30 days. Passing the filtered gate does not mean zero advisories.
 
-Trivy may warn about third-party SBOM metadata or [fallback severity sources](https://trivy.dev/docs/v0.74/guide/scanner/vulnerability/#severity-selection). Review the full findings and package inventory; do not silence diagnostics, narrow severity sources, or add ignores merely to produce a quiet log.
+Trivy may warn about third-party SBOM metadata or [fallback severity sources](https://trivy.dev/docs/v0.75/guide/scanner/vulnerability/#severity-selection). Review the full findings and package inventory; do not silence diagnostics, narrow severity sources, or add ignores merely to produce a quiet log.
 
 ## Current advisory review
 
-**Owner:** Médéric Hurier. **Reviewed:** 2026-09-25. **Next review:** 2026-09-30, or immediately on a new fixable finding or relevant runtime change.
+**Owner:** Médéric Hurier. **Reviewed:** 2026-10-06. **Next review:** 2026-10-13, or immediately on a new fixable finding or relevant runtime change.
 
-The current candidate uses `python:3.14.7-slim@sha256:caaf356f40667c496d405780745b9ac25771c189a51dfcc42430d531ea09f8a2`; upstream includes the security fixes previously installed by a separate Debian patch layer. The fixable vulnerability/secret gate and HTTP/MCP image smoke pass. The September 25 unfiltered candidate scan reports 44 HIGH package/advisory instances across eight CVEs, no CRITICAL findings, and no available fixes. The same day's pre-release deployed-image scan confirmed that advisory set on the serving 2.2.1 release. Each new rollout still needs its own serving-digest evidence.
+The current candidate uses `python:3.14.8-slim@sha256:f85c5697265c178cc6887276c55fe16cf3d14ca35c3df6a5eab3b360534a55d2`, and its runtime stage applies pending Debian security updates because they can lag the base image. The fixable vulnerability/secret gate and HTTP/MCP image smoke pass. The October 6 unfiltered candidate scan reports 44 HIGH package/advisory instances across the eight CVEs below, no CRITICAL findings, and no available fixes. Each new rollout still needs its own serving-digest evidence.
 
 | Residual advisories                                                        | Application exposure assessment                                                                           |
 | -------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |

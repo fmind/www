@@ -6,7 +6,7 @@
 
 ## Development
 
-Requires [mise](https://mise.jdx.dev/), Docker Engine with Buildx, and network access for initial tool/browser installation and image/scanner downloads. Python 3.14.7 and the remaining toolchain are pinned in `mise.toml` and `mise.lock`; `.mise/locks/` records the browser tools' transitive npm dependencies and must be committed with lock updates.
+Requires [mise](https://mise.jdx.dev/), Docker Engine with Buildx, and network access for initial tool/browser installation and image/scanner downloads. Python and the remaining toolchain are pinned in `mise.toml` and `mise.lock`; `.mise/locks/` records the browser tools' transitive npm dependencies and must be committed with lock updates.
 
 ```bash
 mise install
@@ -24,13 +24,13 @@ Open `http://localhost:8080`; use `PORT=8081 mise run watch` for another port. `
 
 The light-only [fmind/theme](https://github.com/fmind/theme) palette uses white, light gray, charcoal, and blue `#174EA6`. `assets/css/input.css` owns interface colors; `src/www/highlighting.py` owns syntax colors. Tests enforce the palette with explicit company-brand exceptions. Tailwind scans `src/www/templates/**/*.html`.
 
-Fonts are self-hosted Google Sans and Google Sans Code subsets. The font generator pins upstream releases, removes reserved logo ligatures, and preserves timestamps. Public branding masters are `/logo.png` and `/banner.png`. Keep private portrait originals outside `static/`; `build:portrait` exports `/portrait.jpg` with orientation/ICC preserved and personal metadata removed.
+Fonts are self-hosted Google Sans and Google Sans Code subsets. The font generator pins upstream releases, removes reserved logo ligatures, and preserves timestamps. Public branding masters are `/logo.png` and `/banner.png`. Keep private portrait originals outside `static/`; `build:portrait` exports `/portrait.jpg` (longest side 2048px) with orientation/ICC preserved and personal metadata removed.
 
 Share `/connect` at events; it offers LinkedIn, a vCard, and the full website. `/scan` is a noindex QR utility. The UTF-8 vCard 3.0 derives public professional details and a sanitized portrait from portfolio data, without a phone number, street address, birthday, or precise coordinates.
 
-Articles in `content/articles/` use strict TOML frontmatter. Their validated collection feeds every publication surface, excluding drafts in production. `build:images` generates responsive WebP derivatives and the SHA-256 provenance lock; `check:images` never writes. Figures fit the 1280px column; code highlighting is server-side. Articles with at least two main sections show an H2-only 256px navigation rail at viewport widths of 1920px and above, with two-line labels and full titles on hover; links work without JavaScript, which adds current-section highlighting. Follow the [article skill](.agents/skills/article/SKILL.md).
+Articles in `content/articles/` use strict TOML frontmatter. Their validated collection feeds every publication surface, excluding drafts in production. `build:images` generates responsive WebP derivatives and the SHA-256 provenance lock; `check:images` never writes. Figures fit the 1280px column; code highlighting is server-side. Follow the [article skill](.agents/skills/article/SKILL.md).
 
-Decision tools use typed Python formulas, native GET forms, dated sources, and explicit planning limits. Register them in `data.py:SITE_PAGES`; follow the [site skill](.agents/skills/site/SKILL.md). See [AGENTS.md](AGENTS.md) for module ownership and invariants.
+Decision tools use typed Python formulas, native GET forms, dated sources, and explicit planning limits. Register them in `data.py:SITE_PAGES`; follow the [site skill](.agents/skills/site/SKILL.md).
 
 ## Tasks
 
@@ -67,9 +67,9 @@ Dispatch that workflow with `gh workflow run quality.yml -f target=production` a
 
 Cloud Run serves <https://www.fmind.dev/> in project `www-fmind-dev`, region `europe-west1`. [infra/](infra/) owns service settings, registry, keyless identities, alerts, and analytics. Keep **minimum instances at 0 at both service and revision levels**, maximum 5, and request-based CPU. The qualified runtime uses 1 CPU, 512 MiB, concurrency 32, a 30-second request timeout, and twelve startup attempts five seconds apart. Startup builds article Markdown once for HTTP, LLM text, and MCP. Maximum instances limits scaling; it is not a hard billing cap.
 
-A `main` push runs the full gate, builds a non-root image with SBOM/provenance, pushes it, and scans and smoke-tests its immutable digest. It then creates a no-traffic revision under the `candidate` tag; `test:candidate` requires that revision to match `IMAGE_REF`/`GITHUB_SHA` and to serve health, profile, and the MCP server card on its tagged `run.app` URL. Only then does CI route 100% of traffic to that exact revision; a failed candidate leaves traffic on the previous revision. `test:deployed` finally verifies that the ready revision receiving 100% of traffic matches `IMAGE_REF` and `GITHUB_SHA`, preserves scale-to-zero checks, and probes public health/profile/MCP discovery. Error-log review remains an independent release check because the deployer has no log-reading role. Actions are SHA-pinned and Dependabot maintains ecosystem updates.
+A `main` push runs the full gate, builds a non-root image with SBOM/provenance, pushes it, and scans and smoke-tests its immutable digest. It then creates a no-traffic revision under the `candidate` tag; `test:candidate` requires that revision to match `IMAGE_REF`/`GITHUB_SHA` and to serve health, profile, and the MCP server card on its tagged `run.app` URL. Only then does CI route 100% of traffic to that exact revision; a failed candidate leaves traffic on the previous revision. `test:deployed` finally verifies that the ready revision receiving 100% of traffic matches `IMAGE_REF` and `GITHUB_SHA`, preserves scale-to-zero checks, and probes public health/profile/MCP discovery. CI never rolls back automatically: if this post-promotion check fails, traffic stays on the new revision until the owner redeploys the preceding qualified digest with the manual rollout below. Error-log review remains an independent release check because the deployer has no log-reading role. Actions are SHA-pinned and Dependabot maintains ecosystem updates.
 
-Workload Identity Federation accepts only `main` tokens from the numeric repository/owner IDs, and binds each identity to one workflow file: `deploy.yml` impersonates the deployer, `security.yml` the read-only scanner. OpenTofu ignores the image and keeps CI-managed traffic; CI never applies infrastructure. Because traffic is pinned to verified revisions, an applied service-template change serves only after the next deployment promotes it.
+Workload Identity Federation binds each CI identity to one workflow file on `main` (see [SECURITY.md](SECURITY.md#data-and-recovery)). OpenTofu ignores the image and keeps CI-managed traffic; CI never applies infrastructure. Because traffic is pinned to verified revisions, an applied service-template change serves only after the next deployment promotes it.
 
 Infrastructure changes require a reviewed saved plan and owner-authorized apply through the [infra skill](.agents/skills/infra/SKILL.md). Remote state is `gs://www-fmind-dev-tfstate/infra/state`; its bootstrap bucket is managed separately and requires versioning and enforced public-access prevention. Reconcile service changes before deploying the application.
 
@@ -79,9 +79,9 @@ For manual rollout/rollback, `mise run deploy europe-west1-docker.pkg.dev/www-fm
 
 ## Analytics and privacy
 
-`/privacy` describes the data flow. HTML responses emit aggregate path/status, referrer hostname, validated UTM tokens, and a heuristic bot flag. Redirects are excluded; geography remains empty. BigQuery partitions expire after 180 days without duplicate Cloud Logging retention. Analytics omit IPs, raw user agents, full referrers, cookies, sessions, and trace identifiers. Separate private Cloud Run operational logs may contain IPs, user agents, and full URLs and expire after 30 days.
+`/privacy` describes the data flow. HTML GET responses emit aggregate path/status, referrer hostname, validated UTM tokens, and a heuristic bot flag. Redirects are excluded; geography remains empty. BigQuery partitions expire after 180 days without duplicate Cloud Logging retention. Analytics omit IPs, raw user agents, full referrers, cookies, sessions, and trace identifiers. Separate private Cloud Run operational logs may contain IPs, user agents, and full URLs and expire after 30 days.
 
-Use the [website-analytics skill](.agents/skills/website-analytics/SKILL.md) or `uv run --locked python -m scripts.website_analytics` for a bounded, no-charge report. Defaults compare the last seven complete days with the previous seven in `Europe/Paris`; `--days`, exclusive `--end-date`, and `--timezone` override them. Reports fail on incomplete/changing data and are not unique-visitor or conversion measurements. Keep production reports out of Git.
+Use the [website-analytics skill](.agents/skills/website-analytics/SKILL.md) or `uv run --locked python -m scripts.website_analytics` for a bounded, no-charge report. Reports fail on incomplete/changing data and are not unique-visitor or conversion measurements. Keep production reports out of Git.
 
 Tracing is opt-in through standard `OTEL_EXPORTER_OTLP_*` variables. Operational logs correlate trace/span IDs; analytics omit them.
 
@@ -95,4 +95,4 @@ The public [/agents](https://www.fmind.dev/agents) guide is the integration refe
 
 Keep identity, Luxembourg work location, and service availability in `src/www/data.py`. The homepage, profile JSON/MCP, and LLM summaries share these facts. Article HTML and Markdown identify the author; `/llms-full.txt` retains each article's dates and canonical link. Validate search appearance with the local Lighthouse task; indexing and ranking require separate Search Console evidence after deployment.
 
-`server.json` tracks the website release for `io.github.fmind/portfolio`. MCP Registry publication is a separate owner action after live verification: `mcp-publisher validate server.json`, `mcp-publisher login github`, then `mcp-publisher publish`. Verify through the [Registry API](https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.fmind%2Fportfolio). Discovery does not guarantee client adoption or AI citations.
+`server.json` tracks the website release for `io.github.fmind/portfolio`. MCP Registry publication is a separate owner action after live verification: `mcp-publisher validate server.json`, `mcp-publisher login github`, then `mcp-publisher publish`. Verify the latest entry through the [Registry API](https://registry.modelcontextprotocol.io/v0.1/servers/io.github.fmind%2Fportfolio/versions/latest). Discovery does not guarantee client adoption or AI citations.
