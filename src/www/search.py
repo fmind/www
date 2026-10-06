@@ -71,10 +71,6 @@ class SearchIndex:
         self._document_frequency = document_frequency
         self._average_length = total / len(documents) if documents else 0.0
 
-    @property
-    def articles(self) -> tuple[Article, ...]:
-        return self._articles
-
     def search(self, query: str) -> tuple[Article, ...]:
         terms = tuple(sorted(set(tokenize(query))))
         if not terms or not self._documents:

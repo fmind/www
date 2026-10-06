@@ -332,10 +332,6 @@ def _normalize_goldmark_three_backslashes(tokens: Sequence[Token]) -> None:
                 break_count -= 1
 
 
-def render_markdown(markdown: str) -> str:
-    return _render_markdown(markdown)[0]
-
-
 def _render_markdown(markdown: str) -> tuple[str, tuple[ArticleSection, ...]]:
     environment: EnvType = {}
     tokens = _ARTICLE_MARKDOWN.parse(markdown, environment)

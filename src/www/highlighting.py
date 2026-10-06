@@ -390,8 +390,3 @@ def highlight_code(code: str, language: str = "") -> str:
 
 def highlight_css() -> str:
     return _CHROMA_CSS
-
-
-def plain_code(code: str) -> str:
-    """Return CSP-safe plain code for callers that intentionally bypass Pygments."""
-    return _format_tokens([(Text, code)])
