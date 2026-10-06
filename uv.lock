@@ -1712,7 +1712,7 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "anyio", specifier = ">=4.15.1,<5" },
-    { name = "granian", extras = ["reload"], specifier = ">=2.8.2,<3" },
+    { name = "granian", extras = ["reload"], specifier = ">=2.8.3,<3" },
     { name = "httpx", specifier = ">=0.28.1,<0.29" },
     { name = "jsonschema", specifier = ">=4.26.0,<5" },
     { name = "pytest", specifier = ">=9.1.1,<10" },

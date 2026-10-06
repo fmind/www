@@ -31,7 +31,7 @@ dependencies = [
 ops = ["anyio>=4.15.1,<5", "httpx2>=2.12.0,<3"]
 dev = [
   "anyio>=4.15.1,<5",
-  "granian[reload]>=2.8.2,<3",
+  "granian[reload]>=2.8.3,<3",
   "httpx>=0.28.1,<0.29",
   "jsonschema>=4.26.0,<5",
   "pytest-cov>=7.1.0,<8",
