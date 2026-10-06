@@ -17,18 +17,13 @@ Run it after bumping a release tag, then commit the regenerated WOFF2 files.
 
 from __future__ import annotations
 
+import hashlib
 import io
 import sys
 import urllib.request
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path
-
-# fontTools is declared inline above and installed by uv for this script only,
-# so it is absent from the project environment the type checker resolves against.
-from fontTools import subset  # ty: ignore[unresolved-import]
-from fontTools.ttLib import TTFont  # ty: ignore[unresolved-import]
-from fontTools.varLib import instancer  # ty: ignore[unresolved-import]
 
 REPOSITORY = Path(__file__).resolve().parent.parent
 STATIC_FONTS = REPOSITORY / "static" / "fonts"
@@ -51,6 +46,8 @@ class FontBuild:
 
     family: str
     url: str
+    # SHA-256 of the release asset, matching the digest GitHub publishes for it.
+    sha256: str
     member: str
     axes: dict[str, tuple[float, float] | float]
     features: tuple[str, ...]
@@ -68,6 +65,7 @@ class FontBuild:
 GOOGLE_SANS = FontBuild(
     family="Google Sans",
     url="https://github.com/googlefonts/googlesans/releases/download/v14.000/GoogleSans-v14.000.zip",
+    sha256="d338f0e74f5eabead86a85b87edf4cc50cd6561196dbe173d1db4139e95b3ca7",
     member="build/GoogleSans/variable/GoogleSans[GRAD,opsz,wght].ttf",
     axes={"wght": (400, 700), "GRAD": 0},
     features=("kern", "liga", "calt", "tnum"),
@@ -78,6 +76,7 @@ GOOGLE_SANS = FontBuild(
 GOOGLE_SANS_CODE = FontBuild(
     family="Google Sans Code",
     url="https://github.com/googlefonts/googlesans-code/releases/download/v7.001/GoogleSansCode-v7.001.zip",
+    sha256="eebba2a438882396e8530cad6d6cb80182b0afb6e9e0ad07b7340359a53ba2e9",
     member="GoogleSansCode[MONO,wght].ttf",
     axes={"wght": (300, 800), "MONO": 1},
     features=("kern", "calt"),
@@ -96,16 +95,26 @@ def parse_unicodes(spec: str) -> set[int]:
     return codepoints
 
 
-def download(url: str) -> bytes:
-    """Fetch a pinned release archive, caching it under tmp/ between runs."""
+def _verified(payload: bytes, font_build: FontBuild, source: str) -> bytes:
+    digest = hashlib.sha256(payload).hexdigest()
+    if digest != font_build.sha256:
+        msg = f"{font_build.family} archive from {source} has SHA-256 {digest}, expected {font_build.sha256}"
+        raise ValueError(msg)
+    return payload
+
+
+def download(font_build: FontBuild) -> bytes:
+    """Fetch a pinned, checksum-verified release archive, caching it under tmp/ between runs."""
+    url = font_build.url
     cached = DOWNLOAD_CACHE / url.rsplit("/", 1)[-1]
     if cached.is_file():
-        return cached.read_bytes()
+        # A tampered or truncated cache fails here; delete it to download again.
+        return _verified(cached.read_bytes(), font_build, str(cached))
     if not url.startswith("https://github.com/googlefonts/"):
         msg = f"refusing to download a font from an unpinned origin: {url}"
         raise ValueError(msg)
-    with urllib.request.urlopen(url) as response:  # noqa: S310 - origin checked above
-        payload: bytes = response.read()
+    with urllib.request.urlopen(url, timeout=60) as response:  # noqa: S310 - origin checked above
+        payload = _verified(response.read(), font_build, url)
     DOWNLOAD_CACHE.mkdir(parents=True, exist_ok=True)
     cached.write_bytes(payload)
     return payload
@@ -113,7 +122,13 @@ def download(url: str) -> bytes:
 
 def build(font_build: FontBuild) -> tuple[int, int]:
     """Instance, subset, and write one face; return its previous and new size."""
-    archive = zipfile.ZipFile(io.BytesIO(download(font_build.url)))
+    # fontTools is declared inline above and installed by uv for this script only. Importing
+    # it here keeps the checksum boundary importable, and testable, in the project environment.
+    from fontTools import subset  # ty: ignore[unresolved-import]
+    from fontTools.ttLib import TTFont  # ty: ignore[unresolved-import]
+    from fontTools.varLib import instancer  # ty: ignore[unresolved-import]
+
+    archive = zipfile.ZipFile(io.BytesIO(download(font_build)))
     # Preserve the upstream timestamp through both serialization passes so a
     # rebuild does not change immutable asset hashes just because time passed.
     font = TTFont(io.BytesIO(archive.read(font_build.member)), recalcTimestamp=False)
