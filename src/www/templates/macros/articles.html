@@ -12,7 +12,7 @@
   <form class="flex flex-wrap justify-center items-center gap-2 mb-6" method="get" action="/articles/" role="search">
     {% if view.active_tag %}<input type="hidden" name="tag" value="{{ view.active_tag }}"/>{% endif %}
     <label class="sr-only" for="article-search">Search articles</label>
-    <input class="input input-bordered w-full max-w-md" id="article-search" type="search" name="q" value="{{ view.query }}" placeholder="Search articles…" autocomplete="off" maxlength="128"/>
+    <input class="input w-full max-w-md" id="article-search" type="search" name="q" value="{{ view.query }}" placeholder="Search articles…" autocomplete="off" maxlength="128"/>
     <button class="btn btn-primary rounded-xl font-semibold" type="submit">Search</button>
     {% if view.query %}<a class="btn btn-ghost border border-base-300 rounded-xl" href="{{ article_filter_url(view.active_tag, '') }}">Clear</a>{% endif %}
   </form>

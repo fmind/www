@@ -7,7 +7,7 @@
 @plugin "@tailwindcss/typography";
 @plugin "daisyui" {
   themes: light --default;
-  include: button, card, navbar, menu, hero, avatar, badge, footer, input, select, table, alert, typography;
+  include: button, card, navbar, menu, hero, avatar, badge, footer, input, select, checkbox, link, table, alert, typography;
 }
 
 @source "../../src/www/templates/**/*.html";
