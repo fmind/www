@@ -821,7 +821,6 @@ def test_mcp_mount_is_stateless_bounded_and_origin_protected(
         assert response.status_code == 200
         assert response.json()["result"]["serverInfo"]["name"] == "www"
         assert response.json()["result"]["capabilities"] == {
-            "experimental": {},
             "prompts": {"listChanged": False},
             "resources": {"listChanged": False, "subscribe": False},
             "tools": {"listChanged": False},
