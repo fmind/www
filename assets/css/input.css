@@ -14,7 +14,7 @@
 
 @source inline("badge-{warning,info,success,error} text-{warning,info,success,error}-content");
 
-/* Palette: fmind/theme checks/palette.yaml. Dark shades carry text; light
+/* Palette: fmind/theme DESIGN.md color tokens. Dark shades carry text; light
    shades carry surfaces. The logo and primary accent share the same blue. */
 @plugin 'daisyui/theme' {
   name: 'light';

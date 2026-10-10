@@ -22,7 +22,7 @@ Open `http://localhost:8080`; use `PORT=8081 mise run watch` for another port. `
 
 `src/www/data.py` supplies portfolio facts, service availability, HTML, JSON/JSON-LD, vCard, and LLM text. Preserve the owner's voice and factual claims across these surfaces.
 
-The light-only [fmind/theme](https://github.com/fmind/theme) palette uses white, light gray, charcoal, and blue `#174EA6`. `assets/css/input.css` owns interface colors; `src/www/highlighting.py` owns syntax colors. Tests enforce the palette with explicit company-brand exceptions. Tailwind scans `src/www/templates/**/*.html`.
+The site implements the light-only Fmind [DESIGN.md](https://github.com/fmind/theme/blob/main/DESIGN.md) from fmind/theme: white, light gray, charcoal, and blue `#174EA6`, set in Google Sans. `assets/css/input.css` owns interface colors; `src/www/highlighting.py` owns syntax colors. Tests enforce the palette with explicit company-brand exceptions. Tailwind scans `src/www/templates/**/*.html`.
 
 Fonts are self-hosted Google Sans and Google Sans Code subsets. The font generator pins upstream releases, removes reserved logo ligatures, and preserves timestamps. Public branding masters are `/logo.png` and `/banner.png`. Keep private portrait originals outside `static/`; `build:portrait` exports `/portrait.jpg` (longest side 2048px) with orientation/ICC preserved and personal metadata removed.
 

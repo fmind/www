@@ -3,7 +3,7 @@
 import re
 from pathlib import Path
 
-# Snapshot of fmind/theme checks/palette.yaml; company identities are deliberate exceptions.
+# Snapshot of the fmind/theme DESIGN.md colors; company identities are deliberate exceptions.
 FMIND_COLORS = {
     "#ffffff",
     "#202124",
