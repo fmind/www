@@ -137,7 +137,7 @@ test("published pages render without overflow, missing images, or external asset
 
 test("cost chart labels remain legible and contained at the tablet breakpoint", async ({ page }) => {
   await page.setViewportSize({ width: 640, height: 900 });
-  await page.goto(calculator);
+  await page.goto(calculator + "?mode=advanced");
 
   const geometry = await page.locator("[data-cost-explorer] svg").evaluate((svg) => {
     const chart = svg.getBoundingClientRect();
@@ -545,7 +545,7 @@ test("site stays light with a dark system preference and an old saved theme", as
 });
 
 test("calculator updates preserve focus, disclosures, and shareable values", async ({ page }) => {
-  await page.goto(calculator);
+  await page.goto(calculator + "?mode=advanced");
   await page.locator("#quality-settings > summary").click();
   await page.locator("#requests").fill("234");
   await page.locator("#requests").press("Enter");
@@ -566,7 +566,7 @@ test("calculator updates preserve focus, disclosures, and shareable values", asy
 });
 
 test("calculator reports network failure and recovers on retry", async ({ page }) => {
-  await page.goto(calculator);
+  await page.goto(calculator + "?mode=advanced");
   await page.route("**/sites/llm-self-hosting/?*", (route) => route.abort("failed"));
   await page.locator("#update-comparison").click();
   await expect(page.getByRole("alert")).toContainText("Could not update");
@@ -577,7 +577,7 @@ test("calculator reports network failure and recovers on retry", async ({ page }
 });
 
 test("calculator keeps edits made while an update is in flight", async ({ page }) => {
-  await page.goto(calculator);
+  await page.goto(calculator + "?mode=advanced");
   let release;
   const held = new Promise((resolve) => {
     release = resolve;
@@ -609,7 +609,7 @@ test("calculator keeps edits made while an update is in flight", async ({ page }
 });
 
 test("calculator submits exact decimal scenarios without browser step errors", async ({ page }) => {
-  await page.goto(`${calculator}?requests=1234567&throughput=123.4567&duty=50.55&overhead=12.5&platform=99.99`);
+  await page.goto(`${calculator}?requests=1234567&throughput=123.4567&duty=50.55&overhead=12.5`);
   await expect(page.locator("#requests")).toHaveValue("1234567");
   await expect(page.locator("#throughput")).toHaveValue("123.4567");
   await expect(page.locator("#duty")).toHaveValue("50.55");
@@ -621,7 +621,7 @@ test("calculator submits exact decimal scenarios without browser step errors", a
 });
 
 test("cost slider stays synchronized after back navigation", async ({ page }) => {
-  await page.goto(calculator);
+  await page.goto(calculator + "?mode=advanced");
   await page.locator("#cost-volume").focus();
   await page.locator("#cost-volume").press("ArrowRight");
   await page.goto("/sites/");
@@ -644,7 +644,7 @@ test("cost slider stays synchronized after back navigation", async ({ page }) =>
 });
 
 test("invalid optional inputs open their disclosure before receiving focus", async ({ page }) => {
-  await page.goto(calculator);
+  await page.goto(calculator + "?mode=advanced");
   await page.locator("#latency-settings > summary").click();
   await page.locator("#measured-first").fill("4000");
   await page.locator("#latency-settings > summary").click();
@@ -656,55 +656,161 @@ test("invalid optional inputs open their disclosure before receiving focus", asy
 test("calculator and article search work without JavaScript", async ({ browser, baseURL }) => {
   const context = await browser.newContext({ javaScriptEnabled: false, baseURL });
   const page = await context.newPage();
-  await page.goto(calculator);
-  await page.locator("#node").selectOption("g2-standard-12");
-  await page.locator("#quant").selectOption("fp4");
+  await page.goto(calculator + "?mode=advanced");
+  await page.locator("#hosting-options > summary").click();
+  await page.locator("#node").selectOption("g4-standard-48");
+  await page.locator("#quant").selectOption("fp16");
   await page.locator("#billing").selectOption("cud-1y");
   await page.locator("#requests").fill("345");
   await page.locator("#update-comparison").click();
   await expect(page.locator("#requests")).toHaveValue("345");
-  await expect(page.locator("#node")).toHaveValue("g2-standard-12");
+  await expect(page.locator("#node")).toHaveValue("g4-standard-48");
   await expect(page.locator("#billing")).toHaveValue("cud-1y");
-  await expect(page.locator("#billing-help")).toContainText("$460.09/node/month");
+  await expect(page.locator("#billing-help")).toContainText("$2,266.65/node/month");
   expect(new URL(page.url()).searchParams.get("requests")).toBe("345");
   await page.goto("/articles/?q=agents");
   await expect(page.locator("main")).toContainText("agents");
   await context.close();
 });
 
-test("static hardware hints, commitments, and round chart workloads", async ({ page }, testInfo) => {
+test("simple calculator chooses compatible native hardware and preserves commitments", async ({ page }, testInfo) => {
   await page.goto(calculator);
-  await expect(page.locator("footer").getByRole("link", { name: "Sites", exact: true })).toHaveCount(0);
-  const hint = page.locator("#hardware-guidance");
-  await expect(hint).toContainText("G2");
-  await expect(hint.locator("a, button, input, select")).toHaveCount(0);
-  const initialHint = await hint.innerText();
-  const initialNode = await page.locator("#node").inputValue();
-  await page.locator("#model").selectOption("kimi-k3");
-  await expect(hint).toContainText("2 nodes per replica · A3 Ultra");
-  await expect(page.locator("#node")).toHaveValue(initialNode);
-  await page.locator("#model").selectOption("qwen3-8-27b");
-  await expect(hint).toHaveText(initialHint, { useInnerText: true });
-  await page.locator("#node").selectOption("g4-standard-48");
+  await expect(page.locator("#preset")).toHaveValue("small-team");
+  await expect(page.locator("#quant, #node, #throughput, #quality")).toHaveCount(0);
+  await expect(page.locator("#calculator select, #calculator input[type=number]")).toHaveCount(5);
+  await expect(page.getByRole("link", { name: "Try a scenario", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Compare costs", exact: true })).toHaveCount(0);
+  await expect(page.locator("#platform, #hosting-reading"))
+    .toHaveCount(0);
+  await expect(page.locator("#model option[value=mistral-small-4]")).toHaveText("Mistral Small 4");
+  await expect(page.locator("#model option[value=muse-glimmer]")).toContainText("Muse Glimmer");
+  await expect(page.locator("#model option[value=kimi-k3]")).toContainText("Kimi K3");
+  await expect(page.locator("#preset option[value=small-team]")).toContainText("Small team");
+  expect(await page.locator("#preset option").evaluateAll((options) => options.map((option) => option.value)))
+    .toEqual([
+      "single-job",
+      "small-team",
+      "document-pipeline",
+      "department",
+      "automated-support",
+      "scheduled-workflow",
+      "service",
+    ]);
+  await expect(page.locator("#model option").first()).toHaveAttribute("value", "qwen3-5-4b");
+  await expect(page.locator("#model option").last()).toHaveAttribute("value", "kimi-k3");
+  await expect(page.locator("#hosting-method ul")).toBeHidden();
+  await page.locator("#hosting-method > summary").click();
+  await expect(page.locator("#hosting-method ul")).toBeVisible();
+  await page.locator("#hosting-sources > summary").click();
+  await expect(page.locator("#hosting-sources ul")).toBeVisible();
+  await page.locator("#preset").selectOption("department");
+  await page.locator("#window").selectOption("8");
+  await page.locator("#model").selectOption("mistral-small-4");
   await page.locator("#billing").selectOption("cud-3y");
-  await page.locator("#quant").selectOption("fp16");
-  await page.locator("#duty").fill("25");
   await page.locator("#update-comparison").click();
-  await expect(page.locator("#billing-help")).toContainText("$1,445.00/node/month, even while idle");
-  await expect(hint).toHaveText(initialHint, { useInnerText: true });
-  await page.reload();
-  await expect(hint).toHaveText(initialHint, { useInnerText: true });
-  await expect(page.locator("#billing")).toHaveValue("cud-3y");
-  await page.locator("#cost-volume").focus();
-  await page.locator("#cost-volume").press("ArrowRight");
-  await expect(page.locator("[data-cost-output]")).toContainText("200 requests/day · 4,400 requests/month");
-  await page.locator("#apply-demand").click();
-  await expect(page.locator("#requests")).toHaveValue("200");
-  await expect(hint).toHaveText(initialHint, { useInnerText: true });
-  await page.locator("[data-cost-explorer]").screenshot({ path: `tmp/chart-${testInfo.project.name}.png` });
-  await hint.screenshot({ path: `tmp/guidance-${testInfo.project.name}.png` });
+  await expect(page.locator("[data-update-status]")).toHaveText("Comparison updated.");
+  await expect(page.locator("#update-comparison")).toBeFocused();
+  await expect(page.locator("#recommended-fleet")).toContainText("G4");
+  await expect(page.locator("#recommended-fleet")).toContainText("NVFP4");
+  await expect(page.locator("main")).toContainText("2 replicas");
+  await expect(page.locator("#recommended-fleet")).toContainText("Always-on service");
+  await expect(page.locator("#billing-help")).toContainText("even while idle");
+  await expect(page.locator("main")).toContainText("Department");
+  const apiComparison = page.getByRole("region", { name: "API monthly cost comparison" });
+  await expect(apiComparison).toContainText("Claude Haiku 5.5");
+  await expect(apiComparison).toContainText("Claude Sonnet 5.5");
+  await expect(apiComparison).toContainText("Claude Opus 5.5");
+  await page.locator("#hosting-break-even > summary").click();
+  await expect(page.locator("#hosting-break-even")).toContainText(/break-even/i);
+  expect(await apiComparison.locator("tbody th, h4").allTextContents())
+    .toEqual(["Claude Haiku 5.5", "Gemini 3.8 Flash", "Claude Sonnet 5.5", "Claude Opus 5.5", "GPT-6 Astra"]);
+  await expect(page.locator("main")).toContainText("not measured GPU utilization");
+  await page.screenshot({ path: testInfo.outputPath("gke-simple.png"), fullPage: true });
   expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
+  await page.locator("#advanced-mode").click();
+  await expect(page.locator("#quant")).toHaveValue("nvfp4");
+  await expect(page.locator("#node")).toHaveValue("g4-standard-48");
+  await expect(page.locator("#requests")).toHaveValue("2000");
+  await expect(page.locator("#window")).toHaveValue("8");
+  await expect(page.locator("#replicas")).toHaveValue("2");
+  await page.locator("#hosting-options > summary").click();
+  await page.locator("#quant").selectOption("fp8");
+  await page.locator("#node").selectOption("auto");
+  await page.locator("#update-comparison").click();
+  await expect(page.locator("#node")).toHaveValue("a3-ultra");
+  await expect(page.locator("#billing")).toHaveValue("cud-3y");
+  await page.locator("#simple-mode").click();
+  await expect(page.locator("#quant")).toHaveCount(0);
+  await expect(page.locator("#recommended-fleet")).toContainText("NVFP4");
+  await expect(page.locator("#preset")).toHaveValue("department");
+  await expect(page.locator("#window")).toHaveValue("8");
+  await page.goto(calculator + "?preset=service&model=kimi-k3&window=1");
+  await expect(page.locator("main")).toContainText("129 replicas");
+  await expect(page.locator("main")).toContainText("Confirm this multi-host configuration with a pilot");
+  for (const width of [320, 768, 1024]) {
+    await page.setViewportSize({ width, height: 844 });
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(resolve)));
+    expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
+  }
 });
+
+test("simple calculator works without JavaScript", async ({ browser, baseURL }) => {
+  const context = await browser.newContext({ javaScriptEnabled: false, baseURL });
+  try {
+    const page = await context.newPage();
+    await page.goto(calculator);
+    await page.locator("#preset").selectOption("scheduled-workflow");
+    await page.locator("#window").selectOption("1");
+    await page.locator("#model").selectOption("mistral-small-4");
+    await page.locator("#billing").selectOption("cud-1y");
+    await page.locator("#update-comparison").click();
+    await expect(page.locator("#preset")).toHaveValue("scheduled-workflow");
+    await expect(page.locator("#window")).toHaveValue("1");
+    await expect(page.locator("main")).toContainText("Start with an API on cost grounds");
+    await expect(page.locator("main")).toContainText("17 replicas");
+    await expect(page.locator("#recommended-fleet")).toContainText("G4");
+    expect(new URL(page.url()).searchParams.get("mode")).toBe("simple");
+    await page.locator("#advanced-mode").click();
+    await expect(page.locator("#quant")).toHaveValue("nvfp4");
+    await expect(page.locator("#requests")).toHaveValue("2500");
+    await expect(page.locator("#window")).toHaveValue("1");
+    await expect(page.locator("#replicas")).toHaveValue("17");
+  } finally {
+    await context.close();
+  }
+});
+
+test(
+  "simple volume overrides and workload defaults survive sharing with or without JavaScript",
+  async ({ browser, baseURL }, testInfo) => {
+    for (const javaScriptEnabled of [true, false]) {
+      const context = await browser.newContext({ ...testInfo.project.use, javaScriptEnabled, baseURL });
+      try {
+        const page = await context.newPage();
+        await page.goto(calculator);
+        await page.locator("#preset").selectOption("department");
+        await page.locator("#requests").fill("1000");
+        await page.locator("#update-comparison").click();
+        await expect(page.locator("#requests")).toHaveValue("1000");
+        await expect(page.locator("main")).toContainText("22,000 calls/month");
+        await page.reload();
+        await expect(page.locator("#requests")).toHaveValue("1000");
+        await page.locator("#requests").fill("");
+        await page.locator("#preset").selectOption("single-job");
+        await page.locator("#window").selectOption("auto");
+        await page.locator("#update-comparison").click();
+        await expect(page.locator("main")).toContainText("100 calls/month");
+        await page.locator("#recommended-fleet > summary").click();
+        await expect(page.locator("#recommended-fleet")).toContainText("1 h/month");
+        await page.locator("#reset-scenario").click();
+        await expect(page.locator("#preset")).toHaveValue("small-team");
+        await expect(page.locator("#requests")).toHaveValue("");
+      } finally {
+        await context.close();
+      }
+    }
+  },
+);
 
 test("Fmind palette reaches page surfaces, controls, charts, and code", async ({ page, request }) => {
   await page.goto("/");
@@ -724,7 +830,7 @@ test("Fmind palette reaches page surfaces, controls, charts, and code", async ({
   expect(manifest.theme_color).toBe("#174ea6");
   await expect(page.locator("meta[name=\"theme-color\"]")).toHaveAttribute("content", manifest.theme_color);
 
-  await page.goto(calculator);
+  await page.goto(calculator + "?mode=advanced");
   for (
     const [selector, color] of [[".stroke-primary", "rgb(23, 78, 166)"], [".stroke-info", "rgb(0, 99, 109)"], [
       ".stroke-warning",
@@ -1053,7 +1159,7 @@ test("agent guide connects visitors to the calculator and verified skill", async
   expect(skill.status()).toBe(200);
   const { createHash } = require("node:crypto");
   expect(index.skills[0].digest).toBe("sha256:" + createHash("sha256").update(await skill.body()).digest("hex"));
-  await page.getByRole("link", { name: "calculator's shareable URLs" }).click();
+  await page.getByRole("link", { name: "calculator's URL parameters" }).click();
   await expect(page).toHaveURL(/\/sites\/llm-self-hosting\/$/);
 });
 

@@ -6,10 +6,11 @@ from collections.abc import Mapping, Sequence
 from dataclasses import replace
 from decimal import Decimal
 from hashlib import sha256
-from math import isfinite
+from math import ceil, isfinite
 from re import fullmatch
 from urllib.parse import urlencode
 
+from .capacity import MONTHLY_HOURS, replicas_for_demand
 from .data import (
     DEFAULT_HOSTING_INPUTS,
     DEMAND_PRESETS,
@@ -20,6 +21,7 @@ from .data import (
 from .models import (
     APIMode,
     BillingPlan,
+    DemandPreset,
     FrontierModel,
     GKENodePool,
     HostingInputs,
@@ -150,7 +152,28 @@ def _apply_demand_preset(
 
 def parse_inputs(query: Query) -> tuple[HostingInputs, tuple[str, ...]]:
     validation: list[str] = []
+    if "platform" in query:
+        validation.append("Operations budget is no longer included; totals cover GPU compute and the GKE fee")
     defaults = DEFAULT_HOSTING_INPUTS
+    preset = next(
+        (item for item in DEMAND_PRESETS if item.id == (_first(query, "preset") or "small-team")), DEMAND_PRESETS[1]
+    )
+    advanced_keys = (scenario_parameters(defaults).keys() | {"quality", "pilot", "confirm-pilot"}) - {
+        "model",
+        "billing",
+        "mode",
+        "preset",
+        "window",
+    }
+    mode = _parse_choice(
+        query,
+        "mode",
+        "advanced" if query.keys() & advanced_keys else "simple",
+        frozenset(("simple", "advanced")),
+        validation,
+    )
+    if mode == "simple" and query.keys() & (advanced_keys - {"requests"}):
+        validation.append("Advanced parameters require advanced mode; simple defaults were used")
     # Previously shared URLs encoded the A4 billing plan in the hardware ID.
     legacy_plan = {"a4-cud-3y": "cud-3y", "a4-flex": "flex"}.get(_first(query, "node") or "")
     if legacy_plan:
@@ -158,30 +181,35 @@ def parse_inputs(query: Query) -> tuple[HostingInputs, tuple[str, ...]]:
         query["node"] = "a4"
         if not _first(query, "billing"):
             query["billing"] = legacy_plan
+    model_id = _parse_choice(
+        query, "model", defaults.model_id, frozenset(model.id for model in FRONTIER_MODELS), validation
+    )
+    demand_window_hours = (
+        float(_parse_choice(query, "window", str(int(preset.window_hours)), frozenset(("24", "8", "1")), validation))
+        if mode == "simple" and _first(query, "window") != "auto"
+        else preset.window_hours
+        if mode == "simple"
+        else _parse_bounded_float(query, "window", defaults.demand_window_hours, 0.1, 24, validation)
+    )
+    quantization_id = _parse_choice(
+        query,
+        "quant",
+        find_model(model_id).default_quantization,
+        frozenset(quant.id for quant in QUANTIZATIONS) | {"auto"},
+        validation,
+    )
+    if quantization_id == "auto":
+        quantization_id = find_model(model_id).default_quantization
     inputs = replace(
         defaults,
-        model_id=_parse_choice(
-            query,
-            "model",
-            defaults.model_id,
-            frozenset(model.id for model in FRONTIER_MODELS),
-            validation,
-        ),
+        mode=mode,
+        model_id=model_id,
         node_pool_id=_parse_choice(
-            query,
-            "node",
-            defaults.node_pool_id,
-            frozenset(node.id for node in GKE_NODE_POOLS),
-            validation,
+            query, "node", defaults.node_pool_id, frozenset(node.id for node in GKE_NODE_POOLS) | {"auto"}, validation
         ),
-        quantization_id=_parse_choice(
-            query,
-            "quant",
-            defaults.quantization_id,
-            frozenset(quant.id for quant in QUANTIZATIONS),
-            validation,
-        ),
-        replicas=_parse_bounded_int(query, "replicas", defaults.replicas, 1, 8, validation),
+        quantization_id=quantization_id,
+        demand_window_hours=demand_window_hours,
+        replicas=_parse_bounded_int(query, "replicas", defaults.replicas, 1, 100_000, validation),
         duty_cycle_percent=_parse_bounded_float(
             query,
             "duty",
@@ -230,13 +258,10 @@ def parse_inputs(query: Query) -> tuple[HostingInputs, tuple[str, ...]]:
             1_000_000,
             validation,
         ),
-        requests_per_day=_parse_bounded_float(
-            query,
-            "requests",
-            defaults.requests_per_day,
-            1,
-            10_000_000,
-            validation,
+        requests_per_day=(
+            _parse_bounded_float(query, "requests", defaults.requests_per_day, 1, 10_000_000, validation)
+            if mode == "advanced"
+            else defaults.requests_per_day
         ),
         active_days=_parse_bounded_count(
             query,
@@ -246,15 +271,45 @@ def parse_inputs(query: Query) -> tuple[HostingInputs, tuple[str, ...]]:
             31,
             validation,
         ),
-        platform_monthly_usd=_parse_bounded_float(
-            query,
-            "platform",
-            defaults.platform_monthly_usd,
-            0,
-            10_000_000,
-            validation,
-        ),
     )
+    if mode == "simple":
+        inputs = replace(
+            defaults,
+            mode=mode,
+            model_id=inputs.model_id,
+            demand_window_hours=inputs.demand_window_hours,
+            quantization_id=find_model(inputs.model_id).default_quantization,
+        )
+    inputs = _apply_demand_preset(_first(query, "preset"), inputs, validation)
+    if mode == "simple":
+        inputs = replace(
+            inputs,
+            requests_per_day=_parse_bounded_float(
+                query, "requests", inputs.requests_per_day, 1, 10_000_000, validation
+            ),
+            duty_cycle_percent=min(100, inputs.active_days * inputs.demand_window_hours / MONTHLY_HOURS * 100)
+            if preset.scheduled
+            else 100,
+        )
+        inputs = replace(inputs, replicas=replicas_for_demand(inputs))
+    if mode == "advanced":
+        inputs = _parse_hosting_options(query, inputs, validation)
+    if mode == "simple" or _first(query, "node") in (None, "auto"):
+        allowed_plans = frozenset(("on-demand", "cud-1y", "cud-3y"))
+        if mode == "advanced":
+            allowed_plans |= {"flex"}
+        raw_billing = _parse_choice(query, "billing", "on-demand", allowed_plans, validation)
+        try:
+            node = automatic_node(inputs, BillingPlan(raw_billing))
+        except ValueError as exc:
+            if mode == "simple":
+                validation.append(f"{exc}; the default model was used")
+                inputs = replace(inputs, model_id=defaults.model_id, quantization_id=defaults.quantization_id)
+                node = automatic_node(inputs, BillingPlan(raw_billing))
+            else:
+                validation.append(f"{exc}; select a compatible checkpoint, GPU and billing plan")
+                node = find_node_pool(defaults.node_pool_id)
+        inputs = replace(inputs, node_pool_id=node.id)
     node = find_node_pool(inputs.node_pool_id)
     raw_plan = _first(query, "billing")
     available_plans = frozenset(price.plan.value for price in node.prices)
@@ -266,8 +321,9 @@ def parse_inputs(query: Query) -> tuple[HostingInputs, tuple[str, ...]]:
     elif raw_plan:
         plan = raw_plan
     inputs = replace(inputs, billing_plan=BillingPlan(plan))
-    inputs = _apply_demand_preset(_first(query, "preset"), inputs, validation)
-    inputs = _parse_hosting_options(query, inputs, validation)
+    issue = configuration_issue(inputs)
+    if issue:
+        validation.append(issue)
     return _bind_pilot_measurements(query, inputs, validation), tuple(validation)
 
 
@@ -394,8 +450,7 @@ def _parse_hosting_options(
                 ),
             ),
         )
-    quality_0, quality_1, quality_2, quality_3 = qualities
-    inputs = replace(inputs, quality=(quality_0, quality_1, quality_2, quality_3))
+    inputs = replace(inputs, quality=tuple(qualities))
     if (
         inputs.measured_first_token > 0
         and inputs.measured_completion > 0
@@ -421,6 +476,84 @@ def find_quantization(quantization_id: str) -> Quantization:
         (item for item in QUANTIZATIONS if item.id == quantization_id),
         QUANTIZATIONS[0],
     )
+
+
+def configuration_issue(inputs: HostingInputs, *, check_workload: bool = True) -> str:
+    """Fail closed on known checkpoint, kernel, topology and delivery constraints."""
+    model = find_model(inputs.model_id)
+    node = find_node_pool(inputs.node_pool_id)
+    quantization = find_quantization(inputs.quantization_id)
+    if model.deployment_issue:
+        return model.deployment_issue
+    if quantization.id not in model.supported_quantizations:
+        return f"{model.name} has no verified {quantization.name} checkpoint in this catalog"
+    if model.required_node_ids and node.id not in model.required_node_ids:
+        return f"{model.name} requires one of the verified node families: {', '.join(model.required_node_ids)}"
+    if quantization.id == "fp8" and node.id == "a2-ultra-1g":
+        return (
+            "A100 does not support the selected native FP8 W8A8 kernels; choose 16-bit or an Ada/Hopper/Blackwell GPU"
+        )
+    if (
+        quantization.id == "nvfp4"
+        and node.id not in ("g4-standard-48", "a4")
+        and not (model.id == "inkling" and node.id == "a3-ultra")
+    ):
+        return f"{quantization.name} requires Blackwell hardware in this conservative compatibility snapshot"
+    for node_id, context_limit in model.node_context_limits:
+        if (
+            check_workload
+            and node.id == node_id
+            and inputs.input_tokens_request + inputs.output_tokens_request > context_limit
+        ):
+            return f"The verified {model.name} recipe on {node.name} is limited to {context_limit:,} context tokens"
+    required = weight_memory_gb(model, quantization) * (1 + inputs.memory_overhead_pct / 100)
+    if ceil(required / node.vram_gb) > 1 and not node.multi_host:
+        return (
+            f"{model.name} does not fit on one {node.name}; this catalog does not support sharding across those nodes"
+        )
+    if inputs.billing_plan is BillingPlan.FLEX and inputs.api_mode is not APIMode.BATCH:
+        return "Flex-start queues bounded jobs and does not support this interactive serving comparison; select batch or reserved capacity"
+    return ""
+
+
+def automatic_node(inputs: HostingInputs, plan: BillingPlan) -> GKENodePool:
+    """Minimize published compute cost under the shared throughput assumption."""
+    quant = find_quantization(inputs.quantization_id)
+    model = find_model(inputs.model_id)
+    required = weight_memory_gb(model, quant) * (1 + inputs.memory_overhead_pct / 100)
+    candidates = [
+        node
+        for node in GKE_NODE_POOLS
+        if any(price.plan is plan for price in node.prices)
+        and not configuration_issue(replace(inputs, node_pool_id=node.id, billing_plan=plan), check_workload=False)
+    ]
+    if not candidates:
+        raise ValueError(f"No compatible hardware for {model.name} under {plan}")
+    workload_candidates = [
+        node for node in candidates if not configuration_issue(replace(inputs, node_pool_id=node.id, billing_plan=plan))
+    ]
+    # If every recipe rejects the request, preserve a compatible checkpoint/GPU
+    # so parse_inputs can report the actual context limit and reject the scenario.
+    return min(
+        workload_candidates or candidates,
+        key=lambda node: (
+            nodes_for_model(model, node, required) * node.price(plan).hourly_usd,
+            nodes_for_model(model, node, required),
+        ),
+    )
+
+
+def weight_memory_gb(model: FrontierModel, quantization: Quantization) -> float:
+    """Published tensor bytes include mixed precision and quantization scales."""
+    return next(
+        (size for precision, size in model.checkpoint_memory if precision == quantization.id),
+        model.parameters_b * quantization.bytes_per_param,
+    )
+
+
+def nodes_for_model(model: FrontierModel, node: GKENodePool, required_memory: float) -> int:
+    minimum = next((count for node_id, count in model.node_minimums if node_id == node.id), 1)
+    return max(minimum, ceil(required_memory / node.vram_gb))
 
 
 def pilot_configuration_id(inputs: HostingInputs) -> str:
@@ -474,9 +607,23 @@ def _float_for_url(value: float) -> str:
     return format(Decimal(repr(value)), "f")
 
 
+def demand_preset(inputs: HostingInputs) -> DemandPreset:
+    """Match a workload's token mix and calendar while allowing custom volume."""
+    return next(
+        (
+            preset
+            for preset in DEMAND_PRESETS
+            if (inputs.active_days, inputs.input_tokens_request, inputs.output_tokens_request)
+            == (preset.active_days, preset.input_tokens, preset.output_tokens)
+        ),
+        DEMAND_PRESETS[1],
+    )
+
+
 def scenario_parameters(inputs: HostingInputs) -> dict[str, str]:
     """Serialize inputs exactly; URLs, agent parameters, and form values share this."""
     values = {
+        "mode": inputs.mode,
         "model": inputs.model_id,
         "node": inputs.node_pool_id,
         "billing": inputs.billing_plan.value,
@@ -494,7 +641,7 @@ def scenario_parameters(inputs: HostingInputs) -> dict[str, str]:
         "input-tokens": _float_for_url(inputs.input_tokens_request),
         "requests": _float_for_url(inputs.requests_per_day),
         "days": _float_for_url(inputs.active_days),
-        "platform": _float_for_url(inputs.platform_monthly_usd),
+        "window": _float_for_url(inputs.demand_window_hours),
         "cache-prefix": _float_for_url(inputs.cache_prefix_tokens),
         "target-first": _float_for_url(inputs.target_first_token),
         "target-complete": _float_for_url(inputs.target_completion),
@@ -513,6 +660,14 @@ def scenario_parameters(inputs: HostingInputs) -> dict[str, str]:
         )
         values[f"quality-{index}-calls"] = _float_for_url(quality.calls_per_task)
         values[f"quality-{index}-review"] = _float_for_url(quality.review_minutes)
+    if inputs.mode == "simple":
+        values = {key: value for key, value in values.items() if key in {"mode", "model", "billing", "window"}}
+        if inputs.demand_window_hours not in (24, 8, 1):
+            values["window"] = "24"
+        preset = demand_preset(inputs)
+        values["preset"] = preset.id
+        if inputs.requests_per_day != preset.requests_per_day:
+            values["requests"] = _float_for_url(inputs.requests_per_day)
     return dict(sorted(values.items()))
 
 

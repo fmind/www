@@ -21,14 +21,14 @@ from www.sites.formatting import format_decimal, format_number
 from www.sites.inputs import scenario_parameters
 
 NOW = datetime(2026, 9, 7, tzinfo=UTC)
-PAGE = "/sites/llm-self-hosting/"
+PAGE = "/sites/llm-self-hosting/?mode=advanced"
 QUALIFIED_VERDICTS = {"Fleet has a cost case", "API costs less", "No API accepts this request"}
 
 type AppClient = TestClient[Any]
 
 
 def view(query: dict[str, str] | None = None):
-    return build_llm_self_hosting_view(query, now=NOW)
+    return build_llm_self_hosting_view({"mode": "advanced", **(query or {})}, now=NOW)
 
 
 class NumberInputs(HTMLParser):
@@ -160,11 +160,11 @@ def test_chart_styles_scale_with_the_baseline_count(client: AppClient, monkeypat
     extra = tuple(replace(baseline, name=f"{baseline.name} copy") for baseline in API_BASELINES[:2])
     monkeypatch.setattr(economics, "API_BASELINES", API_BASELINES + extra)
 
-    assert [line.series for line in view().cost_plot.lines] == [0, 1, 2, 3, 4, 5]
+    assert [line.series for line in view().cost_plot.lines] == list(range(8))
     response = client.get(PAGE)
     assert response.status_code == 200
-    assert "one fixed GKE fleet and 5 managed APIs" in response.text
-    assert response.text.count('<polyline points="') == 6
+    assert "one fixed GKE fleet and 7 managed APIs" in response.text
+    assert response.text.count('<polyline points="') == 8
 
 
 @pytest.mark.parametrize(

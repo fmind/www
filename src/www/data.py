@@ -375,8 +375,8 @@ SITE_PAGES = (
         slug="llm-self-hosting",
         article_slugs=("the-affordable-ai-agents", "cag-vs-rag-choosing-the-right-strategy-for-your-ai-application"),
         title="LLM self-hosting on GKE",
-        description="Compare the leading open-weight models, GPU memory fit, GKE fleet cost, serving capacity, and managed-API break-even.",
-        audience="AI and technology leaders evaluating sovereign or controlled model serving",
+        description="Compare open-weight LLM infrastructure budgets on GKE with managed APIs, using typical workloads, adjustable volume, and transparent assumptions.",
+        audience="Teams comparing managed APIs with controlled model serving",
         url=f"{METADATA.site_url}/sites/llm-self-hosting/",
     ),
 )

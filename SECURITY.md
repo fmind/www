@@ -10,14 +10,14 @@ Trivy may warn about third-party SBOM metadata or [fallback severity sources](ht
 
 ## Current advisory review
 
-**Owner:** Médéric Hurier. **Reviewed:** 2026-10-06. **Next review:** 2026-10-13, or immediately on a new fixable finding or relevant runtime change.
+**Owner:** Médéric Hurier. **Reviewed:** 2026-10-12. **Next review:** 2026-10-19, or immediately on a new fixable finding or relevant runtime change.
 
-The current candidate uses `python:3.14.8-slim@sha256:f85c5697265c178cc6887276c55fe16cf3d14ca35c3df6a5eab3b360534a55d2`, and its runtime stage applies pending Debian security updates because they can lag the base image. The fixable vulnerability/secret gate and HTTP/MCP image smoke pass. The October 6 unfiltered candidate scan reports 44 HIGH package/advisory instances across the eight CVEs below, no CRITICAL findings, and no available fixes. Each new rollout still needs its own serving-digest evidence.
+The current candidate uses `python:3.14.8-slim@sha256:f85c5697265c178cc6887276c55fe16cf3d14ca35c3df6a5eab3b360534a55d2`, and its runtime stage applies pending Debian security updates because they can lag the base image. The fixable vulnerability/secret gate and HTTP/MCP image smoke pass. The October 12 unfiltered candidate scan reports 44 Trivy HIGH package/advisory instances across the eight CVEs below, no CRITICAL findings, and no fixes available for the deployed Debian trixie packages. Upstream and Debian unstable fixes exist; their availability does not imply a compatible trixie update. Each new rollout still needs its own serving-digest evidence.
 
 | Residual advisories                                                        | Application exposure assessment                                                                           |
 | -------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
 | Perl: CVE-2026-9538                                                        | No request path executes Perl or caller-controlled Perl data.                                             |
-| ncurses: CVE-2025-69720                                                    | No interactive terminal or caller-supplied terminal database processing.                                  |
+| ncurses: CVE-2025-69720                                                    | No request path invokes infocmp or processes caller-supplied terminfo.                                    |
 | systemd: CVE-2026-16742                                                    | Granian runs directly; the service does not run systemd-homed.                                            |
 | libacl: CVE-2026-54369                                                     | No ACL manipulation of caller-owned trees; runtime assets are root-owned and the process is unprivileged. |
 | util-linux: CVE-2026-76642, CVE-2026-78408, CVE-2026-78409, CVE-2026-78410 | No request path invokes mount helpers, nsenter, or mount post-hooks; the image strips setuid/setgid bits. |

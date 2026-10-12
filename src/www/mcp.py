@@ -327,7 +327,7 @@ def create_mcp_server(
     @server.tool(
         name="compare_llm_hosting",
         title="Compare LLM hosting costs",
-        description="Compare one GKE hosting scenario with managed API baselines using the website calculator. Call with parameters={} for defaults and supported model, node, billing, and quantization choices. Then override URL parameters as strings, e.g. requests=1000, throughput=100, tokens=500. Returns assumptions, USD costs, constraints, dated sources, and a shareable URL. Invalid inputs fail; no resources are provisioned. See /agents#calculator.",
+        description="Compare a GKE infrastructure budget with managed APIs. Call with parameters={} for defaults and supported models, hardware, and plans. Simple mode accepts preset, model, billing, requests (calls/day), and window (auto, 24, 8, or 1 hour/day); set mode=simple when overriding requests. It sizes replicas under illustrative throughput assumptions. Interactive presets run 24/7; job and pipeline presets schedule running hours inside active windows. Commitments bill idle hours. Advanced mode keeps the fleet fixed and exposes custom token budgets, throughput, and running time. Break-even holds that fleet fixed and checks its capacity. Totals include compute and GKE; operations and additional services are excluded. Returns assumptions, USD costs, constraints, sources, and a shareable URL. Invalid inputs fail; no resources are provisioned. See /agents#calculator.",
         annotations=_READ_ONLY,
         structured_output=True,
     )

@@ -29,6 +29,15 @@ def format_usd2(value: float) -> str:
     return "$" + format_decimal(value, 2)
 
 
+def format_budget(value: float) -> str:
+    """Keep planning headlines coarse while retaining readable small API bills."""
+    if value < 10:
+        return format_usd2(value)
+    if value < 1000:
+        return format_usd(value)
+    return "$" + format_decimal(value / 1000, 1) + "k"
+
+
 _NUMBER_UNITS = (("", 1.0, 0), ("k", 1e3, 1), ("M", 1e6, 2), ("B", 1e9, 2), ("T", 1e12, 2))
 
 
@@ -60,11 +69,13 @@ def task_cost_max(rows: Sequence[TaskComparison]) -> float:
 
 def hosting_decision_title(view: LLMSelfHostingView) -> str:
     """Summarize the immediate economic conclusion without hiding capacity."""
+    if view.estimate.compatibility_issue:
+        return "This configuration is not supported"
     if view.estimate.context_issue:
         return "The request exceeds this model's context limit"
     if not view.estimate.topology_confirmed:
         return "Confirm this multi-host configuration with a pilot"
-    if not view.estimate.demand_fits:
+    if not view.estimate.demand_fits or not view.estimate.daily_demand_fits:
         return "This fleet cannot cover the modeled demand"
     available = tuple(row for row in view.apis if not row.request_issue)
     if not available:
@@ -76,6 +87,11 @@ def hosting_decision_title(view: LLMSelfHostingView) -> str:
 
 def hosting_decision_copy(view: LLMSelfHostingView) -> str:
     """Explain the capacity and cost conclusion in decision-ready language."""
+    if view.estimate.compatibility_issue:
+        return (
+            view.estimate.compatibility_issue
+            + ". Choose compatible hardware or the model's published checkpoint format."
+        )
     if view.estimate.context_issue:
         return view.estimate.context_issue + ". Reduce the request or choose a model with a larger context window."
     if not view.estimate.topology_confirmed:
@@ -83,7 +99,7 @@ def hosting_decision_copy(view: LLMSelfHostingView) -> str:
             "The model spans more than one host. Record latency and completion measurements on this exact serving "
             "configuration before using its capacity or cost verdict."
         )
-    if not view.estimate.demand_fits:
+    if not view.estimate.demand_fits or not view.estimate.daily_demand_fits:
         return (
             "Do not treat the current fleet bill as a quote for all this work. Increase replicas, measure a faster "
             "configuration, or reduce demand, then recalculate. A monthly average cannot establish peak-time capacity."
@@ -94,10 +110,9 @@ def hosting_decision_copy(view: LLMSelfHostingView) -> str:
     cheapest = min(available, key=lambda row: row.monthly_usd)
     if cheapest.monthly_usd < view.estimate.total_monthly_usd:
         return (
-            f"{cheapest.baseline.name} is {format_usd2(cheapest.monthly_usd)}/month for this token mix, versus "
-            f"{format_usd2(view.estimate.total_monthly_usd)} for your fleet. Self-hosting needs enough value from "
-            "control, residency, customization, or avoided quality failures to cover the difference. Compare task "
-            "success before choosing."
+            f"{cheapest.baseline.name} starts at {format_budget(cheapest.monthly_usd)}/month for this token budget. "
+            "Self-hosting may still be worth paying for control, residency, or customization. "
+            "Test task quality before choosing."
         )
     return (
         "The modeled fleet bill is below these API baselines at your demand. This is a candidate for a pilot: verify "

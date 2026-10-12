@@ -14,7 +14,7 @@ NOW = datetime(2026, 9, 7, tzinfo=UTC)
 
 
 def view(query=None):
-    return build_llm_self_hosting_view(query, now=NOW)
+    return build_llm_self_hosting_view({"mode": "advanced", **(query or {})}, now=NOW)
 
 
 def pilot():
@@ -29,8 +29,8 @@ def pilot():
 
 
 def test_context_budget_is_retained_but_cannot_produce_a_hosting_verdict() -> None:
-    result = view({"input-tokens": "256000", "tokens": "1"})
-    assert result.inputs.input_tokens_request == 256000
+    result = view({"input-tokens": "262144", "tokens": "1"})
+    assert result.inputs.input_tokens_request == 262144
     assert result.estimate.context_issue
     assert not result.estimate.qualified
     assert result.estimate.context_issue in result.validation
@@ -41,16 +41,16 @@ def test_context_budget_is_retained_but_cannot_produce_a_hosting_verdict() -> No
 
 
 def test_context_limit_is_inclusive_of_input_and_output() -> None:
-    assert view({"input-tokens": "255000", "tokens": "1000"}).estimate.qualified
-    assert not view({"input-tokens": "255000", "tokens": "1001"}).estimate.qualified
+    assert view({"input-tokens": "261144", "tokens": "1000"}).estimate.qualified
+    assert not view({"input-tokens": "261144", "tokens": "1001"}).estimate.qualified
 
 
 def test_l4_memory_spanning_hosts_requires_a_configuration_pilot() -> None:
     result = view({"node": "g2-standard-12"})
-    assert result.estimate.nodes_per_replica == 2
+    assert result.estimate.nodes_per_replica == 3
     assert not result.estimate.topology_confirmed
     assert not result.estimate.qualified
-    assert "multi-host" in hosting_decision_title(result).lower()
+    assert "not supported" in hosting_decision_title(result).lower()
     assert not result.comparison_ready
     assert not result.tasks[0].fits
     assert all(not cell.fits for row in result.sensitivity for cell in row.cells)
@@ -63,9 +63,10 @@ def test_l4_memory_spanning_hosts_requires_a_configuration_pilot() -> None:
             "measured-concurrency": "8",
         }
     )
-    assert confirmed.estimate.topology_confirmed
-    assert confirmed.estimate.qualified
-    assert view({"node": "g2-standard-12", "quant": "fp4"}).estimate.qualified
+    assert not confirmed.estimate.topology_confirmed
+    assert not confirmed.estimate.qualified
+    assert confirmed.estimate.compatibility_issue
+    assert not view({"node": "g2-standard-12", "quant": "fp4"}).estimate.qualified
 
 
 def test_partial_multi_host_pilot_cannot_qualify_the_configuration() -> None:
@@ -85,7 +86,12 @@ def test_partial_multi_host_pilot_cannot_qualify_the_configuration() -> None:
 
 @pytest.mark.parametrize("model", ["qwen3-8-27b", "kimi-k3"])
 def test_mcp_comparisons_cannot_borrow_another_configuration_pilot(model: str) -> None:
-    parameters = {"model": model, "node": "a3-high", "quant": "fp4", "requests": "1"}
+    parameters = {
+        "model": model,
+        "node": "a3-ultra",
+        "quant": "mxfp4" if model == "kimi-k3" else "fp16",
+        "requests": "1",
+    }
     baseline = compare_hosting(parameters)
     result = compare_hosting(
         {
@@ -105,8 +111,8 @@ def test_mcp_comparisons_cannot_borrow_another_configuration_pilot(model: str) -
                 assert not row.estimate.qualified
     for precision in result.precision_comparisons:
         if precision.estimate.nodes_per_replica > 1:
-            assert precision.estimate.topology_confirmed == (precision.quantization.id == "fp4")
-            if precision.quantization.id != "fp4":
+            assert precision.estimate.topology_confirmed == (precision.quantization.id == result.inputs.quantization_id)
+            if precision.quantization.id != result.inputs.quantization_id:
                 assert not precision.estimate.qualified
 
 
@@ -126,7 +132,8 @@ def test_api_output_limits_disable_unavailable_comparisons(tokens: str) -> None:
 
 def test_api_limits_enforce_combined_context_windows() -> None:
     over_limit = view({"input-tokens": "1000000", "tokens": "60000"})
-    assert all(api.request_issue for api in over_limit.apis)
+    assert not over_limit.apis[0].request_issue  # Gemini publishes separate input/output limits.
+    assert all(api.request_issue for api in over_limit.apis[1:])
 
     gemini_limit = view({"input-tokens": "983040", "tokens": "65536"})
     assert not gemini_limit.apis[0].request_issue
@@ -144,17 +151,40 @@ def test_pilot_confirmation_survives_a_shared_url() -> None:
     assert not shared.validation
 
 
+def test_precision_alternative_clears_pilot_when_automatic_hardware_changes() -> None:
+    parameters = {"model": "qwen3-8-27b", "quant": "fp16", "node": "a3-ultra"}
+    measured = view(
+        parameters
+        | {
+            "measured-first": "1",
+            "measured-complete": "5",
+            "measured-concurrency": "8",
+            "confirm-pilot": view(parameters).current_pilot_config,
+        }
+    )
+    assert measured.inputs.pilot_config
+    alternative = next(row for row in measured.precisions if row.quantization.id == "fp16")
+    assert alternative.node.id == "g4-standard-48"
+    shared = view(parse_qs(urlsplit(alternative.url).query))
+    assert not shared.validation
+    assert shared.estimate == alternative.estimate
+    assert shared.inputs.measured_first_token == 0
+    assert shared.inputs.measured_completion == 0
+    assert shared.inputs.measured_concurrency == 0
+    assert not shared.inputs.pilot_config
+
+
 @pytest.mark.parametrize(
     "change",
     [
         {"model": "kimi-k3"},
-        {"node": "g4-standard-48"},
+        {"node": "a2-ultra-1g"},
         {"quant": "fp4"},
         {"input-tokens": "4000"},
         {"tokens": "1000"},
         {"replicas": "2"},
         {"throughput": "500"},
-        {"overhead": "25"},
+        {"overhead": "35"},
         {"concurrency": "16"},
     ],
 )
@@ -199,7 +229,7 @@ def test_sensitivity_links_clear_stale_measurements_before_serializing() -> None
 def test_stale_confirmation_cannot_rebind_old_measurements_to_new_hardware() -> None:
     result = view(
         {
-            "node": "g4-standard-48",
+            "node": "a2-ultra-1g",
             "confirm-pilot": view().current_pilot_config,
             "measured-first": "1",
             "measured-complete": "5",

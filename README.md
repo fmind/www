@@ -4,6 +4,8 @@
 
 [Médéric Hurier (Fmind)](https://www.fmind.dev/), freelance AI Architect specializing in AI agents, MLOps, and security. The website is server-rendered Python: Litestar, strict Jinja, Tailwind CSS v4, DaisyUI v5, and Granian. Small page-specific JavaScript controllers enhance native navigation and forms. There is no client framework, application database, runtime CDN, cookie, or client-side analytics.
 
+The [LLM hosting budget tool](https://www.fmind.dev/sites/llm-self-hosting/) compares selected open-weight models on GKE with managed APIs. Simple mode starts from a workload, optional daily call count, model, pricing plan, and daily usage window. Teams default to an eight-hour workday with always-on nodes; document jobs and scheduled workflows assume nodes run only inside their active windows. Results lead with the cost decision and rounded budgets, with exact costs, throughput sensitivity, checkpoint trade-offs, and sources in expandable sections. A compact 4B model provides an L4 starting point; Mistral Small 4 defaults to its documented NVFP4 single-G4 setup with a 16,384-token context cap. Advanced settings expose custom token budgets, hardware, performance, and API modes. Capacity checks running hours and active windows separately. All speed assumptions are illustrative; totals include compute and the GKE fee, excluding operations and additional services. See the [dated source snapshot](src/www/sites/sources.md) for formulas, limits, and provenance.
+
 ## Development
 
 Requires [mise](https://mise.jdx.dev/), Docker Engine with Buildx, and network access for initial tool/browser installation and image/scanner downloads. Python and the remaining toolchain are pinned in `mise.toml` and `mise.lock`; `.mise/locks/` records the browser tools' transitive npm dependencies and must be committed with lock updates.
@@ -45,7 +47,7 @@ Decision tools use typed Python formulas, native GET forms, dated sources, and e
 | `mise run check:links`                                     | Network-dependent external-link audit; scheduled separately from merge gates                                |
 | `mise run test:browser`                                    | Desktop/mobile Chromium journeys                                                                            |
 | `mise run test:browser:cross`                              | Focused Firefox/WebKit journeys                                                                             |
-| `mise run test:lighthouse:local`                           | Temporary local server and strict ten-audit portfolio matrix                                                |
+| `mise run test:lighthouse:local`                           | Temporary local server and strict twelve-audit portfolio/calculator matrix                                  |
 | `mise run build`                                           | Production CSS, wheel, and source distribution                                                              |
 | `mise run check:image`                                     | Build and scan `tmp/www-image.tar`                                                                          |
 | `mise run test:image [digest-ref]`                         | Smoke-test the existing archive or exact remote digest                                                      |
@@ -57,7 +59,7 @@ Decision tools use typed Python formulas, native GET forms, dated sources, and e
 
 `all` runs sequentially and reuses build outputs and its image archive. It requires Docker/Buildx but no cloud credentials. Asset generators, `clean`, watchers, live scans, and deployment run only on demand; `clean` deletes generated output.
 
-Lighthouse stays separate: install Chromium, then use `mise run test:lighthouse -- --base-url <origin> --mode portfolio` for ten desktop/mobile audits of the portfolio, contact, privacy, and archive indexes. `smoke` runs four audits; default `full` covers the sitemap plus 48 stress audits. Run performance audits without concurrent builds or font generation; keep exact per-page scores.
+Lighthouse stays separate: install Chromium, then use `mise run test:lighthouse -- --base-url <origin> --mode portfolio` for twelve desktop/mobile audits of the portfolio, contact, privacy, archive indexes, and hosting calculator. `smoke` runs four audits; default `full` covers the sitemap plus 48 stress audits. Run performance audits without concurrent builds or font generation; keep exact per-page scores.
 
 Cross-browser checks require `install:browser:cross` and [Playwright system libraries](https://playwright.dev/docs/browsers#system-dependencies), or a matching official browser container via `PW_TEST_CONNECT_WS_ENDPOINT`. The [weekly/manual quality workflow](.github/workflows/quality.yml) provisions ephemeral runners and retains evidence for 14 days. Run browser suites sequentially because they share local port 8096. Set `BROWSER_BASE_URL=https://www.fmind.dev` for production journeys; local servers otherwise start and stop automatically.
 

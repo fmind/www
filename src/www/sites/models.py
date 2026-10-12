@@ -31,19 +31,23 @@ class NodePrice:
 @dataclass(frozen=True, slots=True)
 class FrontierModel:
     id: str
-    rank: int
     name: str
     creator: str
-    intelligence: float
     parameters_b: float
     active_parameters: float
     context_tokens: int
     license: str
     license_class: str
-    analysis_url: str
     weights_url: str
-    minimum_node_id: str
-    minimum_nodes: int
+    default_quantization: str = "fp16"
+    supported_quantizations: tuple[str, ...] = ("fp4", "fp8", "fp16")
+    required_node_ids: tuple[str, ...] = ()
+    deployment_issue: str = ""
+    node_context_limits: tuple[tuple[str, int], ...] = ()
+    checkpoint_memory: tuple[tuple[str, float], ...] = ()
+    node_minimums: tuple[tuple[str, int], ...] = ()
+    checkpoint_urls: tuple[tuple[str, str], ...] = ()
+    recipe_url: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -82,6 +86,12 @@ class DemandPreset:
     active_days: float
     input_tokens: float
     output_tokens: float
+    window_hours: float = 24
+    scheduled: bool = False
+
+    @property
+    def requests_month(self) -> float:
+        return self.requests_per_day * self.active_days
 
 
 @dataclass(frozen=True, slots=True)
@@ -125,7 +135,7 @@ class HostingInputs:
     input_tokens_request: float
     requests_per_day: float
     active_days: float
-    platform_monthly_usd: float
+    demand_window_hours: float
     api_mode: APIMode
     cache_prefix_tokens: float
     cache_requests: int
@@ -137,10 +147,11 @@ class HostingInputs:
     measured_completion: float
     tasks_per_month: float
     review_hourly_usd: float
-    quality: tuple[TaskQuality, TaskQuality, TaskQuality, TaskQuality]
+    quality: tuple[TaskQuality, ...]
     quality_enabled: bool
     billing_plan: BillingPlan = BillingPlan.ON_DEMAND
     pilot_config: str = ""
+    mode: str = "advanced"
 
 
 @dataclass(frozen=True, slots=True)
@@ -152,7 +163,6 @@ class HostingEstimate:
     total_gpus: int
     compute_monthly_usd: float
     control_monthly_usd: float
-    platform_monthly_usd: float
     total_monthly_usd: float
     capacity_tokens_month: float
     capacity_requests_day: float
@@ -160,11 +170,17 @@ class HostingEstimate:
     input_tokens_month: float
     output_tokens_month: float
     demand_capacity_pct: float
+    window_capacity_pct: float
+    required_output_tokens_per_second: float
+    usable_output_tokens_per_second: float
+    capacity_requests_month: int
     per_thousand_requests_usd: float
     demand_fits: bool
     context_issue: str
     topology_confirmed: bool
     qualified: bool
+    compatibility_issue: str
+    daily_demand_fits: bool
 
 
 @dataclass(frozen=True, slots=True)
@@ -185,6 +201,8 @@ class APIComparison:
 class PrecisionComparison:
     quantization: Quantization
     estimate: HostingEstimate
+    node: GKENodePool
+    url: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -192,12 +210,6 @@ class ModelComparison:
     model: FrontierModel
     estimate: HostingEstimate
     decision: str
-
-
-@dataclass(frozen=True, slots=True)
-class HardwareGuidance:
-    node: GKENodePool
-    nodes_per_replica: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -277,17 +289,20 @@ class LLMSelfHostingView:
     selected_model: FrontierModel
     selected_node: GKENodePool
     selected_price: NodePrice
-    hardware_guidance: HardwareGuidance
     selected_quant: Quantization
     estimate: HostingEstimate
     comparison: tuple[ModelComparison, ...]
     validation: tuple[str, ...]
     snapshot_date: str
-    index_version: str
     presets: tuple[DemandPreset, ...]
     apis: tuple[APIComparison, ...]
     precisions: tuple[PrecisionComparison, ...]
     demand_label: str
+    selected_preset: DemandPreset
+    window_is_auto: bool
+    custom_requests: bool
+    budget_low_usd: float
+    budget_high_usd: float
     cost_plot: CostPlot
     sensitivity: tuple[SensitivityRow, ...]
     tasks: tuple[TaskComparison, ...]
@@ -300,3 +315,5 @@ class LLMSelfHostingView:
     comparison_ready: bool
     # Exact serialized values keep resubmitted forms identical to shareable URLs.
     form_values: dict[str, str]
+    advanced_url: str
+    simple_url: str

@@ -18,6 +18,7 @@ from www.assets import ApplicationAssets
 from www.data import METADATA, article_filter_url
 from www.models import PageMetadata
 from www.sites.formatting import (
+    format_budget,
     format_count,
     format_decimal,
     format_number,
@@ -103,6 +104,7 @@ def create_environment(asset_hashes: Mapping[str, str]) -> Environment:
             "format_decimal": format_decimal,
             "format_go_float": _format_go_float,
             "format_number": format_number,
+            "format_budget": format_budget,
             "format_usd": format_usd,
             "format_usd2": format_usd2,
             "hosting_decision_copy": hosting_decision_copy,

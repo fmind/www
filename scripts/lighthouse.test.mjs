@@ -281,16 +281,25 @@ test("buildAuditPlan produces the exact smoke and full audit counts", () => {
   assert.deepEqual(new Set(smoke.map((audit) => audit.formFactor)), new Set(["desktop", "mobile"]));
 });
 
-test("full qualification grows with the sitemap while portfolio mode excludes content bodies", () => {
-  const paths = ["/", "/connect", "/privacy", "/articles/", "/sites/", "/articles/new/", "/sites/tool/"];
+test("full qualification grows with the sitemap while portfolio mode includes the calculator", () => {
+  const paths = [
+    "/",
+    "/connect",
+    "/privacy",
+    "/articles/",
+    "/sites/",
+    "/sites/llm-self-hosting/",
+    "/articles/new/",
+    "/sites/tool/",
+  ];
   const full = harness.buildAuditPlan(paths, "full", BASE_URL);
   assert.equal(full.filter((audit) => audit.phase === "sitemap").length, paths.length * 2);
   const portfolio = harness.buildAuditPlan(paths, "portfolio", BASE_URL);
-  assert.equal(portfolio.length, 10);
-  assert.deepEqual([...new Set(portfolio.map((audit) => audit.path))], paths.slice(0, 5));
+  assert.equal(portfolio.length, 12);
+  assert.deepEqual([...new Set(portfolio.map((audit) => audit.path))], paths.slice(0, 6));
   harness.validateSitemapScope(paths, "portfolio");
   assert.throws(
-    () => harness.validateSitemapScope(paths.filter((path) => path !== "/connect"), "portfolio"),
+    () => harness.validateSitemapScope(paths.filter((path) => path !== "/sites/llm-self-hosting/"), "portfolio"),
     /required path/u,
   );
   assert.equal(

@@ -96,3 +96,32 @@ test("off-screen archive cards remain reachable by keyboard", async ({ page }) =
   await expect(page).toHaveURL(destination);
   await expect(page.locator("h1")).toHaveCount(1);
 });
+
+test(
+  "calculator workload, volume, and advanced handoff work with or without JavaScript",
+  async ({ browser, baseURL }, testInfo) => {
+    for (const javaScriptEnabled of [true, false]) {
+      const context = await browser.newContext({ ...testInfo.project.use, baseURL, javaScriptEnabled });
+      try {
+        const page = await context.newPage();
+        await page.goto("/sites/llm-self-hosting/");
+        await page.locator("#preset").selectOption("single-job");
+        await page.locator("#model").selectOption("qwen3-5-4b");
+        await page.locator("#requests").fill("200");
+        await page.locator("#update-comparison").click();
+        await expect(page.locator("main")).toContainText("200 calls/month");
+        await page.locator("#recommended-fleet > summary").click();
+        await expect(page.locator("#recommended-fleet")).toContainText("1 h/month");
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+        await page.locator("#advanced-mode").click();
+        await expect(page.locator("#requests")).toHaveValue("200");
+        await page.locator("#hosting-options > summary").click();
+        await expect(page.locator("#node")).toHaveValue("g2-standard-12");
+        await page.reload();
+        await expect(page.locator("#requests")).toHaveValue("200");
+      } finally {
+        await context.close();
+      }
+    }
+  },
+);

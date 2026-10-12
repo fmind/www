@@ -4,12 +4,13 @@ from __future__ import annotations
 
 from dataclasses import replace
 from datetime import UTC, datetime
-from math import ceil
+from math import ceil, floor
 
+from .capacity import MONTHLY_HOURS, serving_capacity
 from .data import (
     API_BASELINES,
 )
-from .inputs import pilot_configuration_id
+from .inputs import configuration_issue, nodes_for_model, pilot_configuration_id, weight_memory_gb
 from .models import (
     APIBaseline,
     APIMode,
@@ -20,9 +21,6 @@ from .models import (
     Quantization,
 )
 
-MONTHLY_HOURS = 730.0
-SECONDS_PER_MONTH = MONTHLY_HOURS * 60 * 60
-SECONDS_PER_DAY = 24 * 60 * 60
 CLUSTER_HOURLY_USD = 0.10
 
 
@@ -32,9 +30,9 @@ def estimate_hosting(
     quantization: Quantization,
     inputs: HostingInputs,
 ) -> HostingEstimate:
-    weight_memory = model.parameters_b * quantization.bytes_per_param
+    weight_memory = weight_memory_gb(model, quantization)
     required_memory = weight_memory * (1 + inputs.memory_overhead_pct / 100)
-    nodes_per_replica = max(1, ceil(required_memory / node.vram_gb))
+    nodes_per_replica = nodes_for_model(model, node, required_memory)
     total_nodes = nodes_per_replica * inputs.replicas
     duty = inputs.duty_cycle_percent / 100
     # Stopping a committed VM reduces serving time, never the contractual bill.
@@ -42,16 +40,8 @@ def estimate_hosting(
     paid_duty = 1 if price.committed else duty
     compute_monthly = total_nodes * price.hourly_usd * MONTHLY_HOURS * paid_duty
     control_monthly = CLUSTER_HOURLY_USD * MONTHLY_HOURS
-    total_monthly = compute_monthly + control_monthly + inputs.platform_monthly_usd
-    capacity = inputs.tokens_per_second * inputs.replicas * (inputs.target_utilization / 100) * SECONDS_PER_MONTH * duty
-    capacity_requests_day = (
-        inputs.tokens_per_second
-        * inputs.replicas
-        * (inputs.target_utilization / 100)
-        * SECONDS_PER_DAY
-        * duty
-        / inputs.output_tokens_request
-    )
+    total_monthly = compute_monthly + control_monthly
+    capacity, capacity_requests_day = serving_capacity(inputs)
     requests = inputs.requests_per_day * inputs.active_days
     output_tokens = requests * inputs.output_tokens_request
     context_issue = ""
@@ -64,9 +54,19 @@ def estimate_hosting(
     # selected inputs. Pilot evidence belongs only to the actual configuration.
     scenario = replace(inputs, model_id=model.id, node_pool_id=node.id, quantization_id=quantization.id)
     topology_confirmed = nodes_per_replica == 1 or (
-        inputs.pilot_config == pilot_configuration_id(scenario) and pilot_measurements_complete(inputs)
+        node.multi_host
+        and inputs.pilot_config == pilot_configuration_id(scenario)
+        and pilot_measurements_complete(inputs)
     )
-    qualified = output_tokens <= capacity and not context_issue and topology_confirmed
+    compatibility_issue = configuration_issue(scenario)
+    daily_demand_fits = inputs.requests_per_day <= capacity_requests_day
+    qualified = (
+        output_tokens <= capacity
+        and daily_demand_fits
+        and not context_issue
+        and topology_confirmed
+        and not compatibility_issue
+    )
     return HostingEstimate(
         weight_memory_gb=weight_memory,
         required_memory_gb=required_memory,
@@ -75,7 +75,6 @@ def estimate_hosting(
         total_gpus=total_nodes * node.gpu_count,
         compute_monthly_usd=compute_monthly,
         control_monthly_usd=control_monthly,
-        platform_monthly_usd=inputs.platform_monthly_usd,
         total_monthly_usd=total_monthly,
         capacity_tokens_month=capacity,
         capacity_requests_day=capacity_requests_day,
@@ -83,11 +82,21 @@ def estimate_hosting(
         input_tokens_month=requests * inputs.input_tokens_request,
         output_tokens_month=output_tokens,
         demand_capacity_pct=output_tokens / capacity * 100,
+        window_capacity_pct=inputs.requests_per_day / capacity_requests_day * 100,
+        required_output_tokens_per_second=inputs.requests_per_day
+        * inputs.output_tokens_request
+        / (inputs.demand_window_hours * 60 * 60),
+        usable_output_tokens_per_second=inputs.tokens_per_second * inputs.replicas * inputs.target_utilization / 100,
+        capacity_requests_month=floor(
+            min(capacity / inputs.output_tokens_request, capacity_requests_day * inputs.active_days)
+        ),
         per_thousand_requests_usd=total_monthly / requests * 1000,
         demand_fits=output_tokens <= capacity,
         context_issue=context_issue,
         topology_confirmed=topology_confirmed,
         qualified=qualified,
+        compatibility_issue=compatibility_issue,
+        daily_demand_fits=daily_demand_fits,
     )
 
 
@@ -138,6 +147,14 @@ def current_api_baselines(
                 output_per_million=75,
                 cache_read_per_million=2,
                 cache_write_per_million=25,
+            )
+        if row.name == "Claude Haiku 5.5" and inputs.input_tokens_request > 100_000:
+            row = replace(
+                row,
+                input_per_million=0.5,
+                output_per_million=2.5,
+                cache_read_per_million=0.05,
+                cache_write_per_million=0.625,
             )
         rows.append(row)
     return tuple(rows)

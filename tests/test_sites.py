@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 from datetime import UTC, datetime
-from math import ceil, isclose
+from math import isclose
 
 import pytest
 
@@ -22,10 +22,10 @@ NOW = datetime(2026, 9, 5, 12, tzinfo=UTC)
 
 
 def view(query: dict[str, str] | None = None):
-    return build_llm_self_hosting_view(query, now=NOW)
+    return build_llm_self_hosting_view({"mode": "advanced", **(query or {})}, now=NOW)
 
 
-def test_estimate_uses_whole_nodes_and_complete_monthly_cost() -> None:
+def test_estimate_uses_whole_nodes_and_compute_plus_cluster_cost() -> None:
     model = next(model for model in FRONTIER_MODELS if model.id == "qwen3-8-27b")
     node = next(node for node in GKE_NODE_POOLS if node.id == "a2-ultra-1g")
     quantization = next(item for item in QUANTIZATIONS if item.id == "fp16")
@@ -37,17 +37,16 @@ def test_estimate_uses_whole_nodes_and_complete_monthly_cost() -> None:
         tokens_per_second=10,
         target_utilization=50,
         output_tokens_request=1000,
-        platform_monthly_usd=1000,
     )
 
     estimate = estimate_hosting(model, node, quantization, inputs)
 
-    assert estimate.required_memory_gb == 67.5
+    assert estimate.required_memory_gb == pytest.approx(55.562855904 * 1.25)
     assert estimate.nodes_per_replica == 1
     assert estimate.total_nodes == 2
     assert estimate.total_gpus == 2
     assert estimate.total_monthly_usd == pytest.approx(
-        2 * node.price(inputs.billing_plan).hourly_usd * 730 * 0.5 + 0.1 * 730 + 1000,
+        2 * node.price(inputs.billing_plan).hourly_usd * 730 * 0.5 + 0.1 * 730,
     )
     assert estimate.capacity_tokens_month == 10 * 2 * 0.5 * 730 * 60 * 60 * 0.5
 
@@ -60,7 +59,7 @@ def test_invalid_required_query_values_fall_back_independently() -> None:
     assert result.inputs.tokens_per_second == DEFAULT_HOSTING_INPUTS.tokens_per_second
     assert result.validation == (
         "model was not recognized; the default was used",
-        "replicas must be a whole number between 1 and 8; the default was used",
+        "replicas must be a whole number between 1 and 100000; the default was used",
         "throughput must be between 0.1 and 1000000; the default was used",
     )
 
@@ -94,7 +93,7 @@ def test_manual_demand_remains_custom() -> None:
 def test_api_baselines_charge_both_token_directions_at_actual_demand() -> None:
     result = view({"preset": "small-team"})
 
-    assert [row.monthly_usd for row in result.apis] == pytest.approx([13.2, 35.2, 176])
+    assert [row.monthly_usd for row in result.apis] == pytest.approx([13.2, 35.2, 176, 1.76, 70.4])
     assert result.estimate.demand_fits
     assert result.estimate.output_tokens_month == 2_112_000
     assert result.estimate.input_tokens_month == 7_040_000
@@ -114,7 +113,6 @@ def test_commitment_charges_idle_time_while_on_demand_can_stop(node_id: str) -> 
 
     assert partial.estimate.compute_monthly_usd == expected_compute
     assert partial.estimate.capacity_tokens_month == full.estimate.capacity_tokens_month / 4
-    assert partial.estimate.platform_monthly_usd == full.estimate.platform_monthly_usd
     assert partial.estimate.control_monthly_usd == full.estimate.control_monthly_usd
 
 
@@ -167,24 +165,25 @@ def test_unknown_preset_keeps_validated_manual_demand() -> None:
     assert result.inputs.requests_per_day == 7
 
 
-def test_precision_changes_memory_but_only_whole_nodes_change_bill() -> None:
+def test_checkpoint_precision_changes_memory_and_whole_nodes_determine_cost() -> None:
     small = view()
-    assert small.precisions[0].estimate.weight_memory_gb * 4 == small.precisions[2].estimate.weight_memory_gb
-    assert small.precisions[0].estimate.total_monthly_usd == small.precisions[2].estimate.total_monthly_usd
+    by_format = {row.quantization.id: row.estimate for row in small.precisions}
+    assert by_format["fp8"].weight_memory_gb == pytest.approx(30.866866928)
+    assert by_format["fp16"].weight_memory_gb == pytest.approx(55.562855904)
+    assert by_format["fp8"].total_monthly_usd == by_format["fp16"].total_monthly_usd
+    large = view({"model": "mistral-small-4", "node": "g4-standard-48", "quant": "fp8"})
+    by_format = {row.quantization.id: row.estimate for row in large.precisions}
+    assert by_format["nvfp4"].total_gpus < by_format["fp8"].total_gpus
+    assert by_format["nvfp4"].total_monthly_usd < by_format["fp8"].total_monthly_usd
 
-    large = view({"model": "kimi-k3", "node": "a4-cud-3y"})
-    assert large.precisions[0].estimate.total_nodes < large.precisions[2].estimate.total_nodes
-    assert large.precisions[0].estimate.total_monthly_usd < large.precisions[2].estimate.total_monthly_usd
 
-
-def test_view_compares_all_ranked_models_in_deterministic_order() -> None:
+def test_view_compares_all_catalog_models_in_deterministic_order() -> None:
     result = view({"model": "qwen3-8-27b", "node": "a2-ultra-1g"})
-
-    assert len(result.models) == len(result.comparison) == 10
-    assert [row.model.rank for row in result.comparison] == list(range(1, 11))
+    assert len(result.models) == len(result.comparison) == 12
+    assert tuple(row.model for row in result.comparison) == FRONTIER_MODELS
     assert result.estimate.nodes_per_replica == 1
-    assert len(API_BASELINES) == 3
-    assert isclose(result.estimate.weight_memory_gb, 27)
+    assert len(API_BASELINES) == 5
+    assert isclose(result.estimate.weight_memory_gb, 55.562855904)
 
 
 def test_query_mapping_uses_first_repeated_value_like_go_url_values() -> None:
@@ -203,12 +202,21 @@ def test_current_api_baselines_returns_immutable_date_adjusted_snapshots() -> No
 def test_template_decision_helpers_preserve_capacity_before_cost() -> None:
     overloaded = view({"preset": "service", "throughput": "0.1"})
     api_first = view()
-    hosting_candidate = view({"preset": "service", "throughput": "10000"})
+    hosting_candidate = view(
+        {
+            "requests": "1000000",
+            "days": "30",
+            "input-tokens": "1000",
+            "tokens": "300",
+            "throughput": "10000",
+            "window": "24",
+        }
+    )
 
     assert hosting_decision_title(overloaded) == "This fleet cannot cover the modeled demand"
     assert "monthly average cannot establish peak-time capacity" in hosting_decision_copy(overloaded)
     assert hosting_decision_title(api_first) == "Start with an API on cost grounds"
-    assert api_first.apis[0].baseline.name in hosting_decision_copy(api_first)
+    assert "Claude Haiku 5.5" in hosting_decision_copy(api_first)
     assert hosting_decision_title(hosting_candidate) == "Self-hosting has a cost case to test"
 
 
@@ -225,7 +233,7 @@ def test_every_published_billing_plan_charges_whole_nodes_and_keeps_idle_commitm
     for price in node.prices:
         full = view({"node": node.id, "billing": price.plan.value, "replicas": "2"})
         partial = view({"node": node.id, "billing": price.plan.value, "replicas": "2", "duty": "25"})
-        assert not full.validation
+        assert bool(full.validation) == (node.id == "g2-standard-12" or price.plan.value == "flex")
         assert full.selected_price == price
         assert full.estimate.compute_monthly_usd == pytest.approx(full.estimate.total_nodes * price.hourly_usd * 730)
         assert partial.estimate.compute_monthly_usd == pytest.approx(
@@ -233,7 +241,7 @@ def test_every_published_billing_plan_charges_whole_nodes_and_keeps_idle_commitm
         )
         assert partial.estimate.capacity_tokens_month == full.estimate.capacity_tokens_month / 4
         assert partial.estimate.total_monthly_usd == pytest.approx(
-            partial.estimate.compute_monthly_usd + 73 + 1000,
+            partial.estimate.compute_monthly_usd + 73,
         )
 
 
@@ -248,14 +256,12 @@ def test_small_gpu_prices_use_resource_cuds_and_gpu_memory(node, hourly, one_yea
     for plan, rate in (("on-demand", hourly), ("cud-1y", one_year), ("cud-3y", three_year)):
         result = view({"node": node, "billing": plan, "quant": "fp4"})
         assert result.selected_node.vram_gb == vram
-        assert result.estimate.total_nodes == 1
-        assert result.estimate.compute_monthly_usd == pytest.approx(rate * 730)
+        assert result.estimate.compute_monthly_usd == pytest.approx(rate * 730 * result.estimate.total_nodes)
 
 
 @pytest.mark.parametrize(("node", "billing"), [("a4", "on-demand"), ("g2-standard-12", "flex"), ("a3-high", "unknown")])
 def test_unsupported_billing_is_visible_and_uses_a_published_rate(node: str, billing: str) -> None:
     result = view({"node": node, "billing": billing})
-    assert len(result.validation) == 1
     assert "billing" in result.validation[0]
     assert result.selected_price == result.selected_node.prices[0]
 
@@ -271,51 +277,23 @@ def test_unpublished_rate_is_rejected_by_calculation_boundary() -> None:
 @pytest.mark.parametrize(("legacy", "billing"), [("a4-cud-3y", "cud-3y"), ("a4-flex", "flex")])
 def test_old_a4_links_preserve_their_billing_plan(legacy: str, billing: str) -> None:
     result = view({"node": legacy})
-    assert not result.validation
+    assert bool(result.validation) == (billing == "flex")
     assert result.inputs.node_pool_id == "a4"
     assert result.inputs.billing_plan.value == billing
     overridden = view({"node": legacy, "billing": "cud-1y"})
     assert overridden.inputs.billing_plan.value == "cud-1y"
 
 
-@pytest.mark.parametrize("model", FRONTIER_MODELS)
-def test_static_hardware_reference_fits_fixed_minimum_and_uses_catalog(model) -> None:
-    result = view({"model": model.id})
-    reference = result.hardware_guidance
-    assert reference.node in GKE_NODE_POOLS
-    required = model.parameters_b * 0.5 * 1.25
-    assert reference.node.vram_gb * reference.nodes_per_replica >= required
-    assert reference.nodes_per_replica == 1 or reference.node.multi_host
-    for node in GKE_NODE_POOLS:
-        hosts = max(1, ceil(required / node.vram_gb))
-        if hosts == 1 or node.multi_host:
-            assert (reference.nodes_per_replica, reference.node.vram_gb * reference.nodes_per_replica) <= (
-                hosts,
-                node.vram_gb * hosts,
-            )
-
-
-@pytest.mark.parametrize("model", FRONTIER_MODELS)
-def test_hardware_reference_depends_only_on_model(model) -> None:
-    initial = view({"model": model.id})
-    changed = view(
-        {
-            "model": model.id,
-            "node": "a4",
-            "billing": "cud-3y",
-            "quant": "fp16",
-            "overhead": "50",
-            "replicas": "3",
-            "duty": "25",
-            "requests": "734",
-            "throughput": "1",
-            "measured-first": "1",
-            "measured-complete": "4",
-            "measured-concurrency": "8",
-            "quality": "on",
-        }
-    )
-    assert changed.hardware_guidance == initial.hardware_guidance
-    assert changed.inputs.node_pool_id == "a4"
-    assert changed.inputs.measured_first_token == 1
-    assert not changed.validation
+@pytest.mark.parametrize("model", FRONTIER_MODELS, ids=lambda model: model.id)
+def test_automatic_setup_uses_native_checkpoint_and_a_compatible_topology(model) -> None:
+    result = build_llm_self_hosting_view({"model": model.id}, now=NOW)
+    assert result.inputs.mode == "simple"
+    if model.deployment_issue:
+        assert result.validation
+        assert result.selected_model.id != model.id
+        return
+    assert result.selected_quant.id == model.default_quantization
+    assert not result.validation
+    assert not result.estimate.compatibility_issue
+    assert result.selected_node.vram_gb * result.estimate.nodes_per_replica >= result.estimate.required_memory_gb
+    assert result.estimate.nodes_per_replica == 1 or result.selected_node.multi_host

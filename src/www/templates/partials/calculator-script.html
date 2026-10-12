@@ -22,6 +22,14 @@ function initializeCostCharts(container) {
   });
 }
 initializeCostCharts(document);
+// Workload descriptions come from the server; no pricing or sizing runs here.
+document.addEventListener('change', function (event) {
+  if (event.target.id !== 'preset') return;
+  var selected = event.target.selectedOptions[0];
+  document.getElementById('preset-help').textContent = selected.dataset.description;
+  document.getElementById('requests').placeholder = selected.dataset.calls;
+  document.querySelector('#window option[value="auto"]').textContent = 'Workload default · ' + selected.dataset.window + ' hours';
+});
 // Back/forward form restoration can change the range after initialization without an input event.
 window.addEventListener('pageshow', function () {
   document.querySelectorAll('[data-cost-range]').forEach(function (range) {
@@ -86,6 +94,9 @@ if (document.querySelector('[data-hosting-calculator]')) {
       current.replaceWith(next);
       initializeCostCharts(next);
       var replacement = anchor.id ? document.getElementById(anchor.id) : null;
+      if (!replacement && (anchor.id === 'advanced-mode' || anchor.id === 'simple-mode')) {
+        replacement = document.getElementById(anchor.id === 'advanced-mode' ? 'simple-mode' : 'advanced-mode');
+      }
       if (replacement) {
         if (restoreFocus) replacement.focus({ preventScroll: true });
         window.scrollBy({ top: replacement.getBoundingClientRect().top - top, behavior: 'instant' });
@@ -115,14 +126,7 @@ if (document.querySelector('[data-hosting-calculator]')) {
     if (pendingScenario && form && form.id === 'calculator' && formState() !== pendingScenario.state) cancelScenario();
   };
   document.addEventListener('input', formEdited);
-  document.addEventListener('change', function (event) {
-    formEdited(event);
-    if (event.target.id !== 'model') return;
-    // Display the server-owned static reference without changing the scenario.
-    var option = event.target.selectedOptions[0];
-    document.querySelector('[data-hardware-minimum]').textContent = option.dataset.hardware;
-    document.querySelector('[data-hardware-multi-host]').hidden = option.dataset.multiHost !== 'true';
-  });
+  document.addEventListener('change', formEdited);
   document.addEventListener('submit', function (event) {
     var form = event.target;
     if (form.id !== 'calculator') return;

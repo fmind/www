@@ -262,7 +262,7 @@ def test_renderer_renders_all_six_pages_with_real_domain_contexts() -> None:
         PageTemplate.ARTICLES: '<h1 class="text-4xl md:text-6xl font-heading font-bold text-balance">Articles</h1>',
         PageTemplate.ARTICLE: f'<h1 class="font-heading text-4xl md:text-6xl font-bold leading-tight text-balance mt-6">{article.title}</h1>',
         PageTemplate.SITES: '<h1 class="text-4xl md:text-6xl font-heading font-bold text-balance">Sites</h1>',
-        PageTemplate.LLM_SELF_HOSTING: "When does self-hosting an LLM pay off?",
+        PageTemplate.LLM_SELF_HOSTING: "What would self-hosting cost?",
         PageTemplate.NOT_FOUND: '<h1 class="text-9xl font-bold text-primary font-heading animate-bounce">404</h1>',
     }
     for template, html in rendered.items():

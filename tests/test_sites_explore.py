@@ -16,12 +16,12 @@ NOW = datetime(2026, 9, 5, 12, tzinfo=UTC)
 
 
 def view(query: dict[str, str] | dict[str, list[str]] | None = None):
-    return build_llm_self_hosting_view(query, now=NOW)
+    return build_llm_self_hosting_view({"mode": "advanced", **(query or {})}, now=NOW)
 
 
 def test_api_modes_include_warmup_and_storage() -> None:
     batch = view({"api-mode": "batch"})
-    assert [row.monthly_usd for row in batch.apis] == pytest.approx([6.6, 17.6, 88])
+    assert [row.monthly_usd for row in batch.apis] == pytest.approx([6.6, 17.6, 88, 0.88, 35.2])
 
     cached = view(
         {
@@ -34,7 +34,7 @@ def test_api_modes_include_warmup_and_storage() -> None:
         },
     )
     assert [row.monthly_usd for row in cached.apis] == pytest.approx(
-        [0.07237466666666667, 0.2019648, 1.009824],
+        [0.07237466666666667, 0.1941824, 1.009824, 0.01009824, 0.3883648],
     )
     for baseline in current_api_baselines(NOW, cached.inputs):
         _, one_group = api_monthly_cost(cached.inputs, baseline, 20)
@@ -105,7 +105,7 @@ def test_cost_explorer_frames_use_billing_and_capacity() -> None:
     assert current.requests == result.estimate.requests_month
     assert "$13.20" in current.summary
     assert result.cost_plot.capacity_x
-    assert len(result.cost_plot.break_evens) == 3
+    assert len(result.cost_plot.break_evens) == 5
 
     previous = 0.0
     for frame in result.cost_plot.frames:
@@ -158,7 +158,7 @@ def test_cost_chart_has_round_labels_and_workloads_with_exact_costs(query) -> No
 
 
 def test_selected_node_describes_hardware_separately_from_billing() -> None:
-    result = view()
+    result = view({"node": "a2-ultra-1g"})
 
     assert result.selected_node.name == "A2 Ultra · 1\u00d7 A100 · 80 GB"
     assert result.selected_price.label == "On-demand"

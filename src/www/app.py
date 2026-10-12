@@ -476,14 +476,12 @@ def create_app(
         page = site_pages_by_slug.get(slug)
         if page is None or slug != "llm-self-hosting":
             return render_not_found(request)
-        related_articles = tuple(article for article in public_articles if page.relates_to(article.slug))
         return render_page(
             request,
             PageTemplate.LLM_SELF_HOSTING,
             site_metadata_by_slug[slug],
             {
                 "view": build_llm_self_hosting_view(request.query_params),
-                "related_articles": related_articles,
             },
         )
 

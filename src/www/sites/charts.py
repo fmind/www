@@ -45,7 +45,10 @@ def hosting_cost_plot(
     estimate: HostingEstimate,
     apis: tuple[APIComparison, ...],
 ) -> CostPlot:
-    capacity = estimate.capacity_tokens_month / inputs.output_tokens_request
+    capacity = min(
+        estimate.capacity_tokens_month / inputs.output_tokens_request,
+        estimate.capacity_requests_day * inputs.active_days,
+    )
     # APIs that cannot accept this request have no meaningful cost curve.
     available = tuple((series, api) for series, api in enumerate(apis, start=1) if not api.request_issue)
     max_break_even = max((api.break_even_requests for _, api in available), default=0.0)
@@ -115,7 +118,7 @@ def hosting_cost_plot(
             total = api_monthly_cost(inputs, api.baseline, requests)[0]
             paths[series].append(f"{x(requests)},{y(total)}")
     for index, daily in enumerate(sorted(daily_values)):
-        scenario = replace(inputs, requests_per_day=daily)
+        scenario = replace(inputs, mode="advanced", requests_per_day=daily)
         requests = daily * inputs.active_days
         label = f"{_per(daily, 'day')} · {_per(requests, 'month')}"
         fit = "within modeled capacity" if requests <= capacity else "beyond this fleet's capacity"

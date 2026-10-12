@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import UTC, datetime
 
 from pydantic import BaseModel, ConfigDict
 
 from www.data import METADATA
 from www.sites.calculator import build_llm_self_hosting_view
+from www.sites.capacity import MONTHLY_HOURS
 from www.sites.data import DEFAULT_HOSTING_INPUTS
-from www.sites.economics import MONTHLY_HOURS
 from www.sites.inputs import hosting_url, parse_inputs, scenario_parameters
 from www.sites.models import (
     APIComparison,
@@ -58,7 +59,12 @@ class HostingResult(BaseModel):
 
 def compare_hosting(parameters: dict[str, str]) -> HostingResult:
     """Reject silent input fallback before running the shared web calculator."""
-    allowed = hosting_parameters().keys() | {"quality", "pilot", "confirm-pilot", "preset"}
+    allowed = scenario_parameters(replace(DEFAULT_HOSTING_INPUTS, mode="advanced")).keys() | {
+        "quality",
+        "pilot",
+        "confirm-pilot",
+        "preset",
+    }
     if parameters.keys() - allowed:
         raise ValueError("Unknown calculator parameter; use the parameters returned by an empty call or /agents.")
     if any(not value or value.strip() != value for value in parameters.values()):
@@ -99,13 +105,16 @@ def compare_hosting(parameters: dict[str, str]) -> HostingResult:
             "latency": "seconds (p95)",
             "api_prices": "USD per million tokens unless field states otherwise",
             "break_even_requests": "requests per month",
+            "capacity_load": "percent of assumed usable output capacity, not measured GPU utilization",
         },
         limitations=(
             "Planning estimates from a dated snapshot, not live prices or a capacity quote; check linked sources.",
             "Model quality is not equivalent across providers. Throughput is an assumption unless measured.",
             "Memory fit does not prove runtime support, topology, concurrency, or latency; validate with a pilot.",
-            "Additional disks, network, load balancers, licenses, and operations belong in the platform budget.",
+            "Totals include GPU compute and the GKE fee; additional disks, network, load balancers, licenses, and operations are excluded.",
             "Committed machines are billed for the full term even when idle; regional availability needs a quote.",
             "Pilot and task-quality inputs are caller-supplied evidence, not measurements performed by this server.",
+            "Usage windows constrain average output rate, not bursts or latency. Running hours are scheduled inside active windows; startup needs a pilot.",
+            "Simple mode sizes replicas and schedules batch presets; interactive presets stay on 24/7. Advanced mode keeps the fleet fixed. Break-even holds it fixed.",
         ),
     )
