@@ -141,7 +141,7 @@
     <div class="rounded-xl border border-base-300 bg-base-100 overflow-x-auto" role="region" aria-label="API monthly cost comparison" tabindex="0">
       <table class="table w-full">
         <caption class="sr-only">API monthly costs for this workload</caption>
-        <thead><tr><th scope="col">Model</th><th scope="col" class="text-right">Per month</th></tr></thead>
+        <thead class="text-base-content"><tr><th scope="col">Model</th><th scope="col" class="text-right">Per month</th></tr></thead>
         <tbody>{% for row in view.apis|sort(attribute="monthly_usd") %}<tr>
           <th scope="row"><a class="link link-primary" href="{{ row.baseline.source_url }}">{{ row.baseline.name }}</a>{% if row.needs_review %}<span class="block text-xs font-normal mt-1">Price needs review</span>{% endif %}</th>
           <td class="text-right font-semibold">{% if row.request_issue %}Unavailable{% else %}{{ format_usd2(row.monthly_usd) }}{% endif %}</td>
@@ -184,7 +184,7 @@
     <div class="hidden md:block overflow-x-auto rounded-2xl border border-base-300 bg-base-100 shadow-sm focus-visible:outline-2 focus-visible:outline-primary" role="region" aria-label="API cost comparison" tabindex="0">
       <table class="table w-full">
         <caption class="sr-only">Monthly costs and break-even at the selected input and output token mix</caption>
-        <thead><tr><th scope="col">Option</th><th scope="col">Standard input / output<br/>USD per 1M tokens</th><th scope="col">Your monthly bill</th><th scope="col">Per 1,000 requests</th><th scope="col">Self-hosting break-even</th></tr></thead>
+        <thead class="text-base-content"><tr><th scope="col">Option</th><th scope="col">Standard input / output<br/>USD per 1M tokens</th><th scope="col">Your monthly bill</th><th scope="col">Per 1,000 requests</th><th scope="col">Self-hosting break-even</th></tr></thead>
         <tbody>
           <tr class="bg-primary/5">
             <th scope="row">Your GKE fleet<span class="block font-normal text-xs mt-1">{{ view.selected_node.name }}</span></th>

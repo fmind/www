@@ -8,6 +8,10 @@ All notable changes to this project are documented in this file.
 
 - _(sites)_ Simplify and correct LLM self-hosting estimates
 
+### 🐛 Bug Fixes
+
+- _(sites)_ Improve calculator table heading contrast
+
 ### 📚 Documentation
 
 - Reference the fmind/theme DESIGN.md palette source
