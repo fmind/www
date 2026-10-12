@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented in this file.
 
+## [2.4.0] - 2026-10-12
+
+### 🚀 Features
+
+- _(sites)_ Simplify and correct LLM self-hosting estimates
+
+### 📚 Documentation
+
+- Reference the fmind/theme DESIGN.md palette source
+
 ## [2.3.0] - 2026-10-06
 
 ### 🚀 Features
