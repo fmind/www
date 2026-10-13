@@ -981,6 +981,7 @@ def test_every_page_template_satisfies_the_inline_csp(client: AppClient) -> None
         f"/articles/{article.slug}/",
         "/sites/",
         "/sites/llm-self-hosting/",
+        "/sites/mcp-context-cost/",
         "/missing",
     )
     for path in paths:

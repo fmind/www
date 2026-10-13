@@ -148,7 +148,7 @@ def render_llms_txt(articles: Sequence[Article]) -> str:
         f"- [Connect]({METADATA.site_url}/connect): LinkedIn, a downloadable contact card, and the full website.",
         f"- [Agent guide]({METADATA.site_url}/agents): Connection instructions, tool examples, and data boundaries.",
         f"- [API catalog]({METADATA.site_url}/.well-known/api-catalog): Public API discovery.",
-        f"- [Agent skill]({METADATA.site_url}/.well-known/agent-skills/index.json): Research articles and compare hosting scenarios.",
+        f"- [Agent skill]({METADATA.site_url}/.well-known/agent-skills/index.json): Research articles and compare hosting or MCP context-cost scenarios.",
         f"- [MCP server]({METADATA.site_url}/mcp): Read-only portfolio tools, resources, and prompts.",
         f"- [JSON profile]({METADATA.site_url}/api/profile): Canonical portfolio and article index.",
         f"- [Profile schema]({METADATA.site_url}/api/profile/schema.json): JSON Schema for validating the profile response.",

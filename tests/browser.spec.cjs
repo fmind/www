@@ -2,6 +2,7 @@ const { test, expect } = require("playwright/test");
 const { setTimeout: delay } = require("node:timers/promises");
 
 const calculator = "/sites/llm-self-hosting/";
+const contextCalculator = "/sites/mcp-context-cost/";
 
 test("portfolio navigation remains usable without JavaScript", async ({ browser }, testInfo) => {
   const context = await browser.newContext({ ...testInfo.project.use, javaScriptEnabled: false });
@@ -90,7 +91,7 @@ test("published pages render without overflow, missing images, or external asset
     "/agents",
     "/articles/",
     "/sites/",
-    calculator,
+    ...profile.site_pages.map((site) => new URL(site.url).pathname),
     ...profile.articles.map((article) => new URL(article.url).pathname),
   ];
   const sitemapResponse = await request.get("/sitemap.xml");
@@ -535,7 +536,7 @@ test("selected article filters expose their state and retain readable contrast",
 test("site stays light with a dark system preference and an old saved theme", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "dark" });
   await page.addInitScript(() => localStorage.setItem("theme", "dark"));
-  for (const path of ["/", "/connect", "/articles/", calculator]) {
+  for (const path of ["/", "/connect", "/articles/", calculator, contextCalculator]) {
     await page.goto(path);
     await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
     await expect(page.locator("#theme-toggle")).toHaveCount(0);
@@ -1314,6 +1315,62 @@ test("article section links work without JavaScript", async ({ browser }) => {
     await link.click();
     await expect(page).toHaveURL(new RegExp(href + "$"));
     expect((await page.locator(href).boundingBox()).y).toBeGreaterThanOrEqual(80);
+  } finally {
+    await context.close();
+  }
+});
+
+test("MCP context calculator supports keyboard scenarios and provider presets", async ({ page }) => {
+  await page.goto(contextCalculator);
+  // Reach and edit the form using only Tab/keyboard, including the submit.
+  for (let i = 0; i < 30 && !(await page.locator("#github").evaluate((el) => el === document.activeElement)); i++) {
+    await page.keyboard.press("Tab");
+  }
+  await expect(page.locator("#github")).toBeFocused();
+  await page.keyboard.press("ControlOrMeta+A");
+  await page.keyboard.type("3");
+  await page.keyboard.press("Tab");
+  await expect(page.locator("#filesystem")).toBeFocused();
+  for (
+    let i = 0;
+    i < 20 && !(await page.locator("#update-context").evaluate((el) => el === document.activeElement));
+    i++
+  ) {
+    await page.keyboard.press("Tab");
+  }
+  await expect(page.locator("#update-context")).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(/github=3/);
+  await expect(page.locator("#github")).toHaveValue("3");
+  await expect(page.getByRole("alert")).toHaveCount(0);
+  await page.locator("#context-model > summary").click();
+  await page.getByRole("link", { name: "Use GPT-4.1", exact: true }).click();
+  await page.locator("#context-model > summary").click();
+  await expect(page.locator("#input-price")).toHaveValue("2.0");
+  await expect(page.locator("#context")).toHaveValue("1047576");
+  await expect(page.locator("#github")).toHaveValue("3");
+  expect(await page.locator("#calculator").evaluate((form) => form.checkValidity())).toBe(true);
+});
+
+test("MCP context calculator works without JavaScript and stays light", async ({ browser }, testInfo) => {
+  const context = await browser.newContext({ ...testInfo.project.use, javaScriptEnabled: false, colorScheme: "dark" });
+  try {
+    const page = await context.newPage();
+    await page.goto(contextCalculator);
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+    expect(await page.locator("html").evaluate((el) => getComputedStyle(el).colorScheme)).toBe("light");
+    await page.locator("#github").fill("3");
+    await page.locator("#requests").fill("5");
+    await page.locator("#mitigation").selectOption("filter");
+    await page.getByRole("button", { name: "Update estimate", exact: true }).click();
+    await expect(page).toHaveURL(/requests=5/);
+    await expect(page.locator("#context-results")).toHaveText("Tool filtering");
+    await expect(page.getByRole("alert")).toHaveCount(0);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath("mcp-context-no-js-dark.png"), fullPage: true });
+    await page.goto(contextCalculator + "?requests=NaN&context=100&mitigation=cli");
+    await expect(page.getByText("Some inputs need attention.", { exact: true })).toBeVisible();
+    await expect(page.getByText(/This tool block alone exceeds/)).toBeVisible();
   } finally {
     await context.close();
   }

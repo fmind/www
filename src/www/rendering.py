@@ -42,6 +42,7 @@ class PageTemplate(StrEnum):
     ARTICLE = "pages/article.html"
     SITES = "pages/sites.html"
     LLM_SELF_HOSTING = "pages/llm-self-hosting.html"
+    MCP_CONTEXT_COST = "pages/mcp-context-cost.html"
     NOT_FOUND = "pages/404.html"
 
 

@@ -25,7 +25,7 @@ Python 3.14, Litestar, strict Jinja, Tailwind/DaisyUI, and Granian. No client fr
 - `pages.py`, `rendering.py`, `templates/`: metadata, sole Jinja/trusted-markup boundary, inherited page layouts and macros.
 - `middleware.py`, `log.py`, `telemetry.py`: HTTP policy, privacy-safe analytics, logs, optional tracing.
 - `static.py`, `ranges.py`: inventory-bound static and conditional/range delivery.
-- `sites/`: input/URL parsing, formulas, charts, formatting, immutable sources, and views. Import from the owning module.
+- `sites/`: hosting input/URL parsing, formulas, charts, formatting, sources, and views; `sites/mcp_context_cost/` owns the MCP calculator and its dated measurements. Import from the owning module.
 - `scripts/`: manual operations and asset generators, excluded from the runtime image. `infra/`: service, identities, registry, monitoring, analytics.
 
 ## Invariants

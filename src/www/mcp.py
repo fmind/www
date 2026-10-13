@@ -51,6 +51,7 @@ from www.models import (
 from www.publications import article_sections, render_profile_json
 from www.search import SearchIndex, normalize_search_query
 from www.sites.agent import HostingResult, compare_hosting
+from www.sites.mcp_context_cost.calculator import ContextResult, compare_context
 from www.tags import tag_names
 
 MCP_PROTOCOL_VERSION = "2026-07-28"
@@ -342,6 +343,27 @@ def create_mcp_server(
     ) -> HostingResult:
         try:
             return compare_hosting(parameters)
+        except ValueError as exc:
+            raise ToolError(str(exc)) from exc
+
+    @server.tool(
+        name="compare_mcp_context_cost",
+        title="Compare MCP context costs",
+        description="Estimate tool-definition tokens, context share and USD costs by filtering, search, CLI and cache assumptions. Call with parameters={} for defaults, bounds and dated sources; edit string-valued URL parameters. Reference tokens and partial-tool estimates are not provider billing measurements. Returns a shareable scenario URL. Invalid inputs fail. See /agents#mcp-context.",
+        annotations=_READ_ONLY,
+        structured_output=True,
+    )
+    def compare_mcp_context_cost(
+        parameters: Annotated[
+            dict[Annotated[str, Field(max_length=64)], Annotated[str, Field(strict=True, max_length=128)]],
+            Field(
+                max_length=32,
+                description="Calculator URL parameters as strings; empty object returns defaults and bounds.",
+            ),
+        ],
+    ) -> ContextResult:
+        try:
+            return compare_context(parameters)
         except ValueError as exc:
             raise ToolError(str(exc)) from exc
 

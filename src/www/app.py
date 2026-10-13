@@ -70,6 +70,7 @@ from www.publications import (
 from www.rendering import PageTemplate, Renderer
 from www.search import SearchIndex
 from www.sites.calculator import build_llm_self_hosting_view
+from www.sites.mcp_context_cost.calculator import build_context_view
 from www.static import static_asset_response
 from www.telemetry import TELEMETRY_SHUTDOWN_TIMEOUT_SECONDS, configure_telemetry, shutdown_telemetry
 
@@ -474,7 +475,16 @@ def create_app(
             target = f"/sites/{quote(slug, safe='')}/"
             return _redirect(target + (f"?{query}" if query else ""))
         page = site_pages_by_slug.get(slug)
-        if page is None or slug != "llm-self-hosting":
+        if page is None:
+            return render_not_found(request)
+        if slug == "mcp-context-cost":
+            return render_page(
+                request,
+                PageTemplate.MCP_CONTEXT_COST,
+                site_metadata_by_slug[slug],
+                {"view": build_context_view(request.query_params.dict())},
+            )
+        if slug != "llm-self-hosting":
             return render_not_found(request)
         return render_page(
             request,

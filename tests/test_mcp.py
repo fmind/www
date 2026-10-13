@@ -24,7 +24,7 @@ def mcp_server() -> MCPServer[None]:
 
 
 @pytest.mark.anyio
-async def test_server_lists_nine_read_only_tools_and_two_prompts(mcp_server: MCPServer[None]) -> None:
+async def test_server_lists_ten_read_only_tools_and_two_prompts(mcp_server: MCPServer[None]) -> None:
     tools = await mcp_server.list_tools()
     prompts = await mcp_server.list_prompts()
 
@@ -38,6 +38,7 @@ async def test_server_lists_nine_read_only_tools_and_two_prompts(mcp_server: MCP
         "get_services",
         "get_article",
         "compare_llm_hosting",
+        "compare_mcp_context_cost",
     ]
     assert all(tool.annotations and tool.annotations.read_only_hint is True for tool in tools)
     assert all(tool.annotations and tool.annotations.open_world_hint is False for tool in tools)
@@ -219,7 +220,7 @@ async def test_server_card_describes_the_same_transport_and_primitives(mcp_serve
         "type": "streamable-http",
         "endpoint": "https://www.fmind.dev/mcp",
     }
-    assert len(card["tools"]) == 9
+    assert len(card["tools"]) == 10
     assert len(card["prompts"]) == 2
     assert card["resources"][0]["name"] == "profile"
     assert card["resources"][0]["uri"] == "portfolio://profile.json"

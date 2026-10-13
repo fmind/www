@@ -1,6 +1,6 @@
 ---
 name: fmind-research
-description: Research Fmind's published articles and compare LLM hosting scenarios using his public, read-only MCP tools. Use for questions about his writing or calculator, not general web research or infrastructure deployment.
+description: Research Fmind's published articles and compare LLM hosting or MCP context costs using his public, read-only MCP tools. Use for his writing and calculators, not general web research or infrastructure deployment.
 ---
 
 # Fmind Research
@@ -25,3 +25,9 @@ Use `/llms.txt` to discover articles, then read only the relevant ones. `/llms-f
 1. Hold other assumptions constant when comparing scenarios. Do not replace the server's arithmetic with model-generated estimates. Prices are a dated planning snapshot; check the linked sources before a consequential decision.
 
 Inspect `estimate.compatibility_issue` and `daily_demand_fits`; unsupported checkpoint/GPU/topology combinations fail. `node=auto` and `quant=auto` select compatible defaults for the model. `comparison_ready` is a cost/capacity gate, not proof of production readiness or equivalent model quality. Never invent pilot measurements or task-quality evidence. Use `quality=on` only with supplied task-quality assumptions; associate pilot measurements with the configuration that actually produced them. The tools never provision resources, run benchmarks, book services, or send messages.
+
+## Compare MCP context costs
+
+Call `compare_mcp_context_cost` with `parameters: {}` for defaults, bounds, server catalogs and model sources. Parameters use the calculator's URL names and string values; unknown, repeated, blank, non-finite and out-of-range inputs fail. Change server counts (`github`, `filesystem`, `memory`, `playwright`), workload (`requests`, `sessions`, `days`) and the returned model/cache/discovery assumptions. Set a server count to 0 to exclude it. `model` supplies missing provider defaults; explicit price/context fields override them. `mitigation` selects `all`, `filter`, `search` or `cli` for the page highlight; all strategies are returned.
+
+Report token counts, context share, USD costs per session/day/month with and without assumed caching, savings, dates, limitations and `scenario_url`. Reference counts are not provider billing tokens; partial enabled counts are proportional estimates. Discovery/CLI overhead and follow-up cache hits are caller assumptions. Caching changes cost, not occupied context; first requests are cold, eligibility is conditional, and other prompt/history/result/output costs are excluded. Negative savings mean a cost increase. A fitting tool block does not prove the whole request fits. Keep assumptions constant when comparing scenarios and never present modeled savings as measured task performance.
