@@ -1022,7 +1022,10 @@ test("section links, privacy, and browser-only presentation", async ({ page }) =
   await page.locator("footer").getByRole("link", { name: "Privacy", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Privacy", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Operational logs", exact: true })).toHaveCount(0);
-  await expect(page.locator("script:not([type=\"application/ld+json\"])")).toHaveCount(0);
+  // Only the consent controller runs, and it loads nothing off-origin outside www.fmind.dev.
+  await expect(page.locator("script:not([type=\"application/ld+json\"])")).toHaveCount(1);
+  await expect(page.locator("script[src]")).toHaveCount(0);
+  await expect(page.locator("#consent")).toBeHidden();
   await page.goto("/articles/cag-vs-rag-choosing-the-right-strategy-for-your-ai-application/");
   const anchor = page.locator(".heading-anchor").first();
   const fragment = await anchor.getAttribute("href");

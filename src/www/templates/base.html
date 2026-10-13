@@ -75,6 +75,7 @@
       {% block content %}{% endblock %}
     </main>
     {% block footer %}{% include "partials/footer.html" %}{% endblock %}
+    {% include "partials/consent.html" %}
     {% set interaction_script %}{% block page_scripts %}{% endblock %}{% endset %}
     {% if interaction_script|trim %}
       <script nonce="{{ nonce }}">

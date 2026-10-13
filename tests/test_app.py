@@ -968,6 +968,25 @@ def test_drafts_never_enter_production_discovery(
         assert [page.status_code for page in pages] == [200, 200, 200]
 
 
+def test_google_analytics_waits_for_consent_on_the_production_host(client: AppClient) -> None:
+    page = client.get("/").text
+    # The banner and its footer control start hidden; the script reveals them on www.fmind.dev only.
+    assert (
+        '<div id="consent" class="fixed inset-x-0 bottom-0 z-50 p-4" role="region" aria-label="Cookie consent" hidden>'
+        in page
+    )
+    assert "data-consent-open hidden>Cookie settings</button>" in page
+    assert "if (location.hostname !== 'www.fmind.dev' || !banner) return;" in page
+    assert "var id = 'G-Z28QKD99V2';" in page
+    # No Google script is in the document: it is only appended by load() after an Accept.
+    assert "<script async" not in page
+    assert 'src="https://www.googletagmanager.com' not in page
+    assert page.index("if (choice === 'granted') load();") > page.index("var stored")
+    privacy = client.get("/privacy").text
+    assert "Google Analytics, only with your consent" in privacy
+    assert "Cookie settings" in privacy
+
+
 def test_every_page_template_satisfies_the_inline_csp(client: AppClient) -> None:
     article = visible_articles(load_articles().all)[0]
     # One served path per PageTemplate, so a new inline style or script on any page fails here.

@@ -267,7 +267,8 @@ def test_renderer_renders_all_six_pages_with_real_domain_contexts() -> None:
     }
     for template, html in rendered.items():
         assert html.startswith("<!DOCTYPE html>")
-        assert html.count(f'<script nonce="{nonce}">') == int(
+        # Every page carries the consent controller; three pages add their own interaction script.
+        assert html.count(f'<script nonce="{nonce}">') == 1 + int(
             template in {PageTemplate.HOME, PageTemplate.ARTICLE, PageTemplate.LLM_SELF_HOSTING}
         )
         assert html.count('<link rel="stylesheet" href="/styles.css?v=') == 1
@@ -299,9 +300,10 @@ def test_startup_markup_is_validated_once_but_unknown_markup_remains_guarded(mon
         second = renderer.render(
             PageTemplate.NOT_FOUND, page=page, nonce="second", context={"article_html": "<p>published</p>"}
         )
-        # The 404 page has no nonce-bearing element, so cached renders are identical.
+        # Only the consent controller's nonce differs between renders of the 404 page.
         assert first.startswith("<!DOCTYPE html>")
-        assert first == second
+        assert first.count('nonce="first"') == 1
+        assert first.replace('nonce="first"', 'nonce="second"') == second
 
     with pytest.raises(ValueError, match="unsafe attribute"):
         renderer.render(

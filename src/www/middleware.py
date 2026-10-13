@@ -148,8 +148,14 @@ def _vary_accept_encoding(headers: MutableScopeHeaders) -> None:
         headers.extend_header_value("vary", "Accept-Encoding")
 
 
+# Google Analytics 4 after consent: gtag.js, its beacons and pixels (Google's CSP guide, without Google signals).
+GA_SCRIPTS = "https://*.googletagmanager.com"
+GA_IMAGES = "https://*.google-analytics.com https://*.googletagmanager.com"
+GA_CONNECT = "https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com"
+
+
 def _security_headers(nonce: str, environment: Environment) -> dict[str, str]:
-    script_src = f"'self' 'nonce-{nonce}'"
+    script_src = f"'self' 'nonce-{nonce}' {GA_SCRIPTS}"
     # Pages link one same-origin stylesheet; no inline <style> element is authorized.
     style_src = "'self'"
     headers = {
@@ -162,9 +168,9 @@ def _security_headers(nonce: str, environment: Environment) -> dict[str, str]:
                 "form-action 'self'",
                 f"script-src {script_src}",
                 f"style-src {style_src}",
-                "img-src 'self' data:",
+                f"img-src 'self' data: {GA_IMAGES}",
                 "font-src 'self'",
-                "connect-src 'self'",
+                f"connect-src 'self' {GA_CONNECT}",
             )
         )
         + ";",

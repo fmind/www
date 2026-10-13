@@ -62,6 +62,7 @@ METADATA = Metadata(
     calendar_url="https://calendar.google.com/calendar/u/0/appointments/schedules/AcZssZ2ye3X9589PA2xmbV73Iz5J_NbFig6nN651vn6UuYAC-Cs5vBxnQ2L5db9UnAeXmUBQSW1MOobd",
     site_url="https://www.fmind.dev",
     twitter_handle="@fmind_dev",
+    google_analytics_id="G-Z28QKD99V2",
     socials=(
         SocialLink("LinkedIn", "https://www.linkedin.com/in/fmind-dev/", "linkedin", True),
         SocialLink("X (Twitter)", "https://x.com/fmind_dev", "x", True),

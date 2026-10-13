@@ -1,0 +1,63 @@
+{# Google Analytics stays off until an explicit Accept on www.fmind.dev; the choice is kept in this browser only. #}
+<div id="consent" class="fixed inset-x-0 bottom-0 z-50 p-4" role="region" aria-label="Cookie consent" hidden>
+  <div class="mx-auto max-w-3xl rounded-2xl border border-base-300 bg-base-100 p-5 shadow-xl">
+    <p class="text-sm text-base-content">With your consent, Google Analytics measures which pages help visitors so I can improve them. Nothing loads before you accept, and you can change your choice from the footer at any time. <a class="text-accent underline underline-offset-4" href="/privacy">Privacy</a></p>
+    <div class="mt-4 flex flex-wrap gap-3">
+      <button type="button" class="btn btn-primary btn-sm" data-consent="granted">Accept</button>
+      <button type="button" class="btn btn-primary btn-sm" data-consent="denied">Reject</button>
+    </div>
+  </div>
+</div>
+<script nonce="{{ nonce }}">
+  (function () {
+    var id = '{{ metadata.google_analytics_id }}';
+    var key = 'fmind-consent';
+    var banner = document.getElementById('consent');
+    // Local, test and preview origins never ask for consent or load Google Analytics.
+    if (location.hostname !== 'www.fmind.dev' || !banner) return;
+    var stored = function () {
+      try { return localStorage.getItem(key); } catch (error) { return null; }
+    };
+    var load = function () {
+      if (window.gtag) return;
+      window.dataLayer = window.dataLayer || [];
+      window.gtag = function () { window.dataLayer.push(arguments); };
+      window.gtag('consent', 'default', { analytics_storage: 'granted', ad_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied' });
+      window.gtag('js', new Date());
+      window.gtag('config', id, { allow_google_signals: false, allow_ad_personalization_signals: false });
+      var script = document.createElement('script');
+      script.async = true;
+      script.src = 'https://www.googletagmanager.com/gtag/js?id=' + encodeURIComponent(id);
+      document.head.appendChild(script);
+    };
+    var forget = function () {
+      if (window.gtag) window.gtag('consent', 'update', { analytics_storage: 'denied' });
+      // GA cookies sit on the registrable domain, shared with the course subdomains.
+      document.cookie.split(';').forEach(function (cookie) {
+        var name = cookie.split('=')[0].trim();
+        if (name !== '_ga' && name.indexOf('_ga_') !== 0) return;
+        ['', '; domain=.fmind.dev', '; domain=www.fmind.dev'].forEach(function (domain) {
+          document.cookie = name + '=; Max-Age=0; path=/' + domain;
+        });
+      });
+    };
+    banner.querySelectorAll('[data-consent]').forEach(function (button) {
+      button.addEventListener('click', function () {
+        var choice = button.getAttribute('data-consent');
+        try { localStorage.setItem(key, choice); } catch (error) {}
+        if (choice === 'granted') load(); else forget();
+        banner.hidden = true;
+      });
+    });
+    document.querySelectorAll('[data-consent-open]').forEach(function (control) {
+      control.hidden = false;
+      control.addEventListener('click', function () {
+        banner.hidden = false;
+        banner.querySelector('button').focus();
+      });
+    });
+    var choice = stored();
+    if (choice === 'granted') load();
+    else if (choice !== 'denied') banner.hidden = false;
+  })();
+</script>

@@ -60,6 +60,15 @@ def test_security_headers_authorize_the_request_nonce() -> None:
     nonce = response.text.split('nonce="', 1)[1].split('"', 1)[0]
     assert f"script-src 'self' 'nonce-{nonce}'" in response.headers["content-security-policy"]
     assert "style-src 'self';" in response.headers["content-security-policy"]
+    # Google Analytics after consent: its script, beacon and pixel hosts only; frames and the default stay self.
+    policy = dict(item.strip().split(" ", 1) for item in response.headers["content-security-policy"].split(";") if item)
+    assert policy["script-src"].endswith("'nonce-" + nonce + "' https://*.googletagmanager.com")
+    assert policy["connect-src"] == (
+        "'self' https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com"
+    )
+    assert policy["img-src"] == "'self' data: https://*.google-analytics.com https://*.googletagmanager.com"
+    assert policy["default-src"] == "'self'"
+    assert policy["frame-ancestors"] == "'none'"
     assert response.headers["x-content-type-options"] == "nosniff"
     assert response.headers["vary"] == "Accept-Encoding"
     assert "strict-transport-security" not in response.headers

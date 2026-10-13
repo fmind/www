@@ -44,6 +44,8 @@ class Metadata:
     calendar_url: str
     site_url: str
     twitter_handle: str
+    # GA4 measurement ID; the consent banner loads it on www.fmind.dev only after an explicit Accept.
+    google_analytics_id: str
     socials: tuple[SocialLink, ...]
     work_location: str
 

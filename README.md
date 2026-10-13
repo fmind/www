@@ -83,7 +83,7 @@ For manual rollout/rollback, `mise run deploy europe-west1-docker.pkg.dev/www-fm
 
 ## Analytics and privacy
 
-`/privacy` describes the data flow. HTML GET responses emit aggregate path/status, referrer hostname, validated UTM tokens, and a heuristic bot flag. Redirects are excluded; geography remains empty. BigQuery partitions expire after 180 days without duplicate Cloud Logging retention. Analytics omit IPs, raw user agents, full referrers, cookies, sessions, and trace identifiers. Separate private Cloud Run operational logs may contain IPs, user agents, and full URLs and expire after 30 days.
+`/privacy` describes both data flows. Google Analytics 4 (`G-Z28QKD99V2`, property `538730900`) loads only on www.fmind.dev after a visitor accepts the consent banner; the footer's **Cookie settings** reopens it, rejecting deletes the `_ga` cookies, and the CSP allows only Google's GA4 script, beacon and pixel hosts. The brain's `google-analytics` sensor collects the property daily. HTML GET responses emit aggregate path/status, referrer hostname, validated UTM tokens, and a heuristic bot flag. Redirects are excluded; geography remains empty. BigQuery partitions expire after 180 days without duplicate Cloud Logging retention. Analytics omit IPs, raw user agents, full referrers, cookies, sessions, and trace identifiers. Separate private Cloud Run operational logs may contain IPs, user agents, and full URLs and expire after 30 days.
 
 Use the [website-analytics skill](.agents/skills/website-analytics/SKILL.md) or `uv run --locked python -m scripts.website_analytics` for a bounded, no-charge report. Reports fail on incomplete/changing data and are not unique-visitor or conversion measurements. Keep production reports out of Git.
 
