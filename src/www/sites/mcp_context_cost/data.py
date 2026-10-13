@@ -17,6 +17,7 @@ class ServerSnapshot:
     measured_on: str
     source_url: str
     evidence_url: str
+    evidence_label: str
     note: str
 
 
@@ -30,6 +31,7 @@ SERVERS = (
         "2026-09-20",
         "https://github.com/github/github-mcp-server/tree/v1.12.2",
         BENCHMARK_URL,
+        "Pinned measurement source",
         "Default catalog from the pinned public benchmark; not every available GitHub tool.",
     ),
     ServerSnapshot(
@@ -41,6 +43,7 @@ SERVERS = (
         SNAPSHOT_DATE,
         "https://github.com/modelcontextprotocol/servers/tree/main/src/filesystem",
         "https://registry.npmjs.org/@modelcontextprotocol/server-filesystem/1.0.0",
+        "Package release",
         "Official reference server; tools/list only, with an empty allowed directory.",
     ),
     ServerSnapshot(
@@ -52,6 +55,7 @@ SERVERS = (
         SNAPSHOT_DATE,
         "https://github.com/modelcontextprotocol/servers/tree/main/src/memory",
         "https://registry.npmjs.org/@modelcontextprotocol/server-memory/1.0.0",
+        "Package release",
         "Official reference server; tools/list only, with a scratch memory path.",
     ),
     ServerSnapshot(
@@ -63,6 +67,7 @@ SERVERS = (
         SNAPSHOT_DATE,
         "https://github.com/microsoft/playwright-mcp",
         "https://registry.npmjs.org/@playwright/mcp/0.0.83",
+        "Package release",
         "Default tools/list; no browser launched. Package embeds Playwright 1.64.0-alpha-1790635538000.",
     ),
 )

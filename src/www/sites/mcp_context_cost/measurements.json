@@ -179,7 +179,7 @@
     }
   ],
   "captured_on": "2026-10-13",
-  "package_lock_sha256": "2fcdb9576c379354041422ff39583babbfad1cbc178780348a7bec4f817e5b63",
+  "package_lock_sha256": "68f9254c0b7eca4840ec8ba05c48afc0a040b3912a71665de1e88133efc02bc3",
   "benchmark_commit": "e83ad9431e41ffd745384a04c49b95d8e1090691",
   "github": {
     "mode": "default",

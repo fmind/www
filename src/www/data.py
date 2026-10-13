@@ -381,7 +381,7 @@ SITE_PAGES = (
     ),
     SitePage(
         slug="mcp-context-cost",
-        article_slugs=("agents-md-speaks-unix", "mcp-2026-07-28-stateless-core-enterprise-authorization-and-sdk-betas"),
+        article_slugs=(),
         title="MCP context-cost calculator",
         description="Estimate tool-definition tokens, context-window share and input costs per session, day and month. Compare filtering, tool search, caching and CLI-first skills with explicit assumptions.",
         audience="Teams budgeting tool context in AI agents",

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Iterator
+from hashlib import sha256
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
@@ -28,6 +29,8 @@ from www.sites.mcp_context_cost.calculator import (
 )
 from www.sites.mcp_context_cost.data import MODELS, SERVERS
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
 
 @pytest.fixture(scope="module")
 def client() -> Iterator[TestClient]:
@@ -43,8 +46,11 @@ def server():
     )
 
 
-def test_measured_catalogs_match_the_retained_snapshot() -> None:
-    snapshot = json.loads(Path("src/www/sites/mcp_context_cost/measurements.json").read_text())
+def test_measured_catalogs_match_the_retained_snapshot(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    snapshot = json.loads((REPO_ROOT / "src/www/sites/mcp_context_cost/measurements.json").read_text())
+    lock = REPO_ROOT / "scripts/mcp_context_cost/measurement-package-lock.json"
+    assert sha256(lock.read_bytes()).hexdigest() == snapshot["package_lock_sha256"]
     github, *others = SERVERS
     assert (github.tools, github.tokens) == (snapshot["github"]["tools"], snapshot["github"]["input_schema_tokens"])
     assert [(item.id, item.tools, item.tokens) for item in others] == [
@@ -115,6 +121,43 @@ def test_cache_eligibility_uses_other_prefix_without_billing_it() -> None:
     assert eligible.cached_session_usd == pytest.approx((0.75 + 19 * 0.075) * 1000 / 1e6)
 
 
+def test_discovery_caches_only_the_stable_scaffold_and_uses_it_for_eligibility() -> None:
+    query = {
+        "github": "0",
+        "filesystem": "0",
+        "playwright": "0",
+        "memory": "3",
+        "loaded": "50",
+        "discovery-tokens": "100",
+        "requests": "5",
+        "input-price": "2",
+        "cache-price": "0.5",
+        "write-multiplier": "1.25",
+        "cache-hits": "50",
+        "cache-minimum": "1000",
+        "other-prefix": "899",
+        "mitigation": "search",
+    }
+    below = build_context_view(query).selected
+    assert below.tokens_request == 259  # 100 stable + 159 varying definition tokens.
+    assert not below.cache_eligible
+    assert below.cached_session_usd == below.session_usd == pytest.approx(0.00259)
+    eligible = build_context_view({**query, "other-prefix": "900"}).selected
+    assert eligible.cache_eligible
+    assert eligible.cached_session_usd == pytest.approx(0.00244)
+    assert eligible.context_percent == below.context_percent
+    assert eligible.session_usd == below.session_usd
+    assert eligible.cached_month_usd == pytest.approx(0.00244 * 10 * 22)
+    # A first request writes only the scaffold at the premium, never loaded schemas.
+    cold = build_context_view({**query, "other-prefix": "900", "requests": "1"}).selected
+    assert cold.cached_session_usd == pytest.approx(0.000568)
+    scaffold_only = build_context_view({**query, "other-prefix": "900", "loaded": "0"}).selected
+    assert scaffold_only.cached_session_usd == pytest.approx(0.00085)
+    no_scaffold = build_context_view({**query, "discovery-tokens": "0", "other-prefix": "1000"}).selected
+    assert not no_scaffold.cache_eligible
+    assert no_scaffold.cached_session_usd == no_scaffold.session_usd == pytest.approx(0.00159)
+
+
 def test_single_request_has_no_cache_hit_and_premium_can_cost_more() -> None:
     row = build_context_view({"requests": "1", "cache-hits": "100", "write-multiplier": "1.25"}).selected
     assert row.cached_session_usd == row.session_usd * 1.25
@@ -152,7 +195,6 @@ def test_empty_catalog_and_excess_context_are_not_presented_as_savings_or_fit() 
         {"memory": "-1"},
         {"model": "unknown"},
         {"mitigation": "unknown"},
-        {"unknown": "1"},
         {"requests": ""},
         {"requests": " 2"},
         {"requests": "٢"},
@@ -166,6 +208,19 @@ def test_invalid_parameters_show_page_messages_and_fail_mcp_adapter(query: dict[
     assert view.validation
     with pytest.raises(ValueError, match="Invalid calculator parameters"):
         compare_context(query)
+
+
+@pytest.mark.parametrize("key", ["utm_source", "utm_campaign", "unknown"])
+def test_unknown_parameters_are_ignored_on_page_but_rejected_by_mcp(client: TestClient, key: str) -> None:
+    view = build_context_view({key: "campaign"})
+    assert not view.validation
+    assert key not in view.scenario_url
+    response = client.get(PATH, params={key: "campaign"})
+    assert response.status_code == 200
+    assert "Some inputs need attention" not in response.text
+    assert "Unknown calculator parameter" not in response.text
+    with pytest.raises(ValueError, match="Unknown calculator parameter"):
+        compare_context({key: "campaign"})
 
 
 def test_duplicate_values_are_rejected_and_single_value_sequences_are_supported() -> None:
@@ -216,8 +271,30 @@ def test_page_metadata_validation_redirects_and_404(client: TestClient) -> None:
     assert invalid.status_code == 200
     assert "must occur once" in invalid.text
     assert "Some inputs need attention" in invalid.text
+    assert "between 1 and 10,000,000" in invalid.text
+    assert "1e+07" not in invalid.text
     overflow = client.get(PATH + "?context=100&mitigation=cli")
     assert "This tool block alone exceeds the context window" in overflow.text
+
+
+def test_page_labels_package_links_and_formats_negative_savings(client: TestClient) -> None:
+    response = client.get(PATH, params=dict.fromkeys((server.id for server in SERVERS), "0"))
+    assert response.status_code == 200
+    assert "-$3.30" in response.text
+    assert "$-" not in response.text
+    assert response.text.count(">Package release</a>") == 3
+    assert response.text.count(">Pinned measurement source</a>") == 1
+    assert "Only the stable scaffold can be cached" in response.text
+
+
+@pytest.mark.parametrize(
+    "slug", ["agents-md-speaks-unix", "mcp-2026-07-28-stateless-core-enterprise-authorization-and-sdk-betas"]
+)
+def test_existing_articles_do_not_gain_a_related_calculator_box(client: TestClient, slug: str) -> None:
+    response = client.get(f"/articles/{slug}/")
+    assert response.status_code == 200
+    assert "Put the ideas into practice" not in response.text
+    assert f'href="{PATH}"' not in response.text
 
 
 def test_registry_discovery_and_packaged_agent_skill_include_both_sites(client: TestClient) -> None:

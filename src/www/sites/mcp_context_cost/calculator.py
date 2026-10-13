@@ -5,9 +5,10 @@ Filtered tokens F = ceil(sum(catalog tokens * enabled / catalog tool count)).
 Search tokens = ceil(discovery scaffold + F * loaded_percent / 100).
 CLI tokens = skill scaffold + average loaded help. These are user assumptions.
 For each strategy T, context share = 100*T/context; uncached session = T*R*P/1e6.
+Stable tokens K = discovery scaffold for search, otherwise T.
 Eligible hits H = (R-1)*hit_percent/100; cached session =
-T*((R-H)*P*write_multiplier + H*cache_read_price)/1e6.
-If T + other stable prefix is below the cache minimum, use uncached cost.
+((T-K)*R*P + K*((R-H)*P*write_multiplier + H*cache_read_price))/1e6.
+If K is zero or K + other stable prefix is below the minimum, use uncached cost.
 Daily and monthly costs multiply session cost by sessions/day and workdays/month.
 Caching changes billing, never the occupied context. Outputs exclude tool results,
 other prompt/history tokens, output, search fees, extra calls and cache storage.
@@ -24,6 +25,7 @@ from urllib.parse import urlencode
 from pydantic import BaseModel, ConfigDict
 
 from www.data import METADATA
+from www.sites.formatting import format_decimal
 
 from .data import MODELS, SERVERS, SNAPSHOT_DATE, ModelSnapshot, ServerSnapshot
 
@@ -106,7 +108,7 @@ FIELDS = (
         80,
         0,
         100,
-        "Assumed share after the first request, for the entire modeled block. Use observed hits; changed schemas or prefixes can invalidate them.",
+        "Assumed share after the first request. Search caches only its stable scaffold; other strategies assume the whole block repeats unchanged. Use observed hits.",
     ),
     NumberField(
         "cache-minimum",
@@ -140,7 +142,7 @@ FIELDS = (
         500,
         0,
         1000000,
-        "Assumed search tool, index and discovery instructions. Search calls/results may cost extra.",
+        "Assumed stable search tool, index and discovery instructions before changing definitions. Only this scaffold can receive search cache hits; calls/results may cost extra.",
         True,
     ),
     NumberField(
@@ -162,6 +164,8 @@ FIELDS = (
         True,
     ),
 )
+
+PARAMETER_KEYS = {field.key for field in FIELDS} | {server.id for server in SERVERS} | {"model", "mitigation"}
 
 
 @dataclass(frozen=True, slots=True)
@@ -222,16 +226,15 @@ def _number(raw: str, field: NumberField) -> float:
 
 
 def parse_inputs(query: Query) -> tuple[ContextInputs, tuple[str, ...]]:
-    """Validate all supplied keys; page fallbacks are visible and MCP rejects them."""
+    """Validate known inputs; ignore unrelated page query keys such as UTM tags."""
     errors: list[str] = []
-    allowed = {field.key for field in FIELDS} | {server.id for server in SERVERS} | {"model", "mitigation"}
     raw: dict[str, str] = {}
     for key, value in query.items():
         if not isinstance(value, str) and len(value) == 1:
             value = value[0]
-        if key not in allowed:
-            errors.append("Unknown calculator parameter; it was ignored")
-        elif not isinstance(value, str):
+        if key not in PARAMETER_KEYS:
+            continue
+        if not isinstance(value, str):
             errors.append(f"{key} must occur once; the default was used")
         elif not value or value.strip() != value:
             errors.append(f"{key} must be nonempty without surrounding whitespace; the default was used")
@@ -264,7 +267,7 @@ def parse_inputs(query: Query) -> tuple[ContextInputs, tuple[str, ...]]:
         except ValueError:
             qualifier = "a whole number " if field.whole else ""
             errors.append(
-                f"{field.label} must be {qualifier}between {field.minimum:g} and {field.maximum:g}; the default was used"
+                f"{field.label} must be {qualifier}between {format_decimal(field.minimum, 0)} and {format_decimal(field.maximum, 0)}; the default was used"
             )
             return default
 
@@ -312,13 +315,19 @@ def estimate(inputs: ContextInputs) -> tuple[Strategy, ...]:
     rows: list[Strategy] = []
     for (key, label), token_count in zip(MITIGATIONS, tokens, strict=True):
         session = token_count * values["requests"] * values["input-price"] / 1e6
-        eligible = token_count + values["other-prefix"] >= values["cache-minimum"]
+        # Changing loaded schemas stay at standard input price and cannot qualify
+        # the stable scaffold for caching. Other strategies assume a stable block.
+        stable_tokens = int(values["discovery-tokens"]) if key == "search" else token_count
+        eligible = stable_tokens > 0 and stable_tokens + values["other-prefix"] >= values["cache-minimum"]
         hits = (values["requests"] - 1) * values["cache-hits"] / 100
         cached_session = (
-            token_count
-            * (
-                (values["requests"] - hits) * values["input-price"] * values["write-multiplier"]
-                + hits * values["cache-price"]
+            (
+                (token_count - stable_tokens) * values["requests"] * values["input-price"]
+                + stable_tokens
+                * (
+                    (values["requests"] - hits) * values["input-price"] * values["write-multiplier"]
+                    + hits * values["cache-price"]
+                )
             )
             / 1e6
             if eligible
@@ -401,6 +410,8 @@ class ContextResult(BaseModel):
 
 
 def compare_context(parameters: dict[str, str]) -> ContextResult:
+    if parameters.keys() - PARAMETER_KEYS:
+        raise ValueError("Unknown calculator parameter; use the parameters returned by an empty call or /agents.")
     view = build_context_view(parameters)
     if view.validation:
         raise ValueError(
@@ -419,7 +430,8 @@ def compare_context(parameters: dict[str, str]) -> ContextResult:
             "Snapshot tokens use tiktoken o200k_base over normalized input declarations; provider tokenizers and client wrappers differ.",
             "Partial tool counts are proportional estimates. Tool schemas vary in size; measure the actual enabled set.",
             "Discovery and CLI token budgets are assumptions per request, including retained definitions/help. Extra calls, search fees and tool output are excluded.",
-            "Cache hits assume the entire modeled block is stable and eligible within retention limits; each session starts cold. Context usage is unchanged.",
+            "Search caches only its stable discovery scaffold; loaded definitions always pay standard input price. Other strategies assume the entire block repeats unchanged, including CLI help.",
+            "Cache hits require an eligible stable prefix within retention limits; each session starts cold. Context usage is unchanged.",
             "Minimum cache prefix includes other-prefix, whose cost/context is excluded. Alignment, cache storage and provider-specific billing rounding are not modeled.",
             "A fitting tool block does not prove the entire request fits. Other instructions, history, results and output need context and budget.",
             "Savings compare each strategy with all tools under the same cache policy; negative savings mean a cost increase.",
