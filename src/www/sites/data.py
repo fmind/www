@@ -23,7 +23,7 @@ PRICE_SOURCE_URL = "https://cloud.google.com/products/compute/pricing/accelerato
 
 # Checkpoint tensor sizes include mixed precision and scales. Hardware restrictions
 # follow published runtime recipes; see sources.md for variants and provenance.
-FRONTIER_MODELS = (
+_FRONTIER_MODELS = (
     FrontierModel(
         "qwen3-5-4b",
         "Qwen3.5 4B",
@@ -218,6 +218,8 @@ FRONTIER_MODELS = (
         recipe_url="https://docs.sglang.io/cookbook/autoregressive/Moonshotai/Kimi-K3",
     ),
 )
+# Pickers, tables, and MCP results list models smallest first by total, then active, parameters.
+FRONTIER_MODELS = tuple(sorted(_FRONTIER_MODELS, key=lambda model: (model.parameters_b, model.active_parameters)))
 
 # Full-machine USD prices, including attached GPUs and bundled host resources.
 # Resource CUD columns are used explicitly; flexible CUDs are not GPU CUDs.

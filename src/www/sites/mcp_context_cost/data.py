@@ -1,4 +1,4 @@
-"""Immutable reference counts and provider assumptions; provenance in sources.md."""
+"""Immutable measured MCP tool catalogs; provenance in sources.md."""
 
 from dataclasses import dataclass
 
@@ -69,53 +69,5 @@ SERVERS = (
         "https://registry.npmjs.org/@playwright/mcp/0.0.83",
         "Package release",
         "Default tools/list; no browser launched. Package embeds Playwright 1.64.0-alpha-1790635538000.",
-    ),
-)
-
-
-@dataclass(frozen=True, slots=True)
-class ModelSnapshot:
-    id: str
-    name: str
-    context_tokens: int
-    input_price: float
-    cache_price: float
-    write_multiplier: float
-    cache_minimum: int
-    verified_on: str
-    price_url: str
-    model_url: str
-    cache_url: str
-    note: str
-
-
-MODELS = (
-    ModelSnapshot(
-        "gpt-5.4-mini",
-        "GPT-5.4 Mini",
-        400000,
-        0.75,
-        0.075,
-        1,
-        1024,
-        SNAPSHOT_DATE,
-        "https://developers.openai.com/api/docs/pricing",
-        "https://developers.openai.com/api/docs/models/gpt-5.4-mini",
-        "https://developers.openai.com/api/docs/guides/prompt-caching",
-        "Standard text rates. The 1,024-token cache minimum is a planning assumption: actual eligibility is request-dependent for this model.",
-    ),
-    ModelSnapshot(
-        "gpt-4.1",
-        "GPT-4.1",
-        1047576,
-        2,
-        0.5,
-        1,
-        1024,
-        SNAPSHOT_DATE,
-        "https://developers.openai.com/api/docs/pricing",
-        "https://developers.openai.com/api/docs/models/gpt-4.1",
-        "https://developers.openai.com/api/docs/guides/prompt-caching",
-        "Standard text rates. The 1,024-token cache minimum is a planning assumption: actual eligibility is request-dependent for this model.",
     ),
 )

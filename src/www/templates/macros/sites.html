@@ -38,8 +38,8 @@
       </div>{% endif %}
       <div>
         <label for="model" class="block font-semibold mb-2">Model to self-host</label>
-        <select id="model" name="model" class="select w-full" aria-describedby="model-help">{% for model in view.models %}<option value="{{ model.id }}"{% if model.id == view.inputs.model_id %} selected{% endif %}{% if model.deployment_issue %} disabled{% endif %}>{{ model.name }}{% if view.inputs.mode == "advanced" %} · {{ model_size(model) }}{% endif %}</option>{% endfor %}</select>
-        <p id="model-help" class="text-sm text-base-content/70 mt-2">Smallest to largest. Qwen 4B offers a compact starting point; test each model on your tasks.</p>
+        <select id="model" name="model" class="select w-full" aria-describedby="model-help">{% for model in view.models %}<option value="{{ model.id }}"{% if model.id == view.inputs.model_id %} selected{% endif %}{% if model.deployment_issue %} disabled{% endif %}>{{ model.name }} · {{ model_size(model) }}</option>{% endfor %}</select>
+        <p id="model-help" class="text-sm text-base-content/70 mt-2">Smallest first, in parameters (B = billion, T = trillion). Mixture-of-experts models need GPU memory for every weight but compute each token with only the active ones. Test each model on your tasks.</p>
       </div>
       {% if view.inputs.mode == "simple" %}<div>
         <label for="requests" class="block font-semibold mb-2">Calls per active day <span class="font-normal text-sm">(optional)</span></label>
@@ -123,17 +123,6 @@
       {{ metric_card("Illustrative setup", format_count(view.estimate.total_gpus, "GPU"), view.selected_node.name ~ ". " ~ format_count(view.inputs.replicas, "replica") ~ " (complete model copies).") }}
     </div>{% endif %}
     <p class="text-sm text-base-content/75">Assumes 100 generated tokens/s per model copy, with 65% usable. This is a budget scenario; GPU speed, response time, and quality need a pilot.</p>
-    <details id="recommended-fleet" class="rounded-xl border border-base-300 bg-base-100 p-5">
-      <summary class="cursor-pointer font-semibold focus-visible:outline-2 focus-visible:outline-primary">Setup, running time, and assumptions</summary>
-      <div class="space-y-3 mt-4 text-sm text-base-content/75 max-w-4xl">
-        <p><strong>{{ view.selected_model.name }} · {{ view.selected_quant.name }}</strong>. {{ format_go_float(view.estimate.weight_memory_gb, 1) }} GB weights + 25% reserve = {{ format_go_float(view.estimate.required_memory_gb, 1) }} GB per copy. The reserve does not calculate KV cache.</p>
-        <p>{{ view.selected_node.name }} is the lowest compute price in this catalog for the selected checkpoint and plan. <a class="link link-primary" href="{{ view.selected_model.recipe_url }}">Serving reference</a>.{% if view.selected_model.id == "mistral-small-4" %} The economical NVFP4 checkpoint needs quality testing; this catalog caps it at 16,384 context tokens on one G4. FP8 uses a larger machine. Compare alternatives in advanced settings.{% endif %}</p>
-        <p>{% if view.selected_preset.scheduled %}Scheduled workload: {{ format_go_float(view.inputs.demand_window_hours, 1).removesuffix(".0") }} h per active day, {{ format_go_float(view.inputs.duty_cycle_percent / 100 * 730, 1).removesuffix(".0") }} h/month. This assumes nodes can start and stop within that budget; allow for startup in a pilot.{% else %}Always-on service: nodes run 24/7, even outside the {{ format_go_float(view.inputs.demand_window_hours, 1).removesuffix(".0") }}-hour usage window. Use advanced settings for scheduled shutdowns.{% endif %} {% if view.selected_price.committed %}Your commitment still bills 730 hours/month, including idle time.{% endif %} No spare failover copy is included.</p>
-        <p>Exact estimate: {{ format_usd2(view.estimate.compute_monthly_usd) }} compute + {{ format_usd2(view.estimate.control_monthly_usd) }} GKE = {{ format_usd2(view.estimate.total_monthly_usd) }}/month. At half to twice the assumed speed, a resized setup would cost {{ format_budget(view.budget_low_usd) }}–{{ format_budget(view.budget_high_usd) }}/month.</p>
-        <p>Window load: {{ format_decimal(view.estimate.window_capacity_pct, 0) }}% of assumed capacity; monthly load: {{ format_decimal(view.estimate.demand_capacity_pct, 0) }}%. This is not measured GPU utilization.</p>
-        <p>Each call budgets {{ format_decimal(view.inputs.input_tokens_request, 0) }} input and {{ format_decimal(view.inputs.output_tokens_request, 0) }} output tokens, including reasoning. Examples assume brief answers; heavy thinking, retries, and longer histories need a larger budget in advanced settings.</p>
-      </div>
-    </details>
     <div>
       <h3 class="font-heading text-xl font-bold">Managed APIs · same token budget</h3>
       <p class="text-sm text-base-content/75 mt-2">Standard text rates, ordered by price. These models have different capabilities.</p>
@@ -148,11 +137,25 @@
         </tr>{% endfor %}</tbody>
       </table>
     </div>
-    <details id="hosting-break-even" class="rounded-xl border border-base-300 bg-base-100 p-5">
-      <summary class="cursor-pointer font-semibold focus-visible:outline-2 focus-visible:outline-primary">When could self-hosting cost less?</summary>
+    <section id="hosting-break-even" aria-labelledby="hosting-break-even-title" class="rounded-xl border border-base-300 bg-base-100 p-5">
+      <h3 id="hosting-break-even-title" class="font-heading text-lg font-bold">When could self-hosting cost less?</h3>
       <p class="text-sm text-base-content/75 mt-3">Break-even holds this setup, token mix, and usage window fixed. More GPUs or operating costs change the threshold. Quality still needs testing.</p>
       <dl class="mt-4 divide-y divide-base-300 text-sm">{% for row in view.apis|sort(attribute="monthly_usd") %}<div class="py-3 sm:flex sm:justify-between gap-4"><dt class="font-semibold">{{ row.baseline.name }}</dt><dd>{% if row.request_issue %}{{ row.request_issue }}{% elif not view.estimate.topology_confirmed %}Needs a multi-host pilot{% elif row.break_even_fits %}About {{ format_number(row.break_even_requests) }} calls/month{% else %}Beyond this setup's assumed capacity{% endif %}</dd></div>{% endfor %}</dl>
-    </details>
+    </section>
+  </section>
+{%- endmacro %}
+
+{% macro setup_assumptions(view) -%}
+  <section id="recommended-fleet" aria-labelledby="recommended-fleet-title" class="rounded-xl border border-base-300 bg-base-100 p-5">
+    <h2 id="recommended-fleet-title" class="font-heading text-lg font-bold">Setup, running time, and assumptions</h2>
+    <div class="space-y-3 mt-3 text-sm text-base-content/75 max-w-4xl">
+      <p><strong>{{ view.selected_model.name }} · {{ view.selected_quant.name }}</strong>. {{ format_go_float(view.estimate.weight_memory_gb, 1) }} GB weights + 25% reserve = {{ format_go_float(view.estimate.required_memory_gb, 1) }} GB per copy. The reserve does not calculate KV cache.</p>
+      <p>{{ view.selected_node.name }} is the lowest compute price in this catalog for the selected checkpoint and plan. <a class="link link-primary" href="{{ view.selected_model.recipe_url }}">Serving reference</a>.{% if view.selected_model.id == "mistral-small-4" %} The economical NVFP4 checkpoint needs quality testing; this catalog caps it at 16,384 context tokens on one G4. FP8 uses a larger machine. Compare alternatives in advanced settings.{% endif %}</p>
+      <p>{% if view.selected_preset.scheduled %}Scheduled workload: {{ format_go_float(view.inputs.demand_window_hours, 1).removesuffix(".0") }} h per active day, {{ format_go_float(view.inputs.duty_cycle_percent / 100 * 730, 1).removesuffix(".0") }} h/month. This assumes nodes can start and stop within that budget; allow for startup in a pilot.{% else %}Always-on service: nodes run 24/7, even outside the {{ format_go_float(view.inputs.demand_window_hours, 1).removesuffix(".0") }}-hour usage window. Use advanced settings for scheduled shutdowns.{% endif %} {% if view.selected_price.committed %}Your commitment still bills 730 hours/month, including idle time.{% endif %} No spare failover copy is included.</p>
+      <p>Exact estimate: {{ format_usd2(view.estimate.compute_monthly_usd) }} compute + {{ format_usd2(view.estimate.control_monthly_usd) }} GKE = {{ format_usd2(view.estimate.total_monthly_usd) }}/month. At half to twice the assumed speed, a resized setup would cost {{ format_budget(view.budget_low_usd) }}–{{ format_budget(view.budget_high_usd) }}/month.</p>
+      <p>Window load: {{ format_decimal(view.estimate.window_capacity_pct, 0) }}% of assumed capacity; monthly load: {{ format_decimal(view.estimate.demand_capacity_pct, 0) }}%. This is not measured GPU utilization.</p>
+      <p>Each call budgets {{ format_decimal(view.inputs.input_tokens_request, 0) }} input and {{ format_decimal(view.inputs.output_tokens_request, 0) }} output tokens, including reasoning. Examples assume brief answers; heavy thinking, retries, and longer histories need a larger budget in advanced settings.</p>
+    </div>
   </section>
 {%- endmacro %}
 
@@ -203,15 +206,15 @@
         </tbody>
       </table>
     </div>
-    <details id="hosting-price-notes" class="rounded-xl border border-base-300 bg-base-100 p-5">
-      <summary class="cursor-pointer font-semibold focus-visible:outline-2 focus-visible:outline-primary">Price notes and comparison boundaries · {{ view.snapshot_date }}</summary>
+    <section id="hosting-price-notes" aria-labelledby="hosting-price-notes-title" class="rounded-xl border border-base-300 bg-base-100 p-5">
+      <h3 id="hosting-price-notes-title" class="font-heading text-lg font-bold">Price notes and comparison boundaries · {{ view.snapshot_date }}</h3>
       <ul class="list-disc ml-5 space-y-3 mt-4 text-sm text-base-content/75">
         {% for row in view.apis %}<li><strong>{{ row.baseline.name }}:</strong> {{ row.baseline.note }}<p class="mt-2">{{ row.mode_note }}</p><p class="mt-2">{{ row.freshness }}</p></li>{% endfor %}
         <li>API estimates include input and output tokens. The selected mode includes either batch discounts or eligible cache reads, writes, and storage. Tools, media, taxes, regional premiums, and negotiated rates are excluded. API quotas and context limits still apply.</li>
         <li>Include billed reasoning in output tokens and all repeated tool calls in demand. These inputs cannot predict each model's actual verbosity, retries, or task success.</li>
         <li>For a one-off job, the API bill covers just that job. The fleet bill still covers your selected monthly running time. Reduce running time only if you can actually stop on-demand nodes, allowing for startup and processing.</li>
       </ul>
-    </details>
+    </section>
   </section>
   {% endif %}
 {%- endmacro %}
@@ -315,8 +318,8 @@
       {{ metric_card("Monthly capacity", format_go_float(view.estimate.demand_capacity_pct, 1) ~ "% needed", "A total-volume check. A month's spare capacity cannot absorb a burst that arrives in a few seconds.") }}
       {{ metric_card("Peak responsiveness", view.latency_title, view.latency_detail) }}
     </div>
-    <details id="latency-settings" class="rounded-2xl border border-base-300 bg-base-100 p-6 md:p-8">
-      <summary class="cursor-pointer font-bold focus-visible:outline-2 focus-visible:outline-primary">Enter latency targets and pilot measurements (optional)</summary>
+    <div id="latency-settings" class="rounded-2xl border border-base-300 bg-base-100 p-6 md:p-8">
+      <h3 class="font-heading text-xl font-bold">Latency targets and pilot measurements (optional)</h3>
       <p class="text-base-content/75 leading-relaxed mt-4">Use p95 measurements from the same configuration at peak concurrency. Zero means unmeasured.</p>
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mt-5">
         {{ number_input("concurrency", "Target simultaneous requests", view.form_values["concurrency"], "1", "100000", "1", "Peak in-flight requests, not total team members.") }}
@@ -328,15 +331,15 @@
       </div>
       {% if view.inputs.pilot_config %}<input type="hidden" form="calculator" name="pilot" value="{{ view.inputs.pilot_config }}"/>{% endif %}
       <button id="update-latency" type="submit" form="calculator" name="confirm-pilot" value="{{ view.current_pilot_config }}" class="btn btn-primary rounded-xl mt-5">Check recorded latency</button>
-    </details>
+    </div>
   </section>
 {%- endmacro %}
 
 {% macro quality(view) -%}
   <section aria-labelledby="quality-lab" class="space-y-5">
     <h2 id="quality-lab" class="font-heading text-3xl md:text-4xl font-bold scroll-mt-24">Compare cost per accepted task</h2>
-    <details id="quality-settings" class="rounded-2xl border border-base-300 bg-base-100 p-6 md:p-8"{% if view.inputs.quality_enabled %} open{% endif %}>
-      <summary class="cursor-pointer font-bold focus-visible:outline-2 focus-visible:outline-primary">Optional quality and human-review experiment</summary>
+    <div id="quality-settings" class="rounded-2xl border border-base-300 bg-base-100 p-6 md:p-8">
+      <h3 class="font-heading text-xl font-bold">Optional quality and human-review experiment</h3>
       <p class="text-base-content/75 leading-relaxed mt-4">Compare the same tasks and rubric. Starting values are illustrative; replace them with measurements. Calls include retries, and review covers all attempted tasks.</p>
       <label class="flex items-center gap-3 mt-5 font-semibold"><input type="checkbox" form="calculator" id="quality" name="quality" value="on"{% if view.inputs.quality_enabled %} checked{% endif %} class="checkbox checkbox-primary"/> Enable the accepted-task comparison</label>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 mt-5">
@@ -356,7 +359,7 @@
         {% endfor %}
       </div>
       <button id="update-quality" form="calculator" type="submit" class="btn btn-primary rounded-xl mt-6">Update accepted-task comparison</button>
-    </details>
+    </div>
     {% if view.inputs.quality_enabled %}
       <figure class="rounded-2xl border border-base-300 bg-base-100 p-6 md:p-8">
         <figcaption class="font-bold">Cost per accepted task · your entered assumptions</figcaption>

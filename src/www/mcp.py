@@ -51,7 +51,14 @@ from www.models import (
 from www.publications import article_sections, render_profile_json
 from www.search import SearchIndex, normalize_search_query
 from www.sites.agent import HostingResult, compare_hosting
-from www.sites.mcp_context_cost.calculator import ContextResult, compare_context
+from www.sites.mcp_context_cost.calculator import (
+    DEFAULT_REQUESTS,
+    MAX_REQUESTS,
+    SERVER_IDS,
+    ContextResult,
+    ServerId,
+    compare_context,
+)
 from www.tags import tag_names
 
 MCP_PROTOCOL_VERSION = "2026-07-28"
@@ -349,21 +356,27 @@ def create_mcp_server(
     @server.tool(
         name="compare_mcp_context_cost",
         title="Compare MCP context costs",
-        description="Estimate tool-definition tokens, context share and USD costs by filtering, search, CLI and cache assumptions. Call with parameters={} for defaults, bounds and dated sources; edit string-valued URL parameters. Reference tokens and partial-tool estimates are not provider billing measurements. Returns a shareable scenario URL. Invalid inputs fail. See /agents#mcp-context.",
+        description="Count the tool-definition tokens that measured MCP servers (GitHub default toolset, Filesystem, Memory, Playwright) add to every model request, then price them as standard input for the managed APIs in the hosting snapshot. Omit servers for all four. Returns tokens per request and month, context share and USD per 1,000 requests and per 30-day month for each model, dated sources, limitations and a shareable page URL. Reference tokens, not provider billing. See /agents#mcp-context.",
         annotations=_READ_ONLY,
         structured_output=True,
     )
     def compare_mcp_context_cost(
-        parameters: Annotated[
-            dict[Annotated[str, Field(max_length=64)], Annotated[str, Field(strict=True, max_length=128)]],
+        servers: Annotated[
+            list[ServerId] | None,
+            Field(min_length=1, max_length=len(SERVER_IDS), description="Distinct server ids; omit for all."),
+        ] = None,
+        requests_per_day: Annotated[
+            int,
             Field(
-                max_length=32,
-                description="Calculator URL parameters as strings; empty object returns defaults and bounds.",
+                strict=True,
+                ge=1,
+                le=MAX_REQUESTS,
+                description="Model requests per day; count every call in agent loops.",
             ),
-        ],
+        ] = DEFAULT_REQUESTS,
     ) -> ContextResult:
         try:
-            return compare_context(parameters)
+            return compare_context(servers, requests_per_day)
         except ValueError as exc:
             raise ToolError(str(exc)) from exc
 

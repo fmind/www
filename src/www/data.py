@@ -384,7 +384,7 @@ SITE_PAGES = (
         slug="mcp-context-cost",
         article_slugs=(),
         title="MCP context-cost calculator",
-        description="Estimate tool-definition tokens, context-window share and input costs per session, day and month. Compare filtering, tool search, caching and CLI-first skills with explicit assumptions.",
+        description="See how many tokens real MCP servers add to every model request, their context-window share, and their input cost per month across managed APIs.",
         audience="Teams budgeting tool context in AI agents",
         url=f"{METADATA.site_url}/sites/mcp-context-cost/",
     ),

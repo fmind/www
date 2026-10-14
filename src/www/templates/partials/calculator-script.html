@@ -37,14 +37,6 @@ window.addEventListener('pageshow', function () {
   });
 });
 
-// Invalid optional controls must be visible before the browser focuses them.
-document.addEventListener('invalid', function (event) {
-  var parent = event.target.parentElement;
-  while (parent) {
-    if (parent.tagName === 'DETAILS') parent.open = true;
-    parent = parent.parentElement;
-  }
-}, true);
 if (document.querySelector('[data-hosting-calculator]')) {
   var pendingScenario = null;
   var updateStatus = document.querySelector('[data-update-status]');
@@ -80,12 +72,7 @@ if (document.querySelector('[data-hosting-calculator]')) {
       if (pendingScenario !== request || formState() !== request.state) return;
       var next = new DOMParser().parseFromString(html, 'text/html').querySelector('[data-hosting-calculator]');
       if (!next) throw new Error('Calculator markup is missing');
-      // Keep deliberate disclosures and the active control in the same viewport position.
-      current.querySelectorAll('details[id]').forEach(function (details) {
-        var replacement = next.querySelector('#' + details.id);
-        if (replacement) replacement.open = details.open;
-      });
-      // Restore focus where the user is now, and never pull it back from outside the calculator.
+      // Keep the active control in the same viewport position; never pull focus back from outside the calculator.
       var active = document.activeElement;
       var inside = active && current.contains(active);
       var anchor = inside && active.id ? active : source;

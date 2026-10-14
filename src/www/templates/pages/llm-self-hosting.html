@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "macros/sites.html" import basic_form, api_options, cost_explorer, demand_form, fleet_form, latency, model_size, precision_guide, quality, results, sensitivity %}
+{% from "macros/sites.html" import basic_form, api_options, cost_explorer, demand_form, fleet_form, latency, model_size, precision_guide, quality, results, sensitivity, setup_assumptions %}
 {% block content %}
   {# The status stays outside the swapped region so assistive technology observes it before updates. #}
   <p data-update-status class="sr-only" role="status"></p>
@@ -31,7 +31,7 @@
       <form id="calculator" method="get" action="/sites/llm-self-hosting/" class="space-y-6 scroll-mt-24" aria-label="GKE self-hosting scenario">
         <button type="submit" hidden tabindex="-1" aria-hidden="true">Update comparison</button>
         {{ basic_form(view) }}
-        {% if view.inputs.mode == "advanced" %}{{ demand_form(view) }}<details id="hosting-options" class="rounded-xl border border-base-300 p-5"><summary class="cursor-pointer font-semibold">Hardware, performance, and API options</summary><div class="space-y-6 mt-5">{{ fleet_form(view) }}{{ api_options(view) }}</div></details>{% endif %}
+        {% if view.inputs.mode == "advanced" %}{{ demand_form(view) }}<div id="hosting-options" class="space-y-6">{{ fleet_form(view) }}{{ api_options(view) }}</div>{% endif %}
         <div class="flex flex-wrap items-center gap-4"><button id="update-comparison" class="btn btn-primary rounded-xl font-bold min-h-12" type="submit">Update comparison</button><a class="btn btn-ghost border border-base-300 rounded-xl min-h-12" id="reset-scenario" data-scenario-link href="/sites/llm-self-hosting/">Reset</a><p class="text-sm text-base-content/70">Share the URL to save this scenario.</p></div>
       </form>
       {{ results(view) }}
@@ -67,17 +67,18 @@
       </section>
       {{ quality(view) }}
       {% endif %}
-      <details id="hosting-method" class="rounded-xl border border-base-300 bg-base-100 p-5">
-        <summary class="font-heading text-lg font-bold cursor-pointer focus-visible:outline-2 focus-visible:outline-primary">Method and limitations</summary>
+      {% if view.inputs.mode == "simple" %}{{ setup_assumptions(view) }}{% endif %}
+      <section id="hosting-method" aria-labelledby="hosting-method-title" class="rounded-xl border border-base-300 bg-base-100 p-5">
+        <h2 id="hosting-method-title" class="font-heading text-lg font-bold">Method and limitations</h2>
         <ul class="list-disc ml-5 mt-4 space-y-3 text-sm text-base-content/75 max-w-4xl">
           <li>Infrastructure only: whole GPU nodes and a $0.10/hour GKE cluster fee. Disks, network, load balancers, licenses, taxes, and operations are extra. US reference pricing; regional availability and prices vary.</li>
           <li>Model weights plus 25% reserve select a compatible checkpoint and machine. Capacity assumes 100 output tokens/s per model copy, with 65% usable, regardless of GPU. This is an illustrative input, not a benchmark. Measure prompt processing, reasoning, KV cache, concurrency, and latency before sizing production.</li>
           <li>Monthly running hours and each active-day window constrain capacity separately. Simple mode sizes complete model copies; advanced mode keeps your chosen setup fixed. Scheduled examples assume nodes run only during active windows. Commitments bill 730 hours/month, including idle time, and require GPU reservations.</li>
           <li>API prices include input and output, including reasoning. The same token budget does not establish equal quality or actual usage. Break-even holds the setup fixed; more replicas and operating costs change it.</li>
         </ul>
-      </details>
-      <details id="hosting-sources" class="rounded-xl border border-base-300 bg-base-100 p-5">
-        <summary id="hosting-sources-title" class="font-heading text-lg font-bold cursor-pointer focus-visible:outline-2 focus-visible:outline-primary">Sources · checked {{ view.snapshot_date }}</summary>
+      </section>
+      <section id="hosting-sources" aria-labelledby="hosting-sources-title" class="rounded-xl border border-base-300 bg-base-100 p-5">
+        <h2 id="hosting-sources-title" class="font-heading text-lg font-bold">Sources · checked {{ view.snapshot_date }}</h2>
         <p class="text-base-content/70 mt-2">Snapshot checked {{ view.snapshot_date }}. Prices and runtime support change; follow the linked authority before committing spend.</p>
         <ul class="mt-5 space-y-3">
           <li><a class="link link-primary font-semibold" href="{{ view.model_source_url }}" target="_blank" rel="noopener noreferrer">Selected model card and checkpoint</a><span class="block text-sm text-base-content/65">Official model parameters, context, checkpoint formats, and license.</span></li>
@@ -90,7 +91,7 @@
           {% for baseline in view.apis %}<li><a class="link link-primary font-semibold" href="{{ baseline.baseline.source_url }}" target="_blank" rel="noopener noreferrer">{{ baseline.baseline.name }} pricing</a><span class="block text-sm text-base-content/75">{{ baseline.baseline.note }}</span><span class="block text-sm text-base-content/75 mt-1">{{ baseline.freshness }}</span><a class="link link-primary text-sm" href="{{ baseline.baseline.cache_url }}" target="_blank" rel="noopener noreferrer">Cache fees and requirements</a></li>{% endfor %}
           <li><a class="link link-primary font-semibold" href="https://docs.vllm.ai/en/latest/features/quantization/" target="_blank" rel="noopener noreferrer">vLLM quantization documentation</a><span class="block text-sm text-base-content/75">Memory trade-offs and format support by GPU and runtime implementation.</span></li>
         </ul>
-      </details>
+      </section>
     </div>
   </section>
 {% endblock %}

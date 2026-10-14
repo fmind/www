@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Iterator
+from datetime import UTC, datetime
 from hashlib import sha256
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
@@ -19,17 +20,19 @@ from www.data import SITE_PAGES
 from www.mcp import create_mcp_server
 from www.publications import article_markdown_index
 from www.search import SearchIndex
+from www.sites.data import API_BASELINES
 from www.sites.mcp_context_cost.calculator import (
-    FIELDS,
     PATH,
+    SERVER_IDS,
     build_context_view,
     compare_context,
-    parse_inputs,
-    scenario_url,
+    parse_query,
+    view_from_query,
 )
-from www.sites.mcp_context_cost.data import MODELS, SERVERS
+from www.sites.mcp_context_cost.data import SERVERS
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+BEFORE_REVIEW = datetime(2026, 10, 14, tzinfo=UTC)
 
 
 @pytest.fixture(scope="module")
@@ -56,235 +59,117 @@ def test_measured_catalogs_match_the_retained_snapshot(tmp_path: Path, monkeypat
     assert [(item.id, item.tools, item.tokens) for item in others] == [
         (item["id"], item["tool_count"], item["input_schema_tokens"]) for item in snapshot["servers"]
     ]
-    rows = build_context_view({}).strategies
-    assert rows[0].tokens_request == rows[1].tokens_request == 17368
+    # The typed MCP argument advertises exactly the measured catalogs.
+    assert tuple(server.id for server in SERVERS) == SERVER_IDS
+    view = build_context_view(now=BEFORE_REVIEW)
+    assert (view.tools, view.tokens_request, view.requests_per_day) == (93, 17368, 1000)
 
 
-def test_hand_calculated_filtering_and_discovery_exclude_disabled_servers() -> None:
-    view = build_context_view(
-        {
-            "github": "0",
-            "filesystem": "0",
-            "playwright": "0",
-            "memory": "3",
-            "loaded": "50",
-            "discovery-tokens": "100",
-            "context": "10000",
-        }
-    )
-    baseline, filtered, search, _ = view.strategies
-    assert baseline.tokens_request == 953
-    assert filtered.tokens_request == 318  # ceil(953 * 3/9)
-    assert search.tokens_request == 259  # 100 + 318 * 0.5
-    assert filtered.context_percent == pytest.approx(3.18)
-    assert filtered.saved_month_usd == pytest.approx((953 - 318) * 20 * 10 * 22 * 0.75 / 1e6)
+def test_hand_calculated_tokens_context_and_costs_for_selected_servers() -> None:
+    view = build_context_view(("memory", "filesystem"), 200, now=BEFORE_REVIEW)
+    assert [share.server.id for share in view.selected] == ["filesystem", "memory"]  # Largest first.
+    assert view.selected[0].percent == pytest.approx(100 * 1681 / 2634)
+    assert (view.tools, view.tokens_request, view.tokens_month) == (23, 2634, 2634 * 200 * 30)
+    # Cheapest first; every row uses the hosting snapshot's standard input rate.
+    assert [model.name for model in view.models] == [
+        baseline.name for baseline in sorted(API_BASELINES, key=lambda row: row.input_per_million)
+    ]
+    haiku = view.models[0]
+    assert haiku.name == "Claude Haiku 5.5"
+    assert haiku.context_percent == pytest.approx(0.2634)
+    assert haiku.per_thousand_requests_usd == pytest.approx(0.2634)
+    assert haiku.month_usd == pytest.approx(1.5804)
+    assert not any(model.needs_review for model in view.models)
 
 
-def test_hand_calculated_cache_hits_cold_start_write_premium_and_monthly_cost() -> None:
-    view = build_context_view(
-        {
-            "requests": "5",
-            "sessions": "3",
-            "days": "20",
-            "input-price": "2",
-            "cache-price": "0.5",
-            "write-multiplier": "1.25",
-            "cache-hits": "50",
-            "cache-minimum": "1000",
-            "skill-tokens": "300",
-            "help-tokens": "700",
-            "mitigation": "cli",
-        }
-    )
-    row = view.selected
-    # 1,000 tokens; 2 hits and 3 cold/write requests, including first request.
-    assert row.session_usd == pytest.approx(0.01)
-    assert row.request_usd == pytest.approx(0.002)
-    assert row.cached_average_request_usd == pytest.approx(0.0017)
-    assert row.cached_session_usd == pytest.approx(0.0085)
-    assert row.day_usd == pytest.approx(0.03)
-    assert row.cached_day_usd == pytest.approx(0.0255)
-    assert row.month_usd == pytest.approx(0.6)
-    assert row.cached_month_usd == pytest.approx(0.51)
-    assert row.cached_saved_month_usd == pytest.approx(view.strategies[0].cached_month_usd - 0.51)
+def test_prices_follow_the_shared_snapshot_validity_and_review_dates() -> None:
+    later = build_context_view(("memory",), 1, now=datetime(2027, 1, 2, tzinfo=UTC))
+    gemini = next(model for model in later.models if model.name == "Gemini 3.8 Flash")
+    # The announced January 2027 rate doubles; every dated price now needs review.
+    assert gemini.input_per_million == 1.5
+    assert gemini.month_usd == pytest.approx(953 * 30 * 1.5 / 1e6)
+    assert all(model.needs_review for model in later.models)
 
 
-def test_cache_eligibility_uses_other_prefix_without_billing_it() -> None:
-    query = {"mitigation": "cli", "cache-minimum": "1024", "cache-hits": "100"}
-    below = build_context_view(query).selected
-    eligible = build_context_view({**query, "other-prefix": "24"}).selected
-    assert not below.cache_eligible
-    assert below.cached_session_usd == below.session_usd
-    assert eligible.cache_eligible
-    assert eligible.context_percent == below.context_percent
-    assert eligible.session_usd == below.session_usd
-    assert eligible.cached_session_usd == pytest.approx((0.75 + 19 * 0.075) * 1000 / 1e6)
-
-
-def test_discovery_caches_only_the_stable_scaffold_and_uses_it_for_eligibility() -> None:
-    query = {
-        "github": "0",
-        "filesystem": "0",
-        "playwright": "0",
-        "memory": "3",
-        "loaded": "50",
-        "discovery-tokens": "100",
-        "requests": "5",
-        "input-price": "2",
-        "cache-price": "0.5",
-        "write-multiplier": "1.25",
-        "cache-hits": "50",
-        "cache-minimum": "1000",
-        "other-prefix": "899",
-        "mitigation": "search",
-    }
-    below = build_context_view(query).selected
-    assert below.tokens_request == 259  # 100 stable + 159 varying definition tokens.
-    assert not below.cache_eligible
-    assert below.cached_session_usd == below.session_usd == pytest.approx(0.00259)
-    eligible = build_context_view({**query, "other-prefix": "900"}).selected
-    assert eligible.cache_eligible
-    assert eligible.cached_session_usd == pytest.approx(0.00244)
-    assert eligible.context_percent == below.context_percent
-    assert eligible.session_usd == below.session_usd
-    assert eligible.cached_month_usd == pytest.approx(0.00244 * 10 * 22)
-    # A first request writes only the scaffold at the premium, never loaded schemas.
-    cold = build_context_view({**query, "other-prefix": "900", "requests": "1"}).selected
-    assert cold.cached_session_usd == pytest.approx(0.000568)
-    scaffold_only = build_context_view({**query, "other-prefix": "900", "loaded": "0"}).selected
-    assert scaffold_only.cached_session_usd == pytest.approx(0.00085)
-    no_scaffold = build_context_view({**query, "discovery-tokens": "0", "other-prefix": "1000"}).selected
-    assert not no_scaffold.cache_eligible
-    assert no_scaffold.cached_session_usd == no_scaffold.session_usd == pytest.approx(0.00159)
-
-
-def test_single_request_has_no_cache_hit_and_premium_can_cost_more() -> None:
-    row = build_context_view({"requests": "1", "cache-hits": "100", "write-multiplier": "1.25"}).selected
-    assert row.cached_session_usd == row.session_usd * 1.25
-    unchanged = build_context_view({"cache-hits": "0"}).selected
-    assert unchanged.cached_month_usd == unchanged.month_usd
-
-
-def test_empty_catalog_and_excess_context_are_not_presented_as_savings_or_fit() -> None:
-    view = build_context_view(
-        {**dict.fromkeys((server.id for server in SERVERS), "0"), "context": "500", "mitigation": "cli"}
-    )
-    baseline, filtered, search, cli = view.strategies
-    assert baseline.month_usd == filtered.month_usd == 0
-    assert search.saved_month_usd < 0
-    assert cli.saved_month_usd < 0
-    assert cli.context_percent == 200
-    assert not cli.fits
-    assert build_context_view({"context": "1000", "mitigation": "cli"}).selected.fits
+def test_default_page_query_selects_every_server_and_ignores_tracking_keys() -> None:
+    for query in ({}, {"utm_source": "newsletter"}, {"unknown": ["a", "b"]}):
+        assert parse_query(query) == (SERVER_IDS, 1000, ())
 
 
 @pytest.mark.parametrize(
-    "query",
+    ("query", "message"),
     [
-        {"context": "NaN"},
-        {"input-price": "Infinity"},
-        {"cache-price": "-1"},
-        {"requests": "1.5"},
-        {"requests": "1e2"},
-        {"sessions": "0"},
-        {"days": "32"},
-        {"cache-hits": "101"},
-        {"loaded": "-1"},
-        {"write-multiplier": "0.5"},
-        {"github": "46"},
-        {"memory": "-1"},
-        {"model": "unknown"},
-        {"mitigation": "unknown"},
-        {"requests": ""},
-        {"requests": " 2"},
-        {"requests": "٢"},
-        {"input-price": "1_000"},
-        {"input-price": "1e999"},
-        {"context": "9" * 129},
+        ({"requests": "5"}, "Select at least one MCP server"),
+        ({"server": ["github", "unknown"]}, "Unknown MCP servers were ignored"),
+        ({"server": "unknown", "requests": "5"}, "Unknown MCP servers were ignored; all servers were used"),
+        ({"server": "github", "requests": "0"}, "Requests per day must be a whole number"),
+        ({"server": "github", "requests": "1.5"}, "Requests per day must be a whole number"),
+        ({"server": "github", "requests": "NaN"}, "Requests per day must be a whole number"),
+        ({"server": "github", "requests": ""}, "Requests per day must be a whole number"),
+        ({"server": "github", "requests": " 2"}, "Requests per day must be a whole number"),
+        ({"server": "github", "requests": "٢"}, "Requests per day must be a whole number"),
+        ({"server": "github", "requests": "10000001"}, "Requests per day must be a whole number"),
+        ({"server": "github", "requests": "9" * 129}, "Requests per day must be a whole number"),
+        ({"server": "github", "requests": ["2", "3"]}, "Requests per day must be a whole number"),
     ],
 )
-def test_invalid_parameters_show_page_messages_and_fail_mcp_adapter(query: dict[str, str]) -> None:
-    view = build_context_view(query)
-    assert view.validation
-    with pytest.raises(ValueError, match="Invalid calculator parameters"):
-        compare_context(query)
+def test_invalid_page_inputs_show_messages_and_fall_back(query: dict[str, str | list[str]], message: str) -> None:
+    servers, requests, errors = parse_query(query)
+    assert any(error.startswith(message) for error in errors)
+    assert servers
+    if "requests" in query and message.startswith("Requests"):
+        assert (servers, requests) == (("github",), 1000)
 
 
-@pytest.mark.parametrize("key", ["utm_source", "utm_campaign", "unknown"])
-def test_unknown_parameters_are_ignored_on_page_but_rejected_by_mcp(client: TestClient, key: str) -> None:
-    view = build_context_view({key: "campaign"})
-    assert not view.validation
-    assert key not in view.scenario_url
-    response = client.get(PATH, params={key: "campaign"})
-    assert response.status_code == 200
-    assert "Some inputs need attention" not in response.text
-    assert "Unknown calculator parameter" not in response.text
-    with pytest.raises(ValueError, match="Unknown calculator parameter"):
-        compare_context({key: "campaign"})
+def test_shareable_url_round_trips_and_mcp_matches_the_page() -> None:
+    view = build_context_view(("playwright", "github"), 4321)
+    query = parse_qs(urlsplit(view.scenario_url).query)
+    assert query == {"server": ["github", "playwright"], "requests": ["4321"]}
+    restored = view_from_query(query)
+    assert (restored.selected, restored.requests_per_day, restored.validation) == (view.selected, 4321, ())
+    result = compare_context(["github", "playwright"], 4321)
+    assert result.scenario_url == view.scenario_url
+    assert result.tokens_per_request == 10989 + 3745
+    assert result.tokens_per_month == (10989 + 3745) * 4321 * 30
+    assert result.models == view.models
 
 
-def test_duplicate_values_are_rejected_and_single_value_sequences_are_supported() -> None:
-    inputs, errors = parse_inputs({"requests": ["2", "3"]})
-    assert inputs.values["requests"] == 20
-    assert errors == ("requests must occur once; the default was used",)
-    assert parse_inputs({"requests": ["2"]})[0].values["requests"] == 2
-    assert parse_inputs({"requests": []})[1]
-
-
-def test_shareable_url_round_trip_preserves_float_precision_and_bounds() -> None:
-    query = {field.key: str(int(field.maximum)) if field.whole else str(field.maximum) for field in FIELDS}
-    query["input-price"] = "0.12345678901234567"
-    view = build_context_view(query)
-    restored, errors = parse_inputs(parse_qs(urlsplit(scenario_url(view.inputs)).query))
-    assert not errors
-    assert restored == view.inputs
-    assert compare_context(view.parameters).strategies == view.strategies
-
-
-def test_model_defaults_overrides_and_preset_links_preserve_workload() -> None:
-    view = build_context_view({"model": "gpt-4.1", "input-price": "7", "requests": "3", "github": "4"})
-    assert view.inputs.values["context"] == 1047576
-    assert view.inputs.values["input-price"] == 7
-    for (_, url), model in zip(view.model_urls, MODELS, strict=True):
-        chosen = build_context_view(parse_qs(urlsplit(url).query))
-        assert not chosen.validation
-        assert chosen.inputs.values["input-price"] == model.input_price
-        assert chosen.inputs.values["context"] == model.context_tokens
-        assert chosen.inputs.values["requests"] == 3
-        assert chosen.inputs.enabled[0] == 4
+@pytest.mark.parametrize(
+    ("servers", "requests"),
+    [([], 1), (["github", "github"], 1), (["unknown"], 1), (None, 0), (None, 10_000_001)],
+)
+def test_mcp_adapter_fails_closed(servers: list[str] | None, requests: int) -> None:
+    with pytest.raises(ValueError, match=r"^(servers|requests_per_day) must"):
+        compare_context(servers, requests)
 
 
 def test_page_metadata_validation_redirects_and_404(client: TestClient) -> None:
     response = client.get(PATH)
     assert response.status_code == 200
-    assert "What do your MCP tools cost in context?" in response.text
+    assert "How much context do your MCP tools take?" in response.text
+    assert "17,368 tokens of tool definitions on every request" in response.text
     assert f'<link rel="canonical" href="https://www.fmind.dev{PATH}"' in response.text
     assert '"@type":"WebApplication"' in response.text
     assert '<form id="calculator" method="get"' in response.text
+    assert response.text.count('name="server"') == len(SERVERS)
+    assert response.text.count(" checked/>") == len(SERVERS)
+    # Every section stays open: no disclosure widgets.
+    assert "<details" not in response.text
     assert client.head(PATH).status_code == 200
     assert not client.head(PATH).content
     redirect = client.get(PATH.rstrip("/") + "?requests=3", follow_redirects=False)
     assert redirect.headers["location"] == PATH + "?requests=3"
     for path in ("/sites/unknown/", PATH + "missing/"):
         assert client.get(path).status_code == 404
-    invalid = client.get(PATH + "?requests=NaN&requests=2&context=0&mitigation=cli")
+    invalid = client.get(PATH + "?requests=NaN&requests=2")
     assert invalid.status_code == 200
-    assert "must occur once" in invalid.text
     assert "Some inputs need attention" in invalid.text
     assert "between 1 and 10,000,000" in invalid.text
-    assert "1e+07" not in invalid.text
-    overflow = client.get(PATH + "?context=100&mitigation=cli")
-    assert "This tool block alone exceeds the context window" in overflow.text
-
-
-def test_page_labels_package_links_and_formats_negative_savings(client: TestClient) -> None:
-    response = client.get(PATH, params=dict.fromkeys((server.id for server in SERVERS), "0"))
-    assert response.status_code == 200
-    assert "-$3.30" in response.text
-    assert "$-" not in response.text
-    assert response.text.count(">Package release</a>") == 3
-    assert response.text.count(">Pinned measurement source</a>") == 1
-    assert "Only the stable scaffold can be cached" in response.text
+    one = client.get(PATH + "?server=memory&requests=10")
+    assert "953 tokens of tool definitions on every request" in one.text
+    assert one.text.count(" checked/>") == 1
+    assert one.text.count(">Package release</a>") == 3
+    assert one.text.count(">Pinned measurement source</a>") == 1
 
 
 @pytest.mark.parametrize(
@@ -312,21 +197,28 @@ def test_registry_discovery_and_packaged_agent_skill_include_both_sites(client: 
 
 @pytest.mark.anyio
 async def test_mcp_result_matches_http_scenario_and_invalid_calls_fail(server, client: TestClient) -> None:
-    query = {"requests": "3", "github": "5", "mitigation": "filter"}
-    result = await server.call_tool("compare_mcp_context_cost", {"parameters": query})
+    arguments = {"servers": ["memory", "filesystem"], "requests_per_day": 200}
+    result = await server.call_tool("compare_mcp_context_cost", arguments)
     assert isinstance(result, CallToolResult)
-    assert result.structured_content == json.loads(compare_context(query).model_dump_json())
+    expected = compare_context(["memory", "filesystem"], 200)
+    assert result.structured_content == json.loads(expected.model_dump_json())
     assert result.structured_content is not None
     response = client.get(result.structured_content["scenario_url"])
     assert response.status_code == 200
-    assert "Tool filtering" in response.text
+    assert "2,634 tokens of tool definitions on every request" in response.text
+    defaults = await server.call_tool("compare_mcp_context_cost", {})
+    assert isinstance(defaults, CallToolResult)
+    assert defaults.structured_content is not None
+    assert defaults.structured_content["tokens_per_request"] == 17368
     for invalid in (
-        {"requests": "0"},
-        {"input-price": "NaN"},
-        {"model": "unknown"},
-        {"extra": "1"},
-        {"requests": ""},
-        {"requests": 3},
+        {"servers": []},
+        {"servers": ["unknown"]},
+        {"servers": ["github", "github"]},
+        {"servers": "github"},
+        {"requests_per_day": 0},
+        {"requests_per_day": 1.5},
+        {"requests_per_day": True},
+        {"requests_per_day": "1000"},
     ):
         with pytest.raises(ToolError):
-            await server.call_tool("compare_mcp_context_cost", {"parameters": invalid})
+            await server.call_tool("compare_mcp_context_cost", invalid)

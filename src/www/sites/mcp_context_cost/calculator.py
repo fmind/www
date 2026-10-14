@@ -1,439 +1,199 @@
-"""Server-owned MCP context arithmetic. See sources.md for equations and boundaries.
+"""Server-owned MCP tool-definition arithmetic. See sources.md for provenance and limits.
 
-All-tools tokens B = sum(full catalog tokens for servers with enabled > 0).
-Filtered tokens F = ceil(sum(catalog tokens * enabled / catalog tool count)).
-Search tokens = ceil(discovery scaffold + F * loaded_percent / 100).
-CLI tokens = skill scaffold + average loaded help. These are user assumptions.
-For each strategy T, context share = 100*T/context; uncached session = T*R*P/1e6.
-Stable tokens K = discovery scaffold for search, otherwise T.
-Eligible hits H = (R-1)*hit_percent/100; cached session =
-((T-K)*R*P + K*((R-H)*P*write_multiplier + H*cache_read_price))/1e6.
-If K is zero or K + other stable prefix is below the minimum, use uncached cost.
-Daily and monthly costs multiply session cost by sessions/day and workdays/month.
-Caching changes billing, never the occupied context. Outputs exclude tool results,
-other prompt/history tokens, output, search fees, extra calls and cache storage.
+Tokens per request T = sum of measured catalog tokens for the selected servers.
+Tokens per month = T * requests/day * 30 days.
+For each managed API: context share = 100 * T / input limit, and cost = tokens * standard
+input price / 1e6. Caching, output, tool results and the rest of the prompt are excluded.
 """
 
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, replace
-from math import ceil, isfinite
+from dataclasses import dataclass
+from datetime import UTC, datetime
 from re import fullmatch
+from typing import Literal, get_args
 from urllib.parse import urlencode
 
 from pydantic import BaseModel, ConfigDict
 
 from www.data import METADATA
+from www.sites.data import DEFAULT_HOSTING_INPUTS, MODEL_SNAPSHOT
+from www.sites.economics import current_api_baselines, utc_date
 from www.sites.formatting import format_decimal
 
-from .data import MODELS, SERVERS, SNAPSHOT_DATE, ModelSnapshot, ServerSnapshot
+from .data import SERVERS, SNAPSHOT_DATE, ServerSnapshot
 
 PATH = "/sites/mcp-context-cost/"
-MITIGATIONS = (
-    ("all", "All tools"),
-    ("filter", "Tool filtering"),
-    ("search", "Dynamic discovery / tool search"),
-    ("cli", "CLI-first skills"),
+DAYS_PER_MONTH = 30
+DEFAULT_REQUESTS = 1000
+MAX_REQUESTS = 10_000_000
+# Typed MCP arguments advertise these choices; a test keeps them aligned with SERVERS.
+ServerId = Literal["github", "filesystem", "memory", "playwright"]
+SERVER_IDS: tuple[str, ...] = get_args(ServerId)
+LIMITATIONS = (
+    "Reference tokens: tiktoken o200k_base over each server's normalized input declarations. Provider tokenizers, tool wrappers and hidden system tokens differ.",
+    "Costs use standard input prices from a dated snapshot. Prompt caching lowers the price of repeated definitions, not the context they occupy.",
+    "Only tool definitions are counted: instructions, history, tool results, output and reasoning need their own budget.",
+    "A month is 30 days of the given daily requests. Every model call in an agent loop counts as a request.",
 )
 
 
 @dataclass(frozen=True, slots=True)
-class NumberField:
-    key: str
-    label: str
-    default: float
-    minimum: float
-    maximum: float
-    help: str
-    whole: bool = False
-
-
-FIELDS = (
-    NumberField(
-        "context",
-        "Context window (tokens)",
-        400000,
-        1,
-        10000000,
-        "Total model window; reserve room for instructions, history, tool results and output.",
-        True,
-    ),
-    NumberField(
-        "input-price",
-        "Input price (USD / million tokens)",
-        0.75,
-        0,
-        1000,
-        "Standard input rate. Preset rates are dated; edit to match your provider and tier.",
-    ),
-    NumberField(
-        "cache-price",
-        "Cache-read price (USD / million tokens)",
-        0.075,
-        0,
-        1000,
-        "Rate for eligible cached input; caching still occupies the same context.",
-    ),
-    NumberField(
-        "write-multiplier",
-        "Cache write / input price",
-        1,
-        1,
-        10,
-        "1 means ordinary input price on misses; 1.25 models a 25% cache-write premium.",
-    ),
-    NumberField(
-        "requests",
-        "Requests per session",
-        20,
-        1,
-        10000,
-        "Count every model request in an agent loop, not just user messages.",
-        True,
-    ),
-    NumberField(
-        "sessions",
-        "Sessions per workday",
-        10,
-        1,
-        100000,
-        "A new session starts cold; no cache reuse across sessions is assumed.",
-        True,
-    ),
-    NumberField("days", "Workdays per month", 22, 1, 31, "Costs apply only to these active days.", True),
-    NumberField(
-        "cache-hits",
-        "Follow-up cache hits (%)",
-        80,
-        0,
-        100,
-        "Assumed share after the first request. Search caches only its stable scaffold; other strategies assume the whole block repeats unchanged. Use observed hits.",
-    ),
-    NumberField(
-        "cache-minimum",
-        "Assumed minimum cache prefix (tokens)",
-        1024,
-        0,
-        10000000,
-        "1,024 is a planning assumption; preset model minima depend on request settings. Include other stable tokens; check provider rules.",
-        True,
-    ),
-    NumberField(
-        "other-prefix",
-        "Other stable prefix (tokens)",
-        0,
-        0,
-        10000000,
-        "Used only for cache eligibility. Its cost and context usage are outside these tool-definition totals.",
-        True,
-    ),
-    NumberField(
-        "loaded",
-        "Filtered definitions loaded on average (%)",
-        20,
-        0,
-        100,
-        "Discovery assumption per model request, including definitions retained in history. Measure this in your client.",
-    ),
-    NumberField(
-        "discovery-tokens",
-        "Discovery scaffold (tokens/request)",
-        500,
-        0,
-        1000000,
-        "Assumed stable search tool, index and discovery instructions before changing definitions. Only this scaffold can receive search cache hits; calls/results may cost extra.",
-        True,
-    ),
-    NumberField(
-        "skill-tokens",
-        "CLI skill scaffold (tokens/request)",
-        300,
-        0,
-        1000000,
-        "Assumed always-visible skill metadata and shell tool definition.",
-        True,
-    ),
-    NumberField(
-        "help-tokens",
-        "Loaded CLI help (average tokens/request)",
-        700,
-        0,
-        1000000,
-        "Assumed loaded instructions/help retained in context. Command output and extra calls are excluded.",
-        True,
-    ),
-)
-
-PARAMETER_KEYS = {field.key for field in FIELDS} | {server.id for server in SERVERS} | {"model", "mitigation"}
+class ServerShare:
+    server: ServerSnapshot
+    percent: float
 
 
 @dataclass(frozen=True, slots=True)
-class ContextInputs:
-    model: str
-    mitigation: str
-    enabled: tuple[int, ...]
-    values: dict[str, float]
-
-
-@dataclass(frozen=True, slots=True)
-class Strategy:
-    id: str
-    label: str
-    tokens_request: int
+class ModelCost:
+    name: str
+    input_per_million: float
+    input_token_limit: int
     context_percent: float
-    fits: bool
-    cache_eligible: bool
-    request_usd: float
-    cached_average_request_usd: float
-    session_usd: float
-    day_usd: float
+    per_thousand_requests_usd: float
     month_usd: float
-    cached_session_usd: float
-    cached_day_usd: float
-    cached_month_usd: float
-    saved_month_usd: float
-    cached_saved_month_usd: float
+    source_url: str
+    verified_on: str
+    needs_review: bool
 
 
 @dataclass(frozen=True, slots=True)
 class ContextView:
-    inputs: ContextInputs
-    parameters: dict[str, str]
-    validation: tuple[str, ...]
-    strategies: tuple[Strategy, ...]
-    selected: Strategy
-    fields: tuple[NumberField, ...]
     servers: tuple[ServerSnapshot, ...]
-    models: tuple[ModelSnapshot, ...]
-    model_urls: tuple[tuple[str, str], ...]
-    mitigations: tuple[tuple[str, str], ...]
-    snapshot_date: str
+    selected: tuple[ServerShare, ...]
+    requests_per_day: int
+    tools: int
+    tokens_request: int
+    tokens_month: int
+    models: tuple[ModelCost, ...]
+    validation: tuple[str, ...]
     scenario_url: str
+    snapshot_date: str
+    price_date: str
 
 
 type Query = Mapping[str, str | Sequence[str]]
 
 
-def _number(raw: str, field: NumberField) -> float:
-    pattern = r"[0-9]+" if field.whole else r"[+-]?(?:[0-9]+\.?[0-9]*|\.[0-9]+)(?:[eE][+-]?[0-9]+)?"
-    if len(raw) > 128 or fullmatch(pattern, raw) is None:
-        raise ValueError("Invalid numeric syntax")
-    value = float(raw)
-    if not isfinite(value) or not field.minimum <= value <= field.maximum:
-        raise ValueError("Outside the permitted range")
-    return value
+def scenario_url(servers: Sequence[str], requests_per_day: int) -> str:
+    return PATH + "?" + urlencode([*(("server", server) for server in servers), ("requests", requests_per_day)])
 
 
-def parse_inputs(query: Query) -> tuple[ContextInputs, tuple[str, ...]]:
-    """Validate known inputs; ignore unrelated page query keys such as UTM tags."""
+def parse_query(query: Query) -> tuple[tuple[str, ...], int, tuple[str, ...]]:
+    """Read the native GET form; unrelated keys such as UTM tags are ignored."""
     errors: list[str] = []
-    raw: dict[str, str] = {}
-    for key, value in query.items():
-        if not isinstance(value, str) and len(value) == 1:
-            value = value[0]
-        if key not in PARAMETER_KEYS:
-            continue
-        if not isinstance(value, str):
-            errors.append(f"{key} must occur once; the default was used")
-        elif not value or value.strip() != value:
-            errors.append(f"{key} must be nonempty without surrounding whitespace; the default was used")
+    raw_servers = query.get("server", ())
+    raw_servers = [raw_servers] if isinstance(raw_servers, str) else list(raw_servers)
+    unknown = any(value not in SERVER_IDS for value in raw_servers)
+    servers = tuple(server for server in SERVER_IDS if server in raw_servers)
+    if not servers:
+        if unknown:
+            errors.append("Unknown MCP servers were ignored; all servers were used")
+        elif "requests" in query:
+            # The form always submits requests: a submitted form without servers had every box unchecked.
+            errors.append("Select at least one MCP server; all servers were used")
+        servers = SERVER_IDS
+    elif unknown:
+        errors.append("Unknown MCP servers were ignored")
+    requests = DEFAULT_REQUESTS
+    raw_requests = query.get("requests")
+    if raw_requests is not None:
+        values = [raw_requests] if isinstance(raw_requests, str) else list(raw_requests)
+        value = values[0] if len(values) == 1 else ""
+        if len(value) <= 12 and fullmatch(r"[0-9]+", value) and 1 <= int(value) <= MAX_REQUESTS:
+            requests = int(value)
         else:
-            raw[key] = value
-
-    def choice(key: str, choices: tuple[str, ...]) -> str:
-        value = raw.get(key, choices[0])
-        if value in choices:
-            return value
-        errors.append(f"{key} was not recognized; the default was used")
-        return choices[0]
-
-    model_id = choice("model", tuple(model.id for model in MODELS))
-    model = next(model for model in MODELS if model.id == model_id)
-    defaults = {
-        "context": model.context_tokens,
-        "input-price": model.input_price,
-        "cache-price": model.cache_price,
-        "write-multiplier": model.write_multiplier,
-        "cache-minimum": model.cache_minimum,
-    }
-
-    def number(field: NumberField) -> float:
-        default = defaults.get(field.key, field.default)
-        if field.key not in raw:
-            return default
-        try:
-            return _number(raw[field.key], field)
-        except ValueError:
-            qualifier = "a whole number " if field.whole else ""
             errors.append(
-                f"{field.label} must be {qualifier}between {format_decimal(field.minimum, 0)} and {format_decimal(field.maximum, 0)}; the default was used"
+                f"Requests per day must be a whole number between 1 and {format_decimal(MAX_REQUESTS, 0)}; "
+                f"{format_decimal(DEFAULT_REQUESTS, 0)} was used"
             )
-            return default
-
-    inputs = ContextInputs(
-        model=model_id,
-        mitigation=choice("mitigation", tuple(key for key, _ in MITIGATIONS)),
-        enabled=tuple(
-            int(number(NumberField(server.id, server.name + " enabled tools", server.tools, 0, server.tools, "", True)))
-            for server in SERVERS
-        ),
-        values={field.key: number(field) for field in FIELDS},
-    )
-    return inputs, tuple(dict.fromkeys(errors))
+    return servers, requests, tuple(errors)
 
 
-def parameters(inputs: ContextInputs) -> dict[str, str]:
-    return {
-        "model": inputs.model,
-        "mitigation": inputs.mitigation,
-        **{server.id: str(count) for server, count in zip(SERVERS, inputs.enabled, strict=True)},
-        **{
-            key: str(int(value)) if field.whole else str(value)
-            for field in FIELDS
-            for key, value in ((field.key, inputs.values[field.key]),)
-        },
-    }
-
-
-def scenario_url(inputs: ContextInputs) -> str:
-    return PATH + "?" + urlencode(parameters(inputs))
-
-
-def estimate(inputs: ContextInputs) -> tuple[Strategy, ...]:
-    values = inputs.values
-    baseline = sum(server.tokens for server, count in zip(SERVERS, inputs.enabled, strict=True) if count)
-    filtered = ceil(
-        sum(server.tokens * count / server.tools for server, count in zip(SERVERS, inputs.enabled, strict=True))
-    )
-    tokens = (
-        baseline,
-        filtered,
-        ceil(values["discovery-tokens"] + filtered * values["loaded"] / 100),
-        int(values["skill-tokens"] + values["help-tokens"]),
-    )
-    rows: list[Strategy] = []
-    for (key, label), token_count in zip(MITIGATIONS, tokens, strict=True):
-        session = token_count * values["requests"] * values["input-price"] / 1e6
-        # Changing loaded schemas stay at standard input price and cannot qualify
-        # the stable scaffold for caching. Other strategies assume a stable block.
-        stable_tokens = int(values["discovery-tokens"]) if key == "search" else token_count
-        eligible = stable_tokens > 0 and stable_tokens + values["other-prefix"] >= values["cache-minimum"]
-        hits = (values["requests"] - 1) * values["cache-hits"] / 100
-        cached_session = (
-            (
-                (token_count - stable_tokens) * values["requests"] * values["input-price"]
-                + stable_tokens
-                * (
-                    (values["requests"] - hits) * values["input-price"] * values["write-multiplier"]
-                    + hits * values["cache-price"]
-                )
-            )
-            / 1e6
-            if eligible
-            else session
+def build_context_view(
+    servers: Sequence[str] = SERVER_IDS,
+    requests_per_day: int = DEFAULT_REQUESTS,
+    validation: Sequence[str] = (),
+    now: datetime | None = None,
+) -> ContextView:
+    chosen = tuple(server for server in SERVERS if server.id in servers)
+    tokens = sum(server.tokens for server in chosen)
+    requests_month = requests_per_day * DAYS_PER_MONTH
+    now = now or datetime.now(UTC)
+    today = utc_date(now)
+    # Definitions are a short prompt prefix, so the default scenario selects standard-tier rates.
+    baselines = sorted(current_api_baselines(now, DEFAULT_HOSTING_INPUTS), key=lambda row: row.input_per_million)
+    models = tuple(
+        ModelCost(
+            name=baseline.name,
+            input_per_million=baseline.input_per_million,
+            input_token_limit=baseline.input_token_limit,
+            context_percent=100 * tokens / baseline.input_token_limit,
+            per_thousand_requests_usd=tokens * 1000 * baseline.input_per_million / 1e6,
+            month_usd=tokens * requests_month * baseline.input_per_million / 1e6,
+            source_url=baseline.source_url,
+            verified_on=baseline.verified_on,
+            needs_review=today >= baseline.review_on,
         )
-        day = session * values["sessions"]
-        cached_day = cached_session * values["sessions"]
-        rows.append(
-            Strategy(
-                id=key,
-                label=label,
-                tokens_request=token_count,
-                context_percent=100 * token_count / values["context"],
-                fits=token_count <= values["context"],
-                cache_eligible=eligible,
-                request_usd=token_count * values["input-price"] / 1e6,
-                cached_average_request_usd=cached_session / values["requests"],
-                session_usd=session,
-                day_usd=day,
-                month_usd=day * values["days"],
-                cached_session_usd=cached_session,
-                cached_day_usd=cached_day,
-                cached_month_usd=cached_day * values["days"],
-                saved_month_usd=0,
-                cached_saved_month_usd=0,
-            )
-        )
-    return tuple(
-        replace(
-            row,
-            saved_month_usd=rows[0].month_usd - row.month_usd,
-            cached_saved_month_usd=rows[0].cached_month_usd - row.cached_month_usd,
-        )
-        for row in rows
+        for baseline in baselines
     )
-
-
-def build_context_view(query: Query) -> ContextView:
-    inputs, validation = parse_inputs(query)
-    rows = estimate(inputs)
-    urls = []
-    for model in MODELS:
-        # Preset links replace only provider assumptions; workload and tools survive.
-        values = {
-            **inputs.values,
-            "context": model.context_tokens,
-            "input-price": model.input_price,
-            "cache-price": model.cache_price,
-            "write-multiplier": model.write_multiplier,
-            "cache-minimum": model.cache_minimum,
-        }
-        urls.append((model.name, scenario_url(replace(inputs, model=model.id, values=values))))
     return ContextView(
-        inputs,
-        parameters(inputs),
-        validation,
-        rows,
-        next(row for row in rows if row.id == inputs.mitigation),
-        FIELDS,
-        SERVERS,
-        MODELS,
-        tuple(urls),
-        MITIGATIONS,
-        SNAPSHOT_DATE,
-        METADATA.site_url + scenario_url(inputs),
+        servers=SERVERS,
+        selected=tuple(
+            ServerShare(server, 100 * server.tokens / tokens) for server in sorted(chosen, key=lambda row: -row.tokens)
+        ),
+        requests_per_day=requests_per_day,
+        tools=sum(server.tools for server in chosen),
+        tokens_request=tokens,
+        tokens_month=tokens * requests_month,
+        models=models,
+        validation=tuple(validation),
+        scenario_url=METADATA.site_url + scenario_url(tuple(server.id for server in chosen), requests_per_day),
+        snapshot_date=SNAPSHOT_DATE,
+        price_date=MODEL_SNAPSHOT,
     )
+
+
+def view_from_query(query: Query) -> ContextView:
+    servers, requests, validation = parse_query(query)
+    return build_context_view(servers, requests, validation)
 
 
 class ContextResult(BaseModel):
     model_config = ConfigDict(frozen=True)
 
-    scenario_url: str
-    parameters: dict[str, str]
-    strategies: tuple[Strategy, ...]
     servers: tuple[ServerSnapshot, ...]
-    models: tuple[ModelSnapshot, ...]
-    fields: tuple[NumberField, ...]
-    snapshot_date: str
+    requests_per_day: int
+    days_per_month: int
+    tools: int
+    tokens_per_request: int
+    tokens_per_month: int
+    models: tuple[ModelCost, ...]
+    scenario_url: str
+    snapshot_verified_on: str
+    prices_checked_on: str
     limitations: tuple[str, ...]
 
 
-def compare_context(parameters: dict[str, str]) -> ContextResult:
-    if parameters.keys() - PARAMETER_KEYS:
-        raise ValueError("Unknown calculator parameter; use the parameters returned by an empty call or /agents.")
-    view = build_context_view(parameters)
-    if view.validation:
-        raise ValueError(
-            "Invalid calculator parameters: " + "; ".join(error.partition("; ")[0] for error in view.validation)
-        )
+def compare_context(servers: Sequence[str] | None = None, requests_per_day: int = DEFAULT_REQUESTS) -> ContextResult:
+    """Fail closed for MCP callers: duplicate, unknown or out-of-range inputs raise."""
+    servers = SERVER_IDS if servers is None else tuple(servers)
+    if not servers or len(set(servers)) != len(servers) or set(servers) - set(SERVER_IDS):
+        raise ValueError(f"servers must list distinct ids from {', '.join(SERVER_IDS)}; omit it for all servers.")
+    if not 1 <= requests_per_day <= MAX_REQUESTS:
+        raise ValueError(f"requests_per_day must be between 1 and {MAX_REQUESTS}.")
+    view = build_context_view(servers, requests_per_day)
     return ContextResult(
-        scenario_url=view.scenario_url,
-        parameters=view.parameters,
-        strategies=view.strategies,
-        servers=view.servers,
+        servers=tuple(share.server for share in view.selected),
+        requests_per_day=view.requests_per_day,
+        days_per_month=DAYS_PER_MONTH,
+        tools=view.tools,
+        tokens_per_request=view.tokens_request,
+        tokens_per_month=view.tokens_month,
         models=view.models,
-        fields=view.fields,
-        snapshot_date=view.snapshot_date,
-        limitations=(
-            "USD planning estimates, not measured production usage or live pricing.",
-            "Snapshot tokens use tiktoken o200k_base over normalized input declarations; provider tokenizers and client wrappers differ.",
-            "Partial tool counts are proportional estimates. Tool schemas vary in size; measure the actual enabled set.",
-            "Discovery and CLI token budgets are assumptions per request, including retained definitions/help. Extra calls, search fees and tool output are excluded.",
-            "Search caches only its stable discovery scaffold; loaded definitions always pay standard input price. Other strategies assume the entire block repeats unchanged, including CLI help.",
-            "Cache hits require an eligible stable prefix within retention limits; each session starts cold. Context usage is unchanged.",
-            "Minimum cache prefix includes other-prefix, whose cost/context is excluded. Alignment, cache storage and provider-specific billing rounding are not modeled.",
-            "A fitting tool block does not prove the entire request fits. Other instructions, history, results and output need context and budget.",
-            "Savings compare each strategy with all tools under the same cache policy; negative savings mean a cost increase.",
-        ),
+        scenario_url=view.scenario_url,
+        snapshot_verified_on=view.snapshot_date,
+        prices_checked_on=view.price_date,
+        limitations=LIMITATIONS,
     )

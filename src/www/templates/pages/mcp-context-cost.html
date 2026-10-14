@@ -1,97 +1,93 @@
 {% extends "base.html" %}
-{% from "macros/sites.html" import metric_card, number_input %}
+{% from "macros/sites.html" import metric_card %}
 {% block content %}
+  {% set selected_ids = view.selected|map(attribute="server.id")|list %}
+  {% set cheapest = view.models|first %}
+  {% set priciest = view.models|last %}
   <section class="bg-base-200 min-h-screen px-4 py-8 md:py-10">
     <div class="container mx-auto max-w-7xl space-y-6 md:space-y-8">
       <nav aria-label="Breadcrumb" class="text-sm text-base-content/70"><a class="link hover:text-primary" href="/sites/">Sites</a><span aria-hidden="true"> / </span><span aria-current="page">MCP context cost</span></nav>
       <header class="max-w-5xl">
-        <h1 class="text-3xl md:text-5xl font-heading font-bold text-balance">What do your MCP tools cost in context?</h1>
-        <p class="text-base md:text-lg text-base-content/80 leading-relaxed mt-3 max-w-4xl">Estimate the tool definitions carried into each model request. Compare filtering, discovery, caching and CLI-first skills with the same workload.</p>
-        <p class="text-sm text-base-content/70 mt-4">USD planning estimates · Snapshot {{ view.snapshot_date }} · Reference tokens, not provider billing measurements.</p>
+        <h1 class="text-3xl md:text-5xl font-heading font-bold text-balance">How much context do your MCP tools take?</h1>
+        <p class="text-base md:text-lg text-base-content/80 leading-relaxed mt-3 max-w-4xl">Every connected MCP server sends its tool definitions with each model request, before your prompt. Pick real, measured servers to see the tokens and what they cost.</p>
+        <p class="text-sm text-base-content/70 mt-4">Tool snapshot {{ view.snapshot_date }} · Prices checked {{ view.price_date }} · USD planning estimates.</p>
       </header>
       {% if view.validation %}<div class="alert alert-warning" role="alert"><div><p class="font-bold">Some inputs need attention.</p><ul class="list-disc ml-5 mt-1">{% for message in view.validation %}<li>{{ message }}</li>{% endfor %}</ul></div></div>{% endif %}
-      <form id="calculator" method="get" action="/sites/mcp-context-cost/" class="space-y-6" aria-label="MCP context-cost scenario">
-        <input type="hidden" name="model" value="{{ view.inputs.model }}"/>
-        <fieldset class="min-w-0 rounded-2xl border border-base-300 bg-base-100 p-5 md:p-6">
-          <legend class="font-heading text-xl font-bold">Servers and enabled tools</legend>
-          <p class="text-sm text-base-content/75 mt-2">Set 0 to remove a server. All-tools baseline loads the full catalog of each included server. Filtering uses your enabled counts, estimated in proportion to catalog size.</p>
-          <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 mt-5">
-            {% for server in view.servers %}{{ number_input(server.id, server.name, view.parameters[server.id], 0, server.tools, 1, server.tools|string ~ " tools · " ~ format_decimal(server.tokens, 0) ~ " reference tokens for the full catalog. " ~ server.version ~ ".") }}{% endfor %}
+      <form id="calculator" method="get" action="/sites/mcp-context-cost/" class="rounded-2xl border border-base-300 bg-base-100 p-5 md:p-6 space-y-5" aria-label="MCP context-cost scenario">
+        <fieldset class="min-w-0">
+          <legend class="font-heading text-xl font-bold">Your MCP servers</legend>
+          <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 mt-4">
+            {% for server in view.servers %}
+              <label class="flex items-start gap-3 rounded-xl border border-base-300 p-4 cursor-pointer hover:border-primary has-checked:border-primary has-checked:bg-primary/5 transition-colors">
+                <input class="checkbox checkbox-primary mt-0.5" type="checkbox" id="server-{{ server.id }}" name="server" value="{{ server.id }}"{% if server.id in selected_ids %} checked{% endif %}/>
+                <span class="min-w-0"><span class="block font-semibold">{{ server.name }}</span><span class="block text-sm text-base-content/70 mt-1">{{ server.tools }} tools · {{ format_decimal(server.tokens, 0) }} tokens</span></span>
+              </label>
+            {% endfor %}
           </div>
         </fieldset>
-        <div class="rounded-2xl border border-base-300 bg-base-100 p-5 md:p-6 space-y-5">
-          <h2 class="font-heading text-xl font-bold">Workload and strategy</h2>
-          <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
-            {% for field in view.fields if field.key in ("requests", "sessions", "days") %}{{ number_input(field.key, field.label, view.parameters[field.key], field.minimum, field.maximum, 1, field.help) }}{% endfor %}
-            <div><label for="mitigation" class="block font-semibold text-sm mb-2">Strategy to highlight</label><select id="mitigation" name="mitigation" class="select w-full" aria-describedby="mitigation-help">{% for key, label in view.mitigations %}<option value="{{ key }}"{% if key == view.inputs.mitigation %} selected{% endif %}>{{ label }}</option>{% endfor %}</select><p id="mitigation-help" class="text-sm text-base-content/70 leading-relaxed mt-2">Every strategy is compared below. Discovery builds on filtering; CLI replaces MCP definitions with the assumed skill/help budget.</p></div>
-          </div>
+        <div class="flex flex-wrap items-end gap-4">
+          <div class="min-w-0 w-full sm:w-72"><label class="block font-semibold text-sm mb-2" for="requests">Model requests per day</label><input class="input w-full min-w-0" id="requests" name="requests" type="number" min="1" max="10000000" step="1" value="{{ view.requests_per_day }}" required aria-describedby="requests-help"/></div>
+          <button id="update-context" class="btn btn-primary rounded-xl font-bold min-h-12" type="submit">Update estimate</button>
+          <a class="btn btn-ghost border border-base-300 rounded-xl min-h-12" href="/sites/mcp-context-cost/">Reset</a>
         </div>
-        <details class="rounded-xl border border-base-300 bg-base-100 p-5" id="context-model">
-          <summary class="font-heading text-lg font-bold cursor-pointer focus-visible:outline-2 focus-visible:outline-primary">Model, prices and caching</summary>
-          <p class="text-sm text-base-content/75 mt-4">Current preset: {% for model in view.models if model.id == view.inputs.model %}{{ model.name }}{% endfor %}. All values below are editable. Submit edits before choosing another preset; a preset replaces model rates, context and cache minimum in the last calculated scenario.</p>
-          <div class="flex flex-wrap gap-4 mt-4" aria-label="Model presets">{% for label, url in view.model_urls %}<a class="link link-primary font-semibold" href="{{ url }}">Use {{ label }}</a>{% endfor %}</div>
-          <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5 mt-5">{% for field in view.fields if field.key in ("context", "input-price", "cache-price", "write-multiplier", "cache-hits", "cache-minimum", "other-prefix") %}{{ number_input(field.key, field.label, view.parameters[field.key], field.minimum, field.maximum, 1 if field.whole else "any", field.help) }}{% endfor %}</div>
-          <p class="text-sm text-base-content/75 mt-5">The first request in every session is cold. Cached costs assume an eligible, identical prefix on the chosen share of follow-up requests. Search caches only the stable discovery scaffold; loaded definitions pay standard input price. Caching changes billed cost, not context usage; write premiums or few hits can make it cost more. Provider retention, cache alignment and changing tool lists can reduce hits.</p>
-        </details>
-        <details class="rounded-xl border border-base-300 bg-base-100 p-5" id="context-mitigations">
-          <summary class="font-heading text-lg font-bold cursor-pointer focus-visible:outline-2 focus-visible:outline-primary">Discovery and CLI assumptions</summary>
-          <p class="text-sm text-base-content/75 mt-4">Illustrative token budgets, not measured client performance. Count definitions and help retained across turns. Discovery can require extra model calls and search fees; a CLI can return large outputs.</p>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 mt-5">{% for field in view.fields if field.key in ("loaded", "discovery-tokens", "skill-tokens", "help-tokens") %}{{ number_input(field.key, field.label, view.parameters[field.key], field.minimum, field.maximum, 1 if field.whole else "any", field.help) }}{% endfor %}</div>
-        </details>
-        <div class="flex flex-wrap items-center gap-4"><button id="update-context" class="btn btn-primary rounded-xl font-bold min-h-12" type="submit">Update estimate</button><a class="btn btn-ghost border border-base-300 rounded-xl min-h-12" href="/sites/mcp-context-cost/">Reset</a><p class="text-sm text-base-content/70">Share the URL to save this scenario. Keep inputs free of confidential data.</p></div>
+        <p id="requests-help" class="text-sm text-base-content/70">Count every model call in an agent loop, not only user messages. A month is 30 days. Share the URL to save this scenario.</p>
       </form>
       <section aria-labelledby="context-results" class="space-y-5">
-        <h2 id="context-results" class="font-heading text-3xl font-bold">{{ view.selected.label }}</h2>
-        <p class="text-base-content/75">Tool-definition and scaffold overhead only. Other instructions, history, tool results, output and extra discovery calls need their own budget.</p>
-        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-          {{ metric_card("Tokens per request", format_decimal(view.selected.tokens_request, 0), "Reference count or modeled average; repeated on every request.") }}
-          {{ metric_card("Share of context window", format_decimal(view.selected.context_percent, 2) ~ "%", "Caching does not reduce this share. Leave room for the rest of the request.") }}
-          {{ metric_card("Monthly · no caching", format_usd2(view.selected.month_usd), "USD for tool overhead at your requests, sessions and workdays.") }}
-          {{ metric_card("Monthly · assumed caching", format_usd2(view.selected.cached_month_usd), "Conditional on matching prefixes, cache eligibility and your assumed hit rate.") }}
+        <div class="rounded-2xl border border-primary/30 bg-primary/5 p-5 md:p-6">
+          <h2 id="context-results" class="font-heading text-2xl md:text-3xl font-bold">{{ format_decimal(view.tokens_request, 0) }} tokens of tool definitions on every request</h2>
+          <p class="text-base-content/80 mt-3 max-w-3xl">{{ format_count(view.tools, "tool") }} from {{ format_count(view.selected|length, "server") }}. At {{ format_decimal(view.requests_per_day, 0) }} requests a day, the model reads {{ format_number(view.tokens_month) }} definition tokens a month before it reads your prompt.</p>
         </div>
-        {% if not view.selected.fits %}<p class="alert alert-warning" role="alert">This tool block alone exceeds the context window. The cost estimate does not imply a valid model request.</p>{% endif %}
-        {% if not view.selected.cache_eligible %}<p class="text-sm font-semibold">This strategy has no cacheable tokens or its stable prefix is below your minimum; cached costs use the standard input rate.</p>{% endif %}
-        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4" aria-label="Selected strategy costs">
-          {% for label, plain, cached in (("Request (average)", view.selected.request_usd, view.selected.cached_average_request_usd), ("Session", view.selected.session_usd, view.selected.cached_session_usd), ("Workday", view.selected.day_usd, view.selected.cached_day_usd), ("Month", view.selected.month_usd, view.selected.cached_month_usd)) %}<div class="rounded-xl border border-base-300 bg-base-100 p-5"><h3 class="font-bold">{{ label }}</h3><p class="text-sm mt-2">No caching: ${{ format_decimal(plain, 4) }}</p><p class="text-sm mt-2">Assumed caching: ${{ format_decimal(cached, 4) }}</p></div>{% endfor %}
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {{ metric_card("Context window used", "Up to " ~ format_decimal(view.models|map(attribute="context_percent")|max, 1) ~ "%", "Of each model's input limit, on every request. Caching does not free it.") }}
+          {{ metric_card("Per 1,000 requests", format_usd2(cheapest.per_thousand_requests_usd) ~ "–" ~ format_usd2(priciest.per_thousand_requests_usd), "Standard input price across the models below.") }}
+          {{ metric_card("Per month", format_budget(cheapest.month_usd) ~ "–" ~ format_budget(priciest.month_usd), "Tool definitions alone, before prompts, history, tool results and output.") }}
         </div>
-        <h3 class="font-heading text-xl font-bold">Savings by strategy</h3>
-        <p class="text-sm text-base-content/75">Savings compare each row with all tools under the same cache policy. Negative savings mean a cost increase. Partial tool counts assume equal-sized definitions; a fitting block still leaves the rest of the request unbudgeted.</p>
-        <div class="overflow-x-auto rounded-2xl border border-base-300 bg-base-100 focus-visible:outline-2 focus-visible:outline-primary" role="region" aria-label="Strategy comparison, scroll horizontally on small screens" tabindex="0">
-          <table class="table table-zebra w-full">
-            <caption class="sr-only">Tool context and monthly USD cost by mitigation</caption>
-            <thead class="text-base-content"><tr><th scope="col">Strategy</th><th scope="col">Tokens/request</th><th scope="col">Context</th><th scope="col">Month, no cache</th><th scope="col">Month, assumed cache</th><th scope="col">Savings, no cache</th><th scope="col">Savings, assumed cache</th></tr></thead>
-            <tbody>{% for row in view.strategies %}<tr><th scope="row" class="min-w-48">{{ row.label }}{% if row.id == "search" %}<span class="block text-sm font-normal">Only the stable scaffold can be cached</span>{% endif %}{% if not row.fits %}<span class="block text-sm text-error">Exceeds window</span>{% endif %}{% if not row.cache_eligible %}<span class="block text-sm font-normal">No eligible stable prefix</span>{% endif %}</th><td>{{ format_decimal(row.tokens_request, 0) }}</td><td>{{ format_decimal(row.context_percent, 2) }}%</td><td>{{ format_usd2(row.month_usd) }}</td><td>{{ format_usd2(row.cached_month_usd) }}</td><td>{{ "-" if row.saved_month_usd < 0 else "" }}{{ format_usd2(row.saved_month_usd|abs) }}</td><td>{{ "-" if row.cached_saved_month_usd < 0 else "" }}{{ format_usd2(row.cached_saved_month_usd|abs) }}</td></tr>{% endfor %}</tbody>
+        <h3 class="font-heading text-xl font-bold">Cost by model</h3>
+        <div class="overflow-x-auto rounded-2xl border border-base-300 bg-base-100 focus-visible:outline-2 focus-visible:outline-primary" role="region" aria-label="Cost by model, scroll horizontally on small screens" tabindex="0">
+          <table class="table w-full">
+            <caption class="sr-only">Tool-definition context share and input cost by managed API model</caption>
+            <thead class="text-base-content"><tr><th scope="col">Model</th><th scope="col" class="text-right">Input / 1M tokens</th><th scope="col" class="text-right">Context used</th><th scope="col" class="text-right">Per 1,000 requests</th><th scope="col" class="text-right">Per month</th></tr></thead>
+            <tbody>{% for model in view.models %}<tr>
+              <th scope="row" class="whitespace-nowrap"><a class="link link-primary" href="{{ model.source_url }}">{{ model.name }}</a>{% if model.needs_review %}<span class="block text-xs font-normal mt-1">Price needs review</span>{% endif %}</th>
+              <td class="text-right">{{ format_usd2(model.input_per_million) }}</td>
+              <td class="text-right">{{ format_decimal(model.context_percent, 2) }}%</td>
+              <td class="text-right">{{ format_usd2(model.per_thousand_requests_usd) }}</td>
+              <td class="text-right font-semibold">{{ format_usd2(model.month_usd) }}</td>
+            </tr>{% endfor %}</tbody>
           </table>
         </div>
-        <p class="text-sm"><a class="link link-primary" href="{{ view.scenario_url }}">Link to these effective assumptions</a> · Request/session/day figures retain four decimal places; monthly summaries round to cents.</p>
+        <h3 class="font-heading text-xl font-bold">Where the tokens come from</h3>
+        <ul class="rounded-2xl border border-base-300 bg-base-100 p-5 md:p-6 space-y-4" aria-label="Tokens by server">
+          {% for share in view.selected %}
+            <li>
+              <p class="flex flex-wrap justify-between gap-x-4 text-sm"><span class="font-semibold">{{ share.server.name }}</span><span>{{ format_decimal(share.server.tokens, 0) }} tokens · {{ share.server.tools }} tools · {{ format_decimal(share.server.tokens / share.server.tools, 0) }} per tool</span></p>
+              <svg viewBox="0 0 100 4" preserveAspectRatio="none" aria-hidden="true" class="w-full h-2 mt-2"><rect width="100" height="4" rx="2" class="fill-base-200"></rect><rect width="{{ format_go_float(share.percent, 2) }}" height="4" rx="2" class="fill-primary"></rect></svg>
+            </li>
+          {% endfor %}
+        </ul>
       </section>
       <section aria-labelledby="reduce-context" class="rounded-2xl border border-base-300 bg-base-100 p-5 md:p-6 space-y-4">
         <h2 id="reduce-context" class="font-heading text-2xl font-bold">How to reduce it</h2>
         <ul class="list-disc ml-5 space-y-3 text-base-content/80">
-          <li><strong>Filter for the task.</strong> Enable only needed tools or toolsets. <a class="link link-primary" href="https://github.com/github/github-mcp-server#toolsets">GitHub documents toolsets and individual tool selection</a>. Count the selected schemas: fewer tools do not always mean proportionally fewer tokens.</li>
-          <li><strong>Load definitions when needed.</strong> <a class="link link-primary" href="https://code.claude.com/docs/en/mcp#scale-with-mcp-tool-search">Claude Code tool search</a> defers definitions. <a class="link link-primary" href="https://platform.claude.com/docs/en/agents-and-tools/tool-use/tool-search-tool">Provider tool search</a> has its own setup and limits. Measure loaded definitions, retained context and extra calls.</li>
-          <li><strong>Cache stable prefixes.</strong> Follow <a class="link link-primary" href="https://developers.openai.com/api/docs/guides/prompt-caching">provider cache requirements</a>; inspect actual usage counters. Stable definitions may be cheaper on a hit but still occupy context.</li>
-          <li><strong>Use CLI skills where they fit.</strong> <a class="link link-primary" href="https://agentskills.io/specification#progressive-disclosure">Agent Skills progressive disclosure</a> keeps initial metadata small and loads instructions later. Include the shell tool, loaded help and command output in a complete measurement.</li>
+          <li><strong>Enable only the tools a task needs.</strong> <a class="link link-primary" href="https://github.com/github/github-mcp-server#tool-configuration">GitHub supports toolsets and individual tools</a>. Tool sizes vary, so count the selected definitions.</li>
+          <li><strong>Load definitions on demand.</strong> <a class="link link-primary" href="https://code.claude.com/docs/en/mcp#scale-with-mcp-tool-search">Claude Code tool search</a> and <a class="link link-primary" href="https://platform.claude.com/docs/en/agents-and-tools/tool-use/tool-search-tool">provider tool search</a> defer definitions until the model needs them, at the cost of extra search steps.</li>
+          <li><strong>Cache the stable prefix.</strong> <a class="link link-primary" href="https://developers.openai.com/api/docs/guides/prompt-caching">Prompt caching</a> bills repeated definitions at a fraction of the input price, but they still fill the context window.</li>
+          <li><strong>Prefer CLI skills where they fit.</strong> <a class="link link-primary" href="https://agentskills.io/specification#progressive-disclosure">Agent Skills progressive disclosure</a> keeps only short metadata in context and loads instructions when used.</li>
         </ul>
-        <p class="text-sm text-base-content/75">The <a class="link link-primary" href="https://modelcontextprotocol.io/specification/2026-07-28/server/tools">MCP tools specification</a> defines tool discovery and schemas. The host decides what reaches the model; tools/list bytes are not necessarily model context.</p>
       </section>
-      <details id="context-method" class="rounded-xl border border-base-300 bg-base-100 p-5">
-        <summary class="font-heading text-lg font-bold cursor-pointer focus-visible:outline-2 focus-visible:outline-primary">Formulas and limits</summary>
-        <ul class="list-disc ml-5 mt-4 space-y-3 text-sm text-base-content/75">
-          <li>All-tools = sum of full catalogs for servers with an enabled count above zero. Filtered = sum of catalog tokens × enabled / available tools, rounded up once. Search = discovery scaffold + filtered × loaded %, rounded up. CLI = skill scaffold + average loaded help.</li>
-          <li>Context share = tokens/request ÷ context window × 100. No-cache session = tokens/request × requests/session × input price ÷ 1,000,000.</li>
-          <li>Cache hits = (requests/session − 1) × hit %. Stable tokens = discovery scaffold for search; otherwise the whole block, including CLI help, is assumed unchanged. Eligible cached session = [stable tokens × ((requests − hits) × input price × write multiplier + hits × cache-read price) + remaining tokens × requests × input price] ÷ 1,000,000. Only stable tokens plus other stable prefix count toward the minimum. Without an eligible stable prefix, use no-cache cost. Provider alignment is not modeled.</li>
-          <li>Day = session × sessions/workday. Month = day × workdays/month. Sessions start cold. Other stable prefix tokens count toward cache eligibility only; their context and cost are excluded. Cache storage fees, output/reasoning, tool results and extra search calls are excluded.</li>
-          <li>One reference tokenizer makes catalogs comparable; it does not reproduce every provider's tokenizer, tool wrappers or hidden tokens. These are planning estimates, not measured production behavior, latency, quality or a complete bill.</li>
+      <section id="context-method" aria-labelledby="context-method-title" class="rounded-xl border border-base-300 bg-base-100 p-5">
+        <h2 id="context-method-title" class="font-heading text-lg font-bold">Method and limitations</h2>
+        <ul class="list-disc ml-5 mt-3 space-y-3 text-sm text-base-content/75 max-w-4xl">
+          <li>Tokens per request add the measured tool definitions of the selected servers: name, description and input schema, serialized as compact JSON and counted with tiktoken 0.14.0 (o200k_base). Monthly tokens multiply by requests per day and 30 days.</li>
+          <li>Cost multiplies tokens by each model's standard input price. Context used divides tokens by the model's input limit. Prices come from the same dated snapshot as the <a class="link link-primary" href="/sites/llm-self-hosting/">LLM hosting comparison</a>.</li>
+          <li>Excluded: caching discounts, instructions, history, tool results, output and reasoning, client wrappers and output schemas. Each provider tokenizes differently; measure your own client before budgeting.</li>
         </ul>
-      </details>
-      <details id="context-sources" class="rounded-xl border border-base-300 bg-base-100 p-5">
-        <summary class="font-heading text-lg font-bold cursor-pointer focus-visible:outline-2 focus-visible:outline-primary">Sources · checked {{ view.snapshot_date }}</summary>
-        <p class="text-sm text-base-content/75 mt-4">Tool input declarations measured with tiktoken 0.14.0, o200k_base: compact, sorted JSON containing name, description and parameters from inputSchema. Output schemas, annotations, transport envelopes and client wrappers are excluded. Totals add the independently serialized server catalogs.</p>
-        <ul class="mt-5 space-y-4">{% for server in view.servers %}<li><a class="link link-primary font-semibold" href="{{ server.source_url }}">{{ server.name }} · {{ server.version }}</a><p class="text-sm text-base-content/75">{{ server.tools }} tools · {{ format_decimal(server.tokens, 0) }} tokens · Measured {{ server.measured_on }}. {{ server.note }}</p><a class="link link-primary text-sm" href="{{ server.evidence_url }}">{{ server.evidence_label }}</a></li>{% endfor %}</ul>
-        <ul class="mt-5 space-y-4">{% for model in view.models %}<li><a class="link link-primary font-semibold" href="{{ model.price_url }}">{{ model.name }} pricing</a> · <a class="link link-primary" href="{{ model.model_url }}">Model limits</a> · <a class="link link-primary" href="{{ model.cache_url }}">Cache requirements</a><p class="text-sm text-base-content/75">Snapshot {{ model.verified_on }}: {{ format_decimal(model.context_tokens, 0) }} context tokens; ${{ model.input_price }} input / ${{ model.cache_price }} cache read per million; {{ model.write_multiplier }}× input on cache writes; {{ model.cache_minimum }}-token assumed minimum. {{ model.note }}</p></li>{% endfor %}</ul>
-        <p class="text-sm mt-5"><a class="link link-primary" href="https://github.com/fmind/mcp-context-benchmark/tree/e83ad9431e41ffd745384a04c49b95d8e1090691">Pinned public MCP context benchmark</a>. Schema measurements do not establish complete-task savings. Refresh provider prices and measure your client before making a budget decision.</p>
-      </details>
+      </section>
+      <section id="context-sources" aria-labelledby="context-sources-title" class="rounded-xl border border-base-300 bg-base-100 p-5">
+        <h2 id="context-sources-title" class="font-heading text-lg font-bold">Sources</h2>
+        <ul class="mt-3 space-y-4">{% for server in view.servers %}<li><a class="link link-primary font-semibold" href="{{ server.source_url }}">{{ server.name }} · {{ server.version }}</a><p class="text-sm text-base-content/75">{{ server.tools }} tools · {{ format_decimal(server.tokens, 0) }} tokens · Measured {{ server.measured_on }}. {{ server.note }}</p><a class="link link-primary text-sm" href="{{ server.evidence_url }}">{{ server.evidence_label }}</a></li>{% endfor %}</ul>
+        <p class="text-sm text-base-content/75 mt-4">Input prices checked {{ view.price_date }}: {% for model in view.models %}<a class="link link-primary" href="{{ model.source_url }}">{{ model.name }}</a>{% if not loop.last %}, {% endif %}{% endfor %}. <a class="link link-primary" href="https://github.com/fmind/mcp-context-benchmark/tree/e83ad9431e41ffd745384a04c49b95d8e1090691">Pinned public MCP context benchmark</a>.</p>
+      </section>
     </div>
   </section>
 {% endblock %}

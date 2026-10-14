@@ -55,6 +55,26 @@ def test_presets_and_models_are_presented_from_smallest_to_largest() -> None:
     assert preset_positions == sorted(preset_positions)
     assert model_positions == sorted(model_positions)
     assert "3,520 calls/month" in html
+    # Simple mode explains sizes in the picker, including mixture-of-experts active parameters.
+    assert '<option value="qwen3-5-4b">Qwen3.5 4B · 4B</option>' in html
+    assert '<option value="mistral-small-4">Mistral Small 4 · 119B / 6.5B active</option>' in html
+    assert "B = billion, T = trillion" in html
+
+
+@pytest.mark.parametrize("mode", ["simple", "advanced"])
+def test_hosting_page_keeps_every_section_open_with_setup_before_method(mode: str) -> None:
+    with TestClient(create_app()) as client:
+        html = client.get(f"/sites/llm-self-hosting/?mode={mode}").text
+    assert "<details" not in html
+    assert "<summary" not in html
+    method = html.index('id="hosting-method-title"')
+    assert method < html.index('id="hosting-sources-title"')
+    if mode == "simple":
+        assert html.index('id="hosting-break-even-title"') < html.index('id="recommended-fleet-title"') < method
+    else:
+        assert 'id="recommended-fleet"' not in html
+        assert 'id="latency-settings"' in html
+        assert 'id="quality-settings"' in html
 
 
 @pytest.mark.parametrize(

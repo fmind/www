@@ -550,15 +550,15 @@ test("site stays light with a dark system preference and an old saved theme", as
   }
 });
 
-test("calculator updates preserve focus, disclosures, and shareable values", async ({ page }) => {
+test("calculator updates preserve focus, open sections, and shareable values", async ({ page }) => {
   await page.goto(calculator + "?mode=advanced");
-  await page.locator("#quality-settings > summary").click();
+  await expect(page.locator("#quality")).toBeVisible();
   await page.locator("#requests").fill("234");
   await page.locator("#requests").press("Enter");
   await expect(page.locator("[data-update-status]")).toHaveText("Comparison updated.");
   await expect(page.locator("#requests")).toHaveValue("234");
   await expect(page.locator("#requests")).toBeFocused();
-  await expect(page.locator("#quality-settings")).toHaveAttribute("open", "");
+  await expect(page.locator("#quality")).toBeVisible();
   expect(new URL(page.url()).searchParams.get("requests")).toBe("234");
   await page.locator("#preset-single-job").click();
   await expect(page.locator("#requests")).toHaveValue("100");
@@ -649,21 +649,18 @@ test("cost slider stays synchronized after back navigation", async ({ page }) =>
   expect(state.href).toBe(state.url);
 });
 
-test("invalid optional inputs open their disclosure before receiving focus", async ({ page }) => {
+test("invalid optional inputs are visible when they receive focus", async ({ page }) => {
   await page.goto(calculator + "?mode=advanced");
-  await page.locator("#latency-settings > summary").click();
   await page.locator("#measured-first").fill("4000");
-  await page.locator("#latency-settings > summary").click();
   await page.locator("#update-comparison").click();
-  await expect(page.locator("#latency-settings")).toHaveAttribute("open", "");
   await expect(page.locator("#measured-first")).toBeFocused();
+  await expect(page.locator("#measured-first")).toBeInViewport();
 });
 
 test("calculator and article search work without JavaScript", async ({ browser, baseURL }) => {
   const context = await browser.newContext({ javaScriptEnabled: false, baseURL });
   const page = await context.newPage();
   await page.goto(calculator + "?mode=advanced");
-  await page.locator("#hosting-options > summary").click();
   await page.locator("#node").selectOption("g4-standard-48");
   await page.locator("#quant").selectOption("fp16");
   await page.locator("#billing").selectOption("cud-1y");
@@ -688,7 +685,7 @@ test("simple calculator chooses compatible native hardware and preserves commitm
   await expect(page.getByRole("link", { name: "Compare costs", exact: true })).toHaveCount(0);
   await expect(page.locator("#platform, #hosting-reading"))
     .toHaveCount(0);
-  await expect(page.locator("#model option[value=mistral-small-4]")).toHaveText("Mistral Small 4");
+  await expect(page.locator("#model option[value=mistral-small-4]")).toHaveText("Mistral Small 4 · 119B / 6.5B active");
   await expect(page.locator("#model option[value=muse-glimmer]")).toContainText("Muse Glimmer");
   await expect(page.locator("#model option[value=kimi-k3]")).toContainText("Kimi K3");
   await expect(page.locator("#preset option[value=small-team]")).toContainText("Small team");
@@ -704,11 +701,11 @@ test("simple calculator chooses compatible native hardware and preserves commitm
     ]);
   await expect(page.locator("#model option").first()).toHaveAttribute("value", "qwen3-5-4b");
   await expect(page.locator("#model option").last()).toHaveAttribute("value", "kimi-k3");
-  await expect(page.locator("#hosting-method ul")).toBeHidden();
-  await page.locator("#hosting-method > summary").click();
+  await expect(page.locator("#model option").first()).toHaveText("Qwen3.5 4B · 4B");
+  await expect(page.locator("details")).toHaveCount(0);
   await expect(page.locator("#hosting-method ul")).toBeVisible();
-  await page.locator("#hosting-sources > summary").click();
   await expect(page.locator("#hosting-sources ul")).toBeVisible();
+  await expect(page.locator("#recommended-fleet")).toBeVisible();
   await page.locator("#preset").selectOption("department");
   await page.locator("#window").selectOption("8");
   await page.locator("#model").selectOption("mistral-small-4");
@@ -726,7 +723,6 @@ test("simple calculator chooses compatible native hardware and preserves commitm
   await expect(apiComparison).toContainText("Claude Haiku 5.5");
   await expect(apiComparison).toContainText("Claude Sonnet 5.5");
   await expect(apiComparison).toContainText("Claude Opus 5.5");
-  await page.locator("#hosting-break-even > summary").click();
   await expect(page.locator("#hosting-break-even")).toContainText(/break-even/i);
   expect(await apiComparison.locator("tbody th, h4").allTextContents())
     .toEqual(["Claude Haiku 5.5", "Gemini 3.8 Flash", "Claude Sonnet 5.5", "Claude Opus 5.5", "GPT-6 Astra"]);
@@ -739,7 +735,6 @@ test("simple calculator chooses compatible native hardware and preserves commitm
   await expect(page.locator("#requests")).toHaveValue("2000");
   await expect(page.locator("#window")).toHaveValue("8");
   await expect(page.locator("#replicas")).toHaveValue("2");
-  await page.locator("#hosting-options > summary").click();
   await page.locator("#quant").selectOption("fp8");
   await page.locator("#node").selectOption("auto");
   await page.locator("#update-comparison").click();
@@ -806,7 +801,6 @@ test(
         await page.locator("#window").selectOption("auto");
         await page.locator("#update-comparison").click();
         await expect(page.locator("main")).toContainText("100 calls/month");
-        await page.locator("#recommended-fleet > summary").click();
         await expect(page.locator("#recommended-fleet")).toContainText("1 h/month");
         await page.locator("#reset-scenario").click();
         await expect(page.locator("#preset")).toHaveValue("small-team");
@@ -1328,36 +1322,40 @@ test("article section links work without JavaScript", async ({ browser }) => {
   }
 });
 
-test("MCP context calculator supports keyboard scenarios and provider presets", async ({ page }) => {
+test("MCP context calculator toggles servers with the keyboard", async ({ page }) => {
   await page.goto(contextCalculator);
-  // Reach and edit the form using only Tab/keyboard, including the submit.
-  for (let i = 0; i < 30 && !(await page.locator("#github").evaluate((el) => el === document.activeElement)); i++) {
-    await page.keyboard.press("Tab");
-  }
-  await expect(page.locator("#github")).toBeFocused();
-  await page.keyboard.press("ControlOrMeta+A");
-  await page.keyboard.type("3");
-  await page.keyboard.press("Tab");
-  await expect(page.locator("#filesystem")).toBeFocused();
+  await expect(page.locator("#context-results")).toHaveText("17,368 tokens of tool definitions on every request");
+  // Reach the server checkboxes and the submit using only the keyboard.
   for (
     let i = 0;
-    i < 20 && !(await page.locator("#update-context").evaluate((el) => el === document.activeElement));
+    i < 30 && !(await page.locator("#server-github").evaluate((el) => el === document.activeElement));
+    i++
+  ) {
+    await page.keyboard.press("Tab");
+  }
+  await expect(page.locator("#server-github")).toBeFocused();
+  await page.keyboard.press("Space");
+  await expect(page.locator("#server-github")).not.toBeChecked();
+  await page.keyboard.press("Tab");
+  await expect(page.locator("#server-filesystem")).toBeFocused();
+  for (
+    let i = 0;
+    i < 10 && !(await page.locator("#update-context").evaluate((el) => el === document.activeElement));
     i++
   ) {
     await page.keyboard.press("Tab");
   }
   await expect(page.locator("#update-context")).toBeFocused();
   await page.keyboard.press("Enter");
-  await expect(page).toHaveURL(/github=3/);
-  await expect(page.locator("#github")).toHaveValue("3");
+  await expect(page).toHaveURL(/server=filesystem/);
+  expect(new URL(page.url()).searchParams.getAll("server")).toEqual(["filesystem", "memory", "playwright"]);
+  await expect(page.locator("#server-github")).not.toBeChecked();
+  await expect(page.locator("#context-results")).toHaveText("6,379 tokens of tool definitions on every request");
   await expect(page.getByRole("alert")).toHaveCount(0);
-  await page.locator("#context-model > summary").click();
-  await page.getByRole("link", { name: "Use GPT-4.1", exact: true }).click();
-  await page.locator("#context-model > summary").click();
-  await expect(page.locator("#input-price")).toHaveValue("2.0");
-  await expect(page.locator("#context")).toHaveValue("1047576");
-  await expect(page.locator("#github")).toHaveValue("3");
-  expect(await page.locator("#calculator").evaluate((form) => form.checkValidity())).toBe(true);
+  await expect(page.locator("details")).toHaveCount(0);
+  const models = page.getByRole("region", { name: /Cost by model/ });
+  expect(await models.locator("tbody th").allTextContents())
+    .toEqual(["Claude Haiku 5.5", "Gemini 3.8 Flash", "Claude Sonnet 5.5", "Claude Opus 5.5", "GPT-6 Astra"]);
 });
 
 test("MCP context calculator works without JavaScript and stays light", async ({ browser }, testInfo) => {
@@ -1367,18 +1365,19 @@ test("MCP context calculator works without JavaScript and stays light", async ({
     await page.goto(contextCalculator);
     await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
     expect(await page.locator("html").evaluate((el) => getComputedStyle(el).colorScheme)).toBe("light");
-    await page.locator("#github").fill("3");
-    await page.locator("#requests").fill("5");
-    await page.locator("#mitigation").selectOption("filter");
+    await page.locator("#server-github").uncheck();
+    await page.locator("#server-playwright").uncheck();
+    await page.locator("#requests").fill("200");
     await page.getByRole("button", { name: "Update estimate", exact: true }).click();
-    await expect(page).toHaveURL(/requests=5/);
-    await expect(page.locator("#context-results")).toHaveText("Tool filtering");
+    await expect(page).toHaveURL(/requests=200/);
+    await expect(page.locator("#context-results")).toHaveText("2,634 tokens of tool definitions on every request");
+    await expect(page.locator("main")).toContainText("15.80M definition tokens a month");
     await expect(page.getByRole("alert")).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.screenshot({ path: testInfo.outputPath("mcp-context-no-js-dark.png"), fullPage: true });
-    await page.goto(contextCalculator + "?requests=NaN&context=100&mitigation=cli");
+    await page.goto(contextCalculator + "?requests=NaN");
     await expect(page.getByText("Some inputs need attention.", { exact: true })).toBeVisible();
-    await expect(page.getByText(/This tool block alone exceeds/)).toBeVisible();
+    await expect(page.getByText(/Select at least one MCP server/)).toBeVisible();
   } finally {
     await context.close();
   }
