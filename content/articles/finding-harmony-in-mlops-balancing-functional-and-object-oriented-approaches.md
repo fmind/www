@@ -1,6 +1,6 @@
 +++
 title = "Finding Harmony in MLOps: Balancing Functional and Object-Oriented Approaches ☯"
-description = "Programmers have always been passionate about their preferences, whether they discuss spaces vs. tabs, Vim vs. Emacs, or light mode vs…"
+description = "Programmers have always been passionate about their preferences, whether they discuss spaces vs. tabs, Vim vs. Emacs, or light mode vs. dark mode."
 date = "2023-07-31"
 tags = ["MLOps", "Python"]
 slug = "finding-harmony-in-mlops-balancing-functional-and-object-oriented-approaches"

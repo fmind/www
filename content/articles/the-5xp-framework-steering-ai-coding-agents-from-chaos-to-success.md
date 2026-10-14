@@ -1,6 +1,6 @@
 +++
 title = "The 5xP Framework: Steering AI Coding Agents from Chaos to Success"
-description = "AI Coding — or Spec-Driven Development — is a recent trend that amazes as much as it scares IT engineers. We now have access to powerful…"
+description = "AI Coding — or Spec-Driven Development — is a recent trend that amazes as much as it scares IT engineers."
 date = "2026-02-28"
 tags = ["Coding", "Guide"]
 slug = "the-5xp-framework-steering-ai-coding-agents-from-chaos-to-success"
@@ -12,7 +12,7 @@ AI Coding — or [Spec-Driven Development](https://github.blog/ai-and-ml/gen
 
 The hardest challenge isn’t the coding itself; it’s explaining to the AI Coding Agent _how_ to work on the task. How do you capture your style, preferences, constraints, environment, tools, and workflow?
 
-In my previous article, [_How I Revamped My Portfolio Website in 5 Nights Using AI Agents_](https://fmind.dev), I shared how setting up explicit context was the secret to steering the AI successfully. I refused to just “[vibe code](https://x.com/karpathy/status/1886192184808149383?lang=en)” and instead relied on firm architectural guidance.
+In my previous article, [_How I Revamped My Portfolio Website in 5 Nights Using AI Agents_](https://www.fmind.dev/articles/how-i-revamped-my-portfolio-website-in-5-nights-using-ai-agents/), I shared how setting up explicit context was the secret to steering the AI successfully. I refused to just “[vibe code](https://x.com/karpathy/status/1886192184808149383?lang=en)” and instead relied on firm architectural guidance.
 
 In this follow-up article, I present the exact structure I use for my AI-assisted projects. After exploring many iterations and tools, I found that the key to success is providing the AI with the right context in a brutally simple, highly maintainable way.
 
@@ -101,7 +101,7 @@ By keeping the root [`AGENTS.md`](https://github.com/fmind/ai-coding-5xp-templat
 
 ### Field-Tested Results
 
-I have thoroughly tested this framework on two distinct projects: [completely revamping my personal website](https://fmind.dev/) and bootstrapping a complex new project centered on AI Agents. In both cases, the results were night and day compared to previous approaches.
+I have thoroughly tested this framework on two distinct projects: [completely revamping my personal website](https://www.fmind.dev/) and bootstrapping a complex new project centered on AI Agents. In both cases, the results were night and day compared to previous approaches.
 
 The true power of this framework lies in its **human-friendliness**: the files are simple, focused, and I can quickly steer the model in a new direction just by tweaking a few bullet points in a Markdown file.
 

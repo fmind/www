@@ -1,6 +1,6 @@
 +++
 title = "The Affordable AI Agents"
-description = "As AI agents transition from isolated developer experiments into production-scale workflows, engineering organizations are waking up to a…"
+description = "Engineering organizations are waking up to a sobering financial reality: the cost of running AI systems scales linearly, not logarithmically."
 date = "2026-06-25"
 tags = ["Agent", "LLM"]
 slug = "the-affordable-ai-agents"

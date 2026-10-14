@@ -1,6 +1,6 @@
 +++
 title = "Supagents: One Source to Rule Your Coding Subagents"
-description = "The AI providers are in a horse race. Every quarter, a new model lands, a new harness ships, and the gap between “the best tool for this…"
+description = "The AI providers are in a horse race. Every quarter, a new model lands, a new harness ships, and the gap between “the best tool for this task” and “the best tool overall” keeps moving."
 date = "2026-05-10"
 tags = ["Coding", "Project"]
 slug = "supagents-one-source-to-rule-your-coding-subagents"

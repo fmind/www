@@ -1,6 +1,6 @@
 +++
 title = "Lessons Learned from the Gemini Long Context Kaggle Competition 🧠"
-description = "Explored Gemini’s long context in a Kaggle competition. Key lessons learned about its potential and limitations for real-world…"
+description = "Explored Gemini’s long context in a Kaggle competition. Key lessons learned about its potential and limitations."
 date = "2025-02-07"
 tags = ["LLM", "Demo"]
 slug = "lessons-learned-from-the-gemini-long-context-kaggle-competition"

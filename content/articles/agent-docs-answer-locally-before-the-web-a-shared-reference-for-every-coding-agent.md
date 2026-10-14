@@ -1,6 +1,6 @@
 +++
 title = "Agent Docs: Answer Locally Before the Web — A Shared Reference for Every Coding Agent"
-description = "Pair-program with a coding agent for an afternoon and you start noticing a quiet, recurring tax. Every time the agent reaches for a flag, a…"
+description = "Pair-program with a coding agent for an afternoon and you start noticing a quiet, recurring tax."
 date = "2026-05-14"
 tags = ["Coding", "Project"]
 slug = "agent-docs-answer-locally-before-the-web-a-shared-reference-for-every-coding-agent"

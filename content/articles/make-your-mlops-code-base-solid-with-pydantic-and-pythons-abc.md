@@ -1,6 +1,6 @@
 +++
 title = "Make your MLOps code base SOLID with Pydantic and Python’s ABC"
-description = "MLOps projects are straightforward to initiate, but challenging to perfect. While AI/ML projects often start with a notebook for…"
+description = "MLOps projects are straightforward to initiate, but challenging to perfect."
 date = "2024-03-13"
 tags = ["MLOps", "Python"]
 slug = "make-your-mlops-code-base-solid-with-pydantic-and-pythons-abc"

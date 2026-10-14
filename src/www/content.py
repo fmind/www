@@ -493,6 +493,9 @@ def parse_article(name: str, data: bytes, static_dir: Path = Path("static")) -> 
         syndicated = _string(metadata, "syndicated")
         if not _SLUG.fullmatch(slug):
             raise ArticleError(f'parse "{name}": invalid slug {slug!r}')
+        # Search snippets, feeds, and link previews reuse the description verbatim.
+        if description.rstrip().endswith(("…", "...")):
+            raise ArticleError(f'parse "{name}": description must end with a complete sentence, not an ellipsis')
         if Path(name).stem != slug:
             raise ArticleError(f'parse "{name}": filename must match slug {slug!r}')
         _validate_url(name, "canonical", canonical)

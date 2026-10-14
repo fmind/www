@@ -1,6 +1,6 @@
 +++
 title = "How to configure VS Code for AI, ML and MLOps development in Python 🛠️️"
-description = "Visual Studio Code is a remarkable application. In the past, developers faced a choice between simple, lightweight text editors like Vim…"
+description = "In this article, I will outline the steps for configuring VS Code for data scientists and machine learning engineers."
 date = "2023-11-23"
 tags = ["Python", "Guide"]
 slug = "how-to-configure-vs-code-for-ai-ml-and-mlops-development-in-python"

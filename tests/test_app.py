@@ -489,8 +489,17 @@ def test_article_markdown_is_public_and_unknown_sources_are_noindex(client: AppC
     assert response.headers["content-type"] == "text/markdown; charset=utf-8"
     assert response.headers["access-control-allow-origin"] == "*"
     assert response.headers["cache-control"] == "public, max-age=3600, must-revalidate"
+    article_page = client.get("/articles/the-affordable-ai-agents/").text
+    assert '<meta name="robots" content="index, follow, max-image-preview:large"/>' in article_page
+    assert '<meta property="article:published_time" content="' in article_page
+    assert '<meta property="article:author" content="https://www.fmind.dev/"/>' in article_page
+    assert "article:published_time" not in client.get("/").text
     assert response.text.startswith("# The Affordable AI Agents\n")
     assert "](/static/" not in response.text
+    # Search engines credit the HTML article, and only agents need the bulk export.
+    assert response.headers["link"] == '<https://www.fmind.dev/articles/the-affordable-ai-agents/>; rel="canonical"'
+    assert client.get("/llms-full.txt").headers["x-robots-tag"] == "noindex"
+    assert "x-robots-tag" not in client.get("/llms.txt").headers
 
     missing = client.get("/articles/not-an-article.md")
     assert missing.status_code == 404

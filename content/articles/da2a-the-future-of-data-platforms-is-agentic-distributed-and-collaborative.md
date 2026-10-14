@@ -1,6 +1,6 @@
 +++
 title = "Da2a: The Future of Data Platforms is Agentic, Distributed, and Collaborative"
-description = "For decades, the story of data platforms has been one of centralization and heavy engineering. We built massive data warehouses and data…"
+description = "For decades, the story of data platforms has been one of centralization and heavy engineering."
 date = "2025-09-27"
 tags = ["Agent", "Cloud"]
 slug = "da2a-the-future-of-data-platforms-is-agentic-distributed-and-collaborative"

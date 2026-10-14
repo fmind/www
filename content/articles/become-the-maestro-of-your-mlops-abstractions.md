@@ -1,6 +1,6 @@
 +++
 title = "Become the maestro of your MLOps abstractions"
-description = "The MLOps ecosystem is evolving into a sophisticated symphony, composed of diverse tools, methodologies, and cultures. This diversity…"
+description = "The MLOps ecosystem is evolving into a sophisticated symphony, composed of diverse tools, methodologies, and cultures."
 date = "2024-01-30"
 tags = ["MLOps", "Python"]
 slug = "become-the-maestro-of-your-mlops-abstractions"

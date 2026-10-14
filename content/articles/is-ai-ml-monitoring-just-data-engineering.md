@@ -1,6 +1,6 @@
 +++
 title = "Is AI/ML Monitoring just Data Engineering? 🤔"
-description = "While the future of machine learning and MLOps is being debated, practitioners still need to attend to their machine learning models in…"
+description = "While the future of machine learning and MLOps is being debated, practitioners still need to attend to their machine learning models in production."
 date = "2023-07-15"
 tags = ["MLOps"]
 slug = "is-ai-ml-monitoring-just-data-engineering"

@@ -1,6 +1,6 @@
 +++
 title = "Introducing GentWriter: Building a Multi-Agent Content Generator with Google’s ADK 👾"
-description = "In the fast-paced world of content creation, efficiency is key. Manually crafting social media posts for different platforms based on a…"
+description = "In the fast-paced world of content creation, efficiency is key."
 date = "2025-04-28"
 tags = ["Agent", "Python", "Project"]
 slug = "introducing-gentwriter-building-a-multi-agent-content-generator-with-googles-adk"

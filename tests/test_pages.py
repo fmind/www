@@ -66,6 +66,14 @@ def test_site_metadata_is_a_web_application_and_disables_smooth_scroll() -> None
     structured = json.loads(site_structured_data(page))
     metadata = site_page_metadata(page, site_structured_data(page))
 
-    assert structured["@type"] == "WebApplication"
-    assert structured["url"] == page.url
+    nodes = {node["@id"]: node for node in structured["@graph"]}
+    application = nodes[f"{page.url}#application"]
+    assert application["@type"] == "WebApplication"
+    assert application["url"] == page.url
+    # The tool joins the site graph: a free offer authored by the shared Person entity.
+    assert application["author"] == {"@id": f"{METADATA.site_url}/#person"}
+    assert application["offers"] == {"@type": "Offer", "price": 0, "priceCurrency": "USD"}
+    assert nodes[f"{page.url}#webpage"]["mainEntity"] == {"@id": f"{page.url}#application"}
+    assert nodes[f"{page.url}#webpage"]["isPartOf"] == {"@id": f"{METADATA.site_url}/#website"}
+    assert f"{METADATA.site_url}/#person" in nodes
     assert metadata.instant_scroll

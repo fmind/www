@@ -1,6 +1,6 @@
 +++
 title = "Forging a Personal Chatbot with OpenAI API, Chroma DB, HuggingFace Spaces, and Gradio 🔥"
-description = "If you have checked the Internet in 2023, you’re likely familiar with Generative AI. The launch of ChatGPT has sparked a surge in interest…"
+description = "If you have checked the Internet in 2023, you’re likely familiar with Generative AI."
 date = "2023-10-24"
 tags = ["LLM", "RAG", "Demo"]
 slug = "forging-a-personal-chatbot-with-openai-api-chroma-db-huggingface-spaces-and-gradio"

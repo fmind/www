@@ -1,6 +1,6 @@
 +++
 title = "How I Revamped My Portfolio Website in 5 Nights Using AI Agents"
-description = "I see many friends and acquaintances generating amazing applications in mere weeks. We are in the midst of a craze of innovation, an era…"
+description = "I see many friends and acquaintances generating amazing applications in mere weeks."
 date = "2026-02-19"
 tags = ["Coding", "Demo"]
 slug = "how-i-revamped-my-portfolio-website-in-5-nights-using-ai-agents"
@@ -12,7 +12,7 @@ I see many friends and acquaintances generating amazing applications in mere wee
 
 This means there is no time to slack off. The go-getters will not wait for you to catch up. One representative aspect of this fast-moving landscape is your digital presence — your portfolio.
 
-As a freelance AI/ML Architect, I realized I needed a space that truly reflected my expertise. In this article, I present the revamp of my own portfolio: [fmind.dev](https://fmind.dev).
+As a freelance AI/ML Architect, I realized I needed a space that truly reflected my expertise. In this article, I present the revamp of my own portfolio: [fmind.dev](https://www.fmind.dev/).
 
 ![New Homepage of Fmind.dev](/static/img/articles/how-i-revamped-my-portfolio-website-in-5-nights-using-ai-agents/cover.webp)
 
@@ -133,7 +133,7 @@ AI Coding is an absolute game-changer. I highly encourage any developer or freel
 - **Do not blindly trust generated code;** review everything to maintain architectural control.
 - **Avoid “shiny object syndrome.”** Relying entirely on AI without architectural vision can lead to generic, unmaintainable results. Find the right balance between automation and engineering rigor.
 
-Check out the final result at [fmind.dev](https://fmind.dev).
+Check out the final result at [fmind.dev](https://www.fmind.dev/).
 
 ![About me on Fmind.dev](/static/img/articles/how-i-revamped-my-portfolio-website-in-5-nights-using-ai-agents/04.webp)
 

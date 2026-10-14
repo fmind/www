@@ -1,6 +1,6 @@
 +++
 title = "AI Agents as an Operating System: Rediscovering the Linux Philosophy"
-description = "We are building the most advanced AI systems in history, yet the best way to control them relies on paradigms from the 1970s. I see…"
+description = "We are building the most advanced AI systems in history, yet the best way to control them relies on paradigms from the 1970s."
 date = "2026-03-14"
 tags = ["Agent", "LLM"]
 slug = "ai-agents-as-an-operating-system-rediscovering-the-linux-philosophy"

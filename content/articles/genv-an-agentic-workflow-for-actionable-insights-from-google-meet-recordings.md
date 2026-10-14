@@ -1,6 +1,6 @@
 +++
 title = "GenV: An Agentic Workflow for Actionable Insights from Google Meet Recordings"
-description = "Video meetings on platforms like Google Meet are essential for collaboration, but how often do crucial details get lost moments after the…"
+description = "Video meetings on platforms like Google Meet are essential for collaboration, but how often do crucial details get lost moments after the call ends?"
 date = "2025-04-11"
 tags = ["Agent", "Project"]
 slug = "genv-an-agentic-workflow-for-actionable-insights-from-google-meet-recordings"

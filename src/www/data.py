@@ -522,6 +522,36 @@ def get_page_structured_data(page_type: str, url: str, name: str, description: s
     )
 
 
+def get_application_structured_data(url: str, name: str, description: str) -> str:
+    """Describe a free decision tool as a WebApplication inside the shared site graph."""
+    return _json_ld(
+        [
+            *_identity_graph(),
+            {
+                "@id": f"{url}#webpage",
+                "@type": "WebPage",
+                "url": url,
+                "name": name,
+                "description": description,
+                "isPartOf": {"@id": f"{METADATA.site_url}/#website"},
+                "mainEntity": {"@id": f"{url}#application"},
+            },
+            {
+                "@id": f"{url}#application",
+                "@type": "WebApplication",
+                "name": name,
+                "description": description,
+                "url": url,
+                "applicationCategory": "BusinessApplication",
+                "operatingSystem": "Web",
+                "isAccessibleForFree": True,
+                "offers": {"@type": "Offer", "price": 0, "priceCurrency": "USD"},
+                "author": {"@id": f"{METADATA.site_url}/#person"},
+            },
+        ]
+    )
+
+
 def get_structured_data(article: object | None = None) -> str:
     """Build the connected Person/WebSite/ProfilePage or BlogPosting graph."""
     person_id = f"{METADATA.site_url}/#person"

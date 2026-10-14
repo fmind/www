@@ -1,6 +1,6 @@
 +++
 title = "Agent Evolutions: Stop Guessing the Design — Evolve It"
-description = "Most coding-agent tasks have one right answer hiding behind a workflow. “Add password sign-in.” “Fix the off-by-one in the pagination…"
+description = "Most coding-agent tasks have one right answer hiding behind a workflow."
 date = "2026-06-01"
 tags = ["Coding", "Project"]
 slug = "agent-evolutions-stop-guessing-the-design-evolve-it"

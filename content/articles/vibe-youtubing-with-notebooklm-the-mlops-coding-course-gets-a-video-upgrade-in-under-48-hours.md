@@ -1,6 +1,6 @@
 +++
 title = "Vibe Youtubing with NotebookLM: The MLOps Coding Course Gets a Video Upgrade in Under 48 Hours"
-description = "I’m incredibly excited to announce the launch of the first video series for my MLOps Coding Course, covering the introduction and the…"
+description = "I’m incredibly excited to announce the launch of the first video series for my MLOps Coding Course, covering the introduction and the entire first chapter on AI/ML Project Initialization!"
 date = "2025-08-26"
 tags = ["LLM", "Demo"]
 slug = "vibe-youtubing-with-notebooklm-the-mlops-coding-course-gets-a-video-upgrade-in-under-48-hours"

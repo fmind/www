@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-import json
-
 from www.connect import CONNECT_URL
-from www.data import METADATA, get_page_structured_data
+from www.data import METADATA, get_application_structured_data, get_page_structured_data
 from www.models import Article, ArticleIndexView, PageMetadata, SitePage
 
 
@@ -135,20 +133,7 @@ def article_metadata(article: Article, structured_data: str) -> PageMetadata:
 
 
 def site_structured_data(page: SitePage) -> str:
-    return json.dumps(
-        {
-            "@context": "https://schema.org",
-            "@type": "WebApplication",
-            "name": page.title,
-            "description": page.description,
-            "url": page.url,
-            "applicationCategory": "BusinessApplication",
-            "operatingSystem": "Web",
-            "author": {"@type": "Person", "name": METADATA.name, "url": METADATA.site_url},
-        },
-        ensure_ascii=False,
-        separators=(",", ":"),
-    )
+    return get_application_structured_data(page.url, page.title, page.description)
 
 
 def site_index_metadata() -> PageMetadata:

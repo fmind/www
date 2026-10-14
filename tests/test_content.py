@@ -93,6 +93,8 @@ def test_parse_article_rejects_unknown_frontmatter_with_source_line(tmp_path: Pa
         ({"canonical": '"http://example.com/x"'}, "absolute HTTPS"),
         ({"canonical": '"https://www.fmind.dev/articles/example/"'}, "must not point at this site"),
         ({"updated": '"2026-07-01"'}, "must not precede"),
+        ({"description": '"A teaser cut off by an import…"'}, "complete sentence"),
+        ({"description": '"A teaser cut off by an import..."'}, "complete sentence"),
     ],
 )
 def test_parse_article_rejects_invalid_metadata(tmp_path: Path, metadata: dict[str, str], message: str) -> None:

@@ -327,7 +327,10 @@ def create_app(
 
     @route("/llms-full.txt", http_method=_READ_METHODS, sync_to_thread=False)
     def llms_full_index() -> Response[bytes]:
-        return _static_response(llms_full, "text/plain; charset=utf-8", _HOUR_CACHE)
+        # Agents read the bulk export; search engines should index the individual articles instead.
+        return _static_response(
+            llms_full, "text/plain; charset=utf-8", _HOUR_CACHE, extra_headers={"x-robots-tag": "noindex"}
+        )
 
     @route("/sitemap.xml", http_method=_READ_METHODS, sync_to_thread=False)
     def sitemap_index() -> Response[bytes]:
@@ -447,11 +450,13 @@ def create_app(
             article = article_collection.by_slug.get(article_slug)
             if article is None or (article.draft and runtime_config.environment is Environment.PRODUCTION):
                 return render_not_found(request)
+            # The fixed export is a duplicate representation; search engines credit the article page.
             return _static_response(
                 markdown_by_slug[article_slug].encode(),
                 "text/markdown; charset=utf-8",
                 _HOUR_CACHE,
                 cors=True,
+                extra_headers={"link": f'<{article.canonical_url()}>; rel="canonical"'},
             )
         query = _raw_query(request)
         target = f"/articles/{quote(slug, safe='')}/"
