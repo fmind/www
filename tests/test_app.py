@@ -133,7 +133,9 @@ def test_human_pages_render_complete_no_cache_documents(client: AppClient) -> No
         feed_url = f"{METADATA.site_url}/articles/feed.xml"
         discovery = f'<link rel="alternate" type="application/atom+xml" href="{feed_url}" title="Fmind articles"/>'
         assert response.text.count(discovery) == 1, path
-        assert 'href="/articles/feed.xml" type="application/atom+xml"' in response.text, path
+        # Feed readers discover the head link everywhere; the event card shows no visible feed link.
+        if path != "/connect":
+            assert 'href="/articles/feed.xml" type="application/atom+xml"' in response.text, path
         if status == 404:
             assert 'content="noindex, follow"' in response.text
 
@@ -298,6 +300,10 @@ def test_connect_actions_and_contact_download(client: AppClient) -> None:
     assert "example.org" not in response.text
     assert "connect-qr.svg" not in response.text
     assert "Go to my website" in response.text
+    # The event card stays focused on contact actions: no feed link, hint, or site footer.
+    assert 'href="/articles/feed.xml"' not in response.text
+    assert "feed reader" not in response.text
+    assert "<footer" not in response.text
     card = client.get("/connect.vcf")
     assert card.status_code == 200
     assert card.headers["content-type"] == "text/vcard; charset=utf-8"
@@ -985,6 +991,9 @@ def test_google_analytics_waits_for_consent_on_the_production_host(client: AppCl
         in page
     )
     assert "data-consent-open hidden>Cookie settings</button>" in page
+    # The purpose and the control promise are two separate lines.
+    assert ">With your consent, Google Analytics measures which pages help visitors so I can improve them.</p>" in page
+    assert '<p class="text-sm text-base-content mt-1">Nothing loads before you accept' in page
     assert "if (location.hostname !== 'www.fmind.dev' || !banner) return;" in page
     assert "var id = 'G-Z28QKD99V2';" in page
     # No Google script is in the document: it is only appended by load() after an Accept.

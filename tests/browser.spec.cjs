@@ -114,8 +114,12 @@ test("published pages render without overflow, missing images, or external asset
     await expect(feed).toHaveCount(1);
     await expect(feed).toHaveAttribute("href", "https://www.fmind.dev/articles/feed.xml");
     const subscribe = page.locator("a[href=\"/articles/feed.xml\"]").first();
-    await expect(subscribe).toBeVisible();
-    await expect(subscribe.locator("svg[aria-hidden=\"true\"]")).toBeVisible();
+    if (path === "/connect") {
+      await expect(subscribe).toHaveCount(0);
+    } else {
+      await expect(subscribe).toBeVisible();
+      await expect(subscribe.locator("svg[aria-hidden=\"true\"]")).toBeVisible();
+    }
     if (path.startsWith("/articles/") && path !== "/articles/") {
       const follow = page.getByRole("navigation", { name: "Follow Fmind", exact: true });
       await expect(follow.getByRole("link")).toHaveText(["Follow on LinkedIn", "Follow on X"]);
@@ -268,7 +272,8 @@ test("conference contact actions and QR display work without JavaScript", async 
       expect(portraitBounds.y + portraitBounds.height).toBeLessThanOrEqual(headingBounds.y);
       await expect(page.locator("h1")).toHaveCSS("color", "rgb(23, 78, 166)");
       await expect(page.getByText("AI Agents, MLOps & Security", { exact: true })).toBeVisible();
-      await expect(page.getByRole("link", { name: /RSS/ })).toBeVisible();
+      // The event card stays focused on contact actions; the QR display keeps its compact RSS link.
+      await expect(page.getByRole("link", { name: /RSS/ })).toHaveCount(path === "/scan" ? 1 : 0);
     }
   } finally {
     await context.close();
