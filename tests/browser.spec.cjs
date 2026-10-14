@@ -26,6 +26,41 @@ test("portfolio navigation remains usable without JavaScript", async ({ browser 
   }
 });
 
+test(
+  "production consent banner asks once, in two lines, and loads nothing on reject",
+  async ({ browser, baseURL }, testInfo) => {
+    test.skip(new URL(baseURL).hostname !== "www.fmind.dev", "The banner only runs on www.fmind.dev");
+    // A fresh visitor: no recorded choice. Never accept here, so CI sends no analytics.
+    const context = await browser.newContext({ ...testInfo.project.use, storageState: undefined });
+    try {
+      const page = await context.newPage();
+      const google = [];
+      page.on("request", (request) => {
+        if (/(^|\.)google(tagmanager|-analytics)?\.com$/.test(new URL(request.url()).hostname)) {
+          google.push(request.url());
+        }
+      });
+      await page.goto("/");
+      const banner = page.getByRole("region", { name: "Cookie consent" });
+      await expect(banner).toBeVisible();
+      await expect(banner.locator("p")).toHaveCount(2);
+      await expect(banner.locator("p").first()).toHaveText(
+        "With your consent, Google Analytics measures which pages help visitors so I can improve them.",
+      );
+      await banner.getByRole("button", { name: "Reject", exact: true }).click();
+      await expect(banner).toBeHidden();
+      expect(await page.evaluate(() => localStorage.getItem("fmind-consent"))).toBe("denied");
+      await page.reload();
+      await expect(banner).toBeHidden();
+      await page.locator("footer").getByRole("link", { name: "Privacy", exact: true }).click();
+      await expect(page).toHaveURL(/\/privacy$/);
+      expect(google).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  },
+);
+
 test.beforeEach(async ({ page }) => {
   page.on("pageerror", (error) => {
     throw error;

@@ -9,7 +9,18 @@ module.exports = defineConfig({
   // Each context is isolated and the shared server only serves immutable data.
   workers: 2,
   reporter: "list",
-  use: { baseURL, trace: "retain-on-failure" },
+  use: {
+    baseURL,
+    trace: "retain-on-failure",
+    // Production shows the consent banner over the footer. Journeys start with a recorded
+    // rejection so they exercise the page and never load Google Analytics from CI.
+    ...(process.env.BROWSER_BASE_URL && {
+      storageState: {
+        cookies: [],
+        origins: [{ origin: new URL(baseURL).origin, localStorage: [{ name: "fmind-consent", value: "denied" }] }],
+      },
+    }),
+  },
   projects: [
     { name: "desktop-light", use: { viewport: { width: 1440, height: 900 }, colorScheme: "light" } },
     { name: "mobile-light", use: { viewport: { width: 390, height: 844 }, colorScheme: "light", isMobile: true } },
