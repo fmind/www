@@ -2,6 +2,20 @@
 
 All notable changes to this project are documented in this file.
 
+## [2.5.0] - 2026-10-14
+
+### 🚀 Features
+
+- _(sites)_ Add MCP context-cost calculator
+- _(analytics)_ Add Google Analytics 4 behind explicit consent
+- _(sites)_ Simplify the MCP calculator and open every hosting section
+
+### 🐛 Bug Fixes
+
+- _(sites)_ Address MCP context calculator review findings
+- _(seo)_ Complete article descriptions and canonical exports
+- _(contact)_ Split the consent notice and drop RSS from /connect
+
 ## [2.4.0] - 2026-10-12
 
 ### 🚀 Features
