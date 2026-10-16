@@ -101,7 +101,7 @@ Architecture Diagram of the Featest App (Source: Fmind.dev)
 
 The flow is bidirectional and relies on robust open-source packages:
 
-1. **User** interacts with the **Lit Client**, which uses the official [`@a2ui/lit`](https://github.com/google/A2UI/tree/main/renderers/lit) renderer. It acts as a state machine, processing `SurfaceUpdate` events to patch the DOM efficiently.
+1. **User** interacts with the **Lit Client**, which uses the official [`@a2ui/lit`](https://github.com/a2ui-project/a2ui/tree/main/typescript/renderers/lit) renderer. It acts as a state machine, processing `SurfaceUpdate` events to patch the DOM efficiently.
 2. **Client** sends intent via **A2A** to the **Backend**. The `A2UIClient` wraps the user’s input (text or events) in a standard JSON-RPC envelope.
 3. **Backend Agent** processes logic and streams back **A2UI** JSON instructions.
 4. **Client** renders the UI components dynamically.
@@ -220,7 +220,7 @@ Another major challenge is **latency**. Generating UI tokens takes time and mone
 
 ### 3. Complementary Nature
 
-I also found that not every use case benefits from dynamic UI. For the core voting interaction in Featest, a static, predictable UI was simpler and faster. Where A2UI shines is for _augmenting_ the experience, helping users rationalize features, tag duplicates, or explore trends through conversation. In this project, it’s a powerful **complement** to a baseline UI, not necessarily a replacement
+I also found that not every use case benefits from dynamic UI. For the core voting interaction in Featest, a static, predictable UI was simpler and faster. Where A2UI shines is for _augmenting_ the experience, helping users rationalize features, tag duplicates, or explore trends through conversation. In this project, it’s a powerful **complement** to a baseline UI, not necessarily a replacement.
 
 ### Conclusion
 

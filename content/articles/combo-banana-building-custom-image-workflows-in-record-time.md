@@ -62,7 +62,7 @@ The prototype illustrates how an intuitive interface can abstract away the compl
 
 Combo-Banana: Workflow Definition Tab
 
-On the left, the user defines the workflow with a chatbot interface based on [Gemini 2.5 Flash](https://cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/2-5-flash). The chatbot extracts prompts into a series of steps that are stacked sequentially. In this example, we start with a “Place the item in a landscape” step, followed by a “Add Catchy Slogan” step, powered by [Nano Banana](https://ai.google.dev/gemini-api/docs/image-generation).
+On the left, the user defines the workflow with a chatbot interface based on [Gemini 2.5 Flash](https://cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/2-5-flash). The chatbot extracts prompts into a series of steps that are stacked sequentially. In this example, we start with a “Place the item in a landscape” step, followed by an “Add Catchy Slogan” step, powered by [Nano Banana](https://ai.google.dev/gemini-api/docs/image-generation).
 
 ![Combo-Banana: Workflow Definition Tab](/static/img/articles/combo-banana-building-custom-image-workflows-in-record-time/03.webp)
 
@@ -84,7 +84,7 @@ Architecture of Combo-Banana
 
 - **The Interface:** [**Gradio**](https://gradio.app/) Used to build the interactive web UI entirely in Python, avoiding the need for complex front-end development and significantly speeding up iteration.
 - **The Backend:** [**Python**](https://www.python.org/) The backbone of the application, handling core logic and orchestrating the sequence of image processing steps.
-- **The Engine:** [**Nano Banana**](https://ai.google.dev/gemini-api/docs/image-generation) The AI powerhouse driving complex tasks like high-fidelity background removal and segmentation. This project was a fantastic opportunity to leverage its impressive capabilities. In future releases, other models could with combined with Nano-Banana.
+- **The Engine:** [**Nano Banana**](https://ai.google.dev/gemini-api/docs/image-generation) The AI powerhouse driving complex tasks like high-fidelity background removal and segmentation. This project was a fantastic opportunity to leverage its impressive capabilities. In future releases, other models could be combined with Nano-Banana.
 - **Deployment:** [**Google Cloud Run**](https://cloud.google.com/run?authuser=1) A serverless platform ensuring the tool is accessible, cost-effective (scales to zero), and scalable on demand within an organization’s infrastructure.
 
 ### The Road Ahead: From Prototype to Platform

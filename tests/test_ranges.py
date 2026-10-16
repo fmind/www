@@ -91,6 +91,8 @@ def test_full_get_uses_server_pathsend_when_explicitly_enabled(asset: Path) -> N
     ("range_header", "expected_body", "content_range"),
     [
         ("bytes=0-3", b"0123", "bytes 0-3/16"),
+        ("BYTES=0-3", b"0123", "bytes 0-3/16"),
+        ("Bytes=0-3", b"0123", "bytes 0-3/16"),
         ("bytes=10-", b"abcdef", "bytes 10-15/16"),
         ("bytes=-4", b"cdef", "bytes 12-15/16"),
         ("bytes=-100", _BODY, "bytes 0-15/16"),
@@ -175,7 +177,6 @@ def test_if_range_rejects_trailing_data(asset: Path, if_range: str) -> None:
 def test_non_overlapping_range_returns_sized_416(asset: Path) -> None:
     with _client(asset) as client:
         response = client.get("/video.mp4", headers={"range": "bytes=16-"})
-        head = client.head("/video.mp4", headers={"range": "bytes=16-"})
 
     assert response.status_code == 416
     assert response.content == b"invalid range: failed to overlap\n"
@@ -185,11 +186,6 @@ def test_non_overlapping_range_returns_sized_416(asset: Path) -> None:
     assert "accept-ranges" not in response.headers
     assert "content-disposition" not in response.headers
     assert response.headers["x-content-type-options"] == "nosniff"
-
-    assert head.status_code == 416
-    assert head.content == b""
-    assert head.headers["content-length"] == "33"
-    assert head.headers["content-range"] == "bytes */16"
 
 
 def test_empty_file_ignores_a_non_overlapping_range(tmp_path: Path) -> None:
@@ -206,7 +202,7 @@ def test_empty_file_ignores_a_non_overlapping_range(tmp_path: Path) -> None:
     assert "content-range" not in response.headers
 
 
-@pytest.mark.parametrize("range_header", ["bytes=bogus", "items=0-1", "bytes=10-5", "bytes=0-1,bogus"])
+@pytest.mark.parametrize("range_header", ["bytes=bogus", "bytes=10-5", "bytes=0-1,bogus"])
 def test_malformed_ranges_return_unsized_416(asset: Path, range_header: str) -> None:
     with _client(asset) as client:
         response = client.get("/video.mp4", headers={"range": range_header})
@@ -229,7 +225,6 @@ def test_oversized_decimal_is_rejected_without_escaping_the_range_boundary(asset
 def test_multiple_byte_ranges_return_multipart_in_request_order(asset: Path) -> None:
     with _client(asset) as client:
         response = client.get("/video.mp4", headers={"range": "bytes=0-3, 10-11"})
-        head = client.head("/video.mp4", headers={"range": "bytes=0-3, 10-11"})
 
     assert response.status_code == 206
     assert response.headers["accept-ranges"] == "bytes"
@@ -240,14 +235,6 @@ def test_multiple_byte_ranges_return_multipart_in_request_order(asset: Path) -> 
     )
     assert response.content == expected
     assert response.headers["content-length"] == str(len(expected))
-
-    assert head.status_code == 206
-    assert head.content == b""
-    expected_head = _multipart_body(
-        head.headers["content-type"],
-        [("bytes 0-3/16", b"0123"), ("bytes 10-11/16", b"ab")],
-    )
-    assert head.headers["content-length"] == str(len(expected_head))
 
 
 def test_eight_satisfiable_ranges_are_allowed(asset: Path) -> None:
@@ -300,14 +287,25 @@ def test_overlapping_repeated_or_excessive_ranges_are_rejected(asset: Path, rang
     assert "content-range" not in response.headers
 
 
-def test_partial_head_has_selected_length_without_a_body(asset: Path) -> None:
+@pytest.mark.parametrize("range_header", ["bytes=2-5", "bytes=16-", "bytes=0-3,10-11", "bytes=bogus", "items=0-1"])
+def test_head_ignores_ranges_and_returns_full_metadata(asset: Path, range_header: str) -> None:
     with _client(asset) as client:
-        response = client.head("/video.mp4", headers={"range": "bytes=2-5"})
+        response = client.head("/video.mp4", headers={"range": range_header})
 
-    assert response.status_code == 206
+    assert response.status_code == 200
     assert response.content == b""
-    assert response.headers["content-range"] == "bytes 2-5/16"
-    assert response.headers["content-length"] == "4"
+    assert "content-range" not in response.headers
+    assert response.headers["content-length"] == str(len(_BODY))
+    assert response.headers["content-type"] == _CONTENT_TYPE
+
+
+def test_unknown_range_unit_is_ignored(asset: Path) -> None:
+    with _client(asset) as client:
+        response = client.get("/video.mp4", headers={"range": "items=0-1"})
+
+    assert response.status_code == 200
+    assert response.content == _BODY
+    assert "content-range" not in response.headers
 
 
 def test_large_file_is_emitted_in_bounded_chunks(tmp_path: Path) -> None:

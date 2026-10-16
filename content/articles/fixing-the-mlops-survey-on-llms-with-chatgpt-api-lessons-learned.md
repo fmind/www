@@ -14,7 +14,7 @@ draft = false
 
 Photo by [Brett Jordan](https://unsplash.com/@brett_jordan?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
 
-On March 2023, the [MLOps Community](https://mlops.community/) issued [a survey about LLMs in production](https://docs.google.com/forms/d/e/1FAIpQLSerEryK4xHEZTq0hSu-sVmBHilOzaT71BfCQgXe_uIRgIah-g/viewform) to picture the state of adoption. [The survey is full of interesting insights](https://podcasters.spotify.com/pod/show/mlops/episodes/EXCLUSIVE-EPISODE--LLM-Key-Results-e229lbi), but there is a catch: **80% of the questions are** [**open-ended**](https://en.wikipedia.org/wiki/Open-ended_question) **, which means respondents answered the survey freely from a few keywords to full sentences**. I volunteered to clean up the answers with the help of ChatGPT and let the community get a grasp of the survey experiences.
+In March 2023, the [MLOps Community](https://mlops.community/) issued [a survey about LLMs in production](https://docs.google.com/forms/d/e/1FAIpQLSerEryK4xHEZTq0hSu-sVmBHilOzaT71BfCQgXe_uIRgIah-g/viewform) to picture the state of adoption. [The survey is full of interesting insights](https://podcasters.spotify.com/pod/show/mlops/episodes/EXCLUSIVE-EPISODE--LLM-Key-Results-e229lbi), but there is a catch: **80% of the questions are** [**open-ended**](https://en.wikipedia.org/wiki/Open-ended_question) **, which means respondents answered the survey freely from a few keywords to full sentences**. I volunteered to clean up the answers with the help of ChatGPT and let the community get a grasp of the survey experiences.
 
 In this article, I present the steps and lessons learned from my journey to shed some light on the MLOps survey on LLMs. I’m first going to present the goal and questions of the survey. Then, I will explain how I used ChatGPT to review the data and standardize the content. Finally, I’m going to evaluate the performance of ChatGPT compared to a manual review.
 
@@ -62,7 +62,7 @@ These answers are rich in information, but they are also tricky to analyze: How 
 
 #### Lessons Learned:
 
-- **Open-ended questions are much more expressive than close-ended ones**. Since LLM is a new topic, the survey gave a lot of freedom to its participants to share feedback without imposing pre-defined answers.
+- **Open-ended questions are much more expressive than closed-ended ones**. Since LLM is a new topic, the survey gave a lot of freedom to its participants to share feedback without imposing pre-defined answers.
 - **Open-ended questions are hard to systematically analyze and visualize.** While this type of answer is difficult to summarize, the survey gave me a good excuse to play with ChatGPT and assist the MLOps Community.
 - **Besides ChatGPT, I don’t think there is a solution to handle the MLOps survey at scale**. Plan B was to combine several NLP techniques, but I was pretty sure it would take as much time to develop as it would take me to review the answers manually. To quote the XKCD chart of automation:
 
@@ -72,7 +72,7 @@ Automation: [https://xkcd.com/1319/](https://xkcd.com/1319/)
 
 ### Cleaning the survey with ChatGPT API
 
-The survey analysis was my first time developing with [ChatGPT API](https://platform.openai.com/docs/api-reference). I thought it would be a good match since the task was open-handed and required a lot of background knowledge to find and extract the information. On the other hand, I didn’t want to use or fine-tune smaller LLMs to avoid the pitfalls of creating a new model for a one-shot task.
+The survey analysis was my first time developing with [ChatGPT API](https://platform.openai.com/docs/api-reference). I thought it would be a good match since the task was open-ended and required a lot of background knowledge to find and extract the information. On the other hand, I didn’t want to use or fine-tune smaller LLMs to avoid the pitfalls of creating a new model for a one-shot task.
 
 To get more background on prompt engineering, I read the [Prompting Guide](https://www.promptingguide.ai/) and the [Open AI Cookbook](https://github.com/openai/openai-cookbook) before jumping on this task. I found out that the API was easy to use, especially compared to more complex libraries such as deep learning frameworks. Moreover, it seems intuitive to express requirements in natural language. My main struggle was to understand how to convert ChatGPT outputs to programming data structures with Python.
 
@@ -176,7 +176,7 @@ Out of this manual review, the most common errors I found were:
 
 - The number of model outputs doesn’t match the number of user inputs
 - ChatGPT hasn’t extracted all the information that I wanted
-- The model outputs were shifted by one or more value
+- The model outputs were shifted by one or more values
 
 On the other hand, I found some pretty impressive benefits:
 
@@ -232,7 +232,7 @@ The plot below shows the final evaluation of the model for my use case. Overall,
 
 - **ChatGPT is productive.** This work took 6 hours to develop. While it may have been less time-consuming to do a full manual review, the approach based on ChatGPT was much more enjoyable!
 - **ChatGPT is cost-efficient.** This experience cost me \$0.15. I’m pleasantly surprised by how inexpensive ChatGPT is for building quick prototypes.
-- **ChatGPT was accurate enough.** Whenever the model outputs were good or bad, they provided significant help to the review process.
+- **ChatGPT was accurate enough.** Whether the model outputs were good or bad, they provided significant help to the review process.
 
 #### Extrapolations (for other use cases):
 

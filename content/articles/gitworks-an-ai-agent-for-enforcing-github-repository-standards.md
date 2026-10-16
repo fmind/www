@@ -33,7 +33,7 @@ Manually verifying these across multiple repositories is tedious. GitWorks aims 
 
 GitWorks operates through a clear agentic process: **Define -\> Fetch -\> Analyze -\> Report**.
 
-**Define Guidelines (Configuration):** The core of GitWorks is _your_ set of guidelines. You define these in a clear text format (e.g., the MLOps Code Repository Checklist provided in the notebook ). This tells the agent _what_ to look for.
+**Define Guidelines (Configuration):** The core of GitWorks is _your_ set of guidelines. You define these in a clear text format (e.g., the MLOps Code Repository Checklist provided in the notebook). This tells the agent _what_ to look for.
 
 ```markdown
 ## MLOps Code Repository Checklist

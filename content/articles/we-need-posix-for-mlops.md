@@ -28,7 +28,7 @@ In this article, I propose a solution analogous to [POSIX](https://en.wikipedia.
 
 ### What is POSIX?
 
-[POSIX](https://en.wikipedia.org/wiki/POSIX) (Portable Operating System Interface**)** is a set of standards specified by the [IEEE](https://www.ieee.org/) for defining a level of compatibility between operating systems (e.g., Linux, MacOS, BSD, …).
+[POSIX](https://en.wikipedia.org/wiki/POSIX) (Portable Operating System Interface) is a set of standards specified by the [IEEE](https://www.ieee.org/) for defining a level of compatibility between operating systems (e.g., Linux, MacOS, BSD, …).
 
 More concretely, [**POSIX**](https://en.wikipedia.org/wiki/POSIX) **is the foundation that allows end users to implement new applications and ensure they can communicate with each other**. This can be done with shell [commands](https://en.wikipedia.org/wiki/List_of_Unix_commands) (e.g., `ls`, `df`, `pwd`, …) and [pipelines](https://en.wikipedia.org/wiki/Pipeline_%28Unix%29) (e.g., `fd | sort | unique`), or with more complex interfaces such as [network sockets](https://en.wikipedia.org/wiki/Network_socket).
 
@@ -43,11 +43,11 @@ POSIX is also linked with the [Unix Philosophy](https://en.wikipedia.org/wiki/Un
 
 As ML Engineers we have 2 possibilities for implementing an AI/ML solution: either [go all-in on a set of tools](https://en.wikipedia.org/wiki/Monolithic_application) or [create interfaces to combine, remove, and replace tools](https://en.wikipedia.org/wiki/Software_design_pattern) that are part of the solution.
 
-Going all-in is often the easier way to go. For instance, we can start a new project with [MLflow](https://mlflow.org/) for experiment tracking, [TensorFlow](https://www.tensorflow.org/) as our ML framework, and [Great Expectations](https://greatexpectations.io/) to validate our data. But wait, now the team wants to switch to [Neptune](https://docs.neptune.ai/), [PyTorch Lightning](https://pytorch-lightning.readthedocs.io/), and [Evidently](https://www.evidentlyai.com/) … That's a lot of rewrite and rework!
+Going all-in is often the easier way to go. For instance, we can start a new project with [MLflow](https://mlflow.org/) for experiment tracking, [TensorFlow](https://www.tensorflow.org/) as our ML framework, and [Great Expectations](https://greatexpectations.io/) to validate our data. But wait, now the team wants to switch to [Neptune](https://docs.neptune.ai/), [PyTorch Lightning](https://pytorch-lightning.readthedocs.io/), and [Evidently](https://www.evidentlyai.com/) … That's a lot of rewriting and rework!
 
 [Our goal as an engineer is to create abstractions](https://en.wikipedia.org/wiki/Abstraction_%28computer_science%29) and [protocols](https://developer.mozilla.org/en-US/docs/Web/HTTP/Overview) to avoid such hassle. On the web, we can use any web browser (e.g., Chrome, Firefox, Edge), with any web server (e.g., NGINX, Apache, Gunicorn) without any rewrite or custom integration. If something wants to create a new web program, this entity can do it without asking for permission or requiring changes from other actors.
 
-[**AI/ML is a complex field where new solutions are constantly added to solve an increasing number of user cases**](https://paperswithcode.com/) **. We should not limit nor slow the growth of AI/ML because of inconvenient software design.**
+[**AI/ML is a complex field where new solutions are constantly added to solve an increasing number of use cases**](https://paperswithcode.com/) **. We should not limit nor slow the growth of AI/ML because of inconvenient software design.**
 
 ### How should we implement it?
 

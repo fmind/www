@@ -8,7 +8,7 @@ syndicated = "https://medium.com/@fmind/its-not-artificial-recreating-a-conversa
 draft = false
 +++
 
-For many who grew up in the French-speaking world, the television series “[C’est pas sorcier](https://www.youtube.com/@Cestpassorcierofficiel)” was a cultural touchstone. Its format, featuring a duo of hosts explaining complex scientific topics in an accessible and entertaining manner, was one of my favorite TV show in my childhood.
+For many who grew up in the French-speaking world, the television series “[C’est pas sorcier](https://www.youtube.com/@Cestpassorcierofficiel)” was a cultural touchstone. Its format, featuring a duo of hosts explaining complex scientific topics in an accessible and entertaining manner, was one of my favorite TV shows in my childhood.
 
 This project was inspired by a desire to replicate that engaging, conversational dynamic using modern technology for my daughter. The goal was to leverage the latest advancements in generative AI — specifically the [multi-speaker text-to-speech](https://ai.google.dev/gemini-api/docs/speech-generation#multi-speaker) (TTS) capabilities of [Google’s Gemini models](https://ai.google.dev/gemini-api/docs) — to programmatically generate similar educational content. This project, titled “It’s Not Artificial,” demonstrates the power of this approach, and the results are highly promising!
 
@@ -121,7 +121,7 @@ response = client.models.generate_content(
 )
 ```
 
-The model parses the transcript, identifies the speaker tags (e.g., `Fred:` or `Jamy:)`, and applies the designated voice to the corresponding lines of dialogue. This produces a seamless, conversational audio file without the need for manual audio editing or splicing.
+The model parses the transcript, identifies the speaker tags (e.g., `Fred:` or `Jamy:`), and applies the designated voice to the corresponding lines of dialogue. This produces a seamless, conversational audio file without the need for manual audio editing or splicing.
 
 ### The Impact: Beyond Nostalgia 📈
 

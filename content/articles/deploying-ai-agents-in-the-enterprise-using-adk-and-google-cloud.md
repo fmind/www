@@ -120,7 +120,7 @@ Search Agent running on Vertex AI Agent Engine
 - **Control:** Less control over the underlying resources.
 - **Pricing:** The [pricing model](https://cloud.google.com/vertex-ai/pricing?authuser=1#agent_engine) per hardware is less flexible compared to request-based solutions.
 
-**Verdict:** A great starting point for deploying API-based agents, but a lack of flexibility for UI and A2A exposition. As the product become more mature, it should become the go-to option on GCP.
+**Verdict:** A great starting point for deploying API-based agents, but a lack of flexibility for UI and A2A exposition. As the product becomes more mature, it should become the go-to option on GCP.
 
 #### Option 3: The Sweet Spot — Cloud Run 🏃‍♀️
 

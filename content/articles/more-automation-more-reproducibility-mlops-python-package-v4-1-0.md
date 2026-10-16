@@ -65,7 +65,7 @@ import 'tasks/package.just'
 import 'tasks/project.just'
 ```
 
-And the one the task file ([tasks/check.just](https://github.com/fmind/mlops-python-package/blob/v4.1.0/tasks/check.just))
+And one of the task files ([tasks/check.just](https://github.com/fmind/mlops-python-package/blob/v4.1.0/tasks/check.just))
 
 ```justfile
 # run check tasks

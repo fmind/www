@@ -61,7 +61,7 @@ The results were, in many cases, quite impressive. Here are some key wins:
 - **Combining Knowledge:** The system could seamlessly integrate information from multiple textbooks, creating a cross-topic learning experience. For instance, when asked about leadership in a multicultural context, the assistant drew insights from multiple relevant textbooks.
 - **Cost-Effectiveness with Caching:** Context caching was a game-changer. _It reduced request costs by a factor of 4_, making the system much more practical for real-world use.
 
-**All in all, The assistant has positive gains on 10 out of 11 cases.**
+**All in all, the assistant has positive gains on 10 out of 11 cases.**
 
 ![Open Textbooks with Gemini Long Context — Slide 7](/static/img/articles/lessons-learned-from-the-gemini-long-context-kaggle-competition/05.webp)
 

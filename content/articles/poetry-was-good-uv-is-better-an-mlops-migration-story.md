@@ -147,7 +147,7 @@ def format(ctx: Context) -> None:
 
 #### Slimmer, Faster Docker Builds with Uv
 
-The benefits of Uv extends into our Docker builds as well. Our initial `Dockerfile` relied on installing the package wheel using `pip`:
+The benefits of Uv extend into our Docker builds as well. Our initial `Dockerfile` relied on installing the package wheel using `pip`:
 
 ```dockerfile
 FROM python:3.12

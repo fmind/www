@@ -28,7 +28,7 @@ Having to spin up a new React app every time you deploy an agent is soul-crushin
 
 #### The Identity Crisis
 
-User and Agent Identity is paramount. If an agent needs to access a database or pull a file from Google Drive, it must do so _on the user’s behalf,_ from the UI . We can’t have agents authenticating with god-mode service accounts, nor can we force users to re-authenticate with every single tool during an interaction. The UI must seamlessly handle delegated authority.
+User and Agent Identity is paramount. If an agent needs to access a database or pull a file from Google Drive, it must do so _on the user’s behalf,_ from the UI. We can’t have agents authenticating with god-mode service accounts, nor can we force users to re-authenticate with every single tool during an interaction. The UI must seamlessly handle delegated authority.
 
 #### Security and Governance: The Enterprise Non-Negotiables
 
@@ -41,7 +41,7 @@ Governance requires auditing every operation, ensuring data usage is controlled,
 When the UI layer fails, the organization feels the pain.
 
 1. **The Rise of Shadow IT:** When official tools are too hard to use or deploy, users find workarounds. We see a proliferation of quick-and-dirty solutions, like rogue [n8n](https://n8n.io/) instances deployed under someone’s desk, creating massive security vulnerabilities.
-2. **Agent Silos:** Agents should be collaborative. They need to interact with each other, leveraging protocols like the emerging [A2A (Agent-to-Agent) standard](https://a2a-protocol.org/). But when agents live in isolated, collaboration is impossible. They become siloed tools rather than a cohesive intelligence layer.
+2. **Agent Silos:** Agents should be collaborative. They need to interact with each other, leveraging protocols like the emerging [A2A (Agent-to-Agent) standard](https://a2a-protocol.org/). But when agents live in isolation, collaboration is impossible. They become siloed tools rather than a cohesive intelligence layer.
 3. **The “90% Done” Fallacy:** This is the classic trap. You hack together a [Streamlit](https://streamlit.io/) web app, deploy it, and declare the project 90% complete. Wrong. The real project — adoption, integration, security hardening, and UI refinement — is just beginning.
 
 ### Exploring the Approaches: The Good, The Bad, and The Ugly
@@ -123,11 +123,11 @@ Where do today’s solutions fit in?
 - [**n8n**](https://n8n.io/) **/** [**OpenAI Agent Builder**](https://openai.com/index/introducing-agentkit/) **(Visual Workflow):** Familiar with organizations, which aids adoption. However, they are fundamentally restrictive and don’t allow for the autonomy and human-in-the-loop interaction that GenAI agents can leverage.
 - [**OpenAI Apps**](https://openai.com/index/introducing-apps-in-chatgpt/) **/** [**Gemini Extensions**](https://support.google.com/gemini/answer/13695044?hl=en&co=GENIE.Platform%3DAndroid) **(Chat-First):** The easy fix, but they lack expressiveness. If we limit agents to simple chat interfaces, we risk repeating the failures of Alexa — useful for timers, but not for complex work.
 - [**Opal**](https://blog.google/technology/google-labs/opal-expansion/) **/** [**AG-UI**](https://github.com/ag-ui-protocol/ag-ui) **(Dynamic UI):** Great for small, isolated apps and user autonomy, but not scalable for large, complex systems. They are hard to edit, maintain, and ensure consistency.
-- [**AWS QuickSuite**](https://aws.amazon.com/fr/blogs/aws/reimagine-the-way-you-work-with-ai-agents-in-amazon-quick-suite/) **(Hybrid):** A pragmatic, conservative middle ground. [QuickSuite](https://docs.aws.amazon.com/quicksuite/latest/userguide/what-is.html) offers a toolset of GenAI variants with UIs tailored for specific tasks like data analysis, deep research, or conversation. A solid, choice, especially if you are using AWS services.
+- [**AWS QuickSuite**](https://aws.amazon.com/fr/blogs/aws/reimagine-the-way-you-work-with-ai-agents-in-amazon-quick-suite/) **(Hybrid):** A pragmatic, conservative middle ground. [QuickSuite](https://docs.aws.amazon.com/quicksuite/latest/userguide/what-is.html) offers a toolset of GenAI variants with UIs tailored for specific tasks like data analysis, deep research, or conversation. A solid choice, especially if you are using AWS services.
 
-![AWS Quic Suite with several experiences: Chat Agents, Flows, and Research](/static/img/articles/the-real-ai-agent-bottleneck-is-the-damn-ui/08.webp)
+![AWS Quick Suite with several experiences: Chat Agents, Flows, and Research](/static/img/articles/the-real-ai-agent-bottleneck-is-the-damn-ui/08.webp)
 
-AWS Quic Suite with several experiences: Chat Agents, Flows, and Research
+AWS Quick Suite with several experiences: Chat Agents, Flows, and Research
 
 - [**Gemini Enterprise**](https://cloud.google.com/gemini-enterprise?hl=en) **(Agent Hub Focus):** [Gemini Enterprise](https://cloud.google.com/gemini-enterprise) shows potential as a central hub, but it needs to deliver richer expressiveness beyond the standard chat interface to truly unlock agent potential. One solution is to control other UI (e.g., Google Sheets) from the chat app.
 

@@ -68,11 +68,14 @@ def range_file_response(
             if_range = request_headers.get("if-range")
             method = scope.get("method", "GET")
 
-            # If-Range uses strong ETag comparison. A mismatch deliberately
-            # ignores even a malformed Range field and serves the whole file.
-            honor_range = range_header is not None and _if_range_matches(if_range, etag)
-            if method not in {"GET", "HEAD"}:
-                honor_range = False
+            # RFC 9110: only GET supports Range; unknown units are ignored and
+            # unit names are case-insensitive. If-Range requires a strong ETag.
+            honor_range = (
+                method == "GET"
+                and range_header is not None
+                and range_header.partition("=")[0].lower() == "bytes"
+                and _if_range_matches(if_range, etag)
+            )
 
             ranges: list[_ByteRange] | None = None
             if honor_range and range_header is not None:
@@ -80,12 +83,12 @@ def range_file_response(
                     requested_ranges = _parse_ranges(range_header, size)
                 except _NoOverlapError:
                     if size:
-                        await _send_error(send, method, _NO_OVERLAP_BODY, size)
+                        await _send_error(send, _NO_OVERLAP_BODY, size)
                         return
                     # An empty representation can satisfy clients that always send Range.
                     requested_ranges = []
                 except _MalformedRangeError:
-                    await _send_error(send, method, _INVALID_RANGE_BODY)
+                    await _send_error(send, _INVALID_RANGE_BODY)
                     return
 
                 # Parsing already rejects overlaps and bounds every range to the file.
@@ -201,7 +204,7 @@ async def _stream_multipart(
     await send({"type": "http.response.body", "body": _multipart_epilogue(boundary), "more_body": False})
 
 
-async def _send_error(send: Send, method: str, body: bytes, size: int | None = None) -> None:
+async def _send_error(send: Send, body: bytes, size: int | None = None) -> None:
     headers = [
         (b"content-type", b"text/plain; charset=utf-8"),
         (b"content-length", str(len(body)).encode("ascii")),
@@ -209,16 +212,13 @@ async def _send_error(send: Send, method: str, body: bytes, size: int | None = N
     if size is not None:
         headers.append((b"content-range", f"bytes */{size}".encode("ascii")))
     await send({"type": "http.response.start", "status": 416, "headers": headers})
-    await send({"type": "http.response.body", "body": b"" if method == "HEAD" else body, "more_body": False})
+    await send({"type": "http.response.body", "body": body, "more_body": False})
 
 
 def _parse_ranges(value: str, size: int) -> list[_ByteRange]:
-    if not value.startswith("bytes="):
-        raise _MalformedRangeError
-
     ranges: list[_ByteRange] = []
     no_overlap = False
-    for raw_specifier in value.removeprefix("bytes=").split(","):
+    for raw_specifier in value.partition("=")[2].split(","):
         specifier = raw_specifier.strip(" \t")
         if not specifier:
             continue

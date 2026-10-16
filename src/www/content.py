@@ -451,7 +451,7 @@ def _source_set(static_dir: Path, source: str, source_width: int) -> tuple[str, 
     return ", ".join(candidates), FIGURE_SIZES
 
 
-def enhance_body_images(body: str, static_dir: Path) -> tuple[str, str, str]:
+def enhance_body_images(body: str, static_dir: Path) -> str:
     body = _VIDEO.sub(
         r'<video muted loop playsinline autoplay controls aria-label="\2"><source src="\1" type="video/mp4">Your browser does not support embedded video.</video>',
         body,
@@ -461,24 +461,21 @@ def enhance_body_images(body: str, static_dir: Path) -> tuple[str, str, str]:
         body,
     )
     body = _fold_captions(body)
-    lead_srcset = ""
-    lead_sizes = ""
     position = 0
 
     def replace(match: re.Match[str]) -> str:
-        nonlocal lead_srcset, lead_sizes, position
+        nonlocal position
         source = match.group(1)
         width, height = _image_size(static_dir, source)
         srcset, sizes = _source_set(static_dir, source, width)
+        # The first figure may be visible, but text can push it far below the fold.
+        # Let the browser prioritize it instead of competing with fonts and CSS.
         loading = "" if position == 0 else ' loading="lazy"'
-        priority = ' fetchpriority="high"' if position == 0 else ""
-        if position == 0:
-            lead_srcset, lead_sizes = srcset, sizes
         position += 1
         responsive = f' srcset="{srcset}" sizes="{sizes}"' if srcset else ""
-        return f'<img{loading}{priority} decoding="async" width="{width}" height="{height}"{responsive} src="{source}"'
+        return f'<img{loading} decoding="async" width="{width}" height="{height}"{responsive} src="{source}"'
 
-    return _IMAGE.sub(replace, body), lead_srcset, lead_sizes
+    return _IMAGE.sub(replace, body)
 
 
 def parse_article(name: str, data: bytes, static_dir: Path = Path("static")) -> Article:
@@ -523,7 +520,7 @@ def parse_article(name: str, data: bytes, static_dir: Path = Path("static")) -> 
         card_image_path = _card_cover(static_dir, slug)
         markdown = markdown_bytes.decode("utf-8")
         rendered, sections = _render_markdown(markdown)
-        body, srcset, sizes = enhance_body_images(rendered, static_dir)
+        body = enhance_body_images(rendered, static_dir)
         word_count = len(markdown.split())
         reading_minutes = max(1, (word_count + WORDS_PER_MINUTE - 1) // WORDS_PER_MINUTE)
         article_url = f"{METADATA.site_url}/articles/{slug}/"
@@ -540,8 +537,6 @@ def parse_article(name: str, data: bytes, static_dir: Path = Path("static")) -> 
             url=article_url,
             image_url=METADATA.site_url + image_path,
             card_image_url=METADATA.site_url + card_image_path,
-            cover_srcset=srcset,
-            cover_sizes=sizes,
             image_alt=title,
             reading_minutes=reading_minutes,
             markdown=markdown,

@@ -107,7 +107,7 @@ I would not bother spelling this out if I had not lost an afternoon, more than o
 
 ### A walkthrough — optimize cli startup
 
-The shipped example trims a Node.js CLI’s cold-start time on — version. The brief pins one gate set (build green, tests green) and one rubric axis (median of five hyperfine runs, minimize).
+The shipped example trims a Node.js CLI’s cold-start time on `--version`. The brief pins one gate set (build green, tests green) and one rubric axis (median of five hyperfine runs, minimize).
 
 ```console
 $ /new-agent-evolution "optimize cli startup"
@@ -145,7 +145,7 @@ Three patterns where I deliberately do not reach for evolutions, and the skill r
 - **There is no mechanical measure — not even a proxy.** “Make this prose more engaging” has no shell exit and no number. Use a normal review.
 - **The user has already decided the design.** “Implement X.” is a levers job, not an evolutions job. Don’t manufacture a search space just to use the tool.
 
-If a brief tries to start without a gate or a rubric axis, the Capture skill pushes back: _“we need at least one mechanical check before variants make sense.”_ Either we co-author one, or the evolution doesn’t get a folder. That refusal is on purpose — it is the load-bearing reason variants ranking _means_ something at the end.
+If a brief tries to start without a gate or a rubric axis, the Capture skill pushes back: _“we need at least one mechanical check before variants make sense.”_ Either we co-author one, or the evolution doesn’t get a folder. That refusal is on purpose — it is the load-bearing reason variant ranking _means_ something at the end.
 
 ### The leverage axis
 

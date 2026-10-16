@@ -12,9 +12,9 @@ MLOps projects are straightforward to initiate, but challenging to perfect. Whil
 
 Throughout my career, I have thoroughly explored various strategies to make my code base both simple and powerful. In 2009, I had the opportunity to collaborate with seasoned developers and enthusiasts of design patterns in object-oriented languages such as [C++](https://isocpp.org/) and [Java](https://www.java.com/en/). By 2015, I had devoted hundreds of hours to mastering functional programming paradigms with languages like [Clojure](https://clojure.org/) (LISP) and [Haskell](https://www.haskell.org/). This journey led me to discover both modern and time-tested practices, which I have applied to my AI/ML projects. I am eager to share these practices and reveal the most effective solutions I’ve encountered.
 
-![The Three Little Pig illustrates the needs for building robust structures](/static/img/articles/make-your-mlops-code-base-solid-with-pydantic-and-pythons-abc/cover.webp)
+![The Three Little Pigs illustrates the need for building robust structures](/static/img/articles/make-your-mlops-code-base-solid-with-pydantic-and-pythons-abc/cover.webp)
 
-The Three Little Pig illustrates the needs for building robust structures
+The Three Little Pigs illustrates the need for building robust structures
 
 **In this article, I propose a method to develop high-quality MLOps projects using Python's ABC and Pydantic**. I begin by emphasizing the importance of implementing SOLID software practices in AI/ML codebases. Next, I offer some background on design patterns and the SOLID principles. Then, I recount my experiences with various code architectures and their limitations. Finally, I explain how Python's ABC and Pydantic can enhance the quality of your Python code and facilitate the adoption of sound coding practices.
 
@@ -155,7 +155,7 @@ This script, while concise, combines data loading, preprocessing, model training
 
 #### Functional Programming (FP)
 
-Adopting [Functional Programming](https://en.wikipedia.org/wiki/Functional_programming) (FP) represents a significant enhancement compared to merely scripting. Rather than delineating a singular workflow for your program, FP allows for the encapsulation of code components into functions. These functions can then be orchestrated in a declarative workflow, enhancing code clarity and structure. This approach embraces core functional programming concepts, such as [high-order functions](https://en.wikipedia.org/wiki/Higher-order_function), [immutability](https://en.wikipedia.org/wiki/Immutable_object) and [pure functions](https://en.wikipedia.org/wiki/Pure_function). For instance, the example below showcases how a model can be created from a string using the two high-order level function _get_model()_ and _train_model():_
+Adopting [Functional Programming](https://en.wikipedia.org/wiki/Functional_programming) (FP) represents a significant enhancement compared to merely scripting. Rather than delineating a singular workflow for your program, FP allows for the encapsulation of code components into functions. These functions can then be orchestrated in a declarative workflow, enhancing code clarity and structure. This approach embraces core functional programming concepts, such as [higher-order functions](https://en.wikipedia.org/wiki/Higher-order_function), [immutability](https://en.wikipedia.org/wiki/Immutable_object) and [pure functions](https://en.wikipedia.org/wiki/Pure_function). For instance, the example below showcases how a model can be created from a string using the two higher-order functions _get_model()_ and _train_model():_
 
 ```python
 from typing import Callable, Tuple

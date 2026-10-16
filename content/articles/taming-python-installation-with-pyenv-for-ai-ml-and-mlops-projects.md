@@ -48,7 +48,7 @@ curl https://pyenv.run | bash
 
 #### Setting Up Your Shell Environment
 
-For bash and zsh shells, add these lines to both ~/.bashrc ~/.zshrc or ~/.profile:
+For bash and zsh shells, add these lines to both ~/.bashrc and ~/.zshrc or ~/.profile:
 
 ```bash
 export PYENV_ROOT="$HOME/.pyenv"

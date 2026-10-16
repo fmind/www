@@ -133,8 +133,8 @@ def test_human_pages_render_complete_no_cache_documents(client: AppClient) -> No
         feed_url = f"{METADATA.site_url}/articles/feed.xml"
         discovery = f'<link rel="alternate" type="application/atom+xml" href="{feed_url}" title="Fmind articles"/>'
         assert response.text.count(discovery) == 1, path
-        # Feed readers discover the head link everywhere; the event card shows no visible feed link.
-        if path != "/connect":
+        # Feed discovery stays site-wide; the contact cards have no visible feed links.
+        if path not in {"/connect", "/scan"}:
             assert 'href="/articles/feed.xml" type="application/atom+xml"' in response.text, path
         if status == 404:
             assert 'content="noindex, follow"' in response.text
@@ -300,10 +300,10 @@ def test_connect_actions_and_contact_download(client: AppClient) -> None:
     assert "example.org" not in response.text
     assert "connect-qr.svg" not in response.text
     assert "Go to my website" in response.text
-    # The event card stays focused on contact actions: no feed link, hint, or site footer.
+    # The event card keeps only contact actions and access to consent settings.
     assert 'href="/articles/feed.xml"' not in response.text
     assert "feed reader" not in response.text
-    assert "<footer" not in response.text
+    assert "data-consent-open hidden>Cookie settings</button>" in response.text
     card = client.get("/connect.vcf")
     assert card.status_code == 200
     assert card.headers["content-type"] == "text/vcard; charset=utf-8"
@@ -335,8 +335,16 @@ def test_scan_shares_the_permanent_contact_destination_without_search_indexing(c
     assert 'href="https://www.fmind.dev/connect"' in response.text
     assert "example.org" not in response.text
     assert "Connect on LinkedIn" not in response.text
+    assert 'href="/articles/feed.xml"' not in response.text
+    assert "data-consent-open hidden>Cookie settings</button>" in response.text
     for path in ("/sitemap.xml", "/llms.txt"):
         assert f"{METADATA.site_url}/scan" not in client.get(path).text
+
+
+def test_tiny_task_acceptance_renders_validation_instead_of_a_server_error(client: AppClient) -> None:
+    response = client.get("/sites/llm-self-hosting/?mode=advanced&quality=on&quality-0-acceptance=1e-310")
+    assert response.status_code == 200
+    assert "quality-0-acceptance must be zero or at least 0.0000001" in response.text
 
 
 def test_machine_surfaces_keep_content_cache_and_cors_contracts(client: AppClient) -> None:
@@ -645,16 +653,34 @@ def test_static_unknown_and_noncanonical_paths_are_not_found(client: AppClient, 
 
 
 def test_font_preloads_share_the_unversioned_font_face_cache_keys(client: AppClient) -> None:
-    response = client.get("/articles/the-affordable-ai-agents/")
+    response = client.get("/articles/ackgent-rapid-agent-development-on-gcp-with-adk-and-agent-config/")
 
     for path in FONT_PATHS:
         assert f'<link rel="preload" href="{path}"' in response.text
         assert f'href="{path}?v=' not in response.text
 
 
+def test_article_figures_do_not_compete_with_critical_font_and_stylesheet_loads(client: AppClient) -> None:
+    response = client.get("/articles/ackgent-rapid-agent-development-on-gcp-with-adk-and-agent-config/")
+
+    assert 'as="image"' not in response.text
+    assert 'fetchpriority="high"' not in response.text
+    assert '<img decoding="async"' in response.text
+    assert 'srcset="/static/img/articles/' in response.text
+
+
 @pytest.mark.parametrize(
     ("path", "code_font"),
-    [("/", False), ("/connect", False), ("/articles/", False), ("/sites/", False), ("/scan", True), ("/agents", True)],
+    [
+        ("/", False),
+        ("/connect", False),
+        ("/articles/", False),
+        ("/sites/", False),
+        ("/scan", True),
+        ("/agents", True),
+        ("/articles/the-affordable-ai-agents/", False),
+        ("/articles/ackgent-rapid-agent-development-on-gcp-with-adk-and-agent-config/", True),
+    ],
 )
 def test_only_pages_with_monospace_text_preload_the_code_font(client: AppClient, path: str, code_font: bool) -> None:
     response = client.get(path)
@@ -693,12 +719,10 @@ def test_static_assets_support_bounded_byte_ranges(client: AppClient) -> None:
     assert partial.headers["etag"] == full.headers["etag"]
     assert partial.headers["content-length"] == "10"
 
-    assert head.status_code == 206
+    assert head.status_code == 200
     assert head.content == b""
-    assert (
-        head.headers["content-range"] == f"bytes {len(full.content) - 10}-{len(full.content) - 1}/{len(full.content)}"
-    )
-    assert head.headers["content-length"] == "10"
+    assert "content-range" not in head.headers
+    assert head.headers["content-length"] == str(len(full.content))
 
 
 def test_every_response_has_security_headers_and_text_can_compress(client: AppClient) -> None:

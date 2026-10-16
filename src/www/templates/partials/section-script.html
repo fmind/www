@@ -4,6 +4,8 @@ var sections = Array.from(document.querySelectorAll('.portfolio-content section[
 var sectionToolbar = document.getElementById('section-toolbar');
 var header = document.querySelector('header');
 var updateSection = function () {
+  // Both section navigation controls are hidden below this breakpoint.
+  if (!window.matchMedia('(min-width: 1024px)').matches) return;
   // Match the anchor offset; a section remains current until the next reaches it.
   var offset = Math.max(header.getBoundingClientRect().bottom, sectionToolbar.getBoundingClientRect().bottom) + 24;
   var current = null;

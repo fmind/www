@@ -183,6 +183,17 @@ def test_candidate_without_traffic_is_verified_on_its_tagged_url(candidate: dict
         verify_service(candidate, IMAGE, COMMIT)
 
 
+@pytest.mark.parametrize("separate_entry", [False, True])
+def test_candidate_must_not_receive_production_traffic(candidate: dict[str, Any], separate_entry: bool) -> None:
+    candidate["status"]["traffic"][0]["percent"] = 90
+    if separate_entry:
+        candidate["status"]["traffic"].append({"revisionName": REVISION, "percent": 10})
+    else:
+        candidate["status"]["traffic"][1]["percent"] = 10
+    with pytest.raises(ValueError, match="already receives production traffic"):
+        verify(candidate)
+
+
 @pytest.mark.parametrize(
     ("entry", "message"),
     [

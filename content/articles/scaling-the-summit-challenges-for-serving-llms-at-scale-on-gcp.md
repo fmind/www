@@ -79,7 +79,7 @@ We evaluated four distinct approaches for serving LLMs on GCP, intentionally exc
 
 User Interface of Vertex AI Studio (MaaS)
 
-- **The Good**: It’s incredibly convenient. There’s no infrastructure to manage, it integrates seamlessly with the GCP ecosystem, and you pay per use for each input/output tokens. For building applications like RAG systems or agents where you don’t have stringent scalability requirements, this is a fantastic starting point!
+- **The Good**: It’s incredibly convenient. There’s no infrastructure to manage, it integrates seamlessly with the GCP ecosystem, and you pay per use for each input/output token. For building applications like RAG systems or agents where you don’t have stringent scalability requirements, this is a fantastic starting point!
 - **The Challenge**: This simplicity comes at the cost of control. As our benchmarks show, the [default pay-as-you-go model](https://cloud.google.com/vertex-ai/generative-ai/pricing) has [strict rate limits](https://cloud.google.com/vertex-ai/generative-ai/docs/dynamic-shared-quota). When under load, you’ll quickly run into `429 - RESOURCE_EXHAUSTED` errors. The primary lever for scaling is either [increasing your account quotas](https://cloud.google.com/vertex-ai/generative-ai/docs/dynamic-shared-quota), or [purchasing provisioned throughput](https://cloud.google.com/vertex-ai/generative-ai/docs/provisioned-throughput/error-code-429) which reserves capacity for your model but comes at a significant cost. You also have limited knobs to tune performance (e.g., disable the "thinking" mode, which can reduce latency for certain use cases).
 
 ![Code exported on the Vertex AI Studio Web Console](/static/img/articles/scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/04.webp)
@@ -90,7 +90,7 @@ Code exported on the Vertex AI Studio Web Console
 
 [**Vertex AI Online Inference**](https://cloud.google.com/vertex-ai/docs/predictions/overview) allows you to deploy open-source models like Gemma using pre-built, optimized containers. You get a managed solution but with more control over the underlying hardware and scaling behavior than MaaS.
 
-- **The Good**: It’s a great trade-off between power and simplicity. You can [select your machine type and GPU](https://cloud.google.com/vertex-ai/docs/predictions/configure-compute) (e.g., an `g2-standard-24` with 2 x L4 GPU), [configure scaling parameters](https://cloud.google.com/vertex-ai/docs/predictions/choose-endpoint-type), and deploy. It abstracts away much of the complexity of managing infrastructure, making it ideal for teams that want to expose an LLM without a dedicated MLOps or Kubernetes expert.
+- **The Good**: It’s a great trade-off between power and simplicity. You can [select your machine type and GPU](https://cloud.google.com/vertex-ai/docs/predictions/configure-compute) (e.g., a `g2-standard-24` with 2 x L4 GPUs), [configure scaling parameters](https://cloud.google.com/vertex-ai/docs/predictions/choose-endpoint-type), and deploy. It abstracts away much of the complexity of managing infrastructure, making it ideal for teams that want to expose an LLM without a dedicated MLOps or Kubernetes expert.
 
 ![Configuration for deploying Gemma 3 12B from Vertex AI Online Inference](/static/img/articles/scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/05.webp)
 
@@ -143,8 +143,8 @@ proxy-cloud-run-ollama model="gemma3-12b":
 
 Configuration for deploying Gemma 3 12B on GKE
 
-- **The Good**: Unmatched power, control, and potential for throughput. For demanding, large-scale production workloads, this is the ultimate architecture. Google has made strides in simplifying this process with a [dedicated section on AI/ML workloads](https://cloud.google.com/kubernetes-engine/docs/integrations/ai-infra), like this tutorials on [serving Gemma with vLLM on GKE](https://cloud.google.com/kubernetes-engine/docs/tutorials/serve-gemma-gpu-vllm).
-- **The Challenge**: Complexity. This path is not for the faint of heart. In this end, it requires [significant Kubernetes expertise](https://cloud.google.com/kubernetes-engine/docs/concepts/machine-learning/inference) to configure networking, node pools, autoscaling, and the serving framework itself. In my case, this peak remained unclimbed. Due to project quotas limiting me to a single L4 GPU, I couldn’t provision the necessary multi-GPU GKE node required to serve the Gemma 3 12B model effectively, highlighting a very real-world constraint for small teams and companies.
+- **The Good**: Unmatched power, control, and potential for throughput. For demanding, large-scale production workloads, this is the ultimate architecture. Google has made strides in simplifying this process with a [dedicated section on AI/ML workloads](https://cloud.google.com/kubernetes-engine/docs/integrations/ai-infra), like this tutorial on [serving Gemma with vLLM on GKE](https://cloud.google.com/kubernetes-engine/docs/tutorials/serve-gemma-gpu-vllm).
+- **The Challenge**: Complexity. This path is not for the faint of heart. In the end, it requires [significant Kubernetes expertise](https://cloud.google.com/kubernetes-engine/docs/concepts/machine-learning/inference) to configure networking, node pools, autoscaling, and the serving framework itself. In my case, this peak remained unclimbed. Due to project quotas limiting me to a single L4 GPU, I couldn’t provision the necessary multi-GPU GKE node required to serve the Gemma 3 12B model effectively, highlighting a very real-world constraint for small teams and companies.
 
 ![No GPU for freelance developers :(](/static/img/articles/scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/10.webp)
 

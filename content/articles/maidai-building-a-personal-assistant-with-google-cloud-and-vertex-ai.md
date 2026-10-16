@@ -113,7 +113,7 @@ async def index(request: Request) -> dict:
     return respond(await chat(user_input))
 ```
 
-This pattern allows me to have a `/links` command that returns immediately (0 latency, 0 cost), while a `/rewrite` command leverages Gemin 2.0 Flash for creative work.
+This pattern allows me to have a `/links` command that returns immediately (0 latency, 0 cost), while a `/rewrite` command leverages Gemini 2.0 Flash for creative work.
 
 ### 3. Asynchrony by Default
 

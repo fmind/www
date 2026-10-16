@@ -254,7 +254,7 @@ def test_images_get_figures_dimensions_responsive_ladder_and_loading(tmp_path: P
     item = parse_article("content/articles/example.md", source(body), static)
 
     assert '<figure><a href="/static/img/articles/example/cover.webp"' in item.html
-    assert '<img fetchpriority="high" decoding="async" width="2074" height="1138"' in item.html
+    assert '<img decoding="async" width="2074" height="1138"' in item.html
     assert (
         'srcset="/static/img/articles/example/cover-800.webp 800w, '
         "/static/img/articles/example/cover-1280.webp 1280w, "
@@ -262,8 +262,7 @@ def test_images_get_figures_dimensions_responsive_ladder_and_loading(tmp_path: P
     )
     assert f'sizes="{FIGURE_SIZES}"' in item.html
     assert '<img loading="lazy" decoding="async" width="400" height="300"' in item.html
-    assert item.cover_srcset.endswith("cover.webp 2074w")
-    assert item.cover_sizes == FIGURE_SIZES
+    assert 'fetchpriority="high"' not in item.html
 
 
 @pytest.mark.parametrize("kind", [b"VP8 ", b"VP8L", b"VP8X"])
@@ -402,7 +401,7 @@ def test_inline_images_stay_inline_and_explicit_mp4_becomes_video(tmp_path: Path
     item = parse_article("content/articles/example.md", source(body), static)
 
     assert item.html.count("<figure>") == 0
-    assert '<img fetchpriority="high" decoding="async" width="16" height="16"' in item.html
+    assert '<img decoding="async" width="16" height="16"' in item.html
     assert "<video muted loop playsinline autoplay controls" in item.html
     assert 'aria-label="editor demo"' in item.html
 

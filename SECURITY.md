@@ -6,13 +6,13 @@ Report vulnerabilities privately to <contact@fmind.dev> with the affected URL/co
 
 Deployment scans and smoke-tests the pushed immutable digest before Cloud Run receives it, then verifies the new revision on a no-traffic tagged URL before promoting that exact revision. Fixable HIGH/CRITICAL vulnerabilities and secrets block rollout. The weekly [security workflow](.github/workflows/security.yml) scans every serving or tagged revision digest through a separate read-only identity and retains unfiltered advisory evidence for 30 days. Passing the filtered gate does not mean zero advisories.
 
-Trivy may warn about third-party SBOM metadata or [fallback severity sources](https://trivy.dev/docs/v0.75/guide/scanner/vulnerability/#severity-selection). Review the full findings and package inventory; do not silence diagnostics, narrow severity sources, or add ignores merely to produce a quiet log.
+Trivy may warn about third-party SBOM metadata or [fallback severity sources](https://trivy.dev/docs/v0.76/guide/scanner/vulnerability/#severity-selection). Review the full findings and package inventory; do not silence diagnostics, narrow severity sources, or add ignores merely to produce a quiet log.
 
 ## Current advisory review
 
-**Owner:** Médéric Hurier. **Reviewed:** 2026-10-12. **Next review:** 2026-10-19, or immediately on a new fixable finding or relevant runtime change.
+**Owner:** Médéric Hurier. **Reviewed:** 2026-10-16. **Next review:** 2026-10-23, or immediately on a new fixable finding or relevant runtime change.
 
-The current candidate uses `python:3.14.8-slim@sha256:f85c5697265c178cc6887276c55fe16cf3d14ca35c3df6a5eab3b360534a55d2`, and its runtime stage applies pending Debian security updates because they can lag the base image. The fixable vulnerability/secret gate and HTTP/MCP image smoke pass. The October 12 unfiltered candidate scan reports 44 Trivy HIGH package/advisory instances across the eight CVEs below, no CRITICAL findings, and no fixes available for the deployed Debian trixie packages. Upstream and Debian unstable fixes exist; their availability does not imply a compatible trixie update. Each new rollout still needs its own serving-digest evidence.
+The current candidate uses `python:3.14.8-slim@sha256:a2b82f3c48559aa0a8446d9af49826b6e2b2016f4cd2afabfe6013ec53729170`, and its runtime stage applies pending Debian security updates because they can lag the base image. The fixable vulnerability/secret gate and HTTP/MCP image smoke pass. The October 16 unfiltered scans of this candidate and both serving/tagged revision images each report 44 Trivy HIGH package/advisory instances across the eight CVEs below, no CRITICAL findings, and no fixes available for the installed Debian trixie packages. Upstream and Debian unstable fixes exist; their availability does not imply a compatible trixie update. Each new rollout still needs its own serving-digest evidence.
 
 | Residual advisories                                                        | Application exposure assessment                                                                           |
 | -------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |

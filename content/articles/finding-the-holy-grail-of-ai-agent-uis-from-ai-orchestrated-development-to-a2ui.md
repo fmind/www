@@ -86,7 +86,7 @@ Instead of streaming markdown tokens like a traditional LLM, the agent streams s
 
 Source: [https://a2ui.org/](https://a2ui.org/)
 
-The client can use the [Lit renderer](https://github.com/google/A2UI/tree/main/renderers/lit), [Angular renderer](https://github.com/google/A2UI/tree/main/renderers/angular), or [Flutter renderer](https://docs.flutter.dev/ai/genui) to render native components progressively.
+The client can use the [Lit renderer](https://github.com/a2ui-project/a2ui/tree/main/typescript/renderers/lit), [Angular renderer](https://github.com/a2ui-project/a2ui/tree/main/typescript/renderers/angular), or [Flutter renderer](https://docs.flutter.dev/ai/genui) to render native components progressively.
 
 ### Why it wins
 

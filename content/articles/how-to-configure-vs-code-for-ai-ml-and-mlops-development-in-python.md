@@ -10,7 +10,7 @@ draft = false
 
 [Visual Studio Code](https://code.visualstudio.com/) is a remarkable application. In the past, developers faced a choice between simple, lightweight [text editors](https://en.wikipedia.org/wiki/List_of_text_editors) like Vim, Atom, and Emacs or powerful yet complex [IDEs](https://en.wikipedia.org/wiki/Comparison_of_integrated_development_environments) such as PyCharm and Eclipse. I can recall a time when running my IDE (Netbeans), my browser (Firefox), and my application (Java) simultaneously on a laptop with just 512MB of RAM was a challenge. Today, with VS Code, programmers have access to a versatile, modern, powerful, open-source tool well-supported by the community.
 
-But possessing a good tool is only the beginning. **Just as a skilled craftsman must master their tools, it’s essential for programmers to become proficient with their editor for enhanced productivity**. In this article, I will outline the steps for configuring VS Code for data scientists and machine learning engineers. I’ll start by listing extensions that augmente your programming environment. Then, I will share some settings and keybindings to enhance your development experience. Finally, I’ll provide tips and tricks to boost your coding efficiency with VS Code.
+But possessing a good tool is only the beginning. **Just as a skilled craftsman must master their tools, it’s essential for programmers to become proficient with their editor for enhanced productivity**. In this article, I will outline the steps for configuring VS Code for data scientists and machine learning engineers. I’ll start by listing extensions that augment your programming environment. Then, I will share some settings and keybindings to enhance your development experience. Finally, I’ll provide tips and tricks to boost your coding efficiency with VS Code.
 
 ![Photo by Andrew Ruiz on Unsplash](/static/img/articles/how-to-configure-vs-code-for-ai-ml-and-mlops-development-in-python/cover.webp)
 
@@ -27,7 +27,7 @@ This section lists the extensions you can install from [VS Code Marketplace](htt
 - [**KevinRose.vsc-python-indent**](https://marketplace.visualstudio.com/items?itemName=KevinRose.vsc-python-indent): improve the default indentation for Python files.
 - [**ms-python.black-formatter**](https://marketplace.visualstudio.com/items?itemName=ms-python.black-formatter): format your code automatically.
 - [**ms-python.isort**](https://marketplace.visualstudio.com/items?itemName=ms-python.isort) **:** format your import statements automatically.
-- [**ms-python.mypy-type-checker**](https://marketplace.visualstudio.com/items?itemName=ms-python.mypy-type-checker): source typing for Python. Great to validate your code and communicate it should be used.
+- [**ms-python.mypy-type-checker**](https://marketplace.visualstudio.com/items?itemName=ms-python.mypy-type-checker): source typing for Python. Great to validate your code and communicate how it should be used.
 - [**ms-python.pylint**](https://marketplace.visualstudio.com/items?itemName=ms-python.pylint): linting support for Python. Improve your code quality and avoid code smells.
 - [**ms-python.python**](https://marketplace.visualstudio.com/items?itemName=ms-python.python): language support for Python (linting, debugging, code formatting, and more).
 - [**ms-python.vscode-pylance**](https://marketplace.visualstudio.com/items?itemName=ms-python.vscode-pylance): enhanced language server for Python (static checker, intellicode, …).
@@ -47,15 +47,15 @@ This section lists the extensions you can install from [VS Code Marketplace](htt
 - [**ms-vscode-remote.vscode-remote-extensionpack**](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.vscode-remote-extensionpack): extension pack for remote developments: Dev Containers, Remote SSH, Remote Tunnels, WSL.
 - [**ms-vscode.remote-explorer**](https://marketplace.visualstudio.com/items?itemName=ms-vscode.remote-explorer): view remote machines (SSH) and tunnels.
 - [**ms-vscode.remote-repositories**](https://marketplace.visualstudio.com/items?itemName=ms-vscode.remote-repositories): remotely browse and edit git repositories.
-- [**ms-vsliveshare.vsliveshare**](https://marketplace.visualstudio.com/items?itemName=MS-vsliveshare.vsliveshare): edit code from your colleague computer (and vice versa). Useful for collaboration and troubleshooting.
+- [**ms-vsliveshare.vsliveshare**](https://marketplace.visualstudio.com/items?itemName=MS-vsliveshare.vsliveshare): edit code from your colleague’s computer (and vice versa). Useful for collaboration and troubleshooting.
 - [**mutantdino.resourcemonitor**](https://marketplace.visualstudio.com/items?itemName=mutantdino.resourcemonitor): display the resource usage of your system in the status bar (CPU, RAM, …). Always useful for data projects.
 - [**njpwerner.autodocstring**](https://marketplace.visualstudio.com/items?itemName=njpwerner.autodocstring): automatically generate Python docstrings from object definitions.
 - [**redhat.vscode-yaml**](https://marketplace.visualstudio.com/items?itemName=redhat.vscode-yaml): YAML language support. Great file format for configuring your application.
 - [**streetsidesoftware.code-spell-checker**](https://marketplace.visualstudio.com/items?itemName=streetsidesoftware.code-spell-checker): highlight and fix spelling mistakes in your code.
-- [**tamasfe.even-better-toml**](https://marketplace.visualstudio.com/items?itemName=tamasfe.even-better-toml): TOML language support. Improve the edition of your`pyproject.toml` file.
+- [**tamasfe.even-better-toml**](https://marketplace.visualstudio.com/items?itemName=tamasfe.even-better-toml): TOML language support. Improve the edition of your `pyproject.toml` file.
 - [**usernamehw.errorlens**](https://marketplace.visualstudio.com/items?itemName=usernamehw.errorlens): display warnings and errors next to your code (instead of a dedicated window).
 - [**VisualStudioExptTeam.vscodeintellicode**](https://marketplace.visualstudio.com/items?itemName=VisualStudioExptTeam.vscodeintellicode): AI-assisted development features for VS Code.
-- [**yzhang.markdown-all-in-one**](https://marketplace.visualstudio.com/items?itemName=yzhang.markdown-all-in-one): tons of feature for editing Markdown files (shortcuts, table of content, language support, …).
+- [**yzhang.markdown-all-in-one**](https://marketplace.visualstudio.com/items?itemName=yzhang.markdown-all-in-one): tons of features for editing Markdown files (shortcuts, table of contents, language support, …).
 
 #### C Tier: The Good
 
@@ -64,7 +64,7 @@ This section lists the extensions you can install from [VS Code Marketplace](htt
 - [**christian-kohler.path-intellisense**](https://marketplace.visualstudio.com/items?itemName=christian-kohler.path-intellisense): autocomplete file paths on your system.
 - [**dchanco.vsc-invoke**](https://marketplace.visualstudio.com/items?itemName=dchanco.vsc-invoke): execute [Invoke](https://www.pyinvoke.org/) tasks from VS Code (alternative to [GNU Make](https://www.gnu.org/software/make/manual/make.html)).
 - [**donjayamanne.githistory**](https://marketplace.visualstudio.com/items?itemName=donjayamanne.githistory): visualize your Git history (files, branches, commits, …).
-- [**eamodio.gitlens**](https://marketplace.visualstudio.com/items?itemName=eamodio.gitlens): enhanced your git experience (e.g., git blame, code lens, …).
+- [**eamodio.gitlens**](https://marketplace.visualstudio.com/items?itemName=eamodio.gitlens): enhance your git experience (e.g., git blame, code lens, …).
 - [**GitHub.remotehub**](https://marketplace.visualstudio.com/items?itemName=GitHub.remotehub): remotely browse and edit GitHub repositories.
 - [**github.vscode-github-actions**](https://marketplace.visualstudio.com/items?itemName=GitHub.vscode-github-actions): manage GitHub Actions workflows from VS Code.
 - [**GitHub.vscode-pull-request-github**](https://marketplace.visualstudio.com/items?itemName=GitHub.vscode-pull-request-github): manage GitHub Pull Requests from VS Code.
@@ -94,7 +94,7 @@ Three features have remarkably enhanced my programming productivity throughout m
 
 Vim Cheatsheet: [http://www.viemu.com/a_vi_vim_graphical_cheat_sheet_tutorial.html](https://web.archive.org/web/20200108045441/http://www.viemu.com/a_vi_vim_graphical_cheat_sheet_tutorial.html)
 
-Allow me to emphasise the value of Vim with an anecdote. During my master’s degree, I encountered a configuration issue with my Apache HTTP Server and sought help from my teacher, a sysadmin at Peugeot (now Stellantis). He used Vim, and his actions were so rapid that I couldn’t keep up. In a matter of minutes, he had troubleshooted my problem. That’s when I made the decision to master Vim and the Linux ecosystem.
+Allow me to emphasise the value of Vim with an anecdote. During my master’s degree, I encountered a configuration issue with my Apache HTTP Server and sought help from my teacher, a sysadmin at Peugeot (now Stellantis). He used Vim, and his actions were so rapid that I couldn’t keep up. In a matter of minutes, he had troubleshot my problem. That’s when I made the decision to master Vim and the Linux ecosystem.
 
 The best part is that you can use Vim within VS Code as your primary or secondary keybinding. All it takes is installing the [VSCodeVim](https://marketplace.visualstudio.com/items?itemName=vscodevim.vim) extension and configuring some settings. Keep in mind that mastering Vim requires time, effort, and practice, but if you plan to edit lots of code files in the near future, it’s a valuable investment!
 
@@ -117,7 +117,7 @@ If you’re interested in configuring your terminal, numerous individuals share 
 
 #### [GitHub Copilot](https://marketplace.visualstudio.com/items?itemName=GitHub.copilot) ✈️
 
-[**GitHub Copilot**](https://marketplace.visualstudio.com/items?itemName=GitHub.copilot) **is a game changer for programmers**. Once you figure out the program in your head, you have to type it and the time spent between thinking to typing maybe 1:10. What if you could just “Tab” you way out? Instead of writing the text yourself, express your intent with clear names or comments, and let GitHub Copilot write the rest for you by pressing “Tab”. This is an autocompletion engine cranked up to 9999, and it is even better now with its new [GitHub Copilot Chat](https://marketplace.visualstudio.com/items?itemName=GitHub.copilot-chat) feature!
+[**GitHub Copilot**](https://marketplace.visualstudio.com/items?itemName=GitHub.copilot) **is a game changer for programmers**. Once you figure out the program in your head, you have to type it and the time spent between thinking and typing may be 1:10. What if you could just “Tab” your way out? Instead of writing the text yourself, express your intent with clear names or comments, and let GitHub Copilot write the rest for you by pressing “Tab”. This is an autocompletion engine cranked up to 9999, and it is even better now with its new [GitHub Copilot Chat](https://marketplace.visualstudio.com/items?itemName=GitHub.copilot-chat) feature!
 
 ![Example of GitHub Copilot in action: https://github.com/features/copilot](/static/img/articles/how-to-configure-vs-code-for-ai-ml-and-mlops-development-in-python/04.mp4)
 
@@ -126,7 +126,7 @@ Example of GitHub Copilot in action: [https://github.com/features/copilot](https
 GitHub Copilot proves invaluable in various scenarios: it assists in generating unit tests from code definitions, completes unfamiliar API calls, and creates relevant examples based on your context. It’s intelligent enough to examine your project’s files and adapt to your coding style. This experience is both gratifying and highly productive, and I strongly recommend trying Copilot as soon as possible!
 
 - [**GitHub.copilot**](https://marketplace.visualstudio.com/items?itemName=GitHub.copilot): The smartest autocompletion engine ever!
-- [**GitHub.copilot-chat**](https://marketplace.visualstudio.com/items?itemName=GitHub.copilot-chat): don’t ask you colleague, ask Copilot Chat instead :)
+- [**GitHub.copilot-chat**](https://marketplace.visualstudio.com/items?itemName=GitHub.copilot-chat): don’t ask your colleague, ask Copilot Chat instead :)
 
 ### Settings and Keybindings 🤖
 
@@ -134,7 +134,7 @@ Within VS Code, there are two sets of configurations: [Settings](https://code.vi
 
 #### [Settings](https://gist.github.com/fmind/67c1ce34d0f21005b4aa7aa79b9162aa#file-settings-json) 🔧
 
-Below, you’ll find [the link to the settings I utilize with VS Code](https://gist.github.com/fmind/67c1ce34d0f21005b4aa7aa79b9162aa#file-settings-json). Each setting is annotated to help you understand what is does. Keep in mind that you can hover your cursor over a setting key in VS Code to access more information about that setting. You can also switch between the textual and visual interface using the “Go to document” icon at the top left of the editor settings.
+Below, you’ll find [the link to the settings I utilize with VS Code](https://gist.github.com/fmind/67c1ce34d0f21005b4aa7aa79b9162aa#file-settings-json). Each setting is annotated to help you understand what it does. Keep in mind that you can hover your cursor over a setting key in VS Code to access more information about that setting. You can also switch between the textual and visual interface using the “Go to document” icon at the top left of the editor settings.
 
 **Remember that it’s essential to tailor the settings to your preferences since every user is unique**. Additionally, strive to understand what each setting does to optimize your satisfaction and productivity.
 
@@ -196,7 +196,7 @@ Consider [remapping the Caps Lock key to Ctrl (Windows/Linux) or Cmd (Mac)](http
 
 Customize your VS Code environment globally, by folder, or using a workspace. [Workspaces](https://code.visualstudio.com/docs/editor/workspaces) bundle folders for project management, ensuring consistent settings among developers.
 
-Create one via ‘File’ \> ‘Save Workspace As…’ to generate a ‘code-workspace’ file, typically placed at your project’s root.”
+Create one via ‘File’ \> ‘Save Workspace As…’ to generate a ‘code-workspace’ file, typically placed at your project’s root.
 
 ![VS Code Workspace for the MLOps Python Package project on GitHub](/static/img/articles/how-to-configure-vs-code-for-ai-ml-and-mlops-development-in-python/10.webp)
 
@@ -227,7 +227,7 @@ Example of Invoke tasks in [https://github.com/fmind/mlops-python-package](https
 Move beyond basic bash with these more advanced shells:
 
 - [Xonsh](https://xon.sh/): merges the familiarity of Python with shell capabilities — a harmonious blend for those preferring Python’s syntax over bash’s complexity.
-- [Fish](https://fishshell.com/): affers a superb out-of-the-box experience, though it may not always align with bash standards — a choice for the bash-averse :)
+- [Fish](https://fishshell.com/): offers a superb out-of-the-box experience, though it may not always align with bash standards — a choice for the bash-averse :)
 - [Zsh](https://www.zsh.org/): outshines bash in power but requires fine-tuning. Supercharge it with [https://ohmyz.sh/](https://ohmyz.sh/)
 - [IPython](https://ipython.org/)/[PtPython](https://github.com/prompt-toolkit/ptpython): not for system shell use, but excellent for an enriched Python interpreter interface.
 
@@ -235,7 +235,7 @@ Move beyond basic bash with these more advanced shells:
 
 Xonsh shell used for executing Python code and Make tasks [https://xon.sh/](https://xon.sh/)
 
-There are also tons of resources only to further extend your configuration:
+There are also tons of resources online to further extend your configuration:
 
 - [https://github.com/alebcay/awesome-shell](https://github.com/alebcay/awesome-shell)
 - [https://github.com/jorgebucaran/awsm.fish](https://github.com/jorgebucaran/awsm.fish)
@@ -261,7 +261,7 @@ Integration of Mermaid with VS Code [https://marketplace.visualstudio.com/items?
 
 #### 9. Look at other configurations on GitHub 😺
 
-Developers love to publish their settings and keybindings on GitHub, and VS Code is no exception. You can check this [topic](https://github.com/topics/vscode-settings) to tracks VS Code configurations on GitHub.
+Developers love to publish their settings and keybindings on GitHub, and VS Code is no exception. You can check this [topic](https://github.com/topics/vscode-settings) to track VS Code configurations on GitHub.
 
 I also recommend you subscribe to these sources of tips and tricks:
 

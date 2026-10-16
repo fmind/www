@@ -18,7 +18,7 @@ Photo by [Dmytro Tolokonov](https://unsplash.com/@dtolokonov?utm_source=medium&u
 
 ### The Challenge: Taming the Social Content Beast 🦁
 
-Keeping multiple social media feeds updated with relevant content derived from a single source (like a blog post or article) requires significant effort. Tailoring the message, tone, and length for each platform (think X vs. SEP vs. LinkedIn) adds another layer of complexity.
+Keeping multiple social media feeds updated with relevant content derived from a single source (like a blog post or article) requires significant effort. Tailoring the message, tone, and length for each platform (think X vs. SEO vs. LinkedIn) adds another layer of complexity.
 
 ![Photo by Nik on Unsplash](/static/img/articles/introducing-gentwriter-building-a-multi-agent-content-generator-with-googles-adk/02.webp)
 
@@ -63,9 +63,9 @@ GentWriter is built using [Google’s Agent Development Kit](https://google.gith
 - **X (Twitter) Writer:** Generates a punchy tweet, complete with hashtags and link, using a specific persona.
 - **LinkedIn Writer:** Creates a more detailed, professional post highlighting key insights for a business audience.
 
-![Orchestration of agent included in GentWriter](/static/img/articles/introducing-gentwriter-building-a-multi-agent-content-generator-with-googles-adk/03.webp)
+![Orchestration of agents included in GentWriter](/static/img/articles/introducing-gentwriter-building-a-multi-agent-content-generator-with-googles-adk/03.webp)
 
-Orchestration of agent included in GentWriter
+Orchestration of agents included in GentWriter
 
 This combination of sequential steps and parallel processing makes the whole workflow efficient. The use of Pydantic ensures the data passed between agents is well-structured and reliable.
 

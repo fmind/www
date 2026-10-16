@@ -37,7 +37,7 @@ dev = [
   "pytest-cov>=7.1.0,<8",
   "pytest-watcher>=0.6.3,<0.7",
   "pytest>=9.1.1,<10",
-  "ruff>=0.16.6,<0.17",
+  "ruff>=0.17.1,<0.18",
   "ty>=0.0.78,<0.1",
   "validate-pyproject>=0.26,<0.27",
 ]
@@ -46,7 +46,7 @@ dev = [
 www = "www.__main__:main"
 
 [build-system]
-requires = ["uv_build==0.12.23"]
+requires = ["uv_build==0.13.1"]
 build-backend = "uv_build"
 
 [tool.ruff]

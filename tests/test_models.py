@@ -33,7 +33,6 @@ def test_article_summary_and_paths_preserve_discovery_contract() -> None:
 
     assert item.summary().title == item.title
     assert item.summary().image_url == item.image_url
-    assert item.image_path() == "/static/img/articles/example/cover.webp"
     assert item.card_image_path() == "/static/img/articles/example/cover-800.webp"
     assert item.markdown_path() == "/articles/example.md"
     assert item.markdown_url() == f"{METADATA.site_url}/articles/example.md"
@@ -51,7 +50,6 @@ def test_article_fallbacks_and_foreign_images() -> None:
 
     assert item.modified_date() == item.date
     assert item.canonical_url() == item.url
-    assert item.image_path() == item.image_url
     assert item.card_image_path() == item.card_image_url
 
 

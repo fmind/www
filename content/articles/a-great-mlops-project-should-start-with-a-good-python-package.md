@@ -22,7 +22,7 @@ Python Environment: [https://xkcd.com/1987/](https://xkcd.com/1987/)
 
 ### Motivations
 
-[Building Python packages is a common practice in our industry](https://github.com/topics/python). A Python package allows developers to collaborate with others, version the source code, and share code archives on a package index such as [Pypi.org](https://pypi.org/). Another benefit is that Python package can be used both as a library (i.e., imported from another code base) and an application (i.e., be executed from the command line). Python developers are also used to leverage packages developed by others, such as [Flask](https://flask.palletsprojects.com/en/latest/), [Pandas](https://pandas.pydata.org/), or [TensorFlow](https://www.tensorflow.org/) just to name a few.
+[Building Python packages is a common practice in our industry](https://github.com/topics/python). A Python package allows developers to collaborate with others, version the source code, and share code archives on a package index such as [Pypi.org](https://pypi.org/). Another benefit is that a Python package can be used both as a library (i.e., imported from another code base) and an application (i.e., be executed from the command line). Python developers are also used to leveraging packages developed by others, such as [Flask](https://flask.palletsprojects.com/en/latest/), [Pandas](https://pandas.pydata.org/), or [TensorFlow](https://www.tensorflow.org/) just to name a few.
 
 But despite all these benefits, Python packages are complex to build and structure properly. On one hand, [**there are a lot of tools to combine**](https://xkcd.com/1987/) and it can be difficult for developers to choose the best components without hands-on experience. On the other hand, [**machine learning is one of the most complex types of projects**](https://papers.nips.cc/paper_files/paper/2015/hash/86df7dcfd896fcaf2674f757a2463eba-Abstract.html), as data dimensions, randomness, and entangled workflows make everything more difficult.
 
@@ -50,10 +50,10 @@ The [MLOps Python Package](https://github.com/fmind/mlops-python-package#tools) 
 
 The [MLOps Python Package](https://github.com/fmind/mlops-python-package) also includes more than 20 tips and tricks. The most important ones are:
 
-- [**SOLID Principles**](https://github.com/fmind/mlops-python-package#solid-principles): define software interface to make your code more modular and reusable.
+- [**SOLID Principles**](https://github.com/fmind/mlops-python-package#solid-principles): define software interfaces to make your code more modular and reusable.
 - [**Soft Coding**](https://github.com/fmind/mlops-python-package#soft-coding): change your program behavior through config files instead of code changes.
 - [**Data Catalog**](https://github.com/fmind/mlops-python-package#data-catalog): [separate the data you want to access from how you access it](https://www.youtube.com/watch?v=D6nYfttnVco)
-- [**Text Fixture**](https://github.com/fmind/mlops-python-package#test-fixtures): create contextual objects to support [Test-Driven Development](https://en.wikipedia.org/wiki/Test-driven_development) (TDD) with [Pytest](https://docs.pytest.org/en/latest/).
+- [**Test Fixture**](https://github.com/fmind/mlops-python-package#test-fixtures): create contextual objects to support [Test-Driven Development](https://en.wikipedia.org/wiki/Test-driven_development) (TDD) with [Pytest](https://docs.pytest.org/en/latest/).
 - [**DataFrame Typing**](https://github.com/fmind/mlops-python-package#dataframe-typing): define dataframe schemas to communicate their fields and validate them with [Pandera](https://pandera.readthedocs.io/).
 
 PS: I know several people who complain that [Python is a bad programming language](https://medium.com/nerd-for-tech/python-is-a-bad-programming-language-2ab73b0bda5). On the contrary, I think Python can be a great programming language with a bit of discipline and the right tooling!
@@ -64,11 +64,11 @@ Python: [https://xkcd.com/353/](https://xkcd.com/353/)
 
 ### Integrations
 
-**Having an MLOps Python Package is** [**just a small part of your MLOps journey**](https://medium.com/marvelous-mlops/the-minimum-set-of-must-haves-for-mlops-5dbbcf29401c). While most MLOps project starts with a Python package, this artifact should be integrated with the rest of your infrastructure: Compute Engine (e.g., [Kubernetes](https://kubernetes.io/), [Databricks](https://www.databricks.com/)), Experiment Tracking (e.g., [MLflow](https://mlflow.org/), [Neptune](https://docs.neptune.ai/)), and Task Orchestration (e.g., [Airflow](https://airflow.apache.org/), [Kubeflow](http://kubeflow.org)).
+**Having an MLOps Python Package is** [**just a small part of your MLOps journey**](https://medium.com/marvelous-mlops/the-minimum-set-of-must-haves-for-mlops-5dbbcf29401c). While most MLOps projects start with a Python package, this artifact should be integrated with the rest of your infrastructure: Compute Engine (e.g., [Kubernetes](https://kubernetes.io/), [Databricks](https://www.databricks.com/)), Experiment Tracking (e.g., [MLflow](https://mlflow.org/), [Neptune](https://docs.neptune.ai/)), and Task Orchestration (e.g., [Airflow](https://airflow.apache.org/), [Kubeflow](http://kubeflow.org)).
 
 After all my research, I haven't found a one-size-fits-all infrastructure that can address everybody's use cases. On one hand, [cloud providers](https://en.wikipedia.org/wiki/Cloud_computing) provide [end-to-end solutions which are specific to their platform](https://aws.amazon.com/sagemaker/). On the other hand, [Kubernetes-based solutions have a huge learning curve](http://kubeflow.org) and are too heavyweight for data scientists. Another big issue is the lack of common protocols to easily integrate all these MLOps systems, as explained in my other article: [We need POSIX for MLOps](https://medium.com/@fmind/we-need-posix-for-mlops-e7bea8d8ec29), and more generally in this talk from Rich Hickey: [The Language of the System](https://www.youtube.com/watch?v=ROor6_NGIWU).
 
-Thus, I created this package as a common denominator for MLOps initiatives devoided of any infrastructure dependencies. It is your task, dear reader, to extend its capabilities based on your requirements and environments to suit your end-user needs.
+Thus, I created this package as a common denominator for MLOps initiatives devoid of any infrastructure dependencies. It is your task, dear reader, to extend its capabilities based on your requirements and environments to suit your end-user needs.
 
 ![Standards: https://xkcd.com/927/](/static/img/articles/a-great-mlops-project-should-start-with-a-good-python-package/04.webp)
 
@@ -80,6 +80,6 @@ Using Python packages for MLOps is a good practice, but creating the best packag
 
 To reflect on this task, I like to compare programming to martial arts. The goal is not to beat your opponent with brute force tactics but to inflict the most deadly strikes in the swiftest manner. It is a balance of power, moderation, and respect for your opponent. Similarly, I think creating good software is a form of art, and a never-ending quest to surpass yourself.
 
-As I final note, I always love to discuss development practices with my peers. Feel free to drop me a message on the [MLOps Community Slack](https://go.mlops.community/slack), [create an issue on GitHub](https://github.com/fmind/mlops-python-package/issues), or [contribute directly to the repository](https://github.com/fmind/mlops-python-package/pulls). [This is the power of open source after all](https://www.youtube.com/watch?v=9sJUDx7iEJw) :)
+As a final note, I always love to discuss development practices with my peers. Feel free to drop me a message on the [MLOps Community Slack](https://go.mlops.community/slack), [create an issue on GitHub](https://github.com/fmind/mlops-python-package/issues), or [contribute directly to the repository](https://github.com/fmind/mlops-python-package/pulls). [This is the power of open source after all](https://www.youtube.com/watch?v=9sJUDx7iEJw) :)
 
 ![A great MLOps project should start with a good Python Package 🐍](/static/img/articles/a-great-mlops-project-should-start-with-a-good-python-package/05.webp)

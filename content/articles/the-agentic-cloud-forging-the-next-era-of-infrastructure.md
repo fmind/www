@@ -42,7 +42,7 @@ This “bigger is better” model, for all its power, has inherent weaknesses th
 
 - **Massive Code Liability:** Over time, [all code is a liability](https://www.leemeichin.com/posts/code-is-a-liability). Every new service added to the catalog is more code to maintain, patch, secure, and update. This requires a colossal, expensive, and often slow-moving engineering organization.
 - **The Paradox of Choice:** A catalog with [over 200 services](https://cloud.google.com/products?hl=en) is overwhelming. Developers spend precious time navigating this complexity, learning provider-specific quirks, and trying to decide between five different ways to run a simple container.
-- **Inflexible Architectures:** These managed services are optimized for 80% use cases. The moment your needs deviate from their “golden path,” you hit a wall of inflexibility, forcing you into awkward workarounds or abandoning the managed service entirely.
+- **Inflexible Architectures:** These managed services are optimized for 80% of use cases. The moment your needs deviate from their “golden path,” you hit a wall of inflexibility, forcing you into awkward workarounds or abandoning the managed service entirely.
 - **It’s Still Just a Toolbox:** At the end of the day, the cloud is a collection of powerful tools. It still requires skilled (and expensive) human architects and engineers to select the right tools and write all the “glue code” (Terraform, CloudFormation, etc.) to assemble them into a working application.
 
 ### The Disruptor 🤖: Rise of the Intent-Driven Agentic Cloud

@@ -8,5 +8,9 @@
   </header>
 {% endblock %}
 {% block main_class %}max-w-xl mx-auto px-6 pt-2 pb-4 sm:pt-8{% endblock %}
-{# Contact pages are single-purpose cards without the site footer. #}
-{% block footer %}{% endblock %}
+{# Keep the contact cards focused while retaining access to consent settings. #}
+{% block footer %}
+  <footer class="text-center text-sm">
+    <button type="button" class="inline-flex min-h-11 items-center text-accent underline underline-offset-4 cursor-pointer" data-consent-open hidden>Cookie settings</button>
+  </footer>
+{% endblock %}

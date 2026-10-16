@@ -27,12 +27,21 @@ test("portfolio navigation remains usable without JavaScript", async ({ browser 
 });
 
 test(
-  "production consent banner asks once, in two lines, and loads nothing on reject",
+  "consent choices can be revised on every page without loading analytics before acceptance",
   async ({ browser, baseURL }, testInfo) => {
-    test.skip(new URL(baseURL).hostname !== "www.fmind.dev", "The banner only runs on www.fmind.dev");
-    // A fresh visitor: no recorded choice. Never accept here, so CI sends no analytics.
+    // Exercise the production hostname with candidate responses; Google requests
+    // are fulfilled locally so accepting in this test never sends analytics.
     const context = await browser.newContext({ ...testInfo.project.use, storageState: undefined });
     try {
+      await context.route("https://www.fmind.dev/**", async (route) => {
+        const url = new URL(route.request().url());
+        const response = await route.fetch({ url: new URL(url.pathname + url.search, baseURL).href });
+        await route.fulfill({ response });
+      });
+      await context.route(
+        /https:\/\/([^/]+\.)?google(tagmanager|-analytics)?\.com\//,
+        (route) => route.fulfill({ contentType: "application/javascript", body: "" }),
+      );
       const page = await context.newPage();
       const google = [];
       page.on("request", (request) => {
@@ -40,7 +49,7 @@ test(
           google.push(request.url());
         }
       });
-      await page.goto("/");
+      await page.goto("https://www.fmind.dev/");
       const banner = page.getByRole("region", { name: "Cookie consent" });
       await expect(banner).toBeVisible();
       await expect(banner.locator("p")).toHaveCount(2);
@@ -55,6 +64,36 @@ test(
       await page.locator("footer").getByRole("link", { name: "Privacy", exact: true }).click();
       await expect(page).toHaveURL(/\/privacy$/);
       expect(google).toEqual([]);
+      const settings = page.getByRole("button", { name: "Cookie settings", exact: true });
+      await settings.click();
+      await banner.getByRole("button", { name: "Accept", exact: true }).click();
+      await expect.poll(() => google.length).toBe(1);
+      expect(await page.evaluate(() => localStorage.getItem("fmind-consent"))).toBe("granted");
+      for (const choice of ["Reject", "Accept"]) {
+        await settings.click();
+        await banner.getByRole("button", { name: choice, exact: true }).click();
+        const consent = await page.evaluate(() =>
+          window.dataLayer.filter((entry) => entry[0] === "consent").at(-1)[2].analytics_storage
+        );
+        expect(consent).toBe(choice === "Accept" ? "granted" : "denied");
+      }
+      expect(google).toHaveLength(1);
+      await settings.click();
+      await banner.getByRole("button", { name: "Reject", exact: true }).click();
+      for (const path of ["/connect", "/scan"]) {
+        await page.goto("https://www.fmind.dev" + path);
+        await expect(banner).toBeHidden();
+        await settings.click();
+        await expect(banner).toBeVisible();
+        await expect(banner.getByRole("button", { name: "Accept", exact: true })).toBeFocused();
+        await banner.getByRole("button", { name: "Reject", exact: true }).click();
+      }
+      expect(google).toHaveLength(1);
+      await page.setViewportSize({ width: 320, height: 568 });
+      await page.evaluate(() => document.fonts.ready);
+      expect(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight)).toBe(true);
+      await expect(settings).toBeInViewport();
+      await page.screenshot({ path: testInfo.outputPath("scan-small-phone-consent.png"), fullPage: true });
     } finally {
       await context.close();
     }
@@ -149,7 +188,7 @@ test("published pages render without overflow, missing images, or external asset
     await expect(feed).toHaveCount(1);
     await expect(feed).toHaveAttribute("href", "https://www.fmind.dev/articles/feed.xml");
     const subscribe = page.locator("a[href=\"/articles/feed.xml\"]").first();
-    if (path === "/connect") {
+    if (path === "/connect" || path === "/scan") {
       await expect(subscribe).toHaveCount(0);
     } else {
       await expect(subscribe).toBeVisible();
@@ -307,8 +346,7 @@ test("conference contact actions and QR display work without JavaScript", async 
       expect(portraitBounds.y + portraitBounds.height).toBeLessThanOrEqual(headingBounds.y);
       await expect(page.locator("h1")).toHaveCSS("color", "rgb(23, 78, 166)");
       await expect(page.getByText("AI Agents, MLOps & Security", { exact: true })).toBeVisible();
-      // The event card stays focused on contact actions; the QR display keeps its compact RSS link.
-      await expect(page.getByRole("link", { name: /RSS/ })).toHaveCount(path === "/scan" ? 1 : 0);
+      await expect(page.getByRole("link", { name: /RSS/ })).toHaveCount(0);
     }
   } finally {
     await context.close();
@@ -495,6 +533,31 @@ test("homepage presents the headline, six skills, and responsive social links", 
   await footer.getByRole("link", { name: "MCP", exact: true }).focus();
   await expect(footer.getByRole("link", { name: "MCP", exact: true })).toBeInViewport();
   await page.screenshot({ path: testInfo.outputPath("home-footer.png") });
+});
+
+test("hidden mobile section navigation avoids layout work and resumes on desktop", async ({ page }) => {
+  await page.addInitScript(() => {
+    window.sectionLayoutReads = 0;
+    const measure = Element.prototype.getBoundingClientRect;
+    Element.prototype.getBoundingClientRect = function() {
+      if (this.matches(".portfolio-content section[id]")) window.sectionLayoutReads += 1;
+      return measure.call(this);
+    };
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+    document.getElementById("services").scrollIntoView({ behavior: "instant" });
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  });
+  expect(await page.evaluate(() => window.sectionLayoutReads)).toBe(0);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.evaluate(() => {
+    location.hash = "services";
+  });
+  await expect(page.locator("#section-menu a[href$='#services']")).toHaveAttribute("aria-current", "location");
+  expect(await page.evaluate(() => window.sectionLayoutReads)).toBeGreaterThan(0);
 });
 
 test("late font downloads keep the article layout stable", async ({ page }) => {

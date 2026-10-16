@@ -30,7 +30,7 @@ In this article, I present a fundamental trade-off that affects the design of pr
 
 Let’s focus first on the trade-off between performance and productivity.
 
-One the one hand, some languages like C and Assembly work closer to the hardware and are more performant than their counterparts. On the other hand, other languages such as LISP and Python provide many convenient features to boost the productivity of programmers.
+On the one hand, some languages like C and Assembly work closer to the hardware and are more performant than their counterparts. On the other hand, other languages such as LISP and Python provide many convenient features to boost the productivity of programmers.
 
 We can infer the following rules to generalize these observations:
 
@@ -40,7 +40,7 @@ We can infer the following rules to generalize these observations:
 
 > **Since the logic of a computer is different from the logic of a programmer, the task of optimizing both the performance and the productivity of a programming language is not possible.**
 
-This dichotomy, [already described by John Ousterhout](https://en.wikipedia.org/wiki/Ousterhout%27s_dichotomy), is a well-known divergence for programming languages. However, the programming trade-off states that this limitation can be addressed if language designers choose to limit the scope of their language. It is only at this condition that language features cam become more essential both for the programmer to leverage and for the computer to execute.
+This dichotomy, [already described by John Ousterhout](https://en.wikipedia.org/wiki/Ousterhout%27s_dichotomy), is a well-known divergence for programming languages. However, the programming trade-off states that this limitation can be addressed if language designers choose to limit the scope of their language. It is only at this condition that language features can become more essential both for the programmer to leverage and for the computer to execute.
 
 We can see that the programming trade-off is a direct application of the [divide-and-conquer technique](https://en.wikipedia.org/wiki/Divide_and_rule) to the creation of programming languages. For instance, SQL has one and only goal: managing database information based on relational algebra semantics. Other Domain-Specific Languages (DSL) are created to deal with narrow tasks such as web templating (Jinja), matrix manipulation (numpy), or logic programming (Prolog).
 
@@ -50,15 +50,15 @@ We can see that the programming trade-off is a direct application of the [divide
 
 If ignored, the programming trade-off can harm the success of software projects.
 
-When I was working as a web developer, my mission was to deliver full-featured applications as fast as I can. But as the user base grown, my tasks shifted more and more toward improving the performance of the application.
+When I was working as a web developer, my mission was to deliver full-featured applications as fast as I can. But as the user base grew, my tasks shifted more and more toward improving the performance of the application.
 
 [Facebook](https://code.fb.com/web/hiphop-for-php-move-fast/) and [Twitter](https://www.infoq.com/articles/twitter-java-use) faced the same problem and had to scale their websites without sacrificing their ability to develop new features.
 
-In all these cases, most programming languages do not help as they are either too slow to execute (e.g. Python, R) or too slow to develop with(Java, C++).
+In all these cases, most programming languages do not help as they are either too slow to execute (e.g. Python, R) or too slow to develop with (Java, C++).
 
 **The most common solution to address this issue is often to rewrite the application with a different (and often incompatible) language.**
 
-Others solutions can mitigate the need to rewrite existing applications:
+Other solutions can mitigate the need to rewrite existing applications:
 
 - **Create and explore specific-purpose programming languages** (e.g., query languages, data pipelines, programming paradigms …)
 - **Embrace** [**Polyglot Programming**](https://deanwampler.github.io/polyglotprogramming/) to combine the strength of several languages (e.g., TensorFlow relies both on C++ for performance and Python productivity).

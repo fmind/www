@@ -124,10 +124,7 @@ def article_metadata(article: Article, structured_data: str) -> PageMetadata:
         image_alt=article.image_alt,
         kind="article",
         structured_data=structured_data,
-        preload_image=article.image_path(),
-        preload_image_srcset=article.cover_srcset,
-        preload_image_sizes=article.cover_sizes,
-        preload_code_font=True,
+        preload_code_font="<code" in article.html,
         no_index=article.draft,
     )
 

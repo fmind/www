@@ -10,7 +10,7 @@ draft = false
 
 The AI agent landscape is exploding, but development speed is hitting a wall. We need a faster, more accessible way to build and iterate. In my current role, I spend my days optimizing the experience of building and deploying AI agents. I’ve witnessed firsthand the incredible use cases my customers’ developers — agents that streamline complex workflows, automate intricate decision-making, and unlock new data insights. The potential is massive, but the reality of development is often friction-filled.
 
-**Despite the advancements in foundational models, the process of taking an agent from concept to production remains too slow and overly complex.** Developers get bogged down in boilerplate code, infrastructure wrangling, and the mechanics of tool integration, rather than focusing on the actual logic and value the agent provides. We drastically need to improve the speed at which we can iterate, while simultaneously making the whole process more accessible to a broader range of builders. Enter [**Ackgent**](https://github.com/fmind/ackgent), a demonstration of how [Google ADK](https://google.github.io/adk-docs/) and [Agent Config](https://google.github.io/adk-docs/agents/config/) can be use to quickly build and deploy AI agents with a declarative approach.
+**Despite the advancements in foundational models, the process of taking an agent from concept to production remains too slow and overly complex.** Developers get bogged down in boilerplate code, infrastructure wrangling, and the mechanics of tool integration, rather than focusing on the actual logic and value the agent provides. We drastically need to improve the speed at which we can iterate, while simultaneously making the whole process more accessible to a broader range of builders. Enter [**Ackgent**](https://github.com/fmind/ackgent), a demonstration of how [Google ADK](https://google.github.io/adk-docs/) and [Agent Config](https://google.github.io/adk-docs/agents/config/) can be used to quickly build and deploy AI agents with a declarative approach.
 
 ![Source: Gemini App](/static/img/articles/ackgent-rapid-agent-development-on-gcp-with-adk-and-agent-config/cover.webp)
 
@@ -94,7 +94,7 @@ Let’s look at how this works in practice. The Ackgent repository showcases thr
 
 #### 1. The Datetime Agent (Custom Tools)
 
-The [datetime agent](https://github.com/fmind/ackgent/blob/main/agent/datetime_agent.yaml) demonstrates how to extend an agent with external tools tools. The agent can access the current date and time defined in the [`tools.py`](https://github.com/fmind/ackgent/blob/main/agent/tools.py) of the repository, which are defined as simple functions.
+The [datetime agent](https://github.com/fmind/ackgent/blob/main/agent/datetime_agent.yaml) demonstrates how to extend an agent with external tools. The agent can access the current date and time defined in the [`tools.py`](https://github.com/fmind/ackgent/blob/main/agent/tools.py) of the repository, which are defined as simple functions.
 
 ```yaml
 # yaml-language-server: $schema=https://raw.githubusercontent.com/google/adk-python/refs/heads/main/src/google/adk/agents/config_schemas/AgentConfig.json

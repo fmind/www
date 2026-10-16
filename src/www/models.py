@@ -141,8 +141,6 @@ class Article:
     url: str = ""
     image_url: str = ""
     card_image_url: str = ""
-    cover_srcset: str = ""
-    cover_sizes: str = ""
     image_alt: str = ""
     tags: tuple[str, ...] = ()
     reading_minutes: int = 0
@@ -163,11 +161,6 @@ class Article:
             tags=self.tags,
             reading_minutes=self.reading_minutes,
         )
-
-    def image_path(self) -> str:
-        from www.data import METADATA
-
-        return self.image_url.removeprefix(METADATA.site_url)
 
     def card_image_path(self) -> str:
         from www.data import METADATA
@@ -234,8 +227,6 @@ class PageMetadata:
     kind: str = ""
     structured_data: str = ""
     preload_image: str = ""
-    preload_image_srcset: str = ""
-    preload_image_sizes: str = ""
     # Pages that render monospace text above the fold; `font-display: optional` drops a late face.
     preload_code_font: bool = False
     no_index: bool = False

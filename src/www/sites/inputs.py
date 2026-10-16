@@ -70,6 +70,8 @@ def _parse_bounded_float(
     minimum: float,
     maximum: float,
     validation: list[str],
+    *,
+    minimum_positive: float = 0,
 ) -> float:
     raw = _first(query, key)
     if raw is None or raw == "":
@@ -84,6 +86,13 @@ def _parse_bounded_float(
     if not isfinite(value) or value < minimum or value > maximum:
         validation.append(
             f"{key} must be between {_format_bound(minimum)} and {_format_bound(maximum)}; the default was used",
+        )
+        return fallback
+    # Reject tiny nonzero ratios before division, including values that float()
+    # underflows to zero. Literal zero remains valid for no accepted tasks.
+    if value < minimum_positive and any(digit in "123456789" for digit in raw.lower().partition("e")[0]):
+        validation.append(
+            f"{key} must be zero or at least {minimum_positive:.7f}; the default was used",
         )
         return fallback
     return value
@@ -431,6 +440,7 @@ def _parse_hosting_options(
                     0,
                     100,
                     validation,
+                    minimum_positive=0.0000001,
                 ),
                 calls_per_task=_parse_bounded_float(
                     query,

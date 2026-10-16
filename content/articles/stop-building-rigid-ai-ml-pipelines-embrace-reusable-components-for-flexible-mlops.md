@@ -28,7 +28,7 @@ Think of it like this: Instead of baking a single, giant cake (your pipeline), y
 
 The core idea is to encapsulate each step of your MLOps process into independent, reusable artifacts. These artifacts typically take the form of:
 
-- [**Python Packages**](https://realpython.com/python-wheels/) **:** Containing core logic for tasks like data preprocessing, feature engineering, or model training, where a [package is divided into jobs](https://github.com/fmind/mlops-python-package/tree/main/src/bikes/jobs) and exposed through entrypoint (e.g., [project scripts](https://github.com/fmind/mlops-python-package/blob/f16d240dabf0c16012a7a2adce5d76428a25624c/pyproject.toml#L47)).
+- [**Python Packages**](https://realpython.com/python-wheels/) **:** Containing core logic for tasks like data preprocessing, feature engineering, or model training, where a [package is divided into jobs](https://github.com/fmind/mlops-python-package/tree/main/src/bikes/jobs) and exposed through entrypoints (e.g., [project scripts](https://github.com/fmind/mlops-python-package/blob/f16d240dabf0c16012a7a2adce5d76428a25624c/pyproject.toml#L47)).
 - [**Docker Images**](https://docs.docker.com/reference/dockerfile/) **:** Providing isolated, reproducible environments for running your code, packaged with their dependencies in a [Dockerfile](https://github.com/fmind/mlops-python-package/blob/main/Dockerfile).
 - [**Config Files**](https://mlops-coding-course.fmind.dev/3.%20Productionizing/3.4.%20Configurations.html) **:** Controlling the behavior of your code without requiring code changes (e.g., model hyperparameters, input/output files, …).
 
@@ -49,7 +49,7 @@ Now that we have our reusable artifacts, how do we combine them into a meaningfu
 
 **Visualize the Power of DAGs:**
 
-Let’s look how we can assemble our artifacts into distinct workflows.
+Let’s look at how we can assemble our artifacts into distinct workflows.
 
 ![Stop Building Rigid AI/ML Pipelines: Embrace Reusable Components for Flexible MLOps](/static/img/articles/stop-building-rigid-ai-ml-pipelines-embrace-reusable-components-for-flexible-mlops/05.webp)
 
@@ -57,7 +57,7 @@ The training DAG will **prepare the data** (yellow squares), **tune/train the mo
 
 ![Stop Building Rigid AI/ML Pipelines: Embrace Reusable Components for Flexible MLOps](/static/img/articles/stop-building-rigid-ai-ml-pipelines-embrace-reusable-components-for-flexible-mlops/06.webp)
 
-The Inference DAG can use the same software artifacts as training DAG. In this case, the data processing package is reusing to **process data**, and the machine learning package can generate predictions through **batch inference**. As input, this step takes the production model stored in a model registry like [MLflow](https://mlflow.org/).
+The Inference DAG can use the same software artifacts as the training DAG. In this case, the data processing package is reused to **process data**, and the machine learning package can generate predictions through **batch inference**. As input, this step takes the production model stored in a model registry like [MLflow](https://mlflow.org/).
 
 Notice the advantages of this approach:
 

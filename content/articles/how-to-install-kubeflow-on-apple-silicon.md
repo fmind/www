@@ -18,13 +18,13 @@ draft = false
 
 [**Rancher Desktop**](https://rancherdesktop.io/) **is the most friendly solution I found to install Docker and Kubernetes**. While Docker Desktop is also a popular option, this solution now has a significant price tag for companies with more than 250 employees OR \$10 million in annual revenue.
 
-Once you install Rancher Desktop, you need to configure it using the startup window below. Select the stable version of Kubernetes and let Rancher Desktop configures the path automatically. In this case, we use containerd [as this is the default container runtime for Kubernetes](https://blog.tilt.dev/2022/03/04/rancher-desktop-container-runtimes.html).
+Once you install Rancher Desktop, you need to configure it using the startup window below. Select the stable version of Kubernetes and let Rancher Desktop configure the path automatically. In this case, we use containerd [as this is the default container runtime for Kubernetes](https://blog.tilt.dev/2022/03/04/rancher-desktop-container-runtimes.html).
 
 ![How to install Kubeflow Pipelines v2 on Apple Silicon](/static/img/articles/how-to-install-kubeflow-on-apple-silicon/02.webp)
 
 I also recommend you to adjust the \# CPUs and the Memory (GB) in `Preferences > Virtual Machine` to avoid Out of Memory errors (OOM).
 
-**You show now be able to access the** **`kubectl`** **command in your terminal**. If not, check that your PATH environment variable includes `$HOME/.rd/bin` where Rancher Desktop binaries are installed by default.
+**You should now be able to access the** **`kubectl`** **command in your terminal**. If not, check that your PATH environment variable includes `$HOME/.rd/bin` where Rancher Desktop binaries are installed by default.
 
 ### Step 2 : Install Kubeflow Pipelines
 
@@ -74,9 +74,9 @@ You can see in the screenshot above the pipelines shipped by default with Kubefl
 
 ### Step 4: Run a Pipeline
 
-**To ensure the system is working properly, we are going to run the pipelines available by default on a new installation**. As a reminder, a KFP Pipeline is a Directed Acyclic Graph (DAG) of components that generates outputs from the inputs and parameters given. The screenshot below shows the structure of the \[Demo\] XGBBoost — Iterative model training pipeline.
+**To ensure the system is working properly, we are going to run the pipelines available by default on a new installation**. As a reminder, a KFP Pipeline is a Directed Acyclic Graph (DAG) of components that generates outputs from the inputs and parameters given. The screenshot below shows the structure of the \[Demo\] XGBoost — Iterative model training pipeline.
 
-![Demo: XGBBoost — Iterative model training pipeline](/static/img/articles/how-to-install-kubeflow-on-apple-silicon/05.webp)
+![Demo: XGBoost — Iterative model training pipeline](/static/img/articles/how-to-install-kubeflow-on-apple-silicon/05.webp)
 
 I tried all the pipelines available, but some of them had issues that do not seem related to the installation procedure:
 

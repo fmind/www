@@ -16,9 +16,9 @@ However, with the right tools, deploying an agent can be remarkably quick.
 
 To demonstrate how to achieve this fast route, we need a practical example. A while ago, I shared a [notebook built over lunch to translate Google Slides](https://fmind.medium.com/slides-to-translate-when-it-says-no-build-a-0-04-solution-on-your-lunch-break-3afa8bd9f6bb). It was effective but stuck in a notebook, inaccessible to my teammates.
 
-![A hacker tinkering a robot (Source: Gemini App)](/static/img/articles/powering-up-your-agent-in-production-with-adk-oauth-and-gemini-enterprise/cover.webp)
+![A hacker tinkering with a robot (Source: Gemini App)](/static/img/articles/powering-up-your-agent-in-production-with-adk-oauth-and-gemini-enterprise/cover.webp)
 
-A hacker tinkering a robot (Source: Gemini App)
+A hacker tinkering with a robot (Source: Gemini App)
 
 This article details the journey of taking that “Slides Translator” and pushing it into production as a secure, scalable agent, leveraging the right stack to bypass the usual bottlenecks. We will focus on using the [Agent Development Kit (ADK)](https://google.github.io/adk-docs/), [OAuth](https://oauth.net/2/), and [Gemini Enterprise](https://cloud.google.com/gemini-enterprise?hl=en).
 

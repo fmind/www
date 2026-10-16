@@ -78,6 +78,10 @@ def verify_candidate(
     tagged = [item for item in service["status"]["traffic"] if item.get("tag") == tag]
     if len(tagged) != 1 or tagged[0].get("revisionName") != revision:
         raise VerificationError("candidate tag does not address the latest ready revision")
+    if any(
+        item.get("revisionName") == revision and item.get("percent", 0) > 0 for item in service["status"]["traffic"]
+    ):
+        raise VerificationError("candidate already receives production traffic")
     # Probe only this service's tagged run.app host, never an arbitrary URL.
     url_pattern = rf"https://{re.escape(tag)}---{re.escape(service_name)}-[a-z0-9-]+(?:\.[a-z0-9-]+)*\.run\.app\Z"
     url = tagged[0].get("url")

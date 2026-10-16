@@ -49,7 +49,7 @@ The [GKE cluster fee](https://cloud.google.com/kubernetes-engine/pricing) remain
 - [Gemini pricing](https://ai.google.dev/gemini-api/docs/pricing#gemini-3.8-flash), [model limits](https://ai.google.dev/gemini-api/docs/models/gemini-3.8-flash), and [cache rules](https://ai.google.dev/gemini-api/docs/caching): introductory input, output, cache-read and $0.50/M token-hour explicit cache storage prices double January 1, 2027. Input and output limits are separate; no unverified combined-context cap is imposed. Output includes thinking tokens. The calculator models five-minute explicit GenerateContent caches with a 4,096-token minimum, not guaranteed implicit cache hits.
 - [Astra model pricing](https://developers.openai.com/api/docs/models/gpt-6-astra): input over 272,000 tokens doubles input/cache rates and multiplies output by 1.5 for the entire request. API rates are separate from subscriptions and tool charges.
 
-Batch rates are half the standard token rates. Cache and batch discounts are modeled separately; commitments never discount API calls. Task-quality rows follow the returned baseline order, with one row for the fleet and one per API.
+Batch rates are half the standard token rates. Cache and batch discounts are modeled separately; commitments never discount API calls. Task-quality rows follow the returned baseline order, with one row for the fleet and one per API. Acceptance percentages allow zero or values from 0.0000001 through 100, keeping cost division and chart arithmetic finite. Smaller nonzero values, including values that underflow to zero, produce web validation feedback and are rejected by MCP.
 
 ## Released checkpoints and GPU restrictions
 

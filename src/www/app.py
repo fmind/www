@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from pathlib import Path
@@ -547,7 +547,7 @@ def create_app(
     )
 
     @asynccontextmanager
-    async def lifespan(_: Litestar) -> AsyncIterator[None]:
+    async def lifespan(_: Litestar) -> AsyncGenerator[None]:
         nonlocal server_card
         try:
             server_card = await render_mcp_server_card(mcp_server)

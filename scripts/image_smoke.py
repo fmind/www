@@ -12,7 +12,7 @@ import signal
 import subprocess
 import sys
 import time
-from collections.abc import Callable, Iterator, Sequence
+from collections.abc import Callable, Generator, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
 from functools import partial
@@ -270,7 +270,7 @@ def parse_published_port(output: str) -> int:
 
 
 @contextmanager
-def container_guard(runner: Runner, name: str) -> Iterator[None]:
+def container_guard(runner: Runner, name: str) -> Generator[None]:
     """Force-remove the uniquely named container on every exit path."""
     body_error: BaseException | None = None
     try:
@@ -525,7 +525,7 @@ def assert_runtime_read_only(runner: Runner, name: str) -> None:
 
 
 @contextmanager
-def _termination_handlers() -> Iterator[None]:
+def _termination_handlers() -> Generator[None]:
     def terminate(signal_number: int, _frame: FrameType | None) -> NoReturn:
         raise TerminationRequestedError(signal_number)
 

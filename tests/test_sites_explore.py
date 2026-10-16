@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from math import isnan
+from math import isfinite, isnan
 from urllib.parse import parse_qs, urlparse
 
 import pytest
@@ -243,6 +243,15 @@ def test_scenario_url_uses_shortest_round_trip_decimal_without_exponents() -> No
     raw = hosting_url(result.inputs)
     assert "quality-0-acceptance=0.0000001" in raw
     assert view(parse_qs(urlparse(raw).query)).inputs == result.inputs
+
+
+@pytest.mark.parametrize("acceptance", ["1e-8", "1e-304", "1e-310", "1e-1000"])
+def test_tiny_acceptance_is_rejected_before_cost_arithmetic(acceptance: str) -> None:
+    result = view({"quality": "on", "quality-0-acceptance": acceptance})
+
+    assert result.validation == ("quality-0-acceptance must be zero or at least 0.0000001; the default was used",)
+    assert result.inputs.quality[0].acceptance_percent == DEFAULT_HOSTING_INPUTS.quality[0].acceptance_percent
+    assert all(isfinite(task.per_accepted_usd) for task in result.tasks)
 
 
 def test_zero_acceptance_and_inconsistent_latency_do_not_imply_success() -> None:

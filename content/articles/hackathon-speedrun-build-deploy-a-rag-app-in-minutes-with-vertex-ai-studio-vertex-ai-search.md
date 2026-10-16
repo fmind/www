@@ -10,7 +10,7 @@ draft = false
 
 Hackathon clock ticking? Need to get a [Retrieval Augmented Generation](https://en.wikipedia.org/wiki/Retrieval-augmented_generation) (RAG) app up and running _fast_ using your company’s knowledge base? Forget complex setups! Google Cloud’s [Vertex AI Studio](https://cloud.google.com/generative-ai-studio?hl=en) and [Vertex AI Search](https://cloud.google.com/generative-ai-app-builder/docs/enterprise-search-introduction) are your secret weapons for building and deploying a grounded LLM application in what feels like minutes.
 
-Let’s walk through how to built a Q&A assistant for “[Agentoc: A2A and MCP](https://github.com/fmind/agentoc)” based on the most well known agent protocol documentations. You can adapt this for any dataset!
+Let’s walk through how to build a Q&A assistant for “[Agentoc: A2A and MCP](https://github.com/fmind/agentoc)” based on the most well known agent protocol documentation. You can adapt this for any dataset!
 
 **The Goal:** Quickly create an AI assistant that can answer questions based on a specific set of documents, providing context from the source material.
 
@@ -161,11 +161,11 @@ Configuration of the Data Store
 
 Result of the indexing process in the Data Store
 
-**6. Check the list of Data Store**: you should see the name of your data store.
+**6. Check the list of Data Stores**: you should see the name of your data store.
 
-![List of Data Store created](/static/img/articles/hackathon-speedrun-build-deploy-a-rag-app-in-minutes-with-vertex-ai-studio-vertex-ai-search/08.webp)
+![List of Data Stores created](/static/img/articles/hackathon-speedrun-build-deploy-a-rag-app-in-minutes-with-vertex-ai-studio-vertex-ai-search/08.webp)
 
-List of Data Store created
+List of Data Stores created
 
 - Note: you will need the Data Store **ID** and **Location** for the next section
 
@@ -189,9 +189,9 @@ Get Started with Vertex AI Studio and API Activation
 
 **3. Enable Grounding:**
 
-![Activation of ground with Vertex AI Search](/static/img/articles/hackathon-speedrun-build-deploy-a-rag-app-in-minutes-with-vertex-ai-studio-vertex-ai-search/10.webp)
+![Activation of grounding with Vertex AI Search](/static/img/articles/hackathon-speedrun-build-deploy-a-rag-app-in-minutes-with-vertex-ai-studio-vertex-ai-search/10.webp)
 
-Activation of ground with Vertex AI Search
+Activation of grounding with Vertex AI Search
 
 - Under “Tools”, toggle ON “Grounding: Vertex AI Search”.
 - Click the pencil icon (Edit) to configure.
@@ -240,9 +240,9 @@ Ready to share this? Vertex AI Studio makes it incredibly easy with the help of 
 
 **2. Enable APIs (if needed):** The deployment will likely use Cloud Run, Artifact Registry, and Cloud Build. Enable these if prompted.
 
-![Activate of the required API for Cloud Run deployment](/static/img/articles/hackathon-speedrun-build-deploy-a-rag-app-in-minutes-with-vertex-ai-studio-vertex-ai-search/15.webp)
+![Activation of the required API for Cloud Run deployment](/static/img/articles/hackathon-speedrun-build-deploy-a-rag-app-in-minutes-with-vertex-ai-studio-vertex-ai-search/15.webp)
 
-Activate of the required API for Cloud Run deployment
+Activation of the required API for Cloud Run deployment
 
 **3. Acknowledge Public Access:** _**It is important to understand the implications of this step!!!**_ With the current version of Vertex AI Studio, **you must first deploy an unauthenticated public endpoint before converting it to a private and/or authenticated deployment**. If this is not feasible for your use case, you can instead jump to Step 5.
 
@@ -255,9 +255,9 @@ Be mindful about deploying to Cloud Run as a public/unauthenticated endpoint fi
 - **Important note**: you must open the app from Vertex AI Studio and not Cloud Run. This is important to get the secret key required to get access to your application.
 - **Security note**: while the key is “secret”, it can easily be retrieved from the URL via [man-in-the-middle attack](https://en.wikipedia.org/wiki/Man-in-the-middle_attack). This is not a sufficient method.
 
-![Pending deployment of the assistant on Cloud RUn](/static/img/articles/hackathon-speedrun-build-deploy-a-rag-app-in-minutes-with-vertex-ai-studio-vertex-ai-search/17.webp)
+![Pending deployment of the assistant on Cloud Run](/static/img/articles/hackathon-speedrun-build-deploy-a-rag-app-in-minutes-with-vertex-ai-studio-vertex-ai-search/17.webp)
 
-Pending deployment of the assistant on Cloud RUn
+Pending deployment of the assistant on Cloud Run
 
 - What is MCP Inspector?
 

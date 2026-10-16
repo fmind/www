@@ -47,9 +47,9 @@ The added value of AI/ML monitoring can be summarized in one word: **semantics**
 
 For example, in neural networks, we can use user-friendly concepts such as “layers”, “dropout”, and “pooling” instead of more general terms like “operations”, “filters”, and “aggregations”. Similarly, for AI/ML monitoring, we can adapt the UI and API to deal with concepts like “segments”, “baselines”, and “environments”. The underlying techniques can be found in every data engineering pipeline, but the user experience has been tailored to focus users on their use cases and help them become more productive.
 
-![Semantic related to Deep Neural Networks](/static/img/articles/is-ai-ml-monitoring-just-data-engineering/03.webp)
+![Semantics related to Deep Neural Networks](/static/img/articles/is-ai-ml-monitoring-just-data-engineering/03.webp)
 
-Semantic related to Deep Neural Networks
+Semantics related to Deep Neural Networks
 
 **This raises the question of whether this additional semantic value is valuable for data scientists and ML engineers**. I believe that it is. [Naming things](https://www.karlton.org/2017/12/naming-things-hard/) (i.e., coming up with the semantics) is hard, and [humans tend to be lazy](https://en.wikipedia.org/wiki/Thinking,_Fast_and_Slow) (i.e., systems 1 and 2). [Our main struggle is always to structure the solution and find the best abstractions to empower developers without adding too much complexity](https://www.youtube.com/watch?v=SxdOUGdseq4). Therefore, it is best to let experts in the field think of the best solutions, just as most web developers do when they use [a framework written by specialists in this domain](https://www.djangoproject.com/).
 
