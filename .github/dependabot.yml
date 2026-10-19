@@ -1,58 +1,28 @@
 # Docs: https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference
+# Security updates only: `open-pull-requests-limit: 0` disables version updates, while
+# Dependabot still opens one grouped fix PR per ecosystem when an alert has a patched
+# release. `schedule` is required by the schema; it only paces the disabled version updates.
 version: 2
-# Wait one week before proposing releases so ecosystem incidents can surface.
-# Minor and patch updates are grouped into one PR per ecosystem to keep the
-# review queue short; majors stay separate so they get read on their own.
 updates:
-  - package-ecosystem: docker
-    directory: /
-    schedule:
-      interval: weekly
-      day: monday
-    cooldown:
-      default-days: 7
-    commit-message:
-      prefix: "chore(deps)"
-    groups:
-      docker:
-        patterns: ["*"]
-        update-types: [minor, patch]
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
-      day: monday
-    cooldown:
-      default-days: 7
+    open-pull-requests-limit: 0
     commit-message:
-      prefix: "chore(deps)"
+      prefix: "fix(deps)"
     groups:
-      actions:
+      actions-security:
+        applies-to: security-updates
         patterns: ["*"]
-        update-types: [minor, patch]
-  - package-ecosystem: opentofu
-    directory: /infra
-    schedule:
-      interval: weekly
-      day: monday
-    cooldown:
-      default-days: 7
-    commit-message:
-      prefix: "chore(deps)"
-    groups:
-      opentofu:
-        patterns: ["*"]
-        update-types: [minor, patch]
   - package-ecosystem: uv
     directory: /
     schedule:
       interval: weekly
-      day: monday
-    cooldown:
-      default-days: 7
+    open-pull-requests-limit: 0
     commit-message:
-      prefix: "chore(deps)"
+      prefix: "fix(deps)"
     groups:
-      python:
+      python-security:
+        applies-to: security-updates
         patterns: ["*"]
-        update-types: [minor, patch]
