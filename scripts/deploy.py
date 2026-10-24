@@ -115,7 +115,18 @@ def build_deploy_commands(
             f"--tag={MANUAL_TAG}",
             "--quiet",
         ),
-        ("gcloud", "run", "services", "update-traffic", *scope, f"--to-revisions={revision}=100", "--quiet"),
+        # Drop the manual tag on promotion: a tagged revision stays publicly reachable after traffic moves on
+        # (a 2026-10-12 build was still served on its manual-candidate URL on 2026-10-24).
+        (
+            "gcloud",
+            "run",
+            "services",
+            "update-traffic",
+            *scope,
+            f"--to-revisions={revision}=100",
+            f"--remove-tags={MANUAL_TAG}",
+            "--quiet",
+        ),
     )
 
 

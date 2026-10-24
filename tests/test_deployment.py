@@ -80,6 +80,7 @@ def test_valid_release_restamps_commit_and_routes_traffic_to_the_new_revision() 
             "update-traffic",
             *SCOPE,
             "--to-revisions=www-fmind-dev-manual-test=100",
+            "--remove-tags=manual-candidate",
             "--quiet",
         ),
     )
