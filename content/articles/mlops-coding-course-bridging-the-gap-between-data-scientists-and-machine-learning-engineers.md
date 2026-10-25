@@ -38,11 +38,10 @@ The [**refining stage**](https://mlops-coding-course.fmind.dev/5.%20Refining/ind
 
 Finally, the course tackles the crucial aspect of [**sharing your MLOps projects**](https://mlops-coding-course.fmind.dev/6.%20Sharing/index.html) with others. We discuss setting up and managing [code repositories](https://mlops-coding-course.fmind.dev/6.%20Sharing/6.0.%20Repository.html), selecting an appropriate [software license](https://mlops-coding-course.fmind.dev/6.%20Sharing/6.1.%20License.html), writing a comprehensive [README.md file](https://mlops-coding-course.fmind.dev/6.%20Sharing/6.2.%20Readme.html), managing [project releases](https://mlops-coding-course.fmind.dev/6.%20Sharing/6.3.%20Releases.html), and building [code templates](https://mlops-coding-course.fmind.dev/6.%20Sharing/6.4.%20Templates.html) with [Cookiecutter](https://cookiecutter.readthedocs.io/en/stable/) and [cruft](https://cruft.github.io/cruft/). We also cover setting up [cloud workstations](https://cloud.google.com/workstations) for collaborative development and strategies for fostering [contributions](https://mlops-coding-course.fmind.dev/6.%20Sharing/6.6.%20Contributions.html) and building a thriving community around your project.
 
-### Personalized Support: MLOps Coding Assistant and Mentoring
+### Personalized Support: Mentoring
 
 The course goes beyond static content, offering:
 
-- [**MLOps Coding Assistant**](https://mlops-coding-assistant.fmind.dev/) **:** A [premium AI-powered chatbot](https://mlops-coding-course.fmind.dev/0.%20Overview/0.5.%20Assistants.html) specifically trained on the course material to provide tailored responses to your questions and offer code feedback from your inputs.
 - [**Mentoring Sessions**](https://mlops-coding-course.fmind.dev/0.%20Overview/0.4.%20Mentoring.html) **:** Personalized guidance and support from experienced MLOps professionals to help you apply the course concepts to your specific challenges.
 
 ### Companion Repository: MLOps Python Package

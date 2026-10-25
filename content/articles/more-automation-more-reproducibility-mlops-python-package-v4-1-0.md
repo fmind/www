@@ -248,7 +248,7 @@ pip install cookiecutter
 cookiecutter gh:fmind/cookiecutter-mlops-package
 ```
 
-In the coming days, we will also update the [**MLOps Coding Course**](https://github.com/MLOps-Courses/mlops-coding-course) and the [**MLOps Coding Assistant**](https://mlops-coding-assistant.fmind.dev/). Follow me on [X](https://x.com/fmind_dev), [GitHub](https://github.com/fmind), [Medium](https://fmind.medium.com/), [LinkedIn](https://www.linkedin.com/in/fmind-dev/) to stay tuned!
+In the coming days, we will also update the [**MLOps Coding Course**](https://github.com/MLOps-Courses/mlops-coding-course). Follow me on [X](https://x.com/fmind_dev), [GitHub](https://github.com/fmind), [Medium](https://fmind.medium.com/), [LinkedIn](https://www.linkedin.com/in/fmind-dev/) to stay tuned!
 
 ![Photo by Lenny Kuhne on Unsplash](/static/img/articles/more-automation-more-reproducibility-mlops-python-package-v4-1-0/02.webp)
 
