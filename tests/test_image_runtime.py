@@ -5,11 +5,12 @@ from __future__ import annotations
 import json
 import signal
 import traceback
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any
 
 import pytest
+from litestar import Litestar
 
 from scripts.image_smoke import (
     CommandResult,
@@ -339,14 +340,14 @@ def test_modern_mcp_probe_fails_closed_on_incomplete_results(
         assert message in "".join(traceback.format_exception(caught.value))
 
 
-def test_http_contract_probe_matches_the_real_application_wire(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_http_contract_probe_matches_the_real_application_wire(
+    monkeypatch: pytest.MonkeyPatch, make_app: Callable[[], Litestar]
+) -> None:
     from litestar.testing import TestClient
-
-    from www.app import create_app
 
     # The MCP SDK deliberately makes each transport manager single-use. Build
     # an isolated application just as a fresh server process does.
-    with TestClient(create_app()) as client:
+    with TestClient(make_app()) as client:
 
         def request(
             port: int,

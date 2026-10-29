@@ -3,18 +3,18 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from datetime import UTC, datetime
 from hashlib import sha256
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
 import pytest
+from litestar import Litestar
 from litestar.testing import TestClient
 from mcp.server.mcpserver.exceptions import ToolError
 from mcp_types import CallToolResult
 
-from www.app import create_app
 from www.content import article_summaries, load_articles, visible_articles
 from www.data import SITE_PAGES
 from www.mcp import create_mcp_server
@@ -36,8 +36,8 @@ BEFORE_REVIEW = datetime(2026, 10, 14, tzinfo=UTC)
 
 
 @pytest.fixture(scope="module")
-def client() -> Iterator[TestClient]:
-    with TestClient(app=create_app()) as test_client:
+def client(make_app: Callable[[], Litestar]) -> Iterator[TestClient]:
+    with TestClient(app=make_app()) as test_client:
         yield test_client
 
 

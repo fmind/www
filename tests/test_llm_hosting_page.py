@@ -1,34 +1,38 @@
-"""Regression tests for calculator form fidelity, API availability, and page semantics."""
+"""LLM self-hosting calculator page: rendered forms, sections, and HTML semantics over HTTP."""
 
 from __future__ import annotations
 
 import re
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from dataclasses import replace
-from datetime import UTC, datetime
 from html.parser import HTMLParser
 from typing import Any
+from urllib.parse import parse_qs, urlsplit
 
 import pytest
+from litestar import Litestar
 from litestar.testing import TestClient
 
 import www.sites.economics as economics
-from www.app import create_app
+from tests.llm_hosting_support import view
 from www.sites.agent import compare_hosting
 from www.sites.calculator import build_llm_self_hosting_view
-from www.sites.data import API_BASELINES
-from www.sites.formatting import format_decimal, format_number
-from www.sites.inputs import scenario_parameters
+from www.sites.data import API_BASELINES, DEMAND_PRESETS, FRONTIER_MODELS
+from www.sites.inputs import hosting_url, scenario_parameters
 
-NOW = datetime(2026, 9, 7, tzinfo=UTC)
 PAGE = "/sites/llm-self-hosting/?mode=advanced"
-QUALIFIED_VERDICTS = {"Fleet has a cost case", "API costs less", "No API accepts this request"}
 
 type AppClient = TestClient[Any]
 
 
-def view(query: dict[str, str] | None = None):
-    return build_llm_self_hosting_view({"mode": "advanced", **(query or {})}, now=NOW)
+@pytest.fixture(scope="module")
+def client(make_app: Callable[[], Litestar]) -> Iterator[AppClient]:
+    # One app per module: the MCP session manager inside an instance can only start once per process.
+    with TestClient(make_app()) as test_client:
+        yield test_client
+
+
+# Advanced form fidelity, API availability, and page semantics.
 
 
 class NumberInputs(HTMLParser):
@@ -48,13 +52,6 @@ def number_inputs(html: str) -> dict[str, dict[str, str]]:
     parser = NumberInputs()
     parser.feed(html)
     return parser.inputs
-
-
-@pytest.fixture(scope="module")
-def client() -> Iterator[AppClient]:
-    # A fresh app: the MCP session manager inside one instance can only start once per process.
-    with TestClient(create_app()) as test_client:
-        yield test_client
 
 
 def test_number_inputs_render_the_exact_shareable_values(client: AppClient) -> None:
@@ -97,35 +94,6 @@ def test_form_steps_match_server_parsing(client: AppClient) -> None:
             assert not result.validation, name
 
 
-@pytest.mark.parametrize("parameter", ["days", "tokens", "input-tokens", "cache-prefix", "tasks"])
-def test_whole_quantities_reject_fractions_for_agents(parameter: str) -> None:
-    assert view({parameter: "21"}).validation == ()
-    with pytest.raises(ValueError, match=f"{parameter} must be a whole number"):
-        compare_hosting({parameter: "21.5"})
-
-
-def test_unavailable_apis_are_never_the_lowest_or_plotted() -> None:
-    result = view({"tokens": "100000"})
-    gemini, *available = result.apis
-    assert gemini.request_issue
-    assert all(not api.request_issue for api in available)
-
-    for row in result.sensitivity:
-        for cell in row.cells:
-            requests = cell.inputs.requests_per_day * cell.inputs.active_days
-            costs = [economics.api_monthly_cost(cell.inputs, api.baseline, requests)[0] for api in available]
-            assert cell.cheapest_api_usd == min(costs)
-
-    plot = result.cost_plot
-    assert [(line.series, line.name) for line in plot.lines] == [
-        (0, "GKE fleet"),
-        *((index, api.baseline.name) for index, api in enumerate(result.apis, start=1) if not api.request_issue),
-    ]
-    assert plot.unavailable == (f"{gemini.baseline.name}: {gemini.request_issue}",)
-    assert all(gemini.baseline.name not in tick.label for tick in plot.break_evens)
-    assert all(f"{gemini.baseline.name} unavailable" in frame.summary for frame in plot.frames)
-
-
 def test_no_available_api_is_explicit(client: AppClient) -> None:
     query = {"tokens": "200000", "requests": "1"}
     result = view(query)
@@ -140,22 +108,6 @@ def test_no_available_api_is_explicit(client: AppClient) -> None:
     assert "one fixed GKE fleet and 0 managed APIs" in html
 
 
-@pytest.mark.parametrize(
-    "query",
-    [
-        None,
-        {"requests": "4000"},
-        {"node": "g2-standard-12"},
-        {"input-tokens": "256000", "tokens": "1"},
-        {"tokens": "200000", "requests": "1"},
-    ],
-)
-def test_sensitivity_verdict_matches_cell_styling(query: dict[str, str] | None) -> None:
-    for row in view(query).sensitivity:
-        for cell in row.cells:
-            assert cell.fits == (cell.verdict in QUALIFIED_VERDICTS), cell.verdict
-
-
 def test_chart_styles_scale_with_the_baseline_count(client: AppClient, monkeypatch: pytest.MonkeyPatch) -> None:
     extra = tuple(replace(baseline, name=f"{baseline.name} copy") for baseline in API_BASELINES[:2])
     monkeypatch.setattr(economics, "API_BASELINES", API_BASELINES + extra)
@@ -165,34 +117,6 @@ def test_chart_styles_scale_with_the_baseline_count(client: AppClient, monkeypat
     assert response.status_code == 200
     assert "one fixed GKE fleet and 7 managed APIs" in response.text
     assert response.text.count('<polyline points="') == 8
-
-
-@pytest.mark.parametrize(
-    ("value", "expected"),
-    [
-        (0.5, "1"),
-        (2.5, "3"),
-        (999.4, "999"),
-        (999.6, "1.0k"),
-        (1250, "1.3k"),
-        (999_949, "999.9k"),
-        (999_960, "1.00M"),
-        (999_996_000, "1.00B"),
-        (5e15, "5000.00T"),
-    ],
-)
-def test_format_number_rolls_units_and_rounds_like_format_decimal(value: float, expected: str) -> None:
-    assert format_number(value) == expected
-
-
-def test_format_number_rounding_agrees_with_format_decimal() -> None:
-    for value in (0.5, 1.5, 2.5, 12.5, 999.5):
-        assert format_number(value) in {format_decimal(value, 0), "1.0k"}
-
-
-def test_slider_labels_use_singular_units() -> None:
-    frame = view({"days": "1"}).cost_plot.frames[0]
-    assert frame.label.startswith("1 request/day · 1 request/month")
 
 
 def test_page_semantics_have_one_status_and_valid_figures(client: AppClient) -> None:
@@ -225,3 +149,94 @@ def test_page_links_only_to_rendered_sections_and_states_editable_assumptions(cl
     custom = client.get(f"{PAGE}&overhead=0&throughput=250&utilization=80").text
     assert "Model weights plus 0% reserve" in custom
     assert "Capacity assumes 250 output tokens/s per model copy, with 80% usable" in custom
+
+
+# Simple-mode choices, section order, and fixed-fleet explanations.
+
+
+def test_simple_mode_has_basic_choices_and_a_clean_shareable_url(client: AppClient) -> None:
+    result = build_llm_self_hosting_view({"preset": "department", "model": "mistral-small-4", "billing": "cud-3y"})
+    assert result.inputs.mode == "simple"
+    assert result.inputs.quantization_id == "nvfp4"
+    assert result.inputs.node_pool_id == "g4-standard-48"
+    assert result.inputs.memory_overhead_pct == 25
+    assert result.estimate.requests_month == 44000
+    assert not result.validation
+    parameters = parse_qs(urlsplit(hosting_url(result.inputs)).query)
+    assert set(parameters) == {"mode", "preset", "model", "billing", "window"}
+    assert build_llm_self_hosting_view(parameters).inputs == result.inputs
+    html = client.get("/sites/llm-self-hosting/").text
+    for name in ("preset", "model", "billing", "window", "advanced-mode"):
+        assert f'id="{name}"' in html
+    for name in ("platform", "quant", "node", "throughput", "quality-settings", "cost-volume"):
+        assert f'id="{name}"' not in html
+
+
+def test_presets_and_models_are_presented_from_smallest_to_largest(client: AppClient) -> None:
+    assert [preset.id for preset in DEMAND_PRESETS] == [
+        "single-job",
+        "small-team",
+        "document-pipeline",
+        "department",
+        "automated-support",
+        "scheduled-workflow",
+        "service",
+    ]
+    assert [model.parameters_b for model in FRONTIER_MODELS] == sorted(model.parameters_b for model in FRONTIER_MODELS)
+    html = client.get("/sites/llm-self-hosting/").text
+    preset_positions = [html.index(f'value="{preset.id}"') for preset in DEMAND_PRESETS]
+    model_positions = [html.index(f'value="{model.id}"') for model in FRONTIER_MODELS]
+    assert preset_positions == sorted(preset_positions)
+    assert model_positions == sorted(model_positions)
+    assert "3,520 calls/month" in html
+    # Simple mode explains sizes in the picker, including mixture-of-experts active parameters.
+    assert '<option value="qwen3-5-4b">Qwen3.5 4B · 4B</option>' in html
+    assert '<option value="mistral-small-4">Mistral Small 4 · 119B / 6.5B active</option>' in html
+    assert "B = billion, T = trillion" in html
+
+
+@pytest.mark.parametrize("mode", ["simple", "advanced"])
+def test_hosting_page_keeps_every_section_open_with_setup_before_method(client: AppClient, mode: str) -> None:
+    html = client.get(f"/sites/llm-self-hosting/?mode={mode}").text
+    assert "<details" not in html
+    assert "<summary" not in html
+    method = html.index('id="hosting-method-title"')
+    assert method < html.index('id="hosting-sources-title"')
+    if mode == "simple":
+        assert html.index('id="hosting-break-even-title"') < html.index('id="recommended-fleet-title"') < method
+    else:
+        assert 'id="recommended-fleet"' not in html
+        assert 'id="latency-settings"' in html
+        assert 'id="quality-settings"' in html
+
+
+def test_simple_outputs_explain_load_cost_and_fixed_fleet_break_even(client: AppClient) -> None:
+    result = build_llm_self_hosting_view({"preset": "scheduled-workflow", "window": "1"})
+    for row in result.apis:
+        assert row.break_even_fits == (row.break_even_requests <= result.estimate.capacity_requests_month)
+    html = client.get("/sites/llm-self-hosting/", params={"preset": "scheduled-workflow", "window": "1"}).text
+    assert "Try a scenario" not in html
+    assert "Compare costs" not in html
+    for text in (
+        "17 replicas",
+        "Illustrative setup",
+        "not measured GPU utilization",
+        "Break-even holds this setup",
+        "Scheduled workload",
+        "Output budgets include reasoning",
+        "Exact estimate",
+    ):
+        assert text in html
+
+
+def test_auto_flex_start_returns_validation_without_crashing_the_web_page(make_app: Callable[[], Litestar]) -> None:
+    parameters = {"mode": "advanced", "node": "auto", "billing": "flex"}
+    result = build_llm_self_hosting_view(parameters)
+    assert result.validation
+    # Its own app, so a server exception would surface as the 500 response this page must avoid.
+    with TestClient(make_app(), raise_server_exceptions=False) as client:
+        response = client.get("/sites/llm-self-hosting/", params=parameters)
+        assert response.status_code == 200
+        assert "No compatible hardware" in response.text
+    with pytest.raises(ValueError, match="Invalid calculator parameters"):
+        compare_hosting(parameters)

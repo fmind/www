@@ -22,7 +22,7 @@ from PIL import Image
 import www.app as app_module
 import www.publications as publications_module
 from www.app import app, create_app
-from www.assets import ApplicationAssets, load_application_assets
+from www.assets import ApplicationAssets
 from www.config import Config, Environment
 from www.content import ArticleCollection, article_summaries, load_articles, visible_articles
 from www.data import METADATA, OPEN_SOURCE, SAME_AS_PROFILES, SITE_PAGES
@@ -51,11 +51,6 @@ class RecordingLogger:
 def client() -> Iterator[AppClient]:
     with TestClient(app) as test_client:
         yield test_client
-
-
-@pytest.fixture(scope="module")
-def snapshots() -> tuple[ApplicationAssets, ArticleCollection]:
-    return load_application_assets(), load_articles()
 
 
 def test_startup_renders_article_markdown_once_for_all_public_consumers(

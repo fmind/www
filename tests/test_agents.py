@@ -3,20 +3,20 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from dataclasses import replace
 from hashlib import sha256
 from typing import Any
 from urllib.parse import parse_qsl, urlsplit
 
 import pytest
+from litestar import Litestar
 from litestar.testing import TestClient
 from mcp.server.mcpserver.exceptions import ToolError
 from mcp_types import CallToolResult
 from pydantic import TypeAdapter
 
 from www.agent_discovery import AGENT_SKILL_PATH, prefers_markdown
-from www.app import create_app
 from www.content import article_summaries, load_articles, visible_articles
 from www.mcp import create_mcp_server
 from www.publications import article_markdown_index
@@ -27,8 +27,8 @@ from www.sites.models import HostingEstimate, HostingInputs
 
 
 @pytest.fixture(scope="module")
-def client() -> Iterator[TestClient[Any]]:
-    with TestClient(create_app()) as instance:
+def client(make_app: Callable[[], Litestar]) -> Iterator[TestClient[Any]]:
+    with TestClient(make_app()) as instance:
         yield instance
 
 
