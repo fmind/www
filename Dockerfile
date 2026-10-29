@@ -1,10 +1,10 @@
 # syntax=docker/dockerfile:1
-FROM python:3.14.8-slim@sha256:a2b82f3c48559aa0a8446d9af49826b6e2b2016f4cd2afabfe6013ec53729170 AS build
+FROM python:3.14.10-slim@sha256:3cabfd7d7aaf394e6040e79fa1eec6ca1c52b74ed9188650472695d9a9326999 AS build
 ARG TARGETARCH
 ENV UV_COMPILE_BYTECODE=1
 ENV UV_LINK_MODE=copy
 WORKDIR /app
-COPY --from=ghcr.io/astral-sh/uv:0.13.1@sha256:4a1f3666816dafadd20ceb71eac9a7d56d7ef30279f7d64048519ab901ada336 /uv /uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv:0.13.6@sha256:af22a52f5eafef3d78e551599d405c02df61919d18028f0cea8eda93bc9986d0 /uv /uvx /bin/
 ADD --chmod=0755 --checksum=sha256:eca9e42452e39d19c68b74dc527c67fd7a890197d7cce329722e9a54e9fd339c \
   https://github.com/dobicinaitis/tailwind-cli-extra/releases/download/v2.10.34/tailwindcss-extra-linux-x64 \
   /usr/local/lib/tailwindcss-extra-amd64
@@ -24,7 +24,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     -i assets/css/input.css -o static/dist/styles.css --minify \
   && chmod -R u=rwX,go=rX /app/.venv /app/content /app/static
 
-FROM python:3.14.8-slim@sha256:a2b82f3c48559aa0a8446d9af49826b6e2b2016f4cd2afabfe6013ec53729170 AS runner
+FROM python:3.14.10-slim@sha256:3cabfd7d7aaf394e6040e79fa1eec6ca1c52b74ed9188650472695d9a9326999 AS runner
 ENV ENVIRONMENT=production
 ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONDONTWRITEBYTECODE=1
