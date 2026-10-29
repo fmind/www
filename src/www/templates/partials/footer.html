@@ -15,9 +15,6 @@
       {% for label, repository in [("Theme", "theme"), ("CLI", "cli")] %}
         <a class="inline-flex min-h-8 items-center gap-1 text-accent underline decoration-1 underline-offset-4 hover:decoration-2 transition-colors" href="https://github.com/fmind/{{ repository }}" target="_blank" rel="noopener noreferrer" aria-label="{{ label }} (external GitHub page)" title="{{ label }} on GitHub (external page)">{{ label }}{{ icon("external_link", "h-3.5 w-3.5") }}</a>
       {% endfor %}
-      {% for social in metadata.socials if not social.header %}
-        <a class="inline-flex min-h-8 items-center gap-1 text-accent underline decoration-1 underline-offset-4 hover:decoration-2 transition-colors" href="{{ social.url }}" target="_blank" rel="noopener noreferrer">{{ social.name }}{{ icon("external_link", "h-3.5 w-3.5") }}</a>
-      {% endfor %}
     </nav>
     <p class="text-sm xl:text-right">© {{ current_year }} {{ metadata.name }} ({{ metadata.alternate_name }}). All rights reserved.</p>
   </div>

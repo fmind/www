@@ -64,11 +64,11 @@ METADATA = Metadata(
     twitter_handle="@fmind_dev",
     google_analytics_id="G-Z28QKD99V2",
     socials=(
-        SocialLink("LinkedIn", "https://www.linkedin.com/in/fmind-dev/", "linkedin", True),
-        SocialLink("X (Twitter)", "https://x.com/fmind_dev", "x", True),
-        SocialLink("GitHub", "https://github.com/fmind", "github", True),
-        SocialLink("Kaggle", "https://www.kaggle.com/freaxmind", "kaggle", True),
-        SocialLink("YouTube", "https://www.youtube.com/@fmind-dev", "youtube", True),
+        SocialLink("LinkedIn", "https://www.linkedin.com/in/fmind-dev/", "linkedin"),
+        SocialLink("X (Twitter)", "https://x.com/fmind_dev", "x"),
+        SocialLink("GitHub", "https://github.com/fmind", "github"),
+        SocialLink("Kaggle", "https://www.kaggle.com/freaxmind", "kaggle"),
+        SocialLink("YouTube", "https://www.youtube.com/@fmind-dev", "youtube"),
     ),
 )
 

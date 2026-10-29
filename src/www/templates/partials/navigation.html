@@ -15,7 +15,7 @@
       </ul>
     </div>
     <div class="justify-self-end flex shrink-0 items-center sm:gap-2" role="group" aria-label="Social profiles">
-      {% for social in metadata.socials if social.header %}
+      {% for social in metadata.socials %}
         <a class="inline-flex items-center justify-center w-6 min-[380px]:w-7 h-11 sm:w-11 sm:h-11 rounded-lg text-base-content hover:bg-selection hover:text-primary transition-colors" href="{{ social.url }}" target="_blank" rel="noopener noreferrer" aria-label="{{ social.name }}" title="{{ social.name }}">{{ icon(social.icon, "w-4 h-4 sm:w-5 sm:h-5") }}</a>
       {% endfor %}
     </div>

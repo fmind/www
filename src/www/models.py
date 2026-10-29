@@ -18,7 +18,6 @@ class SocialLink:
     name: str
     url: str
     icon: str
-    header: bool = False
 
 
 @dataclass(frozen=True, slots=True)
