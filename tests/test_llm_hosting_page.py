@@ -220,6 +220,8 @@ def test_simple_outputs_explain_load_cost_and_fixed_fleet_break_even(client: App
     for text in (
         "17 replicas",
         "Illustrative setup",
+        "GPU vs. Cloud TPU · this demand",
+        "CT6e · 8\u00d7 TPU v6e · 256 GB",
         "not measured GPU utilization",
         "Break-even holds this setup",
         "Scheduled workload",

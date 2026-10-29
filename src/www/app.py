@@ -430,7 +430,10 @@ def create_app(
                     "text/markdown; charset=utf-8",
                     _HOUR_CACHE,
                     cors=True,
-                    extra_headers={"vary": "Accept"},
+                    extra_headers={
+                        "vary": "Accept",
+                        "link": f'<{article.canonical_url()}>; rel="canonical"',
+                    },
                 )
             related_sites = tuple(page for page in SITE_PAGES if page.relates_to(article.slug))
             response = render_page(

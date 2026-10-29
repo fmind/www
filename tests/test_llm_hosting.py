@@ -310,10 +310,6 @@ def test_old_a4_links_preserve_their_billing_plan(legacy: str, billing: str) -> 
 def test_automatic_setup_uses_native_checkpoint_and_a_compatible_topology(model) -> None:
     result = build_llm_self_hosting_view({"model": model.id}, now=NOW)
     assert result.inputs.mode == "simple"
-    if model.deployment_issue:
-        assert result.validation
-        assert result.selected_model.id != model.id
-        return
     assert result.selected_quant.id == model.default_quantization
     assert not result.validation
     assert not result.estimate.compatibility_issue
@@ -1076,10 +1072,6 @@ def test_custom_advanced_window_returns_to_a_supported_simple_choice() -> None:
 @pytest.mark.parametrize("billing", ["on-demand", "cud-1y", "cud-3y"])
 def test_every_simple_model_has_a_supported_checkpoint_and_billing_plan(model, billing: str) -> None:
     result = build_llm_self_hosting_view({"model": model.id, "billing": billing})
-    if model.deployment_issue:
-        assert result.validation
-        assert result.selected_model.id != model.id
-        return
     assert not result.validation
     assert result.selected_quant.id in model.supported_quantizations
     assert result.estimate.weight_memory_gb == dict(model.checkpoint_memory)[result.selected_quant.id]
@@ -1101,7 +1093,9 @@ def test_every_simple_model_has_a_supported_checkpoint_and_billing_plan(model, b
         {"model": "glm-5-3", "node": "a3-high", "quant": "fp8"},
         {"model": "glm-5-3-flash", "node": "g4-standard-48", "quant": "fp8"},
         {"model": "deepseek-v4-pro", "node": "a3-high", "quant": "mixed-fp4"},
-        {"model": "k2-horizon-375b-a23b", "node": "a3-high", "quant": "fp16"},
+        {"model": "gemma-4-26b-a4b", "node": "ct6e-standard-8t", "quant": "fp8"},
+        {"model": "gemma-4-26b-a4b", "node": "tpu7x-standard-4t", "quant": "nvfp4"},
+        {"model": "muse-spark-open", "node": "a3-high", "quant": "fp16"},
     ],
 )
 def test_unsupported_combinations_cannot_qualify_or_be_overridden_by_a_pilot(parameters) -> None:
@@ -1129,11 +1123,108 @@ def test_native_fp4_sizes_include_mixed_precision_and_scales() -> None:
     assert mistral.inputs.node_pool_id == "g4-standard-48"
     assert mistral.estimate.weight_memory_gb == pytest.approx(70.801904048)
     assert not mistral.validation
-    muse = build_llm_self_hosting_view({"model": "muse-glimmer", "quant": "nvfp4", "node": "auto"})
-    assert muse.estimate.weight_memory_gb == pytest.approx(24.669346036)
-    assert muse.estimate.required_memory_gb > 24
+    gemma = build_llm_self_hosting_view({"model": "gemma-4-26b-a4b", "quant": "nvfp4", "node": "auto"})
+    assert gemma.estimate.weight_memory_gb == pytest.approx(16.417035012)
+    assert gemma.inputs.node_pool_id == "g4-standard-48"
+    muse = build_llm_self_hosting_view(
+        {"model": "muse-spark-open", "quant": "nvfp4", "node": "auto", "billing": "cud-1y"}
+    )
+    assert muse.estimate.weight_memory_gb == pytest.approx(533.011023472)
+    assert muse.inputs.node_pool_id == "a4"
     deepseek = build_llm_self_hosting_view({"model": "deepseek-v4-pro"})
     assert deepseek.estimate.weight_memory_gb == pytest.approx(892.727580904)
+
+
+def test_cloud_tpu_trillium_pricing_bf16_requirement_and_recipe_context_limit() -> None:
+    for plan, hourly in (("on-demand", 21.6), ("cud-1y", 15.12), ("cud-3y", 9.76)):
+        result = build_llm_self_hosting_view(
+            {
+                "mode": "advanced",
+                "model": "gemma-4-26b-a4b",
+                "node": "ct6e-standard-8t",
+                "quant": "fp16",
+                "billing": plan,
+            }
+        )
+        assert not result.validation
+        assert result.estimate.qualified
+        assert result.estimate.total_gpus == 8
+        assert result.estimate.compute_monthly_usd == pytest.approx(hourly * 730)
+
+    over_context = build_llm_self_hosting_view(
+        {
+            "mode": "advanced",
+            "model": "gemma-4-26b-a4b",
+            "node": "ct6e-standard-8t",
+            "quant": "fp16",
+            "input-tokens": "16000",
+            "tokens": "500",
+        }
+    )
+    assert "16,384 context" in over_context.estimate.compatibility_issue
+    assert not over_context.estimate.qualified
+
+
+def test_cloud_tpu_multi_host_slices_and_gpu_vs_tpu_demand_comparison() -> None:
+    deepseek = build_llm_self_hosting_view({"model": "deepseek-v4-1-flash", "preset": "department"})
+    assert deepseek.selected_node.id == "tpu7x-standard-4t"
+    assert deepseek.estimate.nodes_per_replica == 1
+    assert deepseek.estimate.qualified
+    gpu_row, tpu_row = deepseek.accelerators
+    assert (gpu_row.family, gpu_row.node.id) == ("GPU", "a3-ultra")
+    assert (tpu_row.family, tpu_row.node.id) == ("Cloud TPU", "tpu7x-standard-4t")
+    assert tpu_row.estimate.total_monthly_usd < gpu_row.estimate.total_monthly_usd
+
+    trillium_slice = build_llm_self_hosting_view(
+        {"mode": "advanced", "model": "qwen3-8-flash-next", "node": "ct6e-standard-8t", "quant": "fp16"}
+    )
+    assert not trillium_slice.estimate.compatibility_issue
+    assert trillium_slice.estimate.nodes_per_replica == 2
+    assert trillium_slice.estimate.total_gpus == 16
+    assert not trillium_slice.estimate.topology_confirmed
+
+    ironwood_slice = build_llm_self_hosting_view(
+        {"mode": "advanced", "model": "glm-5-3", "node": "tpu7x-standard-4t", "quant": "fp8"}
+    )
+    assert not ironwood_slice.estimate.compatibility_issue
+    assert ironwood_slice.estimate.nodes_per_replica == 2
+    assert ironwood_slice.estimate.total_gpus == 8
+    assert not ironwood_slice.estimate.topology_confirmed
+
+    for row in build_llm_self_hosting_view({"model": "gemma-4-26b-a4b", "preset": "small-team"}).accelerators:
+        assert not row.estimate.compatibility_issue
+        replayed = build_llm_self_hosting_view(parse_qs(urlsplit(row.url).query))
+        assert not replayed.validation
+        assert replayed.estimate == row.estimate
+
+    mistral_over_g4_context = build_llm_self_hosting_view(
+        {
+            "mode": "advanced",
+            "model": "mistral-small-4",
+            "quant": "fp16",
+            "input-tokens": "20000",
+            "tokens": "500",
+        }
+    )
+    gpu_mistral, tpu_mistral = mistral_over_g4_context.accelerators
+    assert (gpu_mistral.quantization.id, gpu_mistral.node.id) == ("fp8", "a3-ultra")
+    assert gpu_mistral.estimate.qualified
+    assert "requires one of the verified node families" in tpu_mistral.estimate.compatibility_issue
+    assert not tpu_mistral.estimate.qualified
+
+    flex_batch = build_llm_self_hosting_view(
+        {
+            "mode": "advanced",
+            "model": "qwen3-8-flash-next",
+            "node": "a4",
+            "billing": "flex",
+            "api-mode": "batch",
+        }
+    )
+    gpu_flex, tpu_flex = flex_batch.accelerators
+    assert gpu_flex.estimate.qualified
+    assert "No Cloud TPU machine in this catalog offers the flex billing plan" in tpu_flex.estimate.compatibility_issue
+    assert not tpu_flex.estimate.qualified
 
 
 def test_one_off_demand_cannot_borrow_a_whole_month_of_capacity() -> None:
@@ -1280,6 +1371,12 @@ def test_simple_volume_override_survives_sharing_and_mode_changes() -> None:
     assert len(invalid.validation) == 1
     with pytest.raises(ValueError, match="requests must be"):
         compare_hosting({"mode": "simple", "requests": "NaN"})
+    overlong_float = build_llm_self_hosting_view({"mode": "simple", "requests": "9" * 129})
+    assert len(overlong_float.validation) == 1
+    overlong_int = build_llm_self_hosting_view({"mode": "advanced", "replicas": "9" * 129})
+    assert len(overlong_int.validation) == 1
+    invalid_simple_billing = build_llm_self_hosting_view({"mode": "simple", "billing": "flex"})
+    assert invalid_simple_billing.validation == ("billing was not recognized; the default was used",)
 
 
 def test_compact_model_supplies_a_sourced_l4_budget() -> None:

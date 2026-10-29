@@ -784,7 +784,7 @@ test("simple calculator chooses compatible native hardware and preserves commitm
   await expect(page.locator("#platform, #hosting-reading"))
     .toHaveCount(0);
   await expect(page.locator("#model option[value=mistral-small-4]")).toHaveText("Mistral Small 4 · 119B / 6.5B active");
-  await expect(page.locator("#model option[value=muse-glimmer]")).toContainText("Muse Glimmer");
+  await expect(page.locator("#model option[value=gemma-4-26b-a4b]")).toContainText("Gemma 4 26B A4B");
   await expect(page.locator("#model option[value=kimi-k3]")).toContainText("Kimi K3");
   await expect(page.locator("#preset option[value=small-team]")).toContainText("Small team");
   expect(await page.locator("#preset option").evaluateAll((options) => options.map((option) => option.value)))

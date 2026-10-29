@@ -507,6 +507,9 @@ def test_article_markdown_is_public_and_unknown_sources_are_noindex(client: AppC
     assert "](/static/" not in response.text
     # Search engines credit the HTML article, and only agents need the bulk export.
     assert response.headers["link"] == '<https://www.fmind.dev/articles/the-affordable-ai-agents/>; rel="canonical"'
+    negotiated = client.get("/articles/the-affordable-ai-agents/", headers={"accept": "text/markdown"})
+    assert negotiated.headers["link"] == '<https://www.fmind.dev/articles/the-affordable-ai-agents/>; rel="canonical"'
+    assert SITE_PAGES[0].description in article_page
     assert client.get("/llms-full.txt").headers["x-robots-tag"] == "noindex"
     assert "x-robots-tag" not in client.get("/llms.txt").headers
 

@@ -39,7 +39,7 @@
       <aside class="max-w-4xl mx-auto rounded-2xl border border-primary/30 bg-primary/5 p-6 my-10">
         <p class="text-sm font-semibold uppercase tracking-wider">Put the ideas into practice</p>
         <a class="link link-primary font-heading text-xl font-bold block mt-2" href="/sites/{{ site_page.slug }}/">{{ site_page.title }} →</a>
-        <p class="text-base-content/75 mt-3">Try the decision tool to compare demand, API bills, hosting capacity, and cost per accepted task.</p>
+        <p class="text-base-content/75 mt-3">{{ site_page.description }}</p>
       </aside>
     {% endfor %}
     <p id="copy-link-status" role="status" aria-live="polite" aria-atomic="true" class="fixed bottom-4 left-4 right-4 z-50 mx-auto w-fit max-w-[calc(100%-2rem)] rounded-lg bg-base-100 px-4 py-3 text-sm shadow-lg border border-base-300 empty:hidden pointer-events-none"></p>

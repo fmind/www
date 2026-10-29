@@ -13,6 +13,7 @@ from www.sites.capacity import MONTHLY_HOURS
 from www.sites.data import DEFAULT_HOSTING_INPUTS
 from www.sites.inputs import hosting_url, parse_inputs, scenario_parameters
 from www.sites.models import (
+    AcceleratorComparison,
     APIComparison,
     DemandPreset,
     FrontierModel,
@@ -40,6 +41,7 @@ class HostingResult(BaseModel):
     presets: tuple[DemandPreset, ...]
     model_comparisons: tuple[ModelComparison, ...]
     precision_comparisons: tuple[PrecisionComparison, ...]
+    accelerator_comparisons: tuple[AcceleratorComparison, ...]
     tasks: tuple[TaskComparison, ...]
     comparison_ready: bool
     validation: tuple[str, ...]
@@ -84,6 +86,7 @@ def compare_hosting(parameters: dict[str, str]) -> HostingResult:
         presets=view.presets,
         model_comparisons=view.comparison,
         precision_comparisons=view.precisions,
+        accelerator_comparisons=view.accelerators,
         tasks=view.tasks if view.inputs.quality_enabled else (),
         comparison_ready=view.comparison_ready,
         validation=view.validation,

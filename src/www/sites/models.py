@@ -42,7 +42,6 @@ class FrontierModel:
     default_quantization: str = "fp16"
     supported_quantizations: tuple[str, ...] = ("fp4", "fp8", "fp16")
     required_node_ids: tuple[str, ...] = ()
-    deployment_issue: str = ""
     node_context_limits: tuple[tuple[str, int], ...] = ()
     checkpoint_memory: tuple[tuple[str, float], ...] = ()
     node_minimums: tuple[tuple[str, int], ...] = ()
@@ -202,6 +201,15 @@ class PrecisionComparison:
 
 
 @dataclass(frozen=True, slots=True)
+class AcceleratorComparison:
+    family: str
+    quantization: Quantization
+    node: GKENodePool
+    estimate: HostingEstimate
+    url: str
+
+
+@dataclass(frozen=True, slots=True)
 class ModelComparison:
     model: FrontierModel
     estimate: HostingEstimate
@@ -293,6 +301,7 @@ class LLMSelfHostingView:
     presets: tuple[DemandPreset, ...]
     apis: tuple[APIComparison, ...]
     precisions: tuple[PrecisionComparison, ...]
+    accelerators: tuple[AcceleratorComparison, ...]
     demand_label: str
     selected_preset: DemandPreset
     window_is_auto: bool

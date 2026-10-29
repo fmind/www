@@ -78,7 +78,7 @@ def _parse_bounded_float(
         return fallback
     try:
         # float() also accepts underscores, non-ASCII digits, and inf/nan spellings.
-        if fullmatch(r"[+-]?(?:[0-9]+\.?[0-9]*|\.[0-9]+)(?:[eE][+-]?[0-9]+)?", raw) is None:
+        if len(raw) > 128 or fullmatch(r"[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?", raw) is None:
             raise ValueError
         value = float(raw)
     except ValueError:
@@ -111,7 +111,7 @@ def _parse_bounded_int(
         return fallback
     try:
         # strconv.Atoi accepts only integer syntax, never decimal-valued floats.
-        if fullmatch(r"[+-]?[0-9]+", raw) is None:
+        if len(raw) > 128 or fullmatch(r"[+-]?[0-9]+", raw) is None:
             raise ValueError
         value = int(raw, 10)
     except ValueError:
@@ -303,24 +303,19 @@ def parse_inputs(query: Query) -> tuple[HostingInputs, tuple[str, ...]]:
         inputs = replace(inputs, replicas=replicas_for_demand(inputs))
     if mode == "advanced":
         inputs = _parse_hosting_options(query, inputs, validation)
+    raw_plan = _first(query, "billing")
     if mode == "simple" or _first(query, "node") in (None, "auto"):
         allowed_plans = frozenset(("on-demand", "cud-1y", "cud-3y"))
         if mode == "advanced":
             allowed_plans |= {"flex"}
-        raw_billing = _parse_choice(query, "billing", "on-demand", allowed_plans, validation)
+        raw_plan = _parse_choice(query, "billing", "on-demand", allowed_plans, validation)
         try:
-            node = automatic_node(inputs, BillingPlan(raw_billing))
+            node = automatic_node(inputs, BillingPlan(raw_plan))
         except ValueError as exc:
-            if mode == "simple":
-                validation.append(f"{exc}; the default model was used")
-                inputs = replace(inputs, model_id=defaults.model_id, quantization_id=defaults.quantization_id)
-                node = automatic_node(inputs, BillingPlan(raw_billing))
-            else:
-                validation.append(f"{exc}; select a compatible checkpoint, GPU and billing plan")
-                node = find_node_pool(defaults.node_pool_id)
+            validation.append(f"{exc}; select a compatible checkpoint, GPU and billing plan")
+            node = find_node_pool(defaults.node_pool_id)
         inputs = replace(inputs, node_pool_id=node.id)
     node = find_node_pool(inputs.node_pool_id)
-    raw_plan = _first(query, "billing")
     available_plans = frozenset(price.plan.value for price in node.prices)
     # Fall back to the first plan this scenario can use; A4 lists Flex-start first,
     # which interactive serving rejects.
@@ -499,21 +494,25 @@ def configuration_issue(inputs: HostingInputs, *, check_workload: bool = True) -
     model = find_model(inputs.model_id)
     node = find_node_pool(inputs.node_pool_id)
     quantization = find_quantization(inputs.quantization_id)
-    if model.deployment_issue:
-        return model.deployment_issue
     if quantization.id not in model.supported_quantizations:
         return f"{model.name} has no verified {quantization.name} checkpoint in this catalog"
     if model.required_node_ids and node.id not in model.required_node_ids:
         return f"{model.name} requires one of the verified node families: {', '.join(model.required_node_ids)}"
+    if node.id == "ct6e-standard-8t" and quantization.id != "fp16":
+        return (
+            "Cloud TPU v6e Trillium requires a 16-bit BF16 checkpoint in this catalog; "
+            "CUDA quantized formats are not supported on Trillium"
+        )
+    if node.id == "tpu7x-standard-4t" and quantization.id not in ("fp8", "fp16"):
+        return (
+            "Cloud TPU7x Ironwood requires an FP8 or 16-bit BF16 checkpoint in this catalog; "
+            "CUDA 4-bit formats are not supported on TPU"
+        )
     if quantization.id == "fp8" and node.id == "a2-ultra-1g":
         return (
             "A100 does not support the selected native FP8 W8A8 kernels; choose 16-bit or an Ada/Hopper/Blackwell GPU"
         )
-    if (
-        quantization.id == "nvfp4"
-        and node.id not in ("g4-standard-48", "a4")
-        and not (model.id == "inkling" and node.id == "a3-ultra")
-    ):
+    if quantization.id == "nvfp4" and node.id not in ("g4-standard-48", "a4"):
         return f"{quantization.name} requires Blackwell hardware in this conservative compatibility snapshot"
     for node_id, context_limit in model.node_context_limits:
         if (
@@ -553,6 +552,7 @@ def automatic_node(inputs: HostingInputs, plan: BillingPlan) -> GKENodePool:
     return min(
         workload_candidates or candidates,
         key=lambda node: (
+            nodes_for_model(model, node, required) > 1,
             nodes_for_model(model, node, required) * node.price(plan).hourly_usd,
             nodes_for_model(model, node, required),
         ),

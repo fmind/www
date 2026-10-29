@@ -197,7 +197,7 @@ def create_mcp_server(
         instructions=(
             f"Query the portfolio of {METADATA.name} ({METADATA.alternate_name}): {METADATA.headline_primary}. "
             "Explore profile, leadership, work experience, credentials, publications, projects, and services. "
-            "Search and read published articles with citations, or compare LLM hosting assumptions using the calculator."
+            "Search and read published articles with citations, or compare LLM hosting and MCP context costs using the calculators."
         ),
         website_url=f"{METADATA.site_url}/",
         icons=_ICONS,
@@ -335,7 +335,7 @@ def create_mcp_server(
     @server.tool(
         name="compare_llm_hosting",
         title="Compare LLM hosting costs",
-        description="Compare a GKE infrastructure budget with managed APIs. Call with parameters={} for defaults and supported models, hardware, and plans. Simple mode accepts preset, model, billing, requests (calls/day), and window (auto, 24, 8, or 1 hour/day); set mode=simple when overriding requests. It sizes replicas under illustrative throughput assumptions. Interactive presets run 24/7; job and pipeline presets schedule running hours inside active windows. Commitments bill idle hours. Advanced mode keeps the fleet fixed and exposes custom token budgets, throughput, and running time. Break-even holds that fleet fixed and checks its capacity. Totals include compute and GKE; operations and additional services are excluded. Returns assumptions, USD costs, constraints, sources, and a shareable URL. Invalid inputs fail; no resources are provisioned. See /agents#calculator.",
+        description="Compare a GKE infrastructure budget with managed APIs. Call with parameters={} for defaults and supported models, hardware, and plans. Simple mode accepts preset, model, billing, requests (calls/day), and window (auto, 24, 8, or 1 hour/day); set mode=simple when overriding requests. It sizes replicas under illustrative throughput assumptions. Interactive presets run 24/7; job and pipeline presets schedule running hours inside active windows. Commitments bill idle hours. Advanced mode keeps the fleet fixed and exposes custom token budgets, throughput, and running time. Break-even holds that fleet fixed and checks its capacity. Totals include compute and GKE; operations and additional services are excluded. Returns assumptions, USD costs, GPU/TPU accelerator comparisons, constraints, sources, and a shareable URL. Invalid inputs fail; no resources are provisioned. See /agents#calculator.",
         annotations=_READ_ONLY,
         structured_output=True,
     )

@@ -19,6 +19,7 @@
 AGENTS.md
 CHANGELOG.md
 Dockerfile
+SECURITY.md
 dist
 dprint.json
 gha-creds-*.json
@@ -29,6 +30,7 @@ lychee.toml
 mise.lock
 mise.toml
 scripts
+server.json
 static/dist/styles.css
 tests
 tmp

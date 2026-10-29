@@ -28,16 +28,20 @@ from .formatting import format_decimal, format_usd2
 from .inputs import (
     Query,
     automatic_node,
+    configuration_issue,
     demand_preset,
     find_model,
     find_node_pool,
     find_quantization,
     hosting_url,
+    nodes_for_model,
     parse_inputs,
     pilot_configuration_id,
     scenario_parameters,
+    weight_memory_gb,
 )
 from .models import (
+    AcceleratorComparison,
     APIBaseline,
     APIComparison,
     APIMode,
@@ -293,6 +297,118 @@ def _hosting_sensitivity(
     return tuple(rows)
 
 
+def _hosting_accelerators(
+    inputs: HostingInputs,
+    model: FrontierModel,
+) -> tuple[AcceleratorComparison, ...]:
+    """Compare the lowest-cost compatible GPU and Cloud TPU fleets for this demand."""
+    families = (
+        ("GPU", tuple(pool for pool in GKE_NODE_POOLS if "TPU" not in pool.gpu)),
+        ("Cloud TPU", tuple(pool for pool in GKE_NODE_POOLS if "TPU" in pool.gpu)),
+    )
+    default_quant_id = (
+        inputs.quantization_id
+        if inputs.quantization_id in model.supported_quantizations
+        else model.default_quantization
+    )
+    preferred_quants = tuple(
+        dict.fromkeys((default_quant_id, model.default_quantization, *model.supported_quantizations))
+    )
+    rows: list[AcceleratorComparison] = []
+    for family, pools in families:
+        chosen_quant = find_quantization(default_quant_id)
+        chosen_node = pools[0]
+        target_plan = (
+            inputs.billing_plan
+            if any(price.plan is inputs.billing_plan for pool in pools for price in pool.prices)
+            else chosen_node.prices[0].plan
+        )
+        chosen_plan = (
+            target_plan
+            if any(price.plan is target_plan for price in chosen_node.prices)
+            else chosen_node.prices[0].plan
+        )
+        matched_hardware = False
+        for quant_id in preferred_quants:
+            candidate_quant = find_quantization(quant_id)
+            required = weight_memory_gb(model, candidate_quant) * (1 + inputs.memory_overhead_pct / 100)
+            candidates = [
+                pool
+                for pool in pools
+                if any(price.plan is target_plan for price in pool.prices)
+                and not configuration_issue(
+                    replace(
+                        inputs,
+                        node_pool_id=pool.id,
+                        quantization_id=quant_id,
+                        billing_plan=target_plan,
+                    ),
+                    check_workload=False,
+                )
+            ]
+            if not candidates:
+                continue
+            workload_candidates = [
+                pool
+                for pool in candidates
+                if not configuration_issue(
+                    replace(
+                        inputs,
+                        node_pool_id=pool.id,
+                        quantization_id=quant_id,
+                        billing_plan=target_plan,
+                    )
+                )
+            ]
+            if workload_candidates or not matched_hardware:
+                chosen_quant = candidate_quant
+                chosen_plan = target_plan
+                chosen_node = min(
+                    workload_candidates or candidates,
+                    key=lambda pool: (
+                        nodes_for_model(model, pool, required) > 1,
+                        nodes_for_model(model, pool, required) * pool.price(chosen_plan).hourly_usd,
+                        nodes_for_model(model, pool, required),
+                    ),
+                )
+                matched_hardware = True
+            if workload_candidates:
+                break
+        scenario = replace(
+            inputs,
+            mode="advanced",
+            node_pool_id=chosen_node.id,
+            quantization_id=chosen_quant.id,
+            billing_plan=chosen_plan,
+        )
+        if pilot_configuration_id(scenario) != pilot_configuration_id(inputs):
+            scenario = replace(
+                scenario,
+                pilot_config="",
+                measured_concurrency=0,
+                measured_first_token=0,
+                measured_completion=0,
+            )
+        estimate = estimate_hosting(model, chosen_node, chosen_quant, scenario)
+        if chosen_plan is not inputs.billing_plan:
+            estimate = replace(
+                estimate,
+                compatibility_issue=estimate.compatibility_issue
+                or f"No {family} machine in this catalog offers the {inputs.billing_plan.value} billing plan",
+                qualified=False,
+            )
+        rows.append(
+            AcceleratorComparison(
+                family=family,
+                quantization=chosen_quant,
+                node=chosen_node,
+                estimate=estimate,
+                url=hosting_url(scenario),
+            )
+        )
+    return tuple(rows)
+
+
 def build_llm_self_hosting_view(
     query: Query | None = None,
     *,
@@ -383,6 +499,7 @@ def build_llm_self_hosting_view(
         presets=DEMAND_PRESETS,
         apis=apis,
         precisions=tuple(precisions),
+        accelerators=_hosting_accelerators(inputs, model),
         demand_label=_demand_label(inputs),
         selected_preset=preset,
         window_is_auto=query.get("window") in (None, "auto"),

@@ -18,6 +18,7 @@ user_agent = "Mozilla/5.0 (compatible; lychee link-checker; +https://www.fmind.d
 exclude = [
   "^https?://(www\\.)?fmind\\.dev",
   "^https://api\\.openai\\.com/",
+  "^https://chat\\.openai\\.com/",
   "^https://cloud\\.google\\.com/",
   "^https://docs\\.google\\.com/",
   "^https://docs\\.zenml\\.io/",
