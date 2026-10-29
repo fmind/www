@@ -272,7 +272,7 @@ def create_mcp_server(
         ],
         limit: Annotated[
             int,
-            Field(description="maximum number of results to return (default 10, maximum 50)"),
+            Field(ge=1, description="maximum number of results to return (default 10, maximum 50)"),
         ] = DEFAULT_SEARCH_RESULTS,
         tag: Annotated[
             str | None,
@@ -289,7 +289,7 @@ def create_mcp_server(
             wanted = next((name for name in tag_names() if name.casefold() == tag.strip().casefold()), None)
             if wanted is None:
                 raise ToolError(f"unknown tag {tag!r}; use one of: {', '.join(tag_names())}")
-        count = DEFAULT_SEARCH_RESULTS if limit <= 0 else min(limit, MAXIMUM_SEARCH_RESULTS)
+        count = min(limit, MAXIMUM_SEARCH_RESULTS)
         ranked = tuple(item for item in index.search(normalized) if wanted is None or wanted in item.tags)
         return SearchArticlesResult(
             query=normalized,
