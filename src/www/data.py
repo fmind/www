@@ -319,7 +319,7 @@ OPEN_SOURCE = (
         "MLOps Coding Course",
         "https://mlops-coding-course.fmind.dev/",
         "Learn to build, test, and maintain an MLOps codebase.",
-        "https://github.com/MLOps-Courses/mlops-coding-course",
+        "https://github.com/fmind/mlops-coding-course",
     ),
 )
 

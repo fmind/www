@@ -14,7 +14,7 @@ In this article, I want to share my journey of using [**NotebookLM’s new Video
 
 ### The Challenge: A Mountain of Content to Visualize
 
-I poured my heart and soul into creating the [MLOps Coding Course](https://github.com/MLOps-Courses/mlops-coding-course), spending over six months meticulously crafting the content in Markdown and Python. My goal has always been to make MLOps accessible and practical to everybody on the Internet, but I knew that video would take the learning experience to the next level. The problem? The thought of scripting, recording, and editing videos for every single section was daunting. I estimated it would take me at least a month of dedicated work to produce the first batch alone.
+I poured my heart and soul into creating the [MLOps Coding Course](https://github.com/fmind/mlops-coding-course), spending over six months meticulously crafting the content in Markdown and Python. My goal has always been to make MLOps accessible and practical to everybody on the Internet, but I knew that video would take the learning experience to the next level. The problem? The thought of scripting, recording, and editing videos for every single section was daunting. I estimated it would take me at least a month of dedicated work to produce the first batch alone.
 
 ![Using NotebookLM is like casting a crew of robots to record a video](/static/img/articles/vibe-youtubing-with-notebooklm-the-mlops-coding-course-gets-a-video-upgrade-in-under-48-hours/cover.webp)
 
@@ -55,7 +55,7 @@ I see immense potential for this technology in both professional and personal pr
 This is just the beginning! I’ll be releasing more video overviews for the MLOps Coding Course in the coming months. Stay tuned for updates. In the meantime, I’d love to hear from you. Have you tried NotebookLM’s video overview feature? What are your experiences with AI-assisted content creation? Let’s discuss in the comments below!
 
 - **MLOps Coding Course**: [https://mlops-coding-course.fmind.dev/](https://mlops-coding-course.fmind.dev/)
-- **GitHub (** [**CC-BY-4.0 license**](https://github.com/MLOps-Courses/mlops-coding-course#) **)**: [https://github.com/MLOps-Courses/mlops-coding-course](https://github.com/MLOps-Courses/mlops-coding-course)
+- **GitHub (** [**CC-BY-4.0 license**](https://github.com/fmind/mlops-coding-course#) **)**: [https://github.com/fmind/mlops-coding-course](https://github.com/fmind/mlops-coding-course)
 - **Playlist for the 1st Chapter on Initialization**: [https://www.youtube.com/playlist?list=PLPCnNL6Y2PbTxRS24rkQ7mATQXjbR0PU7](https://www.youtube.com/playlist?list=PLPCnNL6Y2PbTxRS24rkQ7mATQXjbR0PU7)
 
 ![Vibe Youtubing with NotebookLM: The MLOps Coding Course Gets a Video Upgrade in Under 48 Hours](/static/img/articles/vibe-youtubing-with-notebooklm-the-mlops-coding-course-gets-a-video-upgrade-in-under-48-hours/05.webp)

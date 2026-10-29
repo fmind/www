@@ -52,7 +52,7 @@ To complement the theoretical aspects of the course, we’ve developed the [**ML
 
 Whether you’re a data scientist eager to explore the world of MLOps or a seasoned ML engineer seeking to refine your skills, the [MLOps Coding Course](https://mlops-coding-course.fmind.dev/) provides a valuable resource to enhance your knowledge and elevate your projects. We encourage you to explore the course materials and embark on this journey of mastering MLOps.
 
-[This course is a community-driven effort](https://github.com/MLOPS-Teaching/mlops-coding-course), released under the [Creative Commons Attribution 4.0 International license](https://github.com/MLOps-Courses/mlops-coding-course/blob/main/LICENSE.txt). We believe in the power of open-source collaboration and welcome contributions from anyone passionate about MLOps. If you have insights, examples, or resources to share, please join us in making this course even more comprehensive and valuable for the entire [MLOps community](https://mlops.community/).
+[This course is a community-driven effort](https://github.com/fmind/mlops-coding-course), released under the [Creative Commons Attribution 4.0 International license](https://github.com/fmind/mlops-coding-course/blob/main/LICENSE.txt). We believe in the power of open-source collaboration and welcome contributions from anyone passionate about MLOps. If you have insights, examples, or resources to share, please join us in making this course even more comprehensive and valuable for the entire [MLOps community](https://mlops.community/).
 
 _Thanks to the course’s co-author_ [_Matthieu Jimenez_](https://website.jimenez.lu/) _for their support and contributions._
 
