@@ -10,6 +10,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const LIGHTHOUSE_VERSION = "13.5.0";
 const MAX_SITEMAP_BYTES = 2 * 1024 * 1024;
 const AUDIT_TIMEOUT_MS = 150_000;
+const MAX_AUDIT_ATTEMPTS = 2;
 const PROCESS_OUTPUT_LIMIT = 64 * 1024;
 const CATEGORIES = ["performance", "accessibility", "best-practices", "seo", "agentic-browsing"];
 const FORM_FACTORS = ["desktop", "mobile"];
@@ -646,11 +647,9 @@ function inspectReport(report, audit, baseUrl) {
   return { errors, scores };
 }
 
-async function runAudit(audit, baseUrl, artifactDirectories, toolchain) {
+async function runAudit(audit, baseUrl, artifactDirectories, toolchain, runProcessImplementation = runProcess) {
   const reportPath = join(artifactDirectories.outputDirectory, audit.artifact);
   const temporaryPath = `${reportPath}.tmp`;
-  await rm(reportPath, { force: true });
-  await rm(temporaryPath, { force: true });
 
   const arguments_ = [
     audit.url,
@@ -665,51 +664,60 @@ async function runAudit(audit, baseUrl, artifactDirectories, toolchain) {
   ];
   if (audit.formFactor === "desktop") arguments_.push("--preset=desktop");
 
-  let processResult;
-  try {
-    processResult = await runProcess("lighthouse", arguments_, {
-      env: {
-        ...process.env,
-        CHROME_PATH: toolchain.chromiumPath,
-        FORCE_COLOR: "0",
-        NO_COLOR: "1",
-      },
-      timeoutMs: AUDIT_TIMEOUT_MS,
-    });
-  } catch (error) {
-    return {
-      ...audit,
-      passed: false,
-      scores: {},
-      errors: [`could not execute Lighthouse: ${error.message}`],
-      artifact: null,
-    };
-  }
-
-  const executionErrors = processResult.code === 0 ? [] : [processFailure("lighthouse", processResult)];
-  let report;
-  try {
-    report = JSON.parse(await readFile(temporaryPath, "utf8"));
-    await rename(temporaryPath, reportPath);
-  } catch (error) {
+  let lastResult;
+  for (let attempt = 1; attempt <= MAX_AUDIT_ATTEMPTS; attempt += 1) {
+    await rm(reportPath, { force: true });
     await rm(temporaryPath, { force: true });
-    return {
+
+    let processResult;
+    try {
+      processResult = await runProcessImplementation("lighthouse", arguments_, {
+        env: {
+          ...process.env,
+          CHROME_PATH: toolchain.chromiumPath,
+          FORCE_COLOR: "0",
+          NO_COLOR: "1",
+        },
+        timeoutMs: AUDIT_TIMEOUT_MS,
+      });
+    } catch (error) {
+      return {
+        ...audit,
+        passed: false,
+        scores: {},
+        errors: [`could not execute Lighthouse: ${error.message}`],
+        artifact: null,
+      };
+    }
+
+    const executionErrors = processResult.code === 0 ? [] : [processFailure("lighthouse", processResult)];
+    let report;
+    try {
+      report = JSON.parse(await readFile(temporaryPath, "utf8"));
+      await rename(temporaryPath, reportPath);
+    } catch (error) {
+      await rm(temporaryPath, { force: true });
+      return {
+        ...audit,
+        passed: false,
+        scores: {},
+        errors: [...executionErrors, `Lighthouse did not produce valid JSON: ${error.message}`],
+        artifact: null,
+      };
+    }
+
+    const inspected = inspectReport(report, audit, baseUrl);
+    const errors = [...executionErrors, ...inspected.errors];
+    lastResult = {
       ...audit,
-      passed: false,
-      scores: {},
-      errors: [...executionErrors, `Lighthouse did not produce valid JSON: ${error.message}`],
-      artifact: null,
+      passed: errors.length === 0,
+      scores: inspected.scores,
+      errors,
     };
+    if (lastResult.passed || report?.runtimeError?.code !== "NO_NAVSTART") return lastResult;
   }
 
-  const inspected = inspectReport(report, audit, baseUrl);
-  const errors = [...executionErrors, ...inspected.errors];
-  return {
-    ...audit,
-    passed: errors.length === 0,
-    scores: inspected.scores,
-    errors,
-  };
+  return lastResult;
 }
 
 function summarize(manifest, results, status) {
@@ -885,6 +893,7 @@ export {
   parseSitemapPaths,
   prepareArtifactDirectories,
   resolveOutputDirectory,
+  runAudit,
   runProcess,
   validateSitemapScope,
 };

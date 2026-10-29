@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { access, mkdir, mkdtemp, rm, symlink } from "node:fs/promises";
+import { access, mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { test } from "node:test";
@@ -352,4 +352,73 @@ test("sitemap accepts the canonical privacy and agent pages", () => {
     const xml = `<urlset><url><loc>https://www.fmind.dev${path}</loc></url></urlset>`;
     assert.deepEqual(harness.parseSitemapPaths(xml, BASE_URL).paths, [path]);
   }
+});
+
+test("runAudit retries once on NO_NAVSTART and does not retry score failures", async (context) => {
+  await mkdir(REPOSITORY_TMP, { recursive: true });
+  const fixture = await mkdtemp(join(REPOSITORY_TMP, "lighthouse-retry-test-"));
+  context.after(async () => {
+    await rm(fixture, { force: true, recursive: true });
+  });
+
+  const artifactDirectories = await harness.prepareArtifactDirectories(fixture);
+  const audit = {
+    artifact: "reports/001-sitemap-home-desktop.json",
+    formFactor: "desktop",
+    index: 1,
+    path: "/",
+    phase: "sitemap",
+    repeat: 1,
+    url: "https://candidate.example/",
+  };
+  const toolchain = { chromiumPath: "/usr/bin/chromium" };
+
+  let navstartCalls = 0;
+  const recovered = await harness.runAudit(
+    audit,
+    BASE_URL,
+    artifactDirectories,
+    toolchain,
+    async (_command, arguments_) => {
+      navstartCalls += 1;
+      const outputArgument = arguments_.find((item) => item.startsWith("--output-path="));
+      const outputPath = outputArgument.slice("--output-path=".length);
+      if (navstartCalls === 1) {
+        const failedReport = {
+          ...perfectReport(audit),
+          categories: {
+            ...perfectReport(audit).categories,
+            "agentic-browsing": { score: null },
+            performance: { score: null },
+          },
+          runtimeError: { code: "NO_NAVSTART", message: "NO_NAVSTART" },
+        };
+        await writeFile(outputPath, JSON.stringify(failedReport), "utf8");
+        return { code: 1, signal: null, stderr: "NO_NAVSTART", stdout: "", timedOut: false };
+      }
+      await writeFile(outputPath, JSON.stringify(perfectReport(audit)), "utf8");
+      return { code: 0, signal: null, stderr: "", stdout: "", timedOut: false };
+    },
+  );
+  assert.equal(navstartCalls, 2);
+  assert.equal(recovered.passed, true);
+
+  let scoreFailureCalls = 0;
+  const unrecovered = await harness.runAudit(
+    audit,
+    BASE_URL,
+    artifactDirectories,
+    toolchain,
+    async (_command, arguments_) => {
+      scoreFailureCalls += 1;
+      const outputArgument = arguments_.find((item) => item.startsWith("--output-path="));
+      const outputPath = outputArgument.slice("--output-path=".length);
+      const report = perfectReport(audit);
+      report.categories.performance.score = 0.95;
+      await writeFile(outputPath, JSON.stringify(report), "utf8");
+      return { code: 0, signal: null, stderr: "", stdout: "", timedOut: false };
+    },
+  );
+  assert.equal(scoreFailureCalls, 1);
+  assert.equal(unrecovered.passed, false);
 });
