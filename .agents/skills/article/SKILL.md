@@ -10,6 +10,8 @@ metadata:
 
 The current `content/articles/<slug>.md` is the authoritative body. Revise or retire published content only within owner authorization; publication is separate from local editing.
 
+New articles arrive from the private [fmind/pub](https://github.com/fmind/pub) workspace: `pub publish` exports the body, cover, and figures, runs `build:images`, then opens and merges the pull request. Its CI `site-contract` job exercises that export against this repository's `main`, so keep `content.py` and `images.py` changes compatible or update pub in step.
+
 1. Validate strict TOML frontmatter: matching filename/slug, required fields, typed dates and `draft`, HTTPS provenance. Site-owned articles omit `canonical`; external copies use `syndicated`.
 1. Use tags from `src/www/tags.py`. A new tag needs a matching CSS rule and at least one article use. Fence code with a language.
 1. Keep source images near the 2.4MP budget. Run `mise run build:images`, review the result, and commit derivatives plus `assets/image-derivatives.json`; `check:images` verifies their hashes and encoder recipe without writing.
