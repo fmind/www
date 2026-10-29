@@ -15,7 +15,7 @@
         <p class="text-base md:text-lg text-base-content/80 leading-relaxed mt-3 max-w-4xl">Compare selected open-weight models on Google Cloud with managed APIs. Start with a typical workload, then adjust your volume.</p>
         <p class="text-sm text-base-content/70 mt-4">USD budget estimates · Prices checked {{ view.snapshot_date }} · Quality and speed need a pilot.</p>
         {% if view.inputs.mode == "advanced" %}<nav aria-label="On this page" class="flex flex-wrap gap-x-6 gap-y-3 mt-6 text-sm font-semibold">
-          <a class="link link-primary" href="#cost-explorer">Explore the figures</a>
+          {% if not view.estimate.compatibility_issue %}<a class="link link-primary" href="#cost-explorer">Explore the figures</a>{% endif %}
           <a class="link link-primary" href="#precision-guide">Understand 4, 8, and 16-bit</a>
           <a class="link link-primary" href="#quality-lab">Evaluate value</a>
         </nav>{% endif %}
@@ -72,7 +72,7 @@
         <h2 id="hosting-method-title" class="font-heading text-lg font-bold">Method and limitations</h2>
         <ul class="list-disc ml-5 mt-4 space-y-3 text-sm text-base-content/75 max-w-4xl">
           <li>Infrastructure only: whole GPU nodes and a $0.10/hour GKE cluster fee. Disks, network, load balancers, licenses, taxes, and operations are extra. US reference pricing; regional availability and prices vary.</li>
-          <li>Model weights plus 25% reserve select a compatible checkpoint and machine. Capacity assumes 100 output tokens/s per model copy, with 65% usable, regardless of GPU. This is an illustrative input, not a benchmark. Measure prompt processing, reasoning, KV cache, concurrency, and latency before sizing production.</li>
+          <li>Model weights plus {{ format_number(view.inputs.memory_overhead_pct) }}% reserve select a compatible checkpoint and machine. Capacity assumes {{ format_number(view.inputs.tokens_per_second) }} output tokens/s per model copy, with {{ format_number(view.inputs.target_utilization) }}% usable, regardless of GPU. This is an illustrative input, not a benchmark. Measure prompt processing, reasoning, KV cache, concurrency, and latency before sizing production.</li>
           <li>Monthly running hours and each active-day window constrain capacity separately. Simple mode sizes complete model copies; advanced mode keeps your chosen setup fixed. Scheduled examples assume nodes run only during active windows. Commitments bill 730 hours/month, including idle time, and require GPU reservations.</li>
           <li>API prices include input and output, including reasoning. The same token budget does not establish equal quality or actual usage. Break-even holds the setup fixed; more replicas and operating costs change it.</li>
         </ul>

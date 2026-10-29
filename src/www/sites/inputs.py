@@ -322,10 +322,16 @@ def parse_inputs(query: Query) -> tuple[HostingInputs, tuple[str, ...]]:
     node = find_node_pool(inputs.node_pool_id)
     raw_plan = _first(query, "billing")
     available_plans = frozenset(price.plan.value for price in node.prices)
-    plan = node.prices[0].plan.value
+    # Fall back to the first plan this scenario can use; A4 lists Flex-start first,
+    # which interactive serving rejects.
+    fallback = next(
+        (price for price in node.prices if not configuration_issue(replace(inputs, billing_plan=price.plan))),
+        node.prices[0],
+    )
+    plan = fallback.plan.value
     if raw_plan and raw_plan not in available_plans:
         validation.append(
-            f"{node.name} does not offer the {raw_plan} billing plan; {node.prices[0].label} was used",
+            f"{node.name} does not offer the {raw_plan} billing plan; {fallback.label} was used",
         )
     elif raw_plan:
         plan = raw_plan

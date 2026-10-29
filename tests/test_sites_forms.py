@@ -213,3 +213,15 @@ def test_page_semantics_have_one_status_and_valid_figures(client: AppClient) -> 
         if "<figcaption" in figure:
             body = figure.strip()
             assert body.startswith("<figcaption") or body.endswith("</figcaption>")
+
+
+def test_page_links_only_to_rendered_sections_and_states_editable_assumptions(client: AppClient) -> None:
+    incompatible = client.get(f"{PAGE}&node=a2-ultra-1g&quant=fp8").text
+    assert 'id="cost-explorer"' not in incompatible
+    assert 'href="#cost-explorer"' not in incompatible
+    compatible = client.get(PAGE).text
+    assert 'id="cost-explorer"' in compatible
+    assert 'href="#cost-explorer"' in compatible
+    custom = client.get(f"{PAGE}&overhead=0&throughput=250&utilization=80").text
+    assert "Model weights plus 0% reserve" in custom
+    assert "Capacity assumes 250 output tokens/s per model copy, with 80% usable" in custom

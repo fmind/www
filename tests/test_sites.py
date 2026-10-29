@@ -263,7 +263,16 @@ def test_small_gpu_prices_use_resource_cuds_and_gpu_memory(node, hourly, one_yea
 def test_unsupported_billing_is_visible_and_uses_a_published_rate(node: str, billing: str) -> None:
     result = view({"node": node, "billing": billing})
     assert "billing" in result.validation[0]
-    assert result.selected_price == result.selected_node.prices[0]
+    assert result.selected_price in result.selected_node.prices
+
+
+def test_unsupported_billing_falls_back_to_a_plan_the_scenario_can_use() -> None:
+    # A4 lists Flex-start first, but interactive serving rejects it.
+    result = view({"model": "glm-5-3", "node": "a4", "billing": "on-demand"})
+    assert result.selected_price.label == "1-year resource CUD"
+    assert result.validation == (
+        f"{result.selected_node.name} does not offer the on-demand billing plan; 1-year resource CUD was used",
+    )
 
 
 def test_unpublished_rate_is_rejected_by_calculation_boundary() -> None:

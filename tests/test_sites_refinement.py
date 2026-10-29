@@ -248,5 +248,7 @@ def test_invalid_pilot_reference_is_not_reflected_into_the_page() -> None:
 
 def test_native_billing_fallback_names_the_hardware_and_replacement() -> None:
     result = view({"node": "a4", "billing": "on-demand"})
-    assert result.inputs.billing_plan == "flex"
-    assert any("A4" in item and "DWS Flex-start" in item for item in result.validation)
+    # Flex-start is listed first but cannot serve this interactive scenario.
+    assert result.inputs.billing_plan == "cud-1y"
+    assert any("A4" in item and "1-year resource CUD" in item for item in result.validation)
+    assert not result.estimate.compatibility_issue
