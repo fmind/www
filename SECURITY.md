@@ -10,9 +10,9 @@ Trivy may warn about third-party SBOM metadata or [fallback severity sources](ht
 
 ## Current advisory review
 
-**Owner:** Médéric Hurier. **Reviewed:** 2026-10-16. **Next review:** 2026-10-23, or immediately on a new fixable finding or relevant runtime change.
+**Owner:** Médéric Hurier. **Reviewed:** 2026-10-29. **Next review:** 2026-11-05, or immediately on a new fixable finding or relevant runtime change.
 
-The current candidate uses `python:3.14.8-slim@sha256:a2b82f3c48559aa0a8446d9af49826b6e2b2016f4cd2afabfe6013ec53729170`, and its runtime stage applies pending Debian security updates because they can lag the base image. The fixable vulnerability/secret gate and HTTP/MCP image smoke pass. The October 16 unfiltered scans of this candidate and both serving/tagged revision images each report 44 Trivy HIGH package/advisory instances across the eight CVEs below, no CRITICAL findings, and no fixes available for the installed Debian trixie packages. Upstream and Debian unstable fixes exist; their availability does not imply a compatible trixie update. Each new rollout still needs its own serving-digest evidence.
+The current candidate uses `python:3.14.10-slim@sha256:3cabfd7d7aaf394e6040e79fa1eec6ca1c52b74ed9188650472695d9a9326999`, and its runtime stage applies pending Debian security updates because they can lag the base image. The fixable vulnerability/secret gate and HTTP/MCP image smoke pass. The October 29 unfiltered scans of this candidate and the single serving/tagged revision image (`sha256:feec58ba081b…`) each report 44 Trivy HIGH package/advisory instances across the eight CVEs below, no CRITICAL findings, and no fixes available for the installed Debian trixie packages. Upstream and Debian unstable fixes exist; their availability does not imply a compatible trixie update. Each new rollout still needs its own serving-digest evidence.
 
 | Residual advisories                                                        | Application exposure assessment                                                                           |
 | -------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
