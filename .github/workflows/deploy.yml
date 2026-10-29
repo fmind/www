@@ -36,6 +36,7 @@ jobs:
       - name: Set up mise tools
         uses: jdx/mise-action@6be3c7ed4c21d4f76b208d351d95aac273ebb76d # v5.2.4
         with:
+          version: 2026.10.21 # pinned mise; bump deliberately with mise.lock tooling
           install: true
           cache: true
       - name: Install dependencies
@@ -73,6 +74,7 @@ jobs:
       - name: Set up mise
         uses: jdx/mise-action@6be3c7ed4c21d4f76b208d351d95aac273ebb76d # v5.2.4
         with:
+          version: 2026.10.21 # pinned mise; bump deliberately with mise.lock tooling
           install: false
           cache: false
       - name: Install pinned deployment tools
@@ -81,7 +83,7 @@ jobs:
         run: mise exec aqua:astral-sh/uv -- uv sync --locked --no-dev --group ops
       - name: Google Auth
         id: auth
-        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
         with:
           token_format: access_token
           service_account: ${{ env.SERVICE_ACCOUNT }}
@@ -116,7 +118,7 @@ jobs:
         id: trivy-cache
         run: echo "key=trivy-db-${RUNNER_OS}-$(date -u +%F)" >> "$GITHUB_OUTPUT"
       - name: Restore the Trivy vulnerability database
-        # Restore-only: the privileged job never writes shared caches. Entries
+        # Restore-only: this job never writes the Trivy database cache. Entries
         # for main are written only by main-branch runs of the verify job.
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -132,8 +134,9 @@ jobs:
           IMAGE_REF: ${{ env.AR_HOSTNAME }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}@${{ steps.build.outputs.digest }}
         run: mise run test:image "$IMAGE_REF"
       - name: Deploy candidate revision without traffic
-        uses: google-github-actions/deploy-cloudrun@2028e2d7d30a78c6910e0632e48dd561b064884d # v3
+        uses: google-github-actions/deploy-cloudrun@2028e2d7d30a78c6910e0632e48dd561b064884d # v3.0.1
         with:
+          gcloud_version: 591.0.0 # pinned Cloud SDK; the action defaults to latest
           service: ${{ env.SERVICE_NAME }}
           region: ${{ env.REGION }}
           image: ${{ env.AR_HOSTNAME }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}@${{ steps.build.outputs.digest }}
