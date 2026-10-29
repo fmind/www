@@ -105,7 +105,11 @@ def test_tag_vocabulary_rejects_duplicate_names_hidden_by_set_equality() -> None
 
 def test_template_helpers_keep_safe_markdown_filters_and_json_ld() -> None:
     assert markdown_to_html("A **bold** value") == "A <strong>bold</strong> value"
-    assert markdown_to_html("<script>alert('unsafe')</script>") == "<!-- raw HTML omitted -->"
+    assert markdown_to_html("<script>alert('unsafe')</script>") == "&lt;script&gt;alert('unsafe')&lt;/script&gt;"
+    assert (
+        markdown_to_html("<https://example.test> first")
+        == '<a href="https://example.test">https://example.test</a> first'
+    )
     assert all(
         markdown_to_html(paragraph).count("<strong>") == markdown_to_html(paragraph).count("</strong>")
         for paragraph in BIOGRAPHY

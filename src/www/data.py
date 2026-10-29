@@ -8,6 +8,7 @@ from urllib.parse import urlencode
 from markdown_it import MarkdownIt
 
 from www.models import (
+    Article,
     CertificationBadge,
     CertificationEntry,
     ExpertiseCard,
@@ -427,9 +428,7 @@ _INLINE_MARKDOWN = MarkdownIt("commonmark", {"html": False})
 
 
 def markdown_to_html(text: str) -> str:
-    if text.lstrip().startswith("<"):
-        # Portfolio copy is single-paragraph Markdown; reject accidental raw HTML.
-        return "<!-- raw HTML omitted -->"
+    # HTML is disabled, so raw tags are escaped while autolinks still render.
     rendered = _INLINE_MARKDOWN.render(text).removesuffix("\n")
     if rendered.startswith("<p>") and rendered.endswith("</p>"):
         return rendered[3:-4]
@@ -552,7 +551,7 @@ def get_application_structured_data(url: str, name: str, description: str) -> st
     )
 
 
-def get_structured_data(article: object | None = None) -> str:
+def get_structured_data(article: Article | None = None) -> str:
     """Build the connected Person/WebSite/ProfilePage or BlogPosting graph."""
     person_id = f"{METADATA.site_url}/#person"
     profile_id = f"{METADATA.site_url}/#profile"
@@ -571,11 +570,6 @@ def get_structured_data(article: object | None = None) -> str:
             }
         )
     else:
-        # Importing here avoids a data/models cycle while retaining a typed domain.
-        from www.models import Article
-
-        if not isinstance(article, Article):
-            raise TypeError("article must be an Article or None")
         canonical = article.canonical_url()
         graph.append(
             {
