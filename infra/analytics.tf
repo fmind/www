@@ -47,7 +47,7 @@ resource "google_logging_project_sink" "analytics" {
   deletion_policy        = "PREVENT"
 
   # Logging creates the table from the first matching record. This option makes
-  # it ingestion-time partitioned; the dataset default expires each partition
+  # it partitioned by each entry's `timestamp`; the dataset default expires each partition
   # after 180 days so dashboard queries and storage remain bounded.
   bigquery_options {
     use_partitioned_tables = true

@@ -18,12 +18,12 @@ Python 3.14, Litestar, strict Jinja, Tailwind/DaisyUI, and Granian. No client fr
 - `data.py`, `models.py`, `tags.py`: immutable portfolio, shared types, site registry, closed tag vocabulary.
 - `app.py`: startup snapshot, routes, middleware composition, MCP lifespan, teardown.
 - `mcp.py`: read-only tools, finite HTTP transport, capabilities, and discovery. GET/HEAD must return 405 instead of opening idle notification streams; retain SDK host/origin validation.
-- `content.py`, `images.py`, `assets.py`: validated publications, media derivatives, static inventory/hashes.
+- `content.py`, `images.py`, `assets.py`, `search.py`: validated publications, media derivatives, static inventory/hashes, BM25 article search.
 - `publications.py`: canonical profile JSON/schema, feeds, sitemap, LLM text; shared by HTTP and MCP.
 - `agent_discovery.py`, `agent_skills/`: API catalog, representation negotiation, packaged visitor skill/index; separate from `.agents/` maintenance skills.
 - `connect.py`: public vCard; `/connect` is discoverable, `/scan` is a noindex QR utility.
-- `pages.py`, `rendering.py`, `templates/`: metadata, sole Jinja/trusted-markup boundary, inherited page layouts and macros.
-- `middleware.py`, `log.py`, `telemetry.py`: HTTP policy, privacy-safe analytics, logs, optional tracing.
+- `pages.py`, `rendering.py`, `highlighting.py`, `templates/`: metadata, sole Jinja/trusted-markup boundary, code highlighting, inherited page layouts and macros.
+- `config.py`, `middleware.py`, `markdown.py`, `log.py`, `telemetry.py`: startup configuration, HTTP policy, Markdown responses, privacy-safe analytics, logs, optional tracing.
 - `static.py`, `ranges.py`: inventory-bound static and conditional/range delivery.
 - `sites/`: hosting input/URL parsing, formulas, charts, formatting, sources, and views; `sites/mcp_context_cost/` owns the MCP calculator and its dated measurements. Import from the owning module.
 - `scripts/`: manual operations and asset generators, excluded from the runtime image. `infra/`: service, identities, registry, monitoring, analytics.
