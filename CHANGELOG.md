@@ -2,6 +2,62 @@
 
 All notable changes to this project are documented in this file.
 
+## [2.6.0] - 2026-10-29
+
+### 🚀 Features
+
+- _(api)_ [**breaking**] Drop the unused social header flag
+- _(sites)_ Add Cloud TPU and refresh the October 29 LLM hosting snapshot
+
+### 🐛 Bug Fixes
+
+- Harden website behavior and optimize page loading
+- _(deps)_ Bump pillow, brotli and certifi and regenerate image derivatives (#37)
+- _(deploy)_ Drop the manual-candidate tag on promotion
+- _(deps)_ Pin Node.js 26.12.1 for the October security release (#38)
+- _(articles)_ Pin the retired gh-dash config link
+- _(sites)_ Fall back to a usable billing plan and show real inputs
+- _(mcp)_ Reject non-positive search limits
+- _(log)_ Record pathsend response sizes while the span is current
+- _(data)_ Render biography autolinks and type structured data
+- _(a11y)_ Nest home page headings in order
+- _(articles)_ Archive the retired TechTarget 3Vs link
+- _(lighthouse)_ Retry once on transient NO_NAVSTART trace errors
+
+### ♻️ Refactor
+
+- Remove unused icons, styles, and calculator code
+- _(images)_ Require the derivative lock
+
+### 📚 Documentation
+
+- _(articles)_ Drop links to the retired MLOps Coding Assistant
+- _(privacy)_ Drop the retired AgentOps course site
+- _(articles)_ Link fmind.dev copies instead of Medium
+- _(skills)_ Route new articles through the pub workspace
+- Correct module ownership and analytics partitioning
+- _(security)_ Record the October 29 advisory review
+- _(security)_ Document private repository posture
+
+### 🧪 Testing
+
+- Share startup snapshots and consolidate calculator tests
+- Drop the unused integration marker filter
+
+### ⚙️ Build & CI
+
+- _(dependabot)_ Run security updates only
+- Pin mise and Cloud SDK versions and correct workflow notes
+
+### 🧹 Miscellaneous
+
+- _(deps)_ Upgrade mise tools to latest
+- _(deps)_ Upgrade Python dependencies to latest
+- _(deps)_ Upgrade container base images to latest
+- _(deps)_ Upgrade OpenTofu providers to latest
+- _(deps)_ Upgrade GitHub Actions to latest
+- _(deps)_ Upgrade dprint plugins to latest
+
 ## [2.5.0] - 2026-10-14
 
 ### 🚀 Features
