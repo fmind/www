@@ -138,8 +138,7 @@ def _encode(decoded: Image.Image, target: Path, width: int) -> bytes:
     output_image = decoded
     size = derivative_size(decoded.size, width)
     if size != decoded.size:
-        # Pillow's bicubic filter is the direct cubic-resampling counterpart to
-        # the Go generator's Catmull-Rom scaler.
+        # Bicubic (Catmull-Rom) resampling keeps the recorded encoder recipe stable.
         output_image = decoded.resize(size, Image.Resampling.BICUBIC)
     encoded = BytesIO()
     try:
@@ -314,21 +313,6 @@ def _write_lock(path: Path, lock: _DerivativeLock) -> None:
     _write_atomically(path, data)
 
 
-def write_derivative(decoded: Image.Image, target: Path, width: int) -> bool:
-    """Write a rung only when its deterministic encoded bytes have changed."""
-    data = _encode(decoded, target, width)
-    try:
-        existing = target.read_bytes()
-    except FileNotFoundError:
-        existing = None
-    except OSError as error:
-        raise ImageDerivativeError(f'read "{target}": {error}') from error
-    if existing == data:
-        return _set_generated_mode(target)
-    _write_atomically(target, data)
-    return True
-
-
 def _is_cover(source: Path) -> bool:
     return source.stem == _COVER_STEM
 
@@ -339,19 +323,6 @@ def _eligible_widths(source: Path, source_width: int) -> tuple[int, ...]:
         for width in DERIVATIVE_WIDTHS
         if source_width > width or (width == CARD_COVER_WIDTH and _is_cover(source))
     )
-
-
-def generate_derivative(source: Path) -> bool:
-    """Verify every eligible rung against its source and report byte changes."""
-    decoded = _decode(source)
-    changed = False
-    try:
-        for width in _eligible_widths(source, decoded.width):
-            target = derivative_name(source, width)
-            changed = write_derivative(decoded, target, width) or changed
-    finally:
-        decoded.close()
-    return changed
 
 
 def _read_optional_target(target: Path) -> bytes | None:
@@ -447,8 +418,8 @@ def _scan_image_tree(root: Path, *, allowed_root_file: Path | None = None) -> li
     return files
 
 
-def _discover_sources(root: Path, lock: _DerivativeLock | None, lock_path: Path | None) -> list[Path]:
-    known_targets = _locked_target_names(lock) if lock is not None else set()
+def _discover_sources(root: Path, lock: _DerivativeLock, lock_path: Path) -> list[Path]:
+    known_targets = _locked_target_names(lock)
     return [
         path
         for path in _scan_image_tree(root, allowed_root_file=lock_path)
@@ -626,25 +597,21 @@ def check_derivatives(root: Path, *, lock_path: Path, output: TextIO | None = No
 def generate_derivatives(
     root: Path,
     *,
+    lock_path: Path,
     output: TextIO | None = None,
-    lock_path: Path | None = None,
     require_lock: bool = False,
 ) -> None:
-    """Generate article derivatives in stable source-path order."""
-    if require_lock and lock_path is None:
-        raise ImageDerivativeError("a required derivative lock path was not provided")
-    old_lock = _load_lock(lock_path, required=require_lock) if lock_path is not None else None
+    """Generate article derivatives in stable source-path order and record them in the lock.
+
+    A missing lock starts an empty one unless `require_lock` is set, as it is for the repository.
+    """
+    old_lock = _load_lock(lock_path, required=require_lock)
     sources = _discover_sources(root, old_lock, lock_path)
     if not sources:
         raise ImageDerivativeError(f'list article images: no source images under "{root}"')
 
-    if old_lock is None:
-        generated = sum(generate_derivative(source) for source in sources)
-    else:
-        new_lock, generated = _generate_locked(root, sources, old_lock, _current_recipe())
-        if lock_path is None:
-            raise ImageDerivativeError("derivative lock path became unavailable")
-        _write_lock(lock_path, new_lock)
+    new_lock, generated = _generate_locked(root, sources, old_lock, _current_recipe())
+    _write_lock(lock_path, new_lock)
     skipped = len(sources) - generated
     widths = " ".join(str(width) for width in DERIVATIVE_WIDTHS)
     summary = f"image derivatives: {generated} generated, {skipped} skipped ([{widths}] px, q{DERIVATIVE_QUALITY})\n"

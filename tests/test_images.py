@@ -16,6 +16,11 @@ from PIL import Image, features
 from www import images
 
 
+def _lock(root: Path) -> Path:
+    """A per-test derivative lock outside the image root."""
+    return root.parent / f"{root.name}-derivatives.json"
+
+
 def _write_image(path: Path, width: int, height: int) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     Image.new("RGB", (width, height), (22, 47, 64)).save(path)
@@ -47,7 +52,7 @@ def test_generate_derivatives_resizes_every_rung_and_is_byte_idempotent(tmp_path
     _write_image(source, 2048, 16)
 
     summary = StringIO()
-    images.generate_derivatives(tmp_path, output=summary)
+    images.generate_derivatives(tmp_path, output=summary, lock_path=_lock(tmp_path))
 
     assert summary.getvalue() == "image derivatives: 1 generated, 0 skipped ([800 1280] px, q75)\n"
     generated = {}
@@ -59,7 +64,7 @@ def test_generate_derivatives_resizes_every_rung_and_is_byte_idempotent(tmp_path
             assert derivative.size == (width, expected_height)
 
     summary = StringIO()
-    images.generate_derivatives(tmp_path, output=summary)
+    images.generate_derivatives(tmp_path, output=summary, lock_path=_lock(tmp_path))
 
     assert summary.getvalue() == "image derivatives: 0 generated, 1 skipped ([800 1280] px, q75)\n"
     assert {width: source.with_name(f"cover-{width}.webp").read_bytes() for width in generated} == generated
@@ -72,7 +77,7 @@ def test_cover_keeps_required_card_rung_without_upscaling(tmp_path: Path) -> Non
     _write_image(figure, 500, 300)
 
     summary = StringIO()
-    images.generate_derivatives(tmp_path, output=summary)
+    images.generate_derivatives(tmp_path, output=summary, lock_path=_lock(tmp_path))
 
     with Image.open(cover.with_name("cover-800.webp")) as derivative:
         assert derivative.size == (800, 8)
@@ -84,21 +89,21 @@ def test_cover_keeps_required_card_rung_without_upscaling(tmp_path: Path) -> Non
 def test_generation_validates_existing_target_before_skipping(tmp_path: Path) -> None:
     source = tmp_path / "example" / "cover.png"
     _write_image(source, 1000, 10)
-    images.generate_derivatives(tmp_path, output=StringIO())
+    images.generate_derivatives(tmp_path, output=StringIO(), lock_path=_lock(tmp_path))
     target = source.with_name("cover-800.webp")
     generated = target.read_bytes()
 
     source_time = source.stat().st_mtime_ns
     os.utime(target, ns=(source_time + 1_000_000_000, source_time + 1_000_000_000))
     summary = StringIO()
-    images.generate_derivatives(tmp_path, output=summary)
+    images.generate_derivatives(tmp_path, output=summary, lock_path=_lock(tmp_path))
     assert target.read_bytes() == generated
     assert summary.getvalue() == "image derivatives: 0 generated, 1 skipped ([800 1280] px, q75)\n"
 
     target.write_bytes(b"newer but corrupt")
     os.utime(target, ns=(source_time + 1_000_000_000, source_time + 1_000_000_000))
     summary = StringIO()
-    images.generate_derivatives(tmp_path, output=summary)
+    images.generate_derivatives(tmp_path, output=summary, lock_path=_lock(tmp_path))
     assert target.read_bytes() == generated
     assert summary.getvalue() == "image derivatives: 1 generated, 0 skipped ([800 1280] px, q75)\n"
 
@@ -442,7 +447,7 @@ def test_unlocked_generation_replaces_newer_wrong_format_or_size(
     source_time = source.stat().st_mtime_ns
     os.utime(target, ns=(source_time + 1_000_000_000, source_time + 1_000_000_000))
 
-    images.generate_derivatives(tmp_path, output=StringIO())
+    images.generate_derivatives(tmp_path, output=StringIO(), lock_path=_lock(tmp_path))
 
     with Image.open(target) as derivative:
         derivative.load()
@@ -455,7 +460,7 @@ def test_failed_atomic_replace_preserves_target_and_cleans_temporary_file(
 ) -> None:
     source = tmp_path / "example" / "cover.png"
     _write_image(source, 1000, 10)
-    images.generate_derivatives(tmp_path, output=StringIO())
+    images.generate_derivatives(tmp_path, output=StringIO(), lock_path=_lock(tmp_path))
     target = source.with_name("cover-800.webp")
     original = target.read_bytes()
     Image.new("RGB", (1000, 10), (99, 88, 77)).save(source)
@@ -468,7 +473,7 @@ def test_failed_atomic_replace_preserves_target_and_cleans_temporary_file(
 
     monkeypatch.setattr(Path, "replace", fail_replace)
     with pytest.raises(images.ImageDerivativeError, match=rf'^replace "{target}": interrupted replace$'):
-        images.generate_derivatives(tmp_path, output=StringIO())
+        images.generate_derivatives(tmp_path, output=StringIO(), lock_path=_lock(tmp_path))
 
     assert target.read_bytes() == original
     assert list(target.parent.glob(f".{target.name}.*.tmp")) == []
@@ -479,7 +484,7 @@ def test_failed_atomic_fsync_preserves_target_and_cleans_temporary_file(
 ) -> None:
     source = tmp_path / "example" / "cover.png"
     _write_image(source, 1000, 10)
-    images.generate_derivatives(tmp_path, output=StringIO())
+    images.generate_derivatives(tmp_path, output=StringIO(), lock_path=_lock(tmp_path))
     target = source.with_name("cover-800.webp")
     original = target.read_bytes()
     Image.new("RGB", (1000, 10), (99, 88, 77)).save(source)
@@ -489,7 +494,7 @@ def test_failed_atomic_fsync_preserves_target_and_cleans_temporary_file(
 
     monkeypatch.setattr(images.os, "fsync", fail_fsync)
     with pytest.raises(images.ImageDerivativeError, match=rf'^write "{target}": interrupted fsync$'):
-        images.generate_derivatives(tmp_path, output=StringIO())
+        images.generate_derivatives(tmp_path, output=StringIO(), lock_path=_lock(tmp_path))
 
     assert target.read_bytes() == original
     assert list(target.parent.glob(f".{target.name}.*.tmp")) == []
@@ -526,7 +531,7 @@ def test_failed_atomic_lock_replace_preserves_lock_and_retry_converges(
 
 def test_generation_fails_closed_with_stable_context(tmp_path: Path) -> None:
     with pytest.raises(images.ImageDerivativeError, match=r'^list article images: no source images under ".+"$'):
-        images.generate_derivatives(tmp_path, output=StringIO())
+        images.generate_derivatives(tmp_path, output=StringIO(), lock_path=_lock(tmp_path))
 
     first = tmp_path / "a" / "cover.png"
     second = tmp_path / "b" / "cover.png"
@@ -536,7 +541,7 @@ def test_generation_fails_closed_with_stable_context(tmp_path: Path) -> None:
     second.write_bytes(b"also not an image")
 
     with pytest.raises(images.ImageDerivativeError, match=rf'^decode "{first}":'):
-        images.generate_derivatives(tmp_path, output=StringIO())
+        images.generate_derivatives(tmp_path, output=StringIO(), lock_path=_lock(tmp_path))
 
 
 @pytest.mark.parametrize("name", ["figure.webp", "figure.png", "figure.jpg", "figure.JPEG", "figure.gif"])
@@ -544,7 +549,7 @@ def test_generation_decodes_every_supported_source_format(tmp_path: Path, name: 
     source = tmp_path / "example" / name
     _write_image(source, 1000, 10)
 
-    images.generate_derivatives(tmp_path, output=StringIO())
+    images.generate_derivatives(tmp_path, output=StringIO(), lock_path=_lock(tmp_path))
 
     with Image.open(source.with_name("figure-800.webp")) as derivative:
         assert derivative.size == (800, 8)
@@ -557,7 +562,7 @@ def test_generation_contextualizes_target_and_summary_io_errors(tmp_path: Path) 
     target.mkdir()
 
     with pytest.raises(images.ImageDerivativeError, match=rf'^read "{target}":'):
-        images.generate_derivatives(tmp_path, output=StringIO())
+        images.generate_derivatives(tmp_path, output=StringIO(), lock_path=_lock(tmp_path))
 
     target.rmdir()
 
@@ -566,7 +571,7 @@ def test_generation_contextualizes_target_and_summary_io_errors(tmp_path: Path) 
             raise OSError("closed pipe")
 
     with pytest.raises(images.ImageDerivativeError, match=r"^write summary: closed pipe$"):
-        images.generate_derivatives(tmp_path, output=BrokenOutput())
+        images.generate_derivatives(tmp_path, output=BrokenOutput(), lock_path=_lock(tmp_path))
 
 
 def test_main_requires_lock_repairs_targets_and_reports_failures(
