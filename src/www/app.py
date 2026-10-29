@@ -84,7 +84,9 @@ _NO_CACHE = "no-cache"
 _COMPRESSION_EXCLUDE = r"^/(?:(?:mcp|static)(?:/|$)|(?:(?:logo|banner)\.png|portrait\.jpg)$)"
 _READ_METHODS = (HttpMethod.GET, HttpMethod.HEAD)
 
-type AppRequest = Request[Any, Any, Any]
+# A plain alias, not a `type` statement: Litestar 2.25+ must resolve handler
+# `request` annotations to Request at runtime to accept the reserved kwarg.
+AppRequest = Request[Any, Any, Any]
 
 
 def _static_response(

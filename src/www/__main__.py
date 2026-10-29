@@ -8,6 +8,7 @@ from typing import Any
 from granian import Granian
 from granian.constants import Interfaces
 from granian.http import HTTP1Settings
+from granian.server import MPServer, MTServer
 
 from www.config import Config
 from www.log import stdlib_logging_config
@@ -16,7 +17,7 @@ _HTTP1_HEADER_READ_TIMEOUT_MS = 5_000
 _WORKER_KILL_TIMEOUT_SECONDS = 8
 
 
-def build_server(config: Config, *, log_dictconfig: dict[str, Any] | None = None) -> Granian:
+def build_server(config: Config, *, log_dictconfig: dict[str, Any] | None = None) -> MPServer | MTServer:
     """Construct the bounded Cloud Run server around validated settings."""
     return Granian(
         "www.app:app",
