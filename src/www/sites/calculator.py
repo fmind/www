@@ -41,6 +41,7 @@ from .models import (
     APIBaseline,
     APIComparison,
     APIMode,
+    BillingPlan,
     FrontierModel,
     GKENodePool,
     HostingEstimate,
@@ -406,9 +407,7 @@ def build_llm_self_hosting_view(
             replace(
                 inputs,
                 mode="simple",
-                billing_plan=inputs.billing_plan
-                if inputs.billing_plan.value != "flex"
-                else inputs.billing_plan.ON_DEMAND,
+                billing_plan=BillingPlan.ON_DEMAND if inputs.billing_plan is BillingPlan.FLEX else inputs.billing_plan,
             )
         ),
     )

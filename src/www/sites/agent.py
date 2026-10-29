@@ -26,11 +26,6 @@ from www.sites.models import (
 )
 
 
-def hosting_parameters(inputs: HostingInputs = DEFAULT_HOSTING_INPUTS) -> dict[str, str]:
-    """Use the URL serializer as the public parameter vocabulary."""
-    return scenario_parameters(inputs)
-
-
 class HostingResult(BaseModel):
     model_config = ConfigDict(frozen=True)
 
@@ -79,7 +74,7 @@ def compare_hosting(parameters: dict[str, str]) -> HostingResult:
     view = build_llm_self_hosting_view(parameters, now=now)
     return HostingResult(
         scenario_url=METADATA.site_url + hosting_url(view.inputs),
-        parameters=hosting_parameters(view.inputs),
+        parameters=scenario_parameters(view.inputs),
         inputs=view.inputs,
         estimate=view.estimate,
         apis=view.apis,

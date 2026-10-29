@@ -89,10 +89,6 @@ class DemandPreset:
     window_hours: float = 24
     scheduled: bool = False
 
-    @property
-    def requests_month(self) -> float:
-        return self.requests_per_day * self.active_days
-
 
 @dataclass(frozen=True, slots=True)
 class APIBaseline:

@@ -107,29 +107,8 @@ _CHROMA_CLASSES: Final = frozenset(
 # fmind/theme's checks/palette.yaml and themes/ptpython/fmind.py; no sibling checkout
 # or second style inheritance engine is needed to build the website.
 _CHROMA_CSS_RULES: Final = (
-    ("Background", ".bg", "color: #202124; background-color: #ffffff"),
     ("PreWrapper", ".chroma", "color: #202124; background-color: #ffffff; -webkit-text-size-adjust: none"),
     ("Error", ".chroma .err", "color: #a50e0e; font-weight: bold"),
-    ("LineLink", ".chroma .lnlinks", "outline: none; text-decoration: none; color: inherit"),
-    ("LineTableTD", ".chroma .lntd", "vertical-align: top; padding: 0; margin: 0; border: 0"),
-    ("LineTable", ".chroma .lntable", "border-spacing: 0; padding: 0; margin: 0; border: 0"),
-    ("LineHighlight", ".chroma .hl", "background-color: #f1f3f4"),
-    (
-        "LineNumbersTable",
-        ".chroma .lnt",
-        (
-            "white-space: pre; -webkit-user-select: none; user-select: none; margin-right: 0.4em; "
-            "padding: 0 0.4em 0 0.4em;color: #595d62"
-        ),
-    ),
-    (
-        "LineNumbers",
-        ".chroma .ln",
-        (
-            "white-space: pre; -webkit-user-select: none; user-select: none; margin-right: 0.4em; "
-            "padding: 0 0.4em 0 0.4em;color: #595d62"
-        ),
-    ),
     ("Selection", ".chroma ::selection", "color: inherit; background-color: #d2e3fc"),
     ("GenericOutput", ".chroma .go", "color: #595d62"),
     ("GenericPrompt", ".chroma .gp", "color: #174ea6"),
@@ -159,7 +138,6 @@ _CHROMA_CSS_RULES: Final = (
     ("LiteralStringAffix", ".chroma .sa", "color: #0d652d"),
     ("LiteralStringBacktick", ".chroma .sb", "color: #0d652d"),
     ("LiteralStringChar", ".chroma .sc", "color: #0d652d"),
-    ("LiteralStringDelimiter", ".chroma .dl", "color: #0d652d"),
     ("LiteralStringDoc", ".chroma .sd", "color: #0d652d"),
     ("LiteralStringDouble", ".chroma .s2", "color: #0d652d"),
     ("LiteralStringEscape", ".chroma .se", "color: #174ea6"),
