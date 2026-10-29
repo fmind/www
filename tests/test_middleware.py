@@ -209,3 +209,49 @@ async def test_escaping_exception_is_finalized_as_a_server_error() -> None:
     assert values["path"] == "/boom"
     assert values["status"] == 500
     assert values["size_bytes"] == 0
+
+
+@pytest.mark.anyio
+async def test_pathsend_response_logs_the_file_size_before_returning() -> None:
+    logger = RecordingLogger()
+    sent: list[str] = []
+
+    async def file_app(_scope: Scope, _receive: Receive, send: Send) -> None:
+        headers = [(b"content-type", b"image/png"), (b"content-length", b"2048")]
+        await send({"type": "http.response.start", "status": 200, "headers": headers})
+        await send(cast(Message, {"type": "http.response.pathsend", "path": "/app/static/logo.png"}))
+        # Logged while the request span is still current, not in teardown.
+        sent.append(f"{len(logger.records)} records")
+
+    middleware = SiteMiddleware(cast(ASGIApp, file_app), Config(environment=Environment.DEVELOPMENT), logger)
+    scope = cast(
+        Scope,
+        {
+            "type": "http",
+            "asgi": {"version": "3.0", "spec_version": "2.3"},
+            "http_version": "1.1",
+            "method": "GET",
+            "scheme": "https",
+            "path": "/logo.png",
+            "raw_path": b"/logo.png",
+            "query_string": b"",
+            "root_path": "",
+            "headers": [],
+            "client": ("127.0.0.1", 12345),
+            "server": ("testserver.local", 443),
+            "state": {},
+            "extensions": {"http.response.pathsend": {}},
+        },
+    )
+
+    async def receive() -> HTTPDisconnectEvent:
+        return {"type": "http.disconnect"}
+
+    async def send(_message: Message) -> None:
+        return None
+
+    await middleware(scope, receive, send)
+
+    assert sent == ["1 records"]
+    assert [event for event, _ in logger.records] == ["http request processed"]
+    assert logger.records[0][1]["size_bytes"] == 2048

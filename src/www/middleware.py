@@ -219,6 +219,7 @@ class SiteMiddleware:
         status = 200
         size_bytes = 0
         content_type = ""
+        content_length = ""
         started_at = perf_counter()
         finalized = False
 
@@ -264,7 +265,7 @@ class SiteMiddleware:
                 )
 
         async def send_wrapper(message: Message) -> None:
-            nonlocal content_type, size_bytes, status
+            nonlocal content_length, content_type, size_bytes, status
             if message["type"] == "http.response.start":
                 status = message["status"]
                 response_headers = MutableScopeHeaders(message)
@@ -276,12 +277,18 @@ class SiteMiddleware:
                     # from storing or transforming JSON-RPC envelopes.
                     response_headers["cache-control"] = "no-cache, no-transform"
                 content_type = response_headers.get("content-type", "")
+                content_length = response_headers.get("content-length", "")
             elif message["type"] == "http.response.body":
                 size_bytes += len(message.get("body", b""))
+            elif message["type"] == "http.response.pathsend":
+                # The server sends the whole file; its declared length is the body size.
+                size_bytes = int(content_length) if content_length.isdecimal() else 0
             await send(message)
             # Finalize while an inner OpenTelemetry request span is still
             # current, so ordinary logs retain trace correlation.
-            if message["type"] == "http.response.body" and not message.get("more_body", False):
+            if message["type"] == "http.response.pathsend" or (
+                message["type"] == "http.response.body" and not message.get("more_body", False)
+            ):
                 finalize_logs()
 
         fetch_site = request_headers.get("sec-fetch-site", "")
