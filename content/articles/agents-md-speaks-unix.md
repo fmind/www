@@ -110,7 +110,7 @@ I am moving at lightning speed. Or at least at human speed.
 
 The **bottleneck remains my ability to review code**. Agents can work on several tasks while I read the first diff, but they still make mistakes. Separate tabs organize my attention; separate checkouts or careful coordination are needed to prevent overlapping edits.
 
-I use LazyGit to work through changes, Neovim to inspect and edit code, and [gh-dash](https://github.com/fmind/dot/blob/main/dot_config/gh-dash/config.yml.tmpl) to find requested reviews, failing CI, and pull requests ready to merge. My `Alt+g` shortcut opens LazyGit in a floating pane, so I can examine a diff without leaving the workspace.
+I use LazyGit to work through changes, Neovim to inspect and edit code, and [gh-dash](https://github.com/fmind/dot/blob/60ed68ba412702e86ced024f2f22eaa5e2ecfe5f/dot_config/gh-dash/config.yml.tmpl) to find requested reviews, failing CI, and pull requests ready to merge. My `Alt+g` shortcut opens LazyGit in a floating pane, so I can examine a diff without leaving the workspace.
 
 ![LazyGit in a floating Zellij pane, with its file list on the left and a README diff from the dot repository on the right.](/static/img/articles/agents-md-speaks-unix/zellij-review.webp)
 
