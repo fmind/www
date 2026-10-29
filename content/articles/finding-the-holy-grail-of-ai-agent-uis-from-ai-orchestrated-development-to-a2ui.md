@@ -8,7 +8,7 @@ syndicated = "https://medium.com/@fmind/finding-the-holy-grail-of-ai-agent-uis-f
 draft = false
 +++
 
-In my [previous article](https://fmind.medium.com/the-real-ai-agent-bottleneck-is-the-damn-ui-90e90ee369e0), I argued that the real bottleneck for AI agents is the User Interface (UI). We are stapling rocket engines to bicycles by forcing advanced agents to communicate through basic markdown chatbots.
+In my [previous article](https://www.fmind.dev/articles/the-real-ai-agent-bottleneck-is-the-damn-ui/), I argued that the real bottleneck for AI agents is the User Interface (UI). We are stapling rocket engines to bicycles by forcing advanced agents to communicate through basic markdown chatbots.
 
 Since then, I’ve been on a journey to find the solution. I didn’t want just a theoretical answer; I wanted to build it. I explored everything from “AI-Orchestrated Development” to Python wrappers, up to new AI protocols, searching for a scalable way to give Agents a native, rich, and dynamic interface.
 

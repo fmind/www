@@ -8,7 +8,7 @@ syndicated = "https://medium.com/@fmind/chaigent-an-affordable-alternative-to-ge
 draft = false
 +++
 
-The era of simple chatbots is over. Companies are now racing to build [**AI Agent platforms**](https://fmind.medium.com/architecting-the-ai-agent-platform-a-definitive-guide-405750a3de44) — systems that don’t just talk, but _act_. Whether it’s a support bot resolving Jira tickets or a data analyst agent querying BigQuery, these new digital teammates need a platform that offers more than just text generation: they require reasoning, security, and enterprise-grade observability.
+The era of simple chatbots is over. Companies are now racing to build [**AI Agent platforms**](https://www.fmind.dev/articles/architecting-the-ai-agent-platform-a-definitive-guide/) — systems that don’t just talk, but _act_. Whether it’s a support bot resolving Jira tickets or a data analyst agent querying BigQuery, these new digital teammates need a platform that offers more than just text generation: they require reasoning, security, and enterprise-grade observability.
 
 [**Gemini Enterprise**](https://cloud.google.com/gemini/enterprise) provides a great path to achieving this on [**Google Cloud**](https://cloud.google.com/). It offers a comprehensive set of features including agent exposition, governance, integrated knowledge search, and a visual agent builder, connecting with backends like [**Vertex AI Agent Engine**](https://cloud.google.com/products/agent-engine), [**Conversational Agent**](https://docs.cloud.google.com/dialogflow/cx/docs), or [**A2A**](https://a2aprotocol.ai/).
 

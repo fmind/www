@@ -18,7 +18,7 @@ I built [**agent-docs**](https://github.com/fmind/agent-docs) to make my agents 
 
 Agent Docs: Project Docs that Answer Locally — [https://github.com/fmind/agent-docs](https://github.com/fmind/agent-docs)
 
-This is the follow-up to my [previous post on supagents](https://fmind.medium.com/supagents-one-source-to-rule-your-coding-subagents-) — same bet on the shared `.agents/` ground, applied to a different layer of the stack.
+This is the follow-up to my [previous post on supagents](https://www.fmind.dev/articles/supagents-one-source-to-rule-your-coding-subagents/) — same bet on the shared `.agents/` ground, applied to a different layer of the stack.
 
 ### The hallucination tax has a quieter cousin
 
@@ -157,7 +157,7 @@ There is a real cost: someone on the team has to run `/refresh-agent-docs` perio
 
 ### Where this sits in the `.agents/` stack
 
-If you read my [supagents post](https://fmind.medium.com/supagents-one-source-to-rule-your-coding-subagents-), the framing here will feel familiar. I keep finding the same pattern: a thing that should be one source, fragmented across N coding-agent harnesses, that we can unify in the shared `.agents/` ground.
+If you read my [supagents post](https://www.fmind.dev/articles/supagents-one-source-to-rule-your-coding-subagents/), the framing here will feel familiar. I keep finding the same pattern: a thing that should be one source, fragmented across N coding-agent harnesses, that we can unify in the shared `.agents/` ground.
 
 Supagents handles **subagent personas** — one markdown source compiled to `.claude/agents/`, `.gemini/agents/`, .github/agents/. Agent Docs handles **project knowledge** — one `.agents/docs/` folder, read by any agent that follows the [AGENTS.md convention](https://agents.md/) (which now includes Claude Code, Gemini CLI, and GitHub Copilot).
 
@@ -192,7 +192,7 @@ The repository is at [github.com/fmind/agent-docs](https://github.com/fmind/agen
 
 ### Small tools, on purpose
 
-I keep coming back to the [Linux philosophy](https://fmind.medium.com/ai-agents-as-an-operating-system-rediscovering-the-linux-philosophy-f0e76f29ebdb) when I build things in this space: small tools, one job, composable. Agent Docs is three skills (gather, use, refresh) that touch one folder (`.agents/docs/`) and respect one shared root (`.agents/`). That’s the whole surface area.
+I keep coming back to the [Linux philosophy](https://www.fmind.dev/articles/ai-agents-as-an-operating-system-rediscovering-the-linux-philosophy/) when I build things in this space: small tools, one job, composable. Agent Docs is three skills (gather, use, refresh) that touch one folder (`.agents/docs/`) and respect one shared root (`.agents/`). That’s the whole surface area.
 
 The bet is that this is enough. A curated map is cheaper than a clever retrieval system, the same way a README.md is cheaper than an auto-generated wiki. The reason README.md survived every documentation-platform fad for two decades is that it’s a flat file that travels with the code and reads correctly without a runtime. .agents/docs/ is the same shape, aimed at the agent instead of the human.
 

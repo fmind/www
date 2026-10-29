@@ -90,7 +90,7 @@ ZenML proves especially valuable in ecosystems that utilize diverse software sta
 
 #### Case 2: Evidently (Monitoring)
 
-My recent adoption of [**Evidently**](https://www.evidentlyai.com/) to power a monitoring stack was prompted by a review of vendor solutions that [lacked essential features](https://fmind.medium.com/is-ai-ml-monitoring-just-data-engineering-10a2525a9c73). Evidently offers notable capabilities, [such as generating metrics and dashboards](https://docs.evidentlyai.com/examples/introduction) that can be ingested in our MLOps platform:
+My recent adoption of [**Evidently**](https://www.evidentlyai.com/) to power a monitoring stack was prompted by a review of vendor solutions that [lacked essential features](https://www.fmind.dev/articles/is-ai-ml-monitoring-just-data-engineering/). Evidently offers notable capabilities, [such as generating metrics and dashboards](https://docs.evidentlyai.com/examples/introduction) that can be ingested in our MLOps platform:
 
 ```python
 report = Report(metrics=[

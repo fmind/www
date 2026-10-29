@@ -14,7 +14,7 @@ To unlock the full potential of agents, we need a better language for them to ex
 
 This is the promise of [**A2UI (Agent-to-User Interface)**](https://a2ui.org/): a protocol that allows agents to “speak” UI natively.
 
-In my [previous article](https://fmind.medium.com/finding-the-holy-grail-of-ai-agent-uis-from-ai-orchestrated-development-to-a2ui), I explored the landscape of AI UI solutions and explained why A2UI stands out. Now, I wanted to put it to the test. I built [Featest](https://github.com/fmind/featest), a feature request application designed to be “AI-First.” Here is the story of how it was built, the strengths of the protocols I used, and the architectural patterns that emerged.
+In my [previous article](https://www.fmind.dev/articles/finding-the-holy-grail-of-ai-agent-uis-from-ai-orchestrated-development-to-a2ui/), I explored the landscape of AI UI solutions and explained why A2UI stands out. Now, I wanted to put it to the test. I built [Featest](https://github.com/fmind/featest), a feature request application designed to be “AI-First.” Here is the story of how it was built, the strengths of the protocols I used, and the architectural patterns that emerged.
 
 ![Source: Gemini App](/static/img/articles/building-with-a2ui-extending-the-expressiveness-of-ai-agent-interfaces/cover.webp)
 

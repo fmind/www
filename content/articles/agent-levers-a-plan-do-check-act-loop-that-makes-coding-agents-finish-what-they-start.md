@@ -14,7 +14,7 @@ Type too little — “add password sign-in” — and the agent improvi
 
 I have been trying to find the shape of the work _between_ those two extremes for months. I built [**agent-levers**](https://github.com/fmind/agent-levers) — a small set of [Agent Skills](https://github.com/anthropics/skills) that give the agent a structured **plan → do → check → act** loop on disk — to do the structuring work I kept doing by hand.
 
-This is the third post in a thread about the shared `.agents/` ground, after [supagents](https://fmind.medium.com/supagents-one-source-to-rule-your-coding-subagents-) (one subagent source, many targets) and [agent-docs](https://fmind.medium.com/agent-docs-answer-locally-before-the-web) (a curated, local doc reference). Same bet, different layer: this one is about the **workflow** an agent runs _inside_ a non-trivial task.
+This is the third post in a thread about the shared `.agents/` ground, after [supagents](https://www.fmind.dev/articles/supagents-one-source-to-rule-your-coding-subagents/) (one subagent source, many targets) and [agent-docs](https://www.fmind.dev/articles/agent-docs-answer-locally-before-the-web-a-shared-reference-for-every-coding-agent/) (a curated, local doc reference). Same bet, different layer: this one is about the **workflow** an agent runs _inside_ a non-trivial task.
 
 ![Agent Lever: Multiply the agent’s force, divide the human’s effort — https://github.com/fmind/agent-levers](/static/img/articles/agent-levers-a-plan-do-check-act-loop-that-makes-coding-agents-finish-what-they-start/cover.webp)
 

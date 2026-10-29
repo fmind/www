@@ -10,11 +10,11 @@ draft = false
 
 The promise of AI agents is immense productivity gains. But putting them into production can be a tale of two extremes: surprisingly fast or painfully slow.
 
-The difference often hinges on the infrastructure and tooling you choose. If you attempt to build everything from scratch — creating a custom UI, managing complex authentication flows, and setting up observability — development slows down significantly. You spend more time on infrastructure than on the agent logic itself. I recently argued this point in [“The Real AI Agent Bottleneck is the Damn UI”](https://fmind.medium.com/the-real-ai-agent-bottleneck-is-the-damn-ui-90e90ee369e0).
+The difference often hinges on the infrastructure and tooling you choose. If you attempt to build everything from scratch — creating a custom UI, managing complex authentication flows, and setting up observability — development slows down significantly. You spend more time on infrastructure than on the agent logic itself. I recently argued this point in [“The Real AI Agent Bottleneck is the Damn UI”](https://www.fmind.dev/articles/the-real-ai-agent-bottleneck-is-the-damn-ui/).
 
 However, with the right tools, deploying an agent can be remarkably quick.
 
-To demonstrate how to achieve this fast route, we need a practical example. A while ago, I shared a [notebook built over lunch to translate Google Slides](https://fmind.medium.com/slides-to-translate-when-it-says-no-build-a-0-04-solution-on-your-lunch-break-3afa8bd9f6bb). It was effective but stuck in a notebook, inaccessible to my teammates.
+To demonstrate how to achieve this fast route, we need a practical example. A while ago, I shared a [notebook built over lunch to translate Google Slides](https://www.fmind.dev/articles/slides-to-translate-when-it-says-no-build-a-0-04-solution-on-your-lunch-break/). It was effective but stuck in a notebook, inaccessible to my teammates.
 
 ![A hacker tinkering with a robot (Source: Gemini App)](/static/img/articles/powering-up-your-agent-in-production-with-adk-oauth-and-gemini-enterprise/cover.webp)
 
@@ -219,7 +219,7 @@ Note: As the Gemini Enterprise exposition API is still in private preview, I can
 
 ### Seamless Exposition
 
-[Gemini Enterprise](https://cloud.google.com/gemini/enterprise?authuser=1) gives you a quick way to expose your agent securely and conveniently. This directly addresses the “[UI bottleneck](https://fmind.medium.com/the-real-ai-agent-bottleneck-is-the-damn-ui-90e90ee369e0)” mentioned earlier.
+[Gemini Enterprise](https://cloud.google.com/gemini/enterprise?authuser=1) gives you a quick way to expose your agent securely and conveniently. This directly addresses the “[UI bottleneck](https://www.fmind.dev/articles/the-real-ai-agent-bottleneck-is-the-damn-ui/)” mentioned earlier.
 
 This approach has significant advantages over deploying a separate UI (like Streamlit):
 

@@ -76,7 +76,7 @@ Source: Fmind.dev
 There are three primary ways to expose your agents:
 
 - **Standard Chatbot:** The familiar conversational interface. It is fast to ship and often requires zero frontend skills. However, it is a generic instrument; chat is not always the best interface for complex user experience.
-- **Custom User Interface:** Bespoke web or mobile apps. This is where the power lies. As I’ve argued before, [the UI is often the real bottleneck for agents](https://fmind.medium.com/the-real-ai-agent-bottleneck-is-the-damn-ui-90e90ee369e0). Custom UIs allow for rich interactions, but they come with a “frontend tax” — they are time-consuming to build.
+- **Custom User Interface:** Bespoke web or mobile apps. This is where the power lies. As I’ve argued before, [the UI is often the real bottleneck for agents](https://www.fmind.dev/articles/the-real-ai-agent-bottleneck-is-the-damn-ui/). Custom UIs allow for rich interactions, but they come with a “frontend tax” — they are time-consuming to build.
 - **External Channels:** Extending the platform to meet users where they are — SMS, Email, Voice, or Slack. This is critical for field workers or remote teams who don’t sit in front of a dashboard all day.
 
 In the future, I expect **Generative UI** to take over by 2026. This is where the agent generates dynamic interface elements on the fly based on user intent (see [Google Research](https://research.google/blog/generative-ui-a-rich-custom-visual-interactive-user-experience-for-any-prompt/)). In the meantime, we must trade between options.

@@ -8,13 +8,13 @@ syndicated = "https://medium.com/@fmind/agent-evolutions-stop-guessing-the-desig
 draft = false
 +++
 
-Most coding-agent tasks have one right answer hiding behind a workflow. “Add password sign-in.” “Fix the off-by-one in the pagination cursor.” “Refactor this handler to use the new client.” The job is to converge — pick the path, drive it to done, ship the diff. That is the world [**agent-levers**](https://fmind.medium.com/agent-levers-a-plan-do-check-act-loop-that-makes-coding-agents-finish-what-they-start) lives in.
+Most coding-agent tasks have one right answer hiding behind a workflow. “Add password sign-in.” “Fix the off-by-one in the pagination cursor.” “Refactor this handler to use the new client.” The job is to converge — pick the path, drive it to done, ship the diff. That is the world [**agent-levers**](https://www.fmind.dev/articles/agent-levers-a-plan-do-check-act-loop-that-makes-coding-agents-finish-what-they-start/) lives in.
 
 Some tasks aren’t shaped like that. “Which prompt wins?” “Which caching strategy is fastest?” “Which library shape is friendlier to call from a worker?” There is no single correct path. There are five plausible ones, the differences are not obvious from inspection, and the only honest way to pick is to _measure_. The shape of the work is **divergent** — branch out, evaluate, keep what works.
 
 I kept reaching for that second shape and finding nothing on the shelf. So I built [**agent-evolutions**](https://github.com/fmind/agent-evolutions) — a small set of [Agent Skills](https://github.com/anthropics/skills) that turn a coding agent into a budgeted genetic search over a design space, with verifiable scoring at every step.
 
-This is the fourth post in a thread on the shared `.agents/` ground, after [supagents](https://fmind.medium.com/supagents-one-source-to-rule-your-coding-subagents-), [agent-docs](https://fmind.medium.com/agent-docs-answer-locally-before-the-web), and [agent-levers](https://fmind.medium.com/agent-levers-a-plan-do-check-act-loop-that-makes-coding-agents-finish-what-they-start). Same bet, different question: levers ask _“did we build it right?”_, evolutions ask _“did we pick the right thing to build?”_
+This is the fourth post in a thread on the shared `.agents/` ground, after [supagents](https://www.fmind.dev/articles/supagents-one-source-to-rule-your-coding-subagents/), [agent-docs](https://www.fmind.dev/articles/agent-docs-answer-locally-before-the-web-a-shared-reference-for-every-coding-agent/), and [agent-levers](https://www.fmind.dev/articles/agent-levers-a-plan-do-check-act-loop-that-makes-coding-agents-finish-what-they-start/). Same bet, different question: levers ask _“did we build it right?”_, evolutions ask _“did we pick the right thing to build?”_
 
 ![Agent Evolutions: Genetic exploration of solution spaces, with verifiable scoring — https://github.com/fmind/agent-evolutions](/static/img/articles/agent-evolutions-stop-guessing-the-design-evolve-it/cover.webp)
 
@@ -149,7 +149,7 @@ If a brief tries to start without a gate or a rubric axis, the Capture skill pus
 
 ### The leverage axis
 
-Agent-levers makes one hour of human attention move more — clearer briefs, typed verifiers, lessons that compound, the same fulcrum logic [I wrote about before](https://fmind.medium.com/agent-levers-a-plan-do-check-act-loop-that-makes-coding-agents-finish-what-they-start). The asymmetry is _human effort in, shipped work out_.
+Agent-levers makes one hour of human attention move more — clearer briefs, typed verifiers, lessons that compound, the same fulcrum logic [I wrote about before](https://www.fmind.dev/articles/agent-levers-a-plan-do-check-act-loop-that-makes-coding-agents-finish-what-they-start/). The asymmetry is _human effort in, shipped work out_.
 
 Agent-evolutions sits on a different axis. The input is not human attention, it is _compute_: six or twelve or twenty-four sub-agents running in parallel, each spending tokens on a variant of the same design question. The output is a defensible answer to _which design to ship_. The fulcrum is the same shape — small effort on one end multiplies into directed work on the other — but the lever is bolted to a different wall.
 

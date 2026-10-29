@@ -101,7 +101,7 @@ This final diagram presents an MLOps application following the hybrid style’s 
 
 Simplified MLOps application implemented with the Hybrid Style
 
-**Remember that these are guiding principles rather than strict rules**. By applying them thoughtfully, you can design a robust application. The [MLOps Python Package](https://fmind.medium.com/a-great-mlops-project-should-start-with-a-good-python-package-7662bdf79563) was developed using these principles and can demonstrate how the hybrid style can be applied effectively to MLOps applications.
+**Remember that these are guiding principles rather than strict rules**. By applying them thoughtfully, you can design a robust application. The [MLOps Python Package](https://www.fmind.dev/articles/a-great-mlops-project-should-start-with-a-good-python-package/) was developed using these principles and can demonstrate how the hybrid style can be applied effectively to MLOps applications.
 
 ### Conclusions
 
@@ -109,7 +109,7 @@ This article explored the strengths and weaknesses of two popular programming pa
 
 Alternatively, you can leverage the hybrid style to blend the benefits of functional and object-oriented approaches in a predominantly object-oriented language. This choice respects the language’s capabilities while catering to data applications where idempotence and parallelism play crucial roles in taking your application to the next level.
 
-On a personal note, I find the object-oriented style of Python somewhat lacking in elegance. However, I hold Python in high regard for its adaptability to new concepts over time, such as [gradual typing](https://docs.python.org/3/library/typing.html) or [asynchronous programming](https://docs.python.org/3/library/asyncio.html). To improve Python’s object-oriented style, I recommend using a toolkit like [Pydantic](https://docs.pydantic.dev/latest/), a remarkable library that I’ve extensively employed in designing the [MLOps Python Package](https://fmind.medium.com/a-great-mlops-project-should-start-with-a-good-python-package-7662bdf79563). It overcomes the aforementioned limitation and significantly enhances the development process.
+On a personal note, I find the object-oriented style of Python somewhat lacking in elegance. However, I hold Python in high regard for its adaptability to new concepts over time, such as [gradual typing](https://docs.python.org/3/library/typing.html) or [asynchronous programming](https://docs.python.org/3/library/asyncio.html). To improve Python’s object-oriented style, I recommend using a toolkit like [Pydantic](https://docs.pydantic.dev/latest/), a remarkable library that I’ve extensively employed in designing the [MLOps Python Package](https://www.fmind.dev/articles/a-great-mlops-project-should-start-with-a-good-python-package/). It overcomes the aforementioned limitation and significantly enhances the development process.
 
 ![Photo by Nathan Dumlao on Unsplash](/static/img/articles/finding-harmony-in-mlops-balancing-functional-and-object-oriented-approaches/05.webp)
 

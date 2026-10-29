@@ -8,7 +8,7 @@ syndicated = "https://medium.com/@fmind/the-real-ai-agent-bottleneck-is-the-damn
 draft = false
 +++
 
-We’re living in the golden age of AI agent development. The backend infrastructure is finally catching up to the hype. If you’ve followed my previous work on [deploying agents using ADK and Google Cloud](https://fmind.medium.com/deploying-ai-agents-in-the-enterprise-using-adk-and-google-cloud-b49e7eda3b41), you know that the heavy lifting — the orchestration, the tool integration, the deployment pipelines — is becoming standardized.
+We’re living in the golden age of AI agent development. The backend infrastructure is finally catching up to the hype. If you’ve followed my previous work on [deploying agents using ADK and Google Cloud](https://www.fmind.dev/articles/deploying-ai-agents-in-the-enterprise-using-adk-and-google-cloud/), you know that the heavy lifting — the orchestration, the tool integration, the deployment pipelines — is becoming standardized.
 
 The major players are all in. Whether you’re using Google Cloud’s [Vertex AI Agent Engine](https://cloud.google.com/vertex-ai/generative-ai/docs/agent-engine/overview) powered by the [ADK](https://github.com/google/adk-python), [AWS AgentCore](https://aws.amazon.com/bedrock/agentcore/) with [Strands](https://docs.aws.amazon.com/prescriptive-guidance/latest/agentic-ai-frameworks/strands-agents.html), or [Databricks’ AgentBricks](https://docs.databricks.com/aws/en/generative-ai/agent-bricks/), building the _brain_ of the agent is easier than ever. But here’s the dirty secret the hype cycle isn’t talking about: **The User Interface (UI) is the real bottleneck for industrializing AI agents.**
 
