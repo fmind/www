@@ -8,8 +8,9 @@ Python 3.14, Litestar, strict Jinja, Tailwind/DaisyUI, and Granian. No client fr
 - **Pass `mise run all` before done**: it must pass without unresolved warnings; infrastructure changes also pass `mise run check:tofu`, and new behavior needs a regression test. Run it in the foreground, because background runs have been killed under memory pressure.
 - **Iterate with focused tests**: run `mise run build:css` once, because app startup reads the generated stylesheet, then `uv run --locked pytest tests/<file>.py`.
 - **Run affected out-of-gate checks**: network link checks, cross-browser tests, and Lighthouse are separate tasks; run those relevant to the change.
-- **Keep scratch outside the repository**: use OS temporary directories and commit no review reports.
+- **Keep scratch out of the tracked tree**: tasks write their outputs only to the ignored `tmp/`; ad hoc scratch and review reports go to OS temporary directories, and no review report is committed.
 - **A `main` push deploys production**: pushing needs deploy authority; published tags are immutable.
+- **Keep the approved visual style**: the site's current style (shadows, gradients, hover motion, paired buttons, and its Tailwind/DaisyUI theme) is an approved exception to `~/.agents/DESIGN.md`; DESIGN.md still governs new pages and components where the site has no established pattern.
 - **Get consent before restyling**: layout, style, component, or home-page structure changes need the owner's OK on a proposal branch with before/after screenshots. Content edits inside existing components are fine; new pages reuse existing components unchanged.
 - **Keep Cloud Run scale-to-zero**: service and revision minimum instances 0, maximum 5, and request-based CPU (`cpu_idle = true`). Raising capacity or enabling always-on instances needs explicit owner authorization.
 - **CI owns only digest and traffic**: OpenTofu owns service settings. A `main` deployment must scan and smoke-test its pushed immutable digest, verify a no-traffic `candidate` revision, then promote exactly that revision and verify ready revision, traffic, and health; review error logs separately with the owner identity.
