@@ -1,4 +1,4 @@
-# Docs: https://github.com/gitleaks/gitleaks#configuration
+# Docs: https://github.com/betterleaks/betterleaks/blob/v1.x/docs/config.md
 # Only the working-tree scan uses this file; Git history keeps the default rules.
 [extend]
 useDefault = true
@@ -6,3 +6,7 @@ useDefault = true
 [[allowlists]]
 description = "Generated scratch, virtual environments, and build outputs are not maintained source"
 paths = ['''^(?:tmp|\.venv|dist)/''']
+
+[[allowlists]]
+description = "Binary WebP and AVIF bytes yield random generic-password matches; the default config skips other raster formats"
+paths = ['''\.(?:avif|webp)$''']

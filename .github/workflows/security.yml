@@ -1,5 +1,5 @@
-name: Security
 # Docs: https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax
+name: Security
 on:
   schedule:
     - cron: "17 3 * * 1"
@@ -27,7 +27,7 @@ jobs:
           install: false
           cache: true
       - name: Install security scanners
-        run: mise install --locked -y gitleaks trivy
+        run: mise install --locked -y betterleaks trivy
       - name: Scan complete Git history
         run: mise run check:leaks:full
       - name: Scan full checkout

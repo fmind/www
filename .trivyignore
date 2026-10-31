@@ -1,3 +1,4 @@
+# Docs: https://trivy.dev/docs/latest/configuration/filtering/#trivyignore
 # Reviewed misconfiguration exceptions for `mise run check:scan`.
 # Every entry states why the finding does not apply here — an unexplained id is
 # technical debt, and a check silenced without a reason is worse than no check.

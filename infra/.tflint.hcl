@@ -1,3 +1,4 @@
+// Docs: https://github.com/terraform-linters/tflint/blob/master/docs/user-guide/config.md
 // Only the terraform ruleset, which ships inside the tflint binary. The
 // google ruleset is a plugin that `tflint --init` downloads from the GitHub API,
 // which rate-limits calls without a token. `check:tofu` already needs network

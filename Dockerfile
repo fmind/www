@@ -1,3 +1,4 @@
+# Docs: https://docs.docker.com/reference/dockerfile/
 FROM python:3.14.10-slim@sha256:3cabfd7d7aaf394e6040e79fa1eec6ca1c52b74ed9188650472695d9a9326999 AS build
 ARG TARGETARCH
 ENV UV_COMPILE_BYTECODE=1

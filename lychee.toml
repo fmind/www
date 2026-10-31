@@ -1,3 +1,4 @@
+# Docs: https://lychee.cli.rs/guides/config/
 # Treat anti-bot responses as success: some hosts block automated checkers but
 # serve the pages fine to real browsers — Medium → 429, Udemy → 403, and
 # LinkedIn → 999 (its non-standard bot-block code).

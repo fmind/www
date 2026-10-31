@@ -4,7 +4,7 @@ Report vulnerabilities privately to <contact@fmind.dev> with the affected URL/co
 
 ## Release policy
 
-Deployment scans and smoke-tests the pushed immutable digest before Cloud Run receives it, then verifies the new revision on a no-traffic tagged URL before promoting that exact revision. Fixable HIGH/CRITICAL vulnerabilities and secrets block rollout. The weekly [security workflow](.github/workflows/security.yml) scans every serving or tagged revision digest through a separate read-only identity and retains unfiltered advisory evidence for 30 days. Passing the filtered gate does not mean zero advisories.
+CI deployment and the manual `mise run deploy` both scan and smoke-test the immutable digest before Cloud Run receives it, then verifies the new revision on a no-traffic tagged URL before promoting that exact revision. Fixable HIGH/CRITICAL vulnerabilities and secrets block rollout. The CI deploy job holds the Workload Identity token, so it reads no BuildKit or Trivy cache that another job could write. The weekly [security workflow](.github/workflows/security.yml) scans every serving or tagged revision digest through a separate read-only identity and retains unfiltered advisory evidence for 30 days. Passing the filtered gate does not mean zero advisories.
 
 Trivy may warn about third-party SBOM metadata or [fallback severity sources](https://trivy.dev/docs/v0.76/guide/scanner/vulnerability/#severity-selection). Review the full findings and package inventory; do not silence diagnostics, narrow severity sources, or add ignores merely to produce a quiet log.
 

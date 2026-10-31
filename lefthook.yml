@@ -1,31 +1,29 @@
-# https://lefthook.dev/configuration/
+# Docs: https://lefthook.dev/configuration/
 glob_matcher: doublestar
+
+# Jobs run in list order: formatters fix and restage only the staged files, then checks validate the tree.
 pre-commit:
-  parallel: false
-  commands:
-    # Formatters take only {staged_files}: other agents may hold unrelated, unstaged
-    # edits in the checkout. Run `mise run format` explicitly to format everything.
-    format:dprint:
+  jobs:
+    - name: format docs and config
       glob: "**/*.{cjs,json,md,mjs,toml,yaml,yml}"
-      priority: 10
       run: mise run format:dprint {staged_files}
       stage_fixed: true
-    format:python:
+    - name: format Python
       glob: "**/*.py"
-      priority: 11
-      # Call ruff directly: mise passes arguments only to an array task's last command.
-      run: mise exec -- uv run --locked ruff check --select=I --fix --force-exclude {staged_files} && mise exec -- uv run --locked ruff format --force-exclude {staged_files}
+      run: mise run format:python {staged_files}
       stage_fixed: true
-    format:tofu:
+    - name: format OpenTofu
       # tofu fmt rejects other HCL files such as infra/.tflint.hcl.
       glob: "infra/**/*.{tf,tfvars,tftest.hcl}"
-      priority: 12
-      run: mise exec -- tofu fmt {staged_files}
+      run: mise run format:tofu {staged_files}
       stage_fixed: true
-    check:
-      priority: 20
-      run: mise run check
+    - name: check
+      run: mise run check:local
 pre-push:
-  commands:
-    test:
+  parallel: true
+  jobs:
+    # Trivy downloads its vulnerability and misconfiguration databases; CI runs both through `check`.
+    - name: scan vulnerabilities
+      run: mise run check:network
+    - name: test
       run: mise run test

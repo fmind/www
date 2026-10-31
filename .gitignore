@@ -1,3 +1,4 @@
+# Docs: https://git-scm.com/docs/gitignore
 *.py[co]
 *.tfplan
 *.tfstate

@@ -1,4 +1,4 @@
-# https://mise.jdx.dev/configuration.html
+# Docs: https://mise.jdx.dev/configuration.html
 [env]
 APP_NAME = "www"
 IMAGE_ARCHIVE = "tmp/www-image.tar"
@@ -13,10 +13,10 @@ run_auto_install = false
 [tools]
 "aqua:astral-sh/uv" = "0.13.6"
 "github:dobicinaitis/tailwind-cli-extra" = "2.10.34"
-actionlint = "1.7.12"
+betterleaks = "1.9.0"
 dprint = "0.64.3"
-gitleaks = "8.30.1"
 hadolint = "2.15.1"
+jactionlint = "2.4.0"
 lefthook = "2.2.2"
 lychee = "0.24.2"
 node = "26.13.0"
@@ -31,7 +31,6 @@ shellcheck = "0.11.0"
 tflint = "0.65.0"
 trivy = "0.76.1"
 typos = "1.51.1"
-zizmor = "1.31.1"
 
 # MCP Registry publisher for the release skill. The release also ships registry server
 # assets, so select the publisher archive per platform (signature side files excluded).
@@ -91,6 +90,10 @@ run = "uv run --locked python -m scripts.build_portrait"
 [tasks.check]
 alias = "c"
 description = "Run all static checks in parallel"
+depends = ["check:local", "check:network"]
+
+[tasks."check:local"]
+description = "Run the static checks that need no network (pre-commit)"
 depends = [
   "check:actions",
   "check:dockerfile",
@@ -100,17 +103,20 @@ depends = [
   "check:lighthouse",
   "check:links:local",
   "check:lint",
-  "check:scan",
   "check:types",
   "check:typos",
-  "check:vuln",
 ]
+
+[tasks."check:network"]
+description = "Run the checks that download vulnerability data (pre-push)"
+# Both run Trivy, which downloads its vulnerability or misconfiguration database.
+depends = ["check:scan", "check:vuln"]
 
 [tasks."check:actions"]
 alias = "ca"
-description = "Lint GitHub Actions workflows and audit .github/ (actionlint + zizmor)"
-# Select offline mode explicitly: the workflow audit requires no credentials.
-run = ["actionlint", "zizmor --offline .github/"]
+description = "Lint and audit GitHub Actions workflows, actions, and Dependabot (jactionlint)"
+# Offline by default; .github/jactionlint.yaml selects the profile and ignores.
+run = "jactionlint"
 
 [tasks."check:dockerfile"]
 alias = "cd"
@@ -152,15 +158,15 @@ run = "uv run --locked python -m www.images --check"
 
 [tasks."check:leaks"]
 alias = "cs"
-description = "Audit recent commits and the working tree for leaked secrets (gitleaks)"
+description = "Audit recent commits and the working tree for leaked secrets (betterleaks)"
 run = [
-  'gitleaks git --redact=100 --log-opts="--max-count=100" --verbose',
-  "gitleaks dir . --config assets/gitleaks-dir.toml --redact=100 --verbose",
+  'betterleaks git --redact=100 --log-opts="--max-count=100" --verbose --no-banner',
+  "betterleaks dir . --config assets/betterleaks-dir.toml --redact=100 --verbose --no-banner",
 ]
 
 [tasks."check:leaks:full"]
 description = "Audit the complete Git history for leaked secrets (weekly security workflow)"
-run = "gitleaks git --redact=100 --verbose"
+run = "betterleaks git --redact=100 --verbose --no-banner"
 
 [tasks."check:lighthouse"]
 description = "Test the Lighthouse qualification harness without network access"
@@ -256,19 +262,30 @@ description = "Format all sources and documents"
 depends = ["format:dprint", "format:python", "format:tofu"]
 
 [tasks."format:dprint"]
-description = "Format JSON, Markdown, TOML, YAML with dprint"
+description = "Format JSON, Markdown, TOML, YAML with dprint, or only the given files"
+# mise appends the hook's {staged_files}; the flag keeps an empty list from exiting 14.
 run = "dprint fmt --allow-no-files"
 
+# Lefthook passes staged files; mise hands variadic arguments over as one shell-quoted
+# string, which `eval "set -- ..."` splits back safely. Without files, Ruff formats the project.
 [tasks."format:python"]
-description = "Format Python sources and imports (ruff)"
-run = [
-  "uv run --locked ruff check --select=I --fix",
-  "uv run --locked ruff format",
-]
+description = "Sort imports and format Python sources, or only the given files (ruff)"
+usage = 'arg "[files]..."'
+run = '''
+eval "set -- $usage_files"
+uv run --locked ruff check --select=I --fix --force-exclude "$@"
+uv run --locked ruff format --force-exclude "$@"
+'''
 
+# Without files, format infra/ (tofu fmt rejects other HCL such as infra/.tflint.hcl).
 [tasks."format:tofu"]
-description = "Format the OpenTofu configuration"
-run = "tofu -chdir=infra fmt -recursive"
+description = "Format the OpenTofu configuration, or only the given files"
+usage = 'arg "[files]..."'
+run = '''
+eval "set -- $usage_files"
+if [ "$#" -eq 0 ]; then set -- infra; fi
+tofu fmt -recursive "$@"
+'''
 
 [tasks.install]
 alias = "i"
