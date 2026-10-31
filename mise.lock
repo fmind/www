@@ -66,6 +66,34 @@ checksum = "sha256:e6c7bee8e93ed6b09817137d0bc07efd60cdc3700efe57f9e20b0e30d2f8d
 url = "https://github.com/dobicinaitis/tailwind-cli-extra/releases/download/v2.10.34/tailwindcss-extra-macos-arm64"
 url_api = "https://api.github.com/repos/dobicinaitis/tailwind-cli-extra/releases/assets/637225637"
 
+[[tools."github:modelcontextprotocol/registry"]]
+version = "1.8.6"
+backend = "github:modelcontextprotocol/registry"
+specifiers = ["1.8.6"]
+
+[tools."github:modelcontextprotocol/registry".options]
+asset_pattern = "mcp-publisher_linux_amd64.tar.gz"
+
+[tools."github:modelcontextprotocol/registry"."platforms.linux-x64"]
+checksum = "sha256:1fbe93fc0783c2394d8012c8d6e50a59e98cb2cc2d216264cc69f405d0e21340"
+checksum_source = "mise-versions"
+url = "https://github.com/modelcontextprotocol/registry/releases/download/v1.8.6/mcp-publisher_linux_amd64.tar.gz"
+url_api = "https://api.github.com/repos/modelcontextprotocol/registry/releases/assets/681890445"
+
+[[tools."github:modelcontextprotocol/registry"]]
+version = "1.8.6"
+backend = "github:modelcontextprotocol/registry"
+specifiers = ["1.8.6"]
+
+[tools."github:modelcontextprotocol/registry".options]
+asset_pattern = "mcp-publisher_darwin_arm64.tar.gz"
+
+[tools."github:modelcontextprotocol/registry"."platforms.macos-arm64"]
+checksum = "sha256:49511461d9906ade963c77f6a8f147fc225d0bcad2a0d2571f75cef5db4161aa"
+checksum_source = "mise-versions"
+url = "https://github.com/modelcontextprotocol/registry/releases/download/v1.8.6/mcp-publisher_darwin_arm64.tar.gz"
+url_api = "https://api.github.com/repos/modelcontextprotocol/registry/releases/assets/681890491"
+
 [[tools.gitleaks]]
 version = "8.30.1"
 backend = "aqua:gitleaks/gitleaks"

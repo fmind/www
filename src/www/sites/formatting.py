@@ -29,21 +29,29 @@ def format_usd2(value: float) -> str:
     return "$" + format_decimal(value, 2)
 
 
-def format_budget(value: float) -> str:
-    """Keep planning headlines coarse while retaining readable small API bills."""
-    if value < 10:
-        return format_usd2(value)
-    if value < 1000:
-        return format_usd(value)
-    return "$" + format_decimal(value / 1000, 1) + "k"
-
-
 _NUMBER_UNITS = (("", 1.0, 0), ("k", 1e3, 1), ("M", 1e6, 2), ("B", 1e9, 2), ("T", 1e12, 2))
 
 
 def _scaled(value: float, scale: float, digits: int) -> float:
     factor = 10**digits
     return _round_away_from_zero(value / scale * factor) / factor
+
+
+_BUDGET_UNITS = (("k", 1e3), ("M", 1e6), ("B", 1e9))
+
+
+def format_budget(value: float) -> str:
+    """Keep planning headlines coarse while retaining readable small API bills."""
+    if value < 10:
+        return format_usd2(value)
+    if value < 1000:
+        return format_usd(value)
+    # Choose the unit after rounding so $999,960 becomes $1.0M rather than $1,000.0k.
+    suffix, scale = next(
+        (unit for unit in _BUDGET_UNITS[:-1] if _scaled(value, unit[1], 1) < 1000),
+        _BUDGET_UNITS[-1],
+    )
+    return "$" + format_decimal(value / scale, 1) + suffix
 
 
 def format_number(value: float) -> str:

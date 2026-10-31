@@ -22,7 +22,7 @@ env:
   CANDIDATE_TAG: candidate
 jobs:
   verify:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
       - name: Git Checkout
@@ -44,6 +44,10 @@ jobs:
         run: mise run install:python
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        with:
+          # Pin the builder: the action otherwise pulls the mutable buildx-stable-1
+          # tag. Dependabot does not bump driver-opts; keep both jobs in step.
+          driver-opts: image=moby/buildkit:v0.34.1@sha256:99368f3e46177c6405b9740e4461d91cee004128daeecca78d4ceac50ec1da5c
       - name: Select the daily Trivy database cache
         id: trivy-cache
         run: echo "key=trivy-db-${RUNNER_OS}-$(date -u +%F)" >> "$GITHUB_OUTPUT"
@@ -61,7 +65,7 @@ jobs:
   deploy:
     needs: verify
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
       contents: read
@@ -96,6 +100,8 @@ jobs:
           password: ${{ steps.auth.outputs.access_token }}
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        with:
+          driver-opts: image=moby/buildkit:v0.34.1@sha256:99368f3e46177c6405b9740e4461d91cee004128daeecca78d4ceac50ec1da5c
       - name: Build and Push Image
         id: build
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
@@ -105,7 +111,10 @@ jobs:
           target: runner
           push: true
           provenance: mode=max
-          sbom: true
+          # Pin the SBOM generator: `sbom: true` runs the mutable
+          # buildkit-syft-scanner:stable-1 tag inside this build. Dependabot does not
+          # bump it; upgrade it together with the BuildKit pin above.
+          sbom: generator=docker/buildkit-syft-scanner:1.12.1@sha256:873a7458c3c8ac8e32c7b796c10e1600b07b963d2aa000a72a2d97aaaa2d6315
           # Cloud Run consumes the scanned digest below. Avoid mutating an
           # unscanned `latest` pointer before that scan has passed.
           tags: ${{ env.AR_HOSTNAME }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
@@ -151,13 +160,15 @@ jobs:
         run: mise run test:candidate
       - name: Promote the verified revision
         # Route traffic to the exact verified revision, not to "latest", so a
-        # revision created after verification can never receive it.
+        # revision created after verification can never receive it. Drop the
+        # candidate tag too: a tagged revision stays publicly reachable, so a
+        # later rollback would otherwise leave this one served on its tag URL.
         env:
           REVISION: ${{ steps.candidate.outputs.revision }}
         run: >-
           gcloud run services update-traffic "$SERVICE_NAME"
           --project "$PROJECT_ID" --billing-project "$PROJECT_ID" --region "$REGION"
-          --to-revisions "$REVISION=100" --quiet
+          --to-revisions "$REVISION=100" --remove-tags "$CANDIDATE_TAG" --quiet
       - name: Verify ready release and public health
         env:
           IMAGE_REF: ${{ env.AR_HOSTNAME }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}@${{ steps.build.outputs.digest }}

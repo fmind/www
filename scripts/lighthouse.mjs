@@ -11,7 +11,12 @@ const LIGHTHOUSE_VERSION = "13.5.0";
 const MAX_SITEMAP_BYTES = 2 * 1024 * 1024;
 const AUDIT_TIMEOUT_MS = 150_000;
 const MAX_AUDIT_ATTEMPTS = 2;
+// A performance-only miss is measured this many times in total and judged by the median.
+const PERFORMANCE_RUNS = 3;
 const PROCESS_OUTPUT_LIMIT = 64 * 1024;
+// A failure reason keeps only the tail of Lighthouse's debug stream, where the cause
+// and its stack trace end; the report JSON keeps the full runtimeError.
+const FAILURE_DETAIL_LIMIT = 2 * 1024;
 const CATEGORIES = ["performance", "accessibility", "best-practices", "seo", "agentic-browsing"];
 const FORM_FACTORS = ["desktop", "mobile"];
 const REPOSITORY_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -55,6 +60,8 @@ Full mode audits every unique sitemap path once in desktop and mobile,
 then runs the eight representative/stress paths three more consecutive times in both modes.
 Portfolio mode covers the homepage, contact and privacy pages, archive indexes, and both calculators.
 Every returned category score must be exactly 1; missing expected categories also fail.
+When only performance misses, the audit runs ${PERFORMANCE_RUNS - 1} more times and passes only if the median
+performance of the ${PERFORMANCE_RUNS} runs is 1 and every run keeps the other categories at 1; each run keeps its report.
 `;
 }
 
@@ -319,7 +326,8 @@ function processFailure(command, result) {
     : result.signal
     ? `was terminated by ${result.signal}`
     : `exited with code ${result.code}`;
-  const detail = stripAnsi(result.stderr.trim() || result.stdout.trim());
+  const output = stripAnsi(result.stderr.trim() || result.stdout.trim());
+  const detail = output.length > FAILURE_DETAIL_LIMIT ? `…${output.slice(-FAILURE_DETAIL_LIMIT)}` : output;
   return detail ? `${command} ${ending}: ${detail}` : `${command} ${ending}`;
 }
 
@@ -567,6 +575,9 @@ async function prepareArtifactDirectories(outputDirectory) {
   const validated = await validateArtifactDirectoryPath(outputDirectory);
   await mkdir(validated.outputDirectory, { recursive: true });
   const reportsDirectory = join(validated.outputDirectory, "reports");
+  // Report names come from the plan index, so reports of an earlier mode or sitemap would
+  // otherwise sit beside current ones. The path above holds no symbolic link.
+  await rm(reportsDirectory, { recursive: true, force: true });
   await mkdir(reportsDirectory, { recursive: true });
 
   const [realOutput, realReports] = await Promise.all([
@@ -647,8 +658,8 @@ function inspectReport(report, audit, baseUrl) {
   return { errors, scores };
 }
 
-async function runAudit(audit, baseUrl, artifactDirectories, toolchain, runProcessImplementation = runProcess) {
-  const reportPath = join(artifactDirectories.outputDirectory, audit.artifact);
+async function runLighthouse(audit, artifact, baseUrl, artifactDirectories, toolchain, runProcessImplementation) {
+  const reportPath = join(artifactDirectories.outputDirectory, artifact);
   const temporaryPath = `${reportPath}.tmp`;
 
   const arguments_ = [
@@ -664,7 +675,7 @@ async function runAudit(audit, baseUrl, artifactDirectories, toolchain, runProce
   ];
   if (audit.formFactor === "desktop") arguments_.push("--preset=desktop");
 
-  let lastResult;
+  let lastRun;
   for (let attempt = 1; attempt <= MAX_AUDIT_ATTEMPTS; attempt += 1) {
     await rm(reportPath, { force: true });
     await rm(temporaryPath, { force: true });
@@ -681,13 +692,7 @@ async function runAudit(audit, baseUrl, artifactDirectories, toolchain, runProce
         timeoutMs: AUDIT_TIMEOUT_MS,
       });
     } catch (error) {
-      return {
-        ...audit,
-        passed: false,
-        scores: {},
-        errors: [`could not execute Lighthouse: ${error.message}`],
-        artifact: null,
-      };
+      return { passed: false, scores: {}, errors: [`could not execute Lighthouse: ${error.message}`], artifact: null };
     }
 
     const executionErrors = processResult.code === 0 ? [] : [processFailure("lighthouse", processResult)];
@@ -698,7 +703,6 @@ async function runAudit(audit, baseUrl, artifactDirectories, toolchain, runProce
     } catch (error) {
       await rm(temporaryPath, { force: true });
       return {
-        ...audit,
         passed: false,
         scores: {},
         errors: [...executionErrors, `Lighthouse did not produce valid JSON: ${error.message}`],
@@ -708,16 +712,77 @@ async function runAudit(audit, baseUrl, artifactDirectories, toolchain, runProce
 
     const inspected = inspectReport(report, audit, baseUrl);
     const errors = [...executionErrors, ...inspected.errors];
-    lastResult = {
-      ...audit,
-      passed: errors.length === 0,
-      scores: inspected.scores,
-      errors,
-    };
-    if (lastResult.passed || report?.runtimeError?.code !== "NO_NAVSTART") return lastResult;
+    lastRun = { passed: errors.length === 0, scores: inspected.scores, errors, artifact };
+    if (lastRun.passed || report?.runtimeError?.code !== "NO_NAVSTART") return lastRun;
   }
 
-  return lastResult;
+  return lastRun;
+}
+
+function isPerformanceOnlyMiss(run) {
+  // A run lists every failed check, so a single error with a numeric performance score
+  // below 1 and every other category at exactly 1 can only be the performance score.
+  const performance = run.scores.performance;
+  return (
+    run.errors.length === 1
+    && typeof performance === "number"
+    && performance < 1
+    && CATEGORIES.every((category) => category === "performance" || run.scores[category] === 1)
+  );
+}
+
+function median(values) {
+  const sorted = [...values].sort((left, right) => left - right);
+  return sorted[Math.floor(sorted.length / 2)];
+}
+
+function formatScores(scores) {
+  return scores.map((score) => JSON.stringify(score)).join(", ");
+}
+
+async function runAudit(audit, baseUrl, artifactDirectories, toolchain, runProcessImplementation = runProcess) {
+  const first = await runLighthouse(
+    audit,
+    audit.artifact,
+    baseUrl,
+    artifactDirectories,
+    toolchain,
+    runProcessImplementation,
+  );
+  if (first.passed || !isPerformanceOnlyMiss(first)) return { ...audit, ...first };
+
+  // Performance alone varies between consecutive runs, so a performance-only miss is
+  // judged by the median of PERFORMANCE_RUNS runs. Every other category must still be
+  // exactly 1 in each run, and every run keeps its own report.
+  const runs = [first];
+  for (let run = 2; run <= PERFORMANCE_RUNS; run += 1) {
+    const artifact = audit.artifact.replace(/\.json$/u, `-performance-run-${run}.json`);
+    runs.push(await runLighthouse(audit, artifact, baseUrl, artifactDirectories, toolchain, runProcessImplementation));
+  }
+  const performanceRuns = runs.map((run) => ({ artifact: run.artifact, score: run.scores.performance ?? null }));
+  const scores = performanceRuns.map((run) => run.score);
+  const invalidRuns = runs.flatMap((run, offset) =>
+    run.passed || isPerformanceOnlyMiss(run)
+      ? []
+      : run.errors.map((error) => `performance run ${offset + 1}: ${error}`)
+  );
+  const performanceMedian = invalidRuns.length === 0 ? median(scores) : null;
+  let errors = [];
+  if (invalidRuns.length > 0) {
+    errors = [`performance runs ${formatScores(scores)} have no valid median`, ...invalidRuns];
+  } else if (performanceMedian !== 1) {
+    errors = [`performance median is ${performanceMedian} over runs ${formatScores(scores)}, expected 1`];
+  }
+
+  return {
+    ...audit,
+    passed: errors.length === 0,
+    scores: { ...first.scores, performance: performanceMedian ?? first.scores.performance },
+    errors,
+    artifact: first.artifact,
+    performanceRuns,
+    performanceMedian,
+  };
 }
 
 function summarize(manifest, results, status) {
@@ -740,6 +805,19 @@ function summarize(manifest, results, status) {
       repeat: result.repeat,
       artifact: result.artifact,
       errors: result.errors,
+      performanceRuns: result.performanceRuns,
+    }));
+  const performanceReruns = results
+    .filter((result) => result.performanceRuns)
+    .map((result) => ({
+      index: result.index,
+      phase: result.phase,
+      path: result.path,
+      formFactor: result.formFactor,
+      repeat: result.repeat,
+      passed: result.passed,
+      performanceMedian: result.performanceMedian,
+      performanceRuns: result.performanceRuns,
     }));
 
   return {
@@ -756,8 +834,22 @@ function summarize(manifest, results, status) {
     passedAudits: results.filter((result) => result.passed).length,
     failedAudits: failures.length,
     failures,
+    performanceReruns,
     results,
   };
+}
+
+function describeFailure(failure) {
+  const reason = failure.errors.join("; ").replaceAll("\n", " ");
+  return `${failure.index}: ${failure.formFactor} ${failure.path} run ${failure.repeat} — ${reason}`;
+}
+
+function describePerformanceRuns(audit) {
+  const scores = formatScores(audit.performanceRuns.map((run) => run.score));
+  const verdict = audit.passed ? "passed" : "failed";
+  return `${audit.index}: ${audit.formFactor} ${audit.path} run ${audit.repeat} — performance runs ${scores}; median ${
+    audit.performanceMedian ?? "n/a"
+  }; ${verdict}`;
 }
 
 function renderSummary(summary) {
@@ -777,12 +869,21 @@ function renderSummary(summary) {
   for (const [category, result] of Object.entries(summary.categories)) {
     lines.push(`| ${category} | ${result.perfect} / ${result.observed} | ${result.minimum ?? "n/a"} |`);
   }
+  if (summary.performanceReruns.length > 0) {
+    lines.push(
+      "",
+      "## Performance medians",
+      "",
+      `Only performance missed 1 in these audits, so each ran ${PERFORMANCE_RUNS} times and the table above counts the median.`,
+      "",
+    );
+    for (const audit of summary.performanceReruns) {
+      lines.push(`- ${describePerformanceRuns(audit).replaceAll("|", "\\|")}`);
+    }
+  }
   if (summary.failures.length > 0) {
     lines.push("", "## Failures", "");
-    for (const failure of summary.failures) {
-      const reason = failure.errors.join("; ").replaceAll("|", "\\|").replaceAll("\n", " ");
-      lines.push(`- ${failure.index}: ${failure.formFactor} ${failure.path} run ${failure.repeat} — ${reason}`);
-    }
+    for (const failure of summary.failures) lines.push(`- ${describeFailure(failure).replaceAll("|", "\\|")}`);
   }
   return `${lines.join("\n")}\n`;
 }
@@ -859,7 +960,9 @@ async function run() {
     process.stdout.write(
       `[${audit.index}/${audits.length}] ${audit.phase} ${audit.formFactor} run ${audit.repeat}: ${audit.path}\n`,
     );
-    results.push(await runAudit(audit, baseUrl, artifactDirectories, toolchain));
+    const result = await runAudit(audit, baseUrl, artifactDirectories, toolchain);
+    if (result.performanceRuns) process.stdout.write(`  ${describePerformanceRuns(result)}\n`);
+    results.push(result);
     await writeSummary(artifactDirectories.outputDirectory, manifest, results, "running");
   }
 
@@ -873,11 +976,17 @@ async function run() {
   process.stdout.write(
     `Lighthouse qualification ${summary.status}: ${summary.passedAudits}/${summary.plannedAudits} audits passed.\n`,
   );
-  if (failed) throw new Error(`strict Lighthouse qualification failed in ${summary.failedAudits} audit(s)`);
+  if (failed) {
+    // Name each failed page and category in the log, not only in the uploaded artifact.
+    for (const failure of summary.failures) {
+      process.stderr.write(`lighthouse harness: failed ${describeFailure(failure)}\n`);
+    }
+    throw new Error(`strict Lighthouse qualification failed in ${summary.failedAudits} audit(s)`);
+  }
 }
 
-const entryPoint = process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url;
-if (entryPoint) {
+// import.meta.main also holds when Node runs this file through a symbolic link.
+if (import.meta.main) {
   run().catch((error) => {
     process.stderr.write(`lighthouse harness: ${error.message}\n`);
     process.exitCode = 1;
@@ -886,14 +995,17 @@ if (entryPoint) {
 
 export {
   buildAuditPlan,
+  describeFailure,
   fetchSitemap,
   inspectReport,
   normalizeBaseUrl,
   parseArguments,
   parseSitemapPaths,
   prepareArtifactDirectories,
+  renderSummary,
   resolveOutputDirectory,
   runAudit,
   runProcess,
+  summarize,
   validateSitemapScope,
 };

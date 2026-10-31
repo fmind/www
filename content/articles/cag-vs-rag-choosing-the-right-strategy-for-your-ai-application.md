@@ -148,7 +148,7 @@ CAG, especially when augmented with caching, offers a simpler starting point tha
 For a deeper dive into the analysis mentioned, check out these resources:
 
 - **Latency Benchmark Notebook:** [Comparison: CAG vs. RAG — Colab](https://colab.research.google.com/drive/1yt2rHhX9X8dD1v50Sk9_o7hF_5tAt7bH)
-- **Price Estimation Sheet:** [Comparison: CAG vs. RAG — Ranking](https://docs.google.com/spreadsheets/d/1WPmoqWB5UUO2tq9-z2ng2t_a6K6fqdzJTLQZxOytP4U/edit?usp=sharing&authuser=1)
+- **Price Estimation Sheet:** [Comparison: CAG vs. RAG — Ranking](https://docs.google.com/spreadsheets/d/1WPmoqWB5UUO2tq9-z2ng2t_a6K6fqdzJTLQZxOytP4U/edit?usp=sharing)
 - **My entry to Kaggle "Gemini Long Context" competition**: [https://docs.google.com/presentation/d/1H7Kq8Ur3f76mknLcugR0ZaBFqtba6foLQS_i7KG_4Sc/edit#slide=id.g315f80125e3_1_48](https://docs.google.com/presentation/d/1H7Kq8Ur3f76mknLcugR0ZaBFqtba6foLQS_i7KG_4Sc/edit#slide=id.g315f80125e3_1_48)
 
 ![Photo by Conner Baker on Unsplash](/static/img/articles/cag-vs-rag-choosing-the-right-strategy-for-your-ai-application/06.webp)

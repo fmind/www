@@ -1,16 +1,26 @@
+# https://lefthook.dev/configuration/
 glob_matcher: doublestar
 pre-commit:
   parallel: false
   commands:
+    # Formatters take only {staged_files}: other agents may hold unrelated, unstaged
+    # edits in the checkout. Run `mise run format` explicitly to format everything.
     format:dprint:
       glob: "**/*.{cjs,json,md,mjs,toml,yaml,yml}"
       priority: 10
-      run: mise run format:dprint
+      run: mise run format:dprint {staged_files}
       stage_fixed: true
     format:python:
       glob: "**/*.py"
       priority: 11
-      run: mise run format:python
+      # Call ruff directly: mise passes arguments only to an array task's last command.
+      run: mise exec -- uv run --locked ruff check --select=I --fix --force-exclude {staged_files} && mise exec -- uv run --locked ruff format --force-exclude {staged_files}
+      stage_fixed: true
+    format:tofu:
+      # tofu fmt rejects other HCL files such as infra/.tflint.hcl.
+      glob: "infra/**/*.{tf,tfvars,tftest.hcl}"
+      priority: 12
+      run: mise exec -- tofu fmt {staged_files}
       stage_fixed: true
     check:
       priority: 20

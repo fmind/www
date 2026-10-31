@@ -10,7 +10,7 @@ draft = false
 
 A new architectural pattern is going to emerge that could shift the balance of power from the cloud giants to intelligent agents, commoditizing the very services that built their empires. Today, a handful of “hyperscalers” — AWS, Azure, and GCP — hold an overwhelming majority of the market share, a dominance built on [a decade of unprecedented capital investment and engineering might](https://spacelift.io/blog/cloud-computing-statistics). They’ve constructed an [unconquerable moat](https://semianalysis.com/2023/05/04/google-we-have-no-moat-and-neither/) that has made the idea of a new competitor emerging seem not just difficult, but fundamentally impossible.
 
-![Market Share of Cloud Providers ( Source )](/static/img/articles/the-agentic-cloud-forging-the-next-era-of-infrastructure/cover.webp)
+![Market Share of Cloud Providers (Source)](/static/img/articles/the-agentic-cloud-forging-the-next-era-of-infrastructure/cover.webp)
 
 Market Share of Cloud Providers ([Source](https://www.statista.com/chart/18819/worldwide-market-share-of-leading-cloud-infrastructure-service-providers/))
 

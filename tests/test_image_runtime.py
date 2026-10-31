@@ -518,6 +518,27 @@ def test_resolve_image_id_fails_when_archive_missing(tmp_path: Path) -> None:
         resolve_image_id(runner, missing)
 
 
+def test_resolve_image_id_defaults_to_the_archive_configured_by_mise(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("IMAGE_ARCHIVE", str(tmp_path / "configured.tar"))
+    runner = RecordingRunner()
+    with pytest.raises(SmokeError, match=r"configured\.tar is missing"):
+        resolve_image_id(runner)
+    assert runner.commands == []
+
+
+def test_resolve_image_id_defaults_to_the_repository_archive_outside_mise(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.delenv("IMAGE_ARCHIVE", raising=False)
+    monkeypatch.chdir(tmp_path)
+    runner = RecordingRunner()
+    with pytest.raises(SmokeError, match=r"tmp/www-image\.tar is missing"):
+        resolve_image_id(runner)
+    assert runner.commands == []
+
+
 def test_resolve_image_id_pulls_and_inspects_remote_reference() -> None:
     target = f"europe-west1-docker.pkg.dev/www-fmind-dev/app/www-fmind-dev@sha256:{'c' * 64}"
     digest = "sha256:" + ("c" * 64)

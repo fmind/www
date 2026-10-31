@@ -90,7 +90,7 @@ def load_application_assets(static_dir: Path = Path("static")) -> ApplicationAss
     try:
         stylesheet = stylesheet_path.read_text(encoding="utf-8")
     except OSError as error:
-        msg = f"read generated stylesheet {stylesheet_path}: {error}"
+        msg = f"read generated stylesheet {stylesheet_path}: {error}; run `mise run build:css`"
         raise RuntimeError(msg) from error
 
     _validate_required_fonts(static_dir)

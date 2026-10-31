@@ -4,18 +4,22 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import re
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from io import BytesIO
 from pathlib import Path
 from types import MappingProxyType
-from typing import Any
+from typing import Any, cast
+from urllib.parse import unquote
 
 import pytest
+from litestar import Litestar
 from litestar.plugins.opentelemetry import OpenTelemetryPlugin
 from litestar.testing import TestClient
+from litestar.types import HTTPDisconnectEvent, HTTPRequestEvent, Message, Scope
 from opentelemetry.sdk.trace import TracerProvider
 from PIL import Image
 
@@ -26,9 +30,22 @@ from www.assets import ApplicationAssets
 from www.config import Config, Environment
 from www.content import ArticleCollection, article_summaries, load_articles, visible_articles
 from www.data import METADATA, OPEN_SOURCE, SAME_AS_PROFILES, SITE_PAGES
+from www.middleware import ANALYTICS_LOG_NAME
 from www.rendering import Renderer
 
 type AppClient = TestClient[Any]
+
+MCP_INITIALIZE = {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "initialize",
+    "params": {
+        "protocolVersion": "2025-11-25",
+        "capabilities": {},
+        "clientInfo": {"name": "test", "version": "1.0"},
+    },
+}
+MCP_ACCEPT = {"accept": "application/json, text/event-stream"}
 
 FONT_PATHS = (
     "/static/fonts/GoogleSans-Variable.woff2",
@@ -388,6 +405,43 @@ def test_machine_surfaces_keep_content_cache_and_cors_contracts(client: AppClien
         assert marker in response.content
 
 
+def test_startup_snapshots_revalidate_with_weak_etags(client: AppClient) -> None:
+    article = visible_articles(load_articles().all)[0]
+    markdown = {"accept": "text/markdown"}
+    cases = (
+        ("/llms.txt", {}),
+        ("/llms-full.txt", {}),
+        ("/sitemap.xml", {}),
+        ("/articles/feed.xml", {}),
+        ("/robots.txt", {}),
+        ("/api/profile", {}),
+        ("/api/profile/schema.json", {}),
+        ("/.well-known/api-catalog", {}),
+        ("/.well-known/mcp/server-card.json", {}),
+        ("/.well-known/agent-skills/index.json", {}),
+        (article.markdown_path(), {}),
+        (f"/articles/{article.slug}/", markdown),
+        ("/", markdown),
+    )
+
+    for path, headers in cases:
+        full = client.get(path, headers=headers)
+        etag = full.headers["etag"]
+        assert etag.startswith('W/"'), path
+        revalidated = client.get(path, headers={**headers, "if-none-match": f'"other", {etag}'})
+        assert revalidated.status_code == 304, path
+        assert revalidated.content == b""
+        assert "content-type" not in revalidated.headers
+        for name in ("etag", "cache-control", "vary", "access-control-allow-origin", "link"):
+            assert revalidated.headers.get(name) == full.headers.get(name), (path, name)
+        assert client.get(path, headers={**headers, "if-none-match": 'W/"stale"'}).status_code == 200
+        if headers:
+            # The HTML variant under the same URL is rendered per request and never matches.
+            html = client.get(path, headers={"if-none-match": etag})
+            assert html.status_code == 200
+            assert html.headers["content-type"].startswith("text/html")
+
+
 def test_public_social_profiles_match_the_selected_channels(client: AppClient) -> None:
     profile = client.get("/api/profile").json()
     assert {item["name"] for item in profile["metadata"]["socials"]} == {
@@ -605,6 +659,7 @@ def test_static_if_match_is_strong_and_precedes_cache_and_range_conditions(
     for response in (stale, weak, stale_list, stale_range):
         assert response.status_code == 412
         assert response.content == b""
+        assert response.headers["content-type"] == "text/plain; charset=utf-8"
         assert response.headers["etag"] == etag
         assert "content-range" not in response.headers
 
@@ -846,17 +901,8 @@ def test_mcp_mount_is_stateless_bounded_and_origin_protected(
     client: AppClient,
     snapshots: tuple[ApplicationAssets, ArticleCollection],
 ) -> None:
-    initialize = {
-        "jsonrpc": "2.0",
-        "id": 1,
-        "method": "initialize",
-        "params": {
-            "protocolVersion": "2025-11-25",
-            "capabilities": {},
-            "clientInfo": {"name": "test", "version": "1.0"},
-        },
-    }
-    headers = {"accept": "application/json, text/event-stream"}
+    initialize = MCP_INITIALIZE
+    headers = MCP_ACCEPT
 
     for path in ("/mcp", "/mcp/"):
         response = client.post(path, json=initialize, headers={**headers, "accept-encoding": "gzip"})
@@ -910,17 +956,186 @@ def test_mcp_mount_is_stateless_bounded_and_origin_protected(
 
 
 @pytest.mark.parametrize("path", ["/mcp", "/mcp/"])
-@pytest.mark.parametrize("method", ["GET", "HEAD"])
-def test_mcp_notification_streams_are_rejected(client: AppClient, path: str, method: str) -> None:
+@pytest.mark.parametrize("method", ["GET", "HEAD", "DELETE", "OPTIONS", "PUT", "PATCH", "TRACE", "PROPFIND"])
+def test_mcp_rejects_every_method_but_post(client: AppClient, path: str, method: str) -> None:
     response = client.request(method, path, headers={"accept": "text/event-stream"})
     assert response.status_code == 405
     assert response.headers["allow"] == "POST"
     assert response.headers["cache-control"] == "no-cache, no-transform"
     assert "content-security-policy" in response.headers
-    assert response.content if method == "GET" else not response.content
+    assert response.content if method != "HEAD" else not response.content
 
     assert client.request(method, path, headers={"origin": "https://evil.example"}).status_code == 403
     assert client.request(method, path, headers={"host": "evil.example"}).status_code == 421
+
+
+def test_mcp_accepts_the_production_host_and_origin(snapshots: tuple[ApplicationAssets, ArticleCollection]) -> None:
+    production = create_app(
+        config=Config(environment=Environment.PRODUCTION),
+        assets=snapshots[0],
+        collection=snapshots[1],
+        logger=RecordingLogger(),
+    )
+
+    with TestClient(production, base_url="https://www.fmind.dev") as test_client:
+        response = test_client.post(
+            "/mcp",
+            json=MCP_INITIALIZE,
+            headers={**MCP_ACCEPT, "origin": "https://www.fmind.dev", "sec-fetch-site": "same-origin"},
+        )
+
+    assert response.status_code == 200
+    assert response.json()["result"]["serverInfo"]["name"] == "www"
+
+
+class _RecordHandler(logging.Handler):
+    def __init__(self) -> None:
+        super().__init__(logging.DEBUG)
+        self.records: list[logging.LogRecord] = []
+
+    def emit(self, record: logging.LogRecord) -> None:
+        self.records.append(record)
+
+
+@pytest.fixture
+def mcp_log_records() -> Iterator[list[logging.LogRecord]]:
+    # Production sends the "mcp" logger to its own handler without propagation,
+    # so capture there; ERROR records from it reach the error-log alert.
+    mcp_logger = logging.getLogger("mcp")
+    handler = _RecordHandler()
+    previous_level = mcp_logger.level
+    mcp_logger.addHandler(handler)
+    mcp_logger.setLevel(logging.INFO)
+    try:
+        yield handler.records
+    finally:
+        mcp_logger.removeHandler(handler)
+        mcp_logger.setLevel(previous_level)
+
+
+@pytest.mark.parametrize("protocol", ["2025-11-25", "2026-07-28"])
+def test_mcp_caller_mistakes_are_invalid_params_without_error_logs(
+    make_app: Callable[[], Litestar], protocol: str, mcp_log_records: list[logging.LogRecord]
+) -> None:
+    modern = protocol == "2026-07-28"
+
+    def call(test_client: AppClient, method: str, params: dict[str, Any]) -> dict[str, Any]:
+        headers = {**MCP_ACCEPT, "mcp-protocol-version": protocol}
+        if modern:
+            headers |= {"mcp-method": method, "mcp-name": params["name"]}
+            params = {
+                **params,
+                "_meta": {
+                    "io.modelcontextprotocol/protocolVersion": protocol,
+                    "io.modelcontextprotocol/clientCapabilities": {},
+                },
+            }
+        response = test_client.post(
+            "/mcp", json={"jsonrpc": "2.0", "id": 1, "method": method, "params": params}, headers=headers
+        )
+        body = response.json()
+        # The modern transport maps protocol errors to HTTP statuses (-32602 is 400).
+        assert response.status_code == (400 if modern and "error" in body else 200)
+        return body
+
+    with TestClient(make_app()) as test_client:
+        prompt_errors = [
+            call(test_client, "prompts/get", {"name": "assess_fit", "arguments": {}})["error"],
+            call(test_client, "prompts/get", {"name": "brief_me", "arguments": {"audience": "x", "extra": "y"}})[
+                "error"
+            ],
+            call(test_client, "prompts/get", {"name": "nope", "arguments": {}})["error"],
+        ]
+        tool = call(
+            test_client,
+            "tools/call",
+            {"name": "compare_mcp_context_cost", "arguments": {"server": ["memory"], "requests": 5}},
+        )["result"]
+
+    assert [error["code"] for error in prompt_errors] == [-32602, -32602, -32602]
+    assert "brief" in prompt_errors[0]["message"]
+    assert "nope" in prompt_errors[2]["message"]
+    assert tool["isError"] is True
+    assert "Unknown argument(s) for compare_mcp_context_cost: requests, server" in tool["content"][0]["text"]
+    assert [record.getMessage() for record in mcp_log_records if record.levelno >= logging.ERROR] == []
+
+
+def test_slash_aliases_share_mcp_policy_and_canonical_log_paths(
+    snapshots: tuple[ApplicationAssets, ArticleCollection],
+) -> None:
+    logger = RecordingLogger()
+    production = create_app(
+        config=Config(environment=Environment.PRODUCTION),
+        assets=snapshots[0],
+        collection=snapshots[1],
+        logger=logger,
+    )
+
+    async def request(method: str, raw_path: bytes, headers: list[tuple[bytes, bytes]]) -> tuple[int, dict[str, str]]:
+        # Raw scopes: HTTPX would read //mcp as a protocol-relative URL.
+        scope = {
+            "type": "http",
+            "asgi": {"version": "3.0", "spec_version": "2.3"},
+            "http_version": "1.1",
+            "method": method,
+            "scheme": "https",
+            "path": unquote(raw_path.decode("ascii")),
+            "raw_path": raw_path,
+            "query_string": b"",
+            "root_path": "",
+            "headers": [(b"host", b"www.fmind.dev"), *headers],
+            "client": ("192.0.2.1", 1234),
+            "server": ("www.fmind.dev", 443),
+            "state": {},
+        }
+        body = json.dumps(MCP_INITIALIZE).encode() if method == "POST" else b""
+        messages: list[Message] = []
+        received = False
+
+        async def receive() -> HTTPRequestEvent | HTTPDisconnectEvent:
+            nonlocal received
+            if received:
+                return {"type": "http.disconnect"}
+            received = True
+            return {"type": "http.request", "body": body, "more_body": False}
+
+        async def send(message: Message) -> None:
+            messages.append(message)
+
+        await production(cast(Scope, scope), receive, send)
+        start = next(message for message in messages if message["type"] == "http.response.start")
+        assert start["type"] == "http.response.start"
+        return start["status"], {name.decode(): value.decode("latin-1") for name, value in start["headers"]}
+
+    cross_site = [
+        (b"content-type", b"application/json"),
+        (b"accept", b"application/json, text/event-stream"),
+        (b"origin", b"http://localhost:3000"),
+        (b"sec-fetch-site", b"cross-site"),
+    ]
+    browser = [(b"user-agent", b"Mozilla/5.0 Firefox/140.0")]
+    with TestClient(production, base_url="https://www.fmind.dev") as test_client, test_client.portal() as portal:
+        for raw_path in (b"//mcp", b"/mcp//", b"///mcp//"):
+            status, headers = portal.call(request, "POST", raw_path, cross_site)
+            assert (raw_path, status, headers["cache-control"]) == (raw_path, 403, "no-cache, no-transform")
+        status, headers = portal.call(request, "GET", b"//mcp/server-card", [])
+        assert (status, headers["cache-control"]) == (200, "public, max-age=3600, must-revalidate")
+
+        logger.records.clear()
+        for raw_path in (b"//privacy", b"///connect", b"/articles//", f"/{FONT_PATHS[0]}".encode()):
+            assert portal.call(request, "GET", raw_path, browser)[0] == 200
+        status, headers = portal.call(request, "GET", b"/agents%2F", browser)
+        assert (status, headers["location"]) == (301, "/agents")
+
+    assert [(event, values["path"]) for event, values in logger.records] == [
+        ("http request processed", "/privacy"),
+        (ANALYTICS_LOG_NAME, "/privacy"),
+        ("http request processed", "/connect"),
+        (ANALYTICS_LOG_NAME, "/connect"),
+        ("http request processed", "/articles/"),
+        (ANALYTICS_LOG_NAME, "/articles/"),
+        ("http request processed", "/agents/"),
+    ]
 
 
 def test_opentelemetry_is_opt_in_and_correlates_request_logs(

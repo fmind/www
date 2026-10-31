@@ -3,8 +3,5 @@
 targetted = "targetted"
 Thta = "Thta"
 
-# Bloc is the proper name of the Flutter state-management library.
-Bloc = "Bloc"
-
 # SER is the singular acronym behind the standard plural SERPs.
 SER = "SER"

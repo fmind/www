@@ -49,3 +49,25 @@ def test_image_build_tool_pins_match_mise() -> None:
     assert build_system["requires"] == [f"uv_build=={uv_version}"]
     tailwind_version = tools["github:dobicinaitis/tailwind-cli-extra"]
     assert re.findall(r"tailwind-cli-extra/releases/download/v([^/]+)/", dockerfile) == [tailwind_version] * 2
+
+
+def test_image_builders_pin_one_buildkit_digest() -> None:
+    repository = Path(__file__).resolve().parents[1]
+    workflow = (repository / ".github" / "workflows" / "deploy.yml").read_text()
+    dockerfile = (repository / "Dockerfile").read_text()
+
+    # Dependabot does not bump driver-opts, so the verify and deploy builders can drift apart.
+    setup_steps = re.findall(r"uses: docker/setup-buildx-action@", workflow)
+    builders = re.findall(r"driver-opts: image=(moby/buildkit:v[0-9.]+@sha256:[0-9a-f]{64})$", workflow, re.MULTILINE)
+    assert len(setup_steps) == 2
+    assert len(builders) == len(setup_steps)
+    assert len(set(builders)) == 1
+    # `sbom: true` would run the mutable buildkit-syft-scanner:stable-1 image inside the deploy build.
+    sbom_inputs = re.findall(r"^\s+sbom: (.+)$", workflow, re.MULTILINE)
+    assert sbom_inputs
+    assert all(
+        re.fullmatch(r"generator=docker/buildkit-syft-scanner:[0-9.]+@sha256:[0-9a-f]{64}", value)
+        for value in sbom_inputs
+    )
+    # The pinned builder's built-in frontend parses the Dockerfile; a `# syntax=` tag would pull a floating one.
+    assert not re.search(r"^#\s*syntax=", dockerfile, re.MULTILINE | re.IGNORECASE)

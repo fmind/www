@@ -36,7 +36,7 @@ For new AI/ML and MLOps projects, embracing the latest stable Python release is 
 
 ### Installing Pyenv
 
-The installation process is straightforward, varying slightly depending on your operating system. The comprehensive instructions on the official [pyenv](https://github.com/pyenv/pyenv) GitHub repository ([https://github.com/pyenv/pyenv#installation](https://www.google.com/url?sa=E&q=https%3A%2F%2Fgithub.com%2Fpyenv%2Fpyenv%23installation)) provide detailed guidance for different platforms.
+The installation process is straightforward, varying slightly depending on your operating system. The comprehensive instructions on the official [pyenv](https://github.com/pyenv/pyenv) GitHub repository ([https://github.com/pyenv/pyenv#installation](https://github.com/pyenv/pyenv#installation)) provide detailed guidance for different platforms.
 
 #### Getting Pyenv
 

@@ -4,11 +4,6 @@
   "title": "Fmind Freelance AI Architect Website",
   "description": "Read-only access to Fmind's portfolio, articles, and sites.",
   "version": "2.6.0",
-  "repository": {
-    "url": "https://github.com/fmind/www",
-    "source": "github",
-    "id": "1261133438"
-  },
   "websiteUrl": "https://www.fmind.dev/",
   "remotes": [
     {

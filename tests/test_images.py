@@ -5,13 +5,14 @@ from __future__ import annotations
 import json
 import os
 import stat
+from collections.abc import Callable
 from hashlib import sha256
 from io import StringIO
 from pathlib import Path
 
 import PIL
 import pytest
-from PIL import Image, features
+from PIL import ExifTags, Image, features
 
 from www import images
 
@@ -364,10 +365,18 @@ def test_check_rejects_non_portable_modes_and_symlinks(tmp_path: Path) -> None:
     _write_image(source, 1000, 10)
     images.generate_derivatives(tmp_path, output=StringIO(), lock_path=lock_path)
     target = source.with_name("figure-800.webp")
-    target.chmod(0o600)
+    for mode in (0o600, 0o755):
+        target.chmod(mode)
+        with pytest.raises(
+            images.ImageDerivativeError,
+            match=rf'mode for "{target}" must be readable by everyone and not executable \(such as 0644\), got {mode:04o}',
+        ):
+            images.check_derivatives(tmp_path, output=StringIO(), lock_path=lock_path)
 
-    with pytest.raises(images.ImageDerivativeError, match=rf'mode for "{target}" must be 0644, got 0600'):
-        images.check_derivatives(tmp_path, output=StringIO(), lock_path=lock_path)
+    # A umask-002 checkout adds group write, which Git does not track and serving does not need.
+    for path in (lock_path, source, target):
+        path.chmod(0o664)
+    images.check_derivatives(tmp_path, output=StringIO(), lock_path=lock_path)
 
     target.chmod(0o644)
     external = tmp_path / "external.webp"
@@ -542,6 +551,81 @@ def test_generation_fails_closed_with_stable_context(tmp_path: Path) -> None:
 
     with pytest.raises(images.ImageDerivativeError, match=rf'^decode "{first}":'):
         images.generate_derivatives(tmp_path, output=StringIO(), lock_path=_lock(tmp_path))
+
+
+@pytest.mark.parametrize("names", [("diagram.png", "diagram.jpg"), ("cover.webp", "Cover.png")])
+def test_sources_sharing_a_stem_fail_before_any_derivative_is_written(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, names: tuple[str, str]
+) -> None:
+    for name in names:
+        _write_image(tmp_path / "example" / name, 1400, 14)
+    lock_path = _lock(tmp_path)
+
+    with pytest.raises(images.ImageDerivativeError, match=r"share a stem; rename one"):
+        images.generate_derivatives(tmp_path, output=StringIO(), lock_path=lock_path)
+    assert sorted(path.name for path in (tmp_path / "example").iterdir()) == sorted(names)
+
+    # A lock written before this rule let the last source overwrite the shared targets.
+    with monkeypatch.context() as patched:
+        patched.setattr(images, "_reject_shared_stems", lambda _sources: None)
+        images.generate_derivatives(tmp_path, output=StringIO(), lock_path=lock_path)
+    with pytest.raises(images.ImageDerivativeError, match=r"share a stem; rename one"):
+        images.check_derivatives(tmp_path, output=StringIO(), lock_path=lock_path)
+
+
+def _write_rotated_jpeg(path: Path, width: int) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    exif = Image.Exif()
+    exif[ExifTags.Base.Orientation] = 6
+    Image.new("RGB", (width, 10), (22, 47, 64)).save(path, exif=exif)
+
+
+def _write_animation(path: Path, width: int) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    frames = [Image.new("RGB", (width, 10), color) for color in ((255, 0, 0), (0, 0, 255))]
+    frames[0].save(path, save_all=True, append_images=frames[1:], duration=100, loop=0)
+
+
+@pytest.mark.parametrize(
+    ("name", "write", "width", "message"),
+    [
+        ("phone.jpg", _write_rotated_jpeg, 1000, r"has EXIF orientation 6; export it upright"),
+        ("phone.jpg", _write_rotated_jpeg, 400, r"has EXIF orientation 6; export it upright"),
+        ("demo.gif", _write_animation, 1000, r"is animated, .*export a single frame or at most 800px wide$"),
+        ("cover.gif", _write_animation, 400, r"is animated, .*export a single frame$"),
+    ],
+)
+def test_sources_whose_derivatives_would_differ_fail_closed(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    name: str,
+    write: Callable[[Path, int], None],
+    width: int,
+    message: str,
+) -> None:
+    source = tmp_path / "example" / name
+    write(source, width)
+    lock_path = _lock(tmp_path)
+
+    with pytest.raises(images.ImageDerivativeError, match=rf'^source "{source}" {message}'):
+        images.generate_derivatives(tmp_path, output=StringIO(), lock_path=lock_path)
+
+    # The check rejects a lock that recorded such a source before this rule existed.
+    with monkeypatch.context() as patched:
+        patched.setattr(images, "_require_derivable", lambda _source, _decoded: None)
+        images.generate_derivatives(tmp_path, output=StringIO(), lock_path=lock_path)
+    with pytest.raises(images.ImageDerivativeError, match=message):
+        images.check_derivatives(tmp_path, output=StringIO(), lock_path=lock_path)
+
+
+def test_small_animations_keep_their_frames_without_derivatives(tmp_path: Path) -> None:
+    source = tmp_path / "example" / "demo.gif"
+    _write_animation(source, 400)
+
+    images.generate_derivatives(tmp_path, output=StringIO(), lock_path=_lock(tmp_path))
+    images.check_derivatives(tmp_path, output=StringIO(), lock_path=_lock(tmp_path))
+
+    assert sorted(path.name for path in source.parent.iterdir()) == ["demo.gif"]
 
 
 @pytest.mark.parametrize("name", ["figure.webp", "figure.png", "figure.jpg", "figure.JPEG", "figure.gif"])

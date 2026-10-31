@@ -10,13 +10,13 @@ draft = false
 
 The MLOps ecosystem is evolving into a sophisticated symphony, composed of diverse tools, methodologies, and cultures. This diversity, while beneficial, also introduces a complexity reminiscent of the challenges encountered in [Big Data systems](https://en.wikipedia.org/wiki/Big_data). Data experts had to navigate through immense data characterized by its [Volume, Variety, and Velocity](https://web.archive.org/web/20240118141112/https://www.techtarget.com/whatis/definition/3Vs). Such intricacies can lead to a state of [analysis paralysis](https://en.wikipedia.org/wiki/Analysis_paralysis), where decision-makers are inundated with options, hesitant to commit for fear of poor design choices.
 
-To manage this complexity, it became essential to develop and own [**abstractions**](https://en.wikipedia.org/wiki/Abstraction) that encapsulate the underlying complexity, offering a seamless and adaptable architecture for integrating new components**.** For instance, [Apache Spark](https://spark.apache.org/) emerged as an exemplary abstraction for managing Big Data applications at scale, courtesy of its immutable and lazy programming approach. Complementary systems like [Hive Metastore](https://hive.apache.org/) further enriched the ecosystem with its capabilities. This raises a pivotal question: Can similar solutions be adopted for MLOps?
+To manage this complexity, it became essential to develop and own [**abstractions**](https://en.wikipedia.org/wiki/Abstraction) that encapsulate the underlying complexity, offering a seamless and adaptable architecture for integrating new components. For instance, [Apache Spark](https://spark.apache.org/) emerged as an exemplary abstraction for managing Big Data applications at scale, courtesy of its immutable and lazy programming approach. Complementary systems like [Hive Metastore](https://hive.apache.org/) further enriched the ecosystem with its capabilities. This raises a pivotal question: Can similar solutions be adopted for MLOps?
 
 ![Photo by Julio Rionaldo on Unsplash](/static/img/articles/become-the-maestro-of-your-mlops-abstractions/cover.webp)
 
 Photo by [Julio Rionaldo](https://unsplash.com/@juliorionaldo?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
 
-In this article, I aim to delineate a roadmap for constructing robust MLOps platforms and projects**.** Initially, I will underscore the importance of devising and mastering your own MLOps abstractions. Following this, I will outline key design patterns essential for forging simple yet potent abstractions for your projects. Lastly, I will delve into real-world case studies, illustrating the critical role of abstractions in the success of various projects.
+In this article, I aim to delineate a roadmap for constructing robust MLOps platforms and projects. Initially, I will underscore the importance of devising and mastering your own MLOps abstractions. Following this, I will outline key design patterns essential for forging simple yet potent abstractions for your projects. Lastly, I will delve into real-world case studies, illustrating the critical role of abstractions in the success of various projects.
 
 ### Why are abstractions essential for MLOps?
 
@@ -30,11 +30,11 @@ Direct integration of each component in a project poses several risks. On one ha
 
 **Abstractions** offer a solution to these challenges. By utilizing flexible abstractions, you can facilitate the addition of new components over time, avoiding direct implementation dependencies. This architectural approach is so prevalent in our industry that it’s encapsulated in a gold principle known as [**SOLID**](https://en.wikipedia.org/wiki/SOLID):
 
-- ***S*ingle Responsibility Principle **— A class should have one, and only one, reason to change.
+- __*S*ingle Responsibility Principle__ — A class should have one, and only one, reason to change.
 - __*O*pen/Closed Principle__ — Software entities should be open for extension, but closed for modification.
 - __*L*iskov Substitution Principle__ — Objects in a program should be replaceable with instances of their subtypes without altering the correctness of that program.
 - __*I*nterface Segregation Principle__ — No client should be forced to depend on methods it does not use.
-- ***D*ependency Inversion Principle **— High-level modules should not depend on low-level modules. Both should depend on abstractions.
+- __*D*ependency Inversion Principle__ — High-level modules should not depend on low-level modules. Both should depend on abstractions.
 
 ### Why should I own my MLOps abstractions?
 
@@ -56,7 +56,7 @@ However, it’s important to be cautious of ‘[leaky abstractions](https://en.w
 
 The [**Strategy pattern**](https://en.wikipedia.org/wiki/Strategy_pattern) is instrumental in MLOps for its ability to **abstract** the “what” from the “how” in algorithmic operations. In MLOps, this translates to separating the goal (e.g., model training) from the method (e.g., using TensorFlow, XGBoost, or PyTorch). By employing the Strategy pattern, different algorithms or frameworks can be interchanged without altering the code structure, adhering to the Open/Closed Principle. This flexibility is crucial for MLOps, allowing dynamic adaptations like switching models or data sources based on runtime conditions.
 
-![Strategy pattern : define a Model interface to switch between AI/ML frameworks at runtime](/static/img/articles/become-the-maestro-of-your-mlops-abstractions/04.webp)
+![Strategy pattern: define a Model interface to switch between AI/ML frameworks at runtime](/static/img/articles/become-the-maestro-of-your-mlops-abstractions/04.webp)
 
 **Strategy pattern**: define a Model interface to switch between AI/ML frameworks at runtime
 
@@ -64,7 +64,7 @@ The [**Strategy pattern**](https://en.wikipedia.org/wiki/Strategy_pattern) is in
 
 Following the establishment of common interfaces, the [**Factory pattern**](https://en.wikipedia.org/wiki/Factory_method_pattern) becomes essential for dynamically **adapting** program behavior at runtime. This pattern facilitates object creation, enabling control through external configurations. In MLOps, this means allowing users to modify the scope and settings of AI/ML pipelines without changing the codebase. Python’s dynamic nature, coupled with tools like [Pydantic](https://docs.pydantic.dev/latest/) and its [Discriminated Union](https://docs.pydantic.dev/latest/concepts/unions/#discriminated-unions-with-str-discriminators) feature, simplifies implementing this pattern, enhancing user input validation and program object instantiation.
 
-![Factory pattern : instantiate Model objects from model name using external configurations](/static/img/articles/become-the-maestro-of-your-mlops-abstractions/05.webp)
+![Factory pattern: instantiate Model objects from model name using external configurations](/static/img/articles/become-the-maestro-of-your-mlops-abstractions/05.webp)
 
 **Factory pattern**: instantiate Model objects from model name using external configurations
 
@@ -72,7 +72,7 @@ Following the establishment of common interfaces, the [**Factory pattern**](http
 
 Given the lack of a unified standard in MLOps, the [**Adapter pattern**](https://en.wikipedia.org/wiki/Adapter_pattern) plays a critical role. It acts as a bridge between disparate systems, **overcoming** incompatible interfaces. This pattern is particularly valuable in MLOps for integrating various external components, such as training and inference systems, across different platforms (like Databricks and Kubernetes for instance). By employing an Adapter, calls from one system can be translated and made compatible with another, ensuring seamless integration and generalization of external components.
 
-![Adapter pattern : translate torch and sklearn interfaces to your own project abstractions](/static/img/articles/become-the-maestro-of-your-mlops-abstractions/06.webp)
+![Adapter pattern: translate torch and sklearn interfaces to your own project abstractions](/static/img/articles/become-the-maestro-of-your-mlops-abstractions/06.webp)
 
 **Adapter pattern**: translate torch and sklearn interfaces to your own project abstractions
 

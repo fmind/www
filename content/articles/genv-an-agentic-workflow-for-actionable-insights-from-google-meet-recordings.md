@@ -8,11 +8,11 @@ syndicated = "https://medium.com/@fmind/genv-an-agentic-workflow-for-actionable-
 draft = false
 +++
 
-Video meetings on platforms like [Google Meet](https://www.google.com/search?q=google+meet&rlz=1CAAUGU_enFR1042&oq=google+meet&gs_lcrp=EgZjaHJvbWUyCQgAEEUYORiABDIGCAEQIxgnMgcIAhAAGIAEMgcIAxAAGIAEMgcIBBAAGIAEMgYIBRBFGDwyBggGEEUYPDIGCAcQRRg80gEIMTIxMmowajeoAgCwAgA&sourceid=chrome&ie=UTF-8#:~:text=Google%20Meet%20%2D%20Online,meet.google.com) are essential for collaboration, but how often do crucial details get lost moments after the call ends? Decisions are made, action items are assigned, and valuable context is shared, only to become buried in recordings that are rarely revisited. Manually scrubbing through hours of video to find specific information is tedious and inefficient.
+Video meetings on platforms like [Google Meet](https://meet.google.com/) are essential for collaboration, but how often do crucial details get lost moments after the call ends? Decisions are made, action items are assigned, and valuable context is shared, only to become buried in recordings that are rarely revisited. Manually scrubbing through hours of video to find specific information is tedious and inefficient.
 
 As someone deeply involved in AI, Generative AI, and MLOps, I saw another opportunity to apply these technologies to a common challenge. How can we efficiently extract the key takeaways, action items, and decisions from our meeting recordings without the manual effort?
 
-This led to the creation of [**GenV (Generative AI for Video Analytics)**](https://github.com/fmind/GenV), a [Python notebook](https://github.com/fmind/GenV/blob/main/GenV_Generative_AI_for_Video_Analytics.ipynb) designed as an agent to distill Google Meet recordings into structured, actionable insights. Similar to my previous [BKFC project for Google Chat](https://www.fmind.dev/articles/bkfc-an-agentic-workflow-for-gathering-knowledge-from-google-chat/), the goal was to build a practical, focused agentic workflow using powerful, accessible tools like [Google Colab](https://colab.google/), [Google Cloud Storage](https://cloud.google.com/storage?authuser=1), the [Vertex AI API](https://cloud.google.com/vertex-ai/docs/start/introduction-unified-platform?authuser=1), and specifically, [Vertex AI’s Gemini models](https://cloud.google.com/vertex-ai/generative-ai/docs/overview?authuser=1).
+This led to the creation of [**GenV (Generative AI for Video Analytics)**](https://github.com/fmind/GenV), a [Python notebook](https://github.com/fmind/GenV/blob/main/GenV_Generative_AI_for_Video_Analytics.ipynb) designed as an agent to distill Google Meet recordings into structured, actionable insights. Similar to my previous [BKFC project for Google Chat](https://www.fmind.dev/articles/bkfc-an-agentic-workflow-for-gathering-knowledge-from-google-chat/), the goal was to build a practical, focused agentic workflow using powerful, accessible tools like [Google Colab](https://colab.google/), [Google Cloud Storage](https://cloud.google.com/storage), the [Vertex AI API](https://cloud.google.com/vertex-ai/docs/start/introduction-unified-platform), and specifically, [Vertex AI’s Gemini models](https://cloud.google.com/vertex-ai/generative-ai/docs/overview).
 
 ![GenV: An Agentic Workflow for Actionable Insights from Google Meet Recordings](/static/img/articles/genv-an-agentic-workflow-for-actionable-insights-from-google-meet-recordings/cover.webp)
 
@@ -44,15 +44,15 @@ GenV follows a clear agentic process: **Locate -\> Prepare -\> Analyze -\> Repor
 **Analyze Data (Reasoning & Action):** This is where Vertex AI’s Gemini model performs the heavy lifting.
 
 - **Structured Output Definition:** Like with BKFC, defining the _desired_ output structure is key. We use [Pydantic models](https://docs.pydantic.dev/latest/concepts/models/) to create a detailed schema, `MeetingInsight`, specifying exactly what information to extract. This includes fields for:
-- `title`: Inferred meeting title.
-- `summary`: A concise meeting summary.
-- `questions_answers`: Pairs of questions and answers.
-- `unanswered_questions`: Questions lacking clear answers.
-- `projects_discussed`: Project updates and details.
-- `action_items`: Tasks with potential owners and deadlines.
-- `decisions_suggestions`: Key decisions or proposals.
-- `technical_insights`: Technical details mentioned.
-- `key_topics_mentioned`: Other important themes or keywords.
+  - `title`: Inferred meeting title.
+  - `summary`: A concise meeting summary.
+  - `questions_answers`: Pairs of questions and answers.
+  - `unanswered_questions`: Questions lacking clear answers.
+  - `projects_discussed`: Project updates and details.
+  - `action_items`: Tasks with potential owners and deadlines.
+  - `decisions_suggestions`: Key decisions or proposals.
+  - `technical_insights`: Technical details mentioned.
+  - `key_topics_mentioned`: Other important themes or keywords.
 
 &nbsp;
 
@@ -127,7 +127,7 @@ insight = response.parsed # The structured Pydantic object
 - It generates readable Markdown summaries, organizing the extracted information under relevant headings (Summary, Q&A, Projects, Action Items, Decisions, etc.). See example below.
 - It also saves the raw structured data to a `jsonlines` file for potential downstream use.
 
-_**Example Output Snippet (from**_ _**`video_insights.txt`**):_**
+**_Example Output Snippet (from `video_insights.txt`):_**
 
 ```markdown
 # MLOps Community - Kubeflow

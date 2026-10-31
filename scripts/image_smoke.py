@@ -31,7 +31,9 @@ from mcp_types import Implementation, TextContent, TextResourceContents
 from www.mcp import MCP_PROFILE_URI, MCP_PROTOCOL_VERSION
 
 # This is a repository qualification command, so resolve its artifact from the
-# task working directory rather than from an editable-install source path.
+# task working directory rather than from an editable-install source path. mise.toml
+# sets IMAGE_ARCHIVE for build:image and check:image; this default only serves runs
+# outside mise.
 IMAGE_ARCHIVE = Path("tmp/www-image.tar")
 CONTAINER_PORT = 8080
 EXPECTED_UID = 10001
@@ -194,7 +196,7 @@ def _is_archive_target(target: str | Path | None) -> bool:
 def resolve_image_id(runner: Runner, target: str | Path | None = None) -> str:
     """Resolve the immutable Docker image ID from an archive or remote reference."""
     if _is_archive_target(target):
-        archive_path = Path(target) if target is not None else IMAGE_ARCHIVE
+        archive_path = Path(target if target is not None else os.environ.get("IMAGE_ARCHIVE") or IMAGE_ARCHIVE)
         if archive_path.is_symlink() or not archive_path.is_file():
             raise SmokeError(f"{archive_path} is missing; run mise run check:image first")
         load = runner.run(("docker", "image", "load", "--input", os.fspath(archive_path)), timeout=120)

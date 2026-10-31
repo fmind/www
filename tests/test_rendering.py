@@ -2,16 +2,22 @@
 
 from __future__ import annotations
 
+import json
+import re
 from collections.abc import Callable
 from dataclasses import replace
 from datetime import UTC, datetime
 from typing import cast
+from urllib.parse import urlsplit
 
 import pytest
 from jinja2 import PackageLoader, StrictUndefined, UndefinedError
+from litestar import Litestar
+from litestar.testing import TestClient
 
+from www import content, rendering
 from www.assets import ApplicationAssets
-from www.content import load_articles, visible_articles
+from www.content import ArticleCollection, load_articles, visible_articles
 from www.data import (
     BADGES,
     BIOGRAPHY,
@@ -39,6 +45,7 @@ from www.publications import article_index_data, related_articles
 from www.rendering import PageTemplate, Renderer, create_environment
 from www.search import SearchIndex
 from www.sites.calculator import build_llm_self_hosting_view
+from www.sites.formatting import format_decimal
 
 
 def application_assets(
@@ -72,13 +79,18 @@ def test_environment_is_package_local_strict_and_autoescaped() -> None:
     } <= environment.globals.keys()
 
 
-def test_go_float_formatting_preserves_direct_template_output() -> None:
+def test_ungrouped_formatting_rounds_like_format_decimal() -> None:
     formatter = cast(Callable[[float, int], str], create_environment({}).globals["format_go_float"])
 
-    assert formatter(31.049999999999997, 1) == "31.0"
-    assert formatter(2242.5, 0) == "2242"
-    assert formatter(34.5, 0) == "34"
-    assert formatter(3220.0, 0) == "3220"
+    # One metric must read the same in every card, so both helpers round half away from zero.
+    for value, digits in ((12.25, 1), (2242.5, 0), (34.5, 0), (31.049999999999997, 1), (0.125, 2)):
+        assert formatter(value, digits) == format_decimal(value, digits).replace(",", "")
+    assert formatter(12.25, 1) == "12.3"
+    assert formatter(2242.5, 0) == "2243"
+    # Float noise for 31.05 rounds up in both helpers rather than to Python's half-even 31.0.
+    assert formatter(31.049999999999997, 1) == "31.1"
+    # SVG widths and form values need plain numbers, never thousands separators.
+    assert formatter(1234567.891, 2) == "1234567.89"
 
 
 def test_renderer_fails_closed_at_markup_and_context_boundaries() -> None:
@@ -100,14 +112,14 @@ def test_renderer_fails_closed_at_markup_and_context_boundaries() -> None:
             nonce="nonce",
             context={"biography_html": ("<strong>safe</strong>", b"unsafe")},
         )
-    with pytest.raises(ValueError, match="article_html must not contain script or style elements"):
+    with pytest.raises(ValueError, match="article_html must not contain <script> elements"):
         renderer.render(
             PageTemplate.ARTICLE,
             page=page,
             nonce="nonce",
             context={"article_html": "<p>safe</p></script><script>alert(1)</script>"},
         )
-    with pytest.raises(ValueError, match="biography_html must not contain script or style elements"):
+    with pytest.raises(ValueError, match="biography_html must not contain <style> elements"):
         renderer.render(
             PageTemplate.HOME,
             page=page,
@@ -118,12 +130,6 @@ def test_renderer_fails_closed_at_markup_and_context_boundaries() -> None:
         renderer.render(PageTemplate.NOT_FOUND, page=not_found_metadata(), nonce="")
     with pytest.raises(ValueError, match="structured_data must be valid JSON"):
         renderer.render(PageTemplate.NOT_FOUND, page=replace(page, structured_data="{"), nonce="nonce")
-    with pytest.raises(ValueError, match="structured_data must not close its script element"):
-        renderer.render(
-            PageTemplate.NOT_FOUND,
-            page=replace(page, structured_data='{"unsafe":"</script>"}'),
-            nonce="nonce",
-        )
     with pytest.raises(ValueError, match="reserved render context"):
         renderer.render(PageTemplate.NOT_FOUND, page=page, nonce="nonce", context={"metadata": object()})
     with pytest.raises(UndefinedError):
@@ -133,7 +139,9 @@ def test_renderer_fails_closed_at_markup_and_context_boundaries() -> None:
 @pytest.mark.parametrize(
     ("article_html", "message"),
     [
-        ("<SCRIPT>alert(1)</SCRIPT>", "script or style elements"),
+        ("<SCRIPT>alert(1)</SCRIPT>", "must not contain <script> elements"),
+        ('<iframe src="/x"></iframe>', "must not contain <iframe> elements"),
+        ('<link rel="stylesheet" href="/x.css">', "must not contain <link> elements"),
         ('<img src="/safe.png" onerror="alert(1)">', "unsafe attribute"),
         ('<a href="java&#x0a;script:alert(1)">unsafe</a>', "unsafe URL"),
         ('<img srcset="/safe.png 1x, data:text/html,unsafe 2x">', "unsafe URL"),
@@ -164,6 +172,22 @@ def test_renderer_escapes_page_metadata_and_preserves_reviewed_markup() -> None:
     assert f'<link rel="stylesheet" href="/styles.css?v={assets.stylesheet_digest}"/>' in rendered
     assert "<style" not in rendered
     assert '<script type="application/ld+json">{"@context":' in rendered
+
+
+@pytest.mark.parametrize("text", ["</script><script>alert(1)</script>", "<!--<script>", "</SCRIPT >"])
+def test_json_ld_strings_cannot_end_or_swallow_their_script_element(text: str) -> None:
+    structured_data = json.dumps({"headline": text})
+    page = replace(not_found_metadata(), structured_data=structured_data)
+
+    rendered = Renderer(application_assets()).render(PageTemplate.NOT_FOUND, page=page, nonce="nonce")
+
+    start = rendered.index('<script type="application/ld+json">') + len('<script type="application/ld+json">')
+    end = rendered.index("</script>", start)
+    element = rendered[start:end]
+    # The element holds no "<" at all, decodes to the same data, and the page body survives it.
+    assert "<" not in element
+    assert json.loads(element) == {"headline": text}
+    assert 'id="main-content"' in rendered[end:]
 
 
 def test_pages_without_structured_data_omit_the_json_ld_element() -> None:
@@ -312,7 +336,7 @@ def test_startup_markup_is_validated_once_but_unknown_markup_remains_guarded(mon
             nonce="third",
             context={"article_html": '<p onclick="bad()">unregistered</p>'},
         )
-    with pytest.raises(ValueError, match="script or style"):
+    with pytest.raises(ValueError, match="must not contain <script> elements"):
         Renderer(application_assets(), article_html=("<script>bad()</script>",))
 
 
@@ -333,3 +357,62 @@ def test_article_section_navigation_requires_two_sections(count: int) -> None:
         },
     )
     assert ('aria-label="On this page"' in rendered) is (count >= 2)
+
+
+@pytest.fixture(scope="module")
+def crawled_pages(make_app: Callable[[], Litestar]) -> tuple[dict[str, str], set[str]]:
+    """Render every public HTML page once through the app, recording each static_url argument."""
+    requested: set[str] = set()
+    factory = rendering._static_url_factory  # noqa: SLF001
+
+    def recording_factory(hashes: dict[str, str]) -> Callable[[str], str]:
+        static_url = factory(hashes)
+
+        def record(path: str) -> str:
+            requested.add(path)
+            return static_url(path)
+
+        return record
+
+    pages: dict[str, str] = {}
+    with pytest.MonkeyPatch.context() as patched:
+        patched.setattr(rendering, "_static_url_factory", recording_factory)
+        with TestClient(make_app()) as client:
+            sitemap = client.get("/sitemap.xml").text
+            paths = [urlsplit(location).path for location in re.findall(r"<loc>([^<]+)</loc>", sitemap)]
+            for path in [*paths, "/scan", "/missing-page"]:
+                response = client.get(path)
+                assert response.status_code == (404 if path == "/missing-page" else 200), path
+                pages[path] = response.text
+    return pages, requested
+
+
+def test_every_static_url_names_a_hashed_asset(
+    crawled_pages: tuple[dict[str, str], set[str]],
+    snapshots: tuple[ApplicationAssets, ArticleCollection],
+) -> None:
+    pages, requested = crawled_pages
+    hashes = snapshots[0].hashes
+
+    # static_url falls back to an unversioned URL, so a typo or a deleted asset would ship a 404.
+    assert len(pages) > 60
+    assert requested
+    assert sorted(path for path in requested if "/" + path.lstrip("/") not in hashes) == []
+
+
+def test_every_page_keeps_ids_unique_and_article_template_ids_reserved(
+    crawled_pages: tuple[dict[str, str], set[str]],
+    snapshots: tuple[ApplicationAssets, ArticleCollection],
+) -> None:
+    pages, _ = crawled_pages
+    articles = snapshots[1].by_slug
+
+    for path, html in pages.items():
+        identifiers = re.findall(r'\bid="([^"]+)"', html)
+        assert len(identifiers) == len(set(identifiers)), path
+        if path.startswith("/articles/") and path != "/articles/":
+            article = articles[path.removeprefix("/articles/").strip("/")]
+            assert article.html in html
+            # Body headings de-duplicate against these ids, so the list must cover every template id.
+            template_ids = set(re.findall(r'\bid="([^"]+)"', html.replace(article.html, "")))
+            assert template_ids <= content._TEMPLATE_IDS, path  # noqa: SLF001

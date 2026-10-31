@@ -7,7 +7,7 @@ import os
 import stat
 import sys
 from argparse import ArgumentParser
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from hashlib import sha256
 from io import BytesIO
@@ -16,7 +16,7 @@ from tempfile import NamedTemporaryFile
 from typing import Annotated, TextIO
 
 import PIL
-from PIL import Image, features
+from PIL import ExifTags, Image, features
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, field_validator
 
 from www.models import CARD_COVER_WIDTH, DERIVATIVE_WIDTHS
@@ -31,9 +31,10 @@ _COVER_STEM = "cover"
 # the library versions below bind the native codec implementation as well.
 _ENCODER_ALGORITHM = "pillow-webp-bicubic-no-upscale-v1"
 _LOCK_VERSION = 2
-_SOURCE_EXTENSIONS = frozenset({".webp", ".png", ".jpg", ".jpeg", ".gif"})
+# Lowercase source extensions, in the order `content.py` prefers an article cover.
+SOURCE_EXTENSIONS = (".webp", ".gif", ".png", ".jpg", ".jpeg")
 # Article Markdown deliberately promotes local MP4 image syntax into video markup.
-_ARTICLE_MEDIA_EXTENSIONS = _SOURCE_EXTENSIONS | {".mp4"}
+_ARTICLE_MEDIA_EXTENSIONS = (*SOURCE_EXTENSIONS, ".mp4")
 
 
 class ImageDerivativeError(RuntimeError):
@@ -91,7 +92,7 @@ class _DerivativeLock:
 def is_source(path: Path) -> bool:
     """Return whether a path names an authored image rather than a derivative."""
     extension = path.suffix
-    if extension.lower() not in _SOURCE_EXTENSIONS:
+    if extension.lower() not in SOURCE_EXTENSIONS:
         return False
     stem = path.name[: -len(extension)]
     return not any(stem.endswith(f"-{width}") for width in DERIVATIVE_WIDTHS)
@@ -122,6 +123,22 @@ def _read(source: Path) -> bytes:
         raise ImageDerivativeError(f'read "{source}": {error}') from error
 
 
+def _require_derivable(source: Path, decoded: Image.Image) -> None:
+    """Reject sources whose derivatives would silently differ from what browsers show."""
+    # Browsers rotate by EXIF orientation, but resizing and the article's width and
+    # height attributes use the stored pixels, so any rotated source renders wrongly.
+    orientation = decoded.getexif().get(ExifTags.Base.Orientation)
+    if orientation not in (None, 1):
+        raise ImageDerivativeError(
+            f'source "{source}" has EXIF orientation {orientation}; export it upright without the rotation tag'
+        )
+    if getattr(decoded, "n_frames", 1) > 1 and _eligible_widths(source, decoded.width):
+        smaller = "" if _is_cover(source) else f" or at most {DERIVATIVE_WIDTHS[0]}px wide"
+        raise ImageDerivativeError(
+            f'source "{source}" is animated, but derivatives keep only its first frame; export a single frame{smaller}'
+        )
+
+
 def _decode(source: Path, data: bytes | None = None) -> Image.Image:
     source_data = _read(source) if data is None else data
     try:
@@ -129,6 +146,7 @@ def _decode(source: Path, data: bytes | None = None) -> Image.Image:
             # Loading before the byte buffer closes also makes decode failures
             # surface at the boundary carrying the source path.
             decoded.load()
+            _require_derivable(source, decoded)
             return decoded.copy()
     except (OSError, ValueError) as error:
         raise ImageDerivativeError(f'decode "{source}": {error}') from error
@@ -418,6 +436,19 @@ def _scan_image_tree(root: Path, *, allowed_root_file: Path | None = None) -> li
     return files
 
 
+def _reject_shared_stems(sources: Iterable[Path]) -> None:
+    # Derivatives are named <stem>-<width>.webp, so sources sharing a stem would
+    # overwrite each other's files. Compare case-insensitively for macOS checkouts.
+    owners: dict[tuple[Path, str], Path] = {}
+    for source in sorted(sources):
+        other = owners.setdefault((source.parent, source.stem.casefold()), source)
+        if other != source:
+            raise ImageDerivativeError(
+                f'sources "{other}" and "{source}" share a stem; rename one, '
+                "since derivatives are named <stem>-<width>.webp"
+            )
+
+
 def _discover_sources(root: Path, lock: _DerivativeLock, lock_path: Path) -> list[Path]:
     known_targets = _locked_target_names(lock)
     return [
@@ -490,8 +521,12 @@ def _require_mode(path: Path) -> None:
         mode = stat.S_IMODE(path.lstat().st_mode)
     except OSError as error:
         raise ImageDerivativeError(f'inspect mode for "{path}": {error}') from error
-    if mode != GENERATED_FILE_MODE:
-        raise ImageDerivativeError(f'mode for "{path}" must be 0644, got {mode:04o}')
+    # Git tracks only the executable bit, and a umask such as 002 adds group write
+    # on checkout. Require what serving needs: readable by all and not executable.
+    if mode & 0o444 != 0o444 or mode & 0o111:
+        raise ImageDerivativeError(
+            f'mode for "{path}" must be readable by everyone and not executable (such as 0644), got {mode:04o}'
+        )
 
 
 def _image_details(path: Path, data: bytes) -> tuple[str | None, tuple[int, int]]:
@@ -530,7 +565,7 @@ def check_derivatives(root: Path, *, lock_path: Path, output: TextIO | None = No
         None,
     ):
         raise ImageDerivativeError(f'unexpected article media file "{unexpected_media}"')
-    image_paths = {_relative_name(root, path): path for path in files if path.suffix.lower() in _SOURCE_EXTENSIONS}
+    image_paths = {_relative_name(root, path): path for path in files if path.suffix.lower() in SOURCE_EXTENSIONS}
     source_paths = {name: path for name, path in image_paths.items() if is_source(path)}
     expected_source_names = set(lock.sources)
     actual_source_names = set(source_paths)
@@ -538,6 +573,7 @@ def check_derivatives(root: Path, *, lock_path: Path, output: TextIO | None = No
         raise ImageDerivativeError(f'missing source image "{root / PurePosixPath(missing_sources[0])}"')
     if unexpected_sources := sorted(actual_source_names - expected_source_names):
         raise ImageDerivativeError(f'unexpected source image "{source_paths[unexpected_sources[0]]}"')
+    _reject_shared_stems(source_paths.values())
 
     expected_targets: dict[str, tuple[Path, tuple[int, int], str]] = {}
     for source_name in sorted(lock.sources):
@@ -549,7 +585,9 @@ def check_derivatives(root: Path, *, lock_path: Path, output: TextIO | None = No
             raise ImageDerivativeError(
                 f'source digest differs from the lock for "{source}"; run `mise run build:images`'
             )
-        _, source_size = _image_details(source, source_data)
+        decoded = _decode(source, source_data)
+        source_size = decoded.size
+        decoded.close()
         eligible_widths = _eligible_widths(source, source_size[0])
         expected_names = {_relative_name(root, derivative_name(source, width)): width for width in eligible_widths}
         if missing_entries := sorted(set(expected_names) - set(entry.targets)):
@@ -609,6 +647,7 @@ def generate_derivatives(
     sources = _discover_sources(root, old_lock, lock_path)
     if not sources:
         raise ImageDerivativeError(f'list article images: no source images under "{root}"')
+    _reject_shared_stems(sources)
 
     new_lock, generated = _generate_locked(root, sources, old_lock, _current_recipe())
     _write_lock(lock_path, new_lock)

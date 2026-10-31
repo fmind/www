@@ -18,7 +18,7 @@ This is the fourth post in a thread on the shared `.agents/` ground, after [sup
 
 ![Agent Evolutions: Genetic exploration of solution spaces, with verifiable scoring — https://github.com/fmind/agent-evolutions](/static/img/articles/agent-evolutions-stop-guessing-the-design-evolve-it/cover.webp)
 
-Agent Evolutions: *Genetic exploration of solution spaces, with verifiable scoring — *[https://github.com/fmind/agent-evolutions](https://github.com/fmind/agent-evolutions)
+Agent Evolutions: Genetic exploration of solution spaces, with verifiable scoring — [https://github.com/fmind/agent-evolutions](https://github.com/fmind/agent-evolutions)
 
 ### The design-by-intuition tax
 

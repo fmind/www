@@ -2,7 +2,8 @@
 
 `candidate` mode runs before promotion: it proves that the no-traffic revision
 under CANDIDATE_TAG is the qualified release and serves health/discovery on its
-tagged URL. The default mode runs after promotion against the public origin.
+tagged URL. The default mode runs after promotion against the public origin and
+also completes one MCP initialize there, because /mcp accepts only the public host.
 """
 
 from __future__ import annotations
@@ -23,6 +24,22 @@ from scripts.deploy import DeploymentTarget, DeploymentUsageError, validate_comm
 
 PUBLIC_ORIGIN = "https://www.fmind.dev"
 PROBE_PATHS = ("/health", "/api/profile", "/.well-known/mcp/server-card.json")
+MCP_PATH = "/mcp"
+_MCP_INITIALIZE = {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "initialize",
+    "params": {
+        "protocolVersion": "2025-11-25",
+        "capabilities": {},
+        "clientInfo": {"name": "verify-deployment", "version": "1.0"},
+    },
+}
+_REQUIRED_ENVIRONMENT = {
+    "IMAGE_REF": "the qualified <repository>@sha256:<digest> image reference",
+    "GITHUB_SHA": "the full commit SHA that image was built from",
+    "CANDIDATE_TAG": "the traffic tag of the no-traffic revision (CI uses `candidate`)",
+}
 _TAG = re.compile(r"[a-z][a-z0-9-]*[a-z0-9]\Z")
 _USAGE = "usage: python -m scripts.verify_deployment [candidate]\n"
 
@@ -105,6 +122,22 @@ def probe(origin: str, *, timeout: float) -> None:
                 raise VerificationError("health check is not healthy")
 
 
+def probe_mcp(origin: str, *, timeout: float) -> None:
+    """POST one finite MCP initialize with the public Host and Origin that real clients use."""
+    with httpx2.Client(timeout=timeout, follow_redirects=False) as client:
+        response = client.post(
+            origin + MCP_PATH,
+            json=_MCP_INITIALIZE,
+            headers={"accept": "application/json, text/event-stream", "origin": origin},
+        )
+        response.raise_for_status()
+        document = response.json()
+    result = document.get("result") if isinstance(document, dict) else None
+    server_info = result.get("serverInfo") if isinstance(result, dict) else None
+    if response.status_code != 200 or not isinstance(server_info, dict) or server_info.get("name") != "www":
+        raise VerificationError("MCP initialize did not return the www server")
+
+
 def describe_service(target: DeploymentTarget) -> dict[str, Any]:
     """Read the Cloud Run service through a fixed read-only gcloud argv."""
     executable = shutil.which("gcloud")
@@ -145,6 +178,13 @@ def _record_output(revision: str, environment: Mapping[str, str]) -> None:
             stream.write(f"revision={revision}\n")
 
 
+def _required(name: str, environment: Mapping[str, str]) -> str:
+    """Name a missing variable and its expected value instead of reporting a bare KeyError."""
+    if value := environment.get(name):
+        return value
+    raise VerificationError(f"{name} is not set; export it as {_REQUIRED_ENVIRONMENT[name]}")
+
+
 def main(arguments: Sequence[str] = ()) -> int:
     """Use read-only Cloud Run metadata and bounded HTTP requests; never mutate traffic."""
     if tuple(arguments) not in {(), ("candidate",)}:
@@ -153,10 +193,10 @@ def main(arguments: Sequence[str] = ()) -> int:
     candidate = bool(arguments)
     try:
         target = DeploymentTarget.from_environment()
-        image = validate_image_reference(os.environ["IMAGE_REF"], target)
-        commit = validate_commit(os.environ["GITHUB_SHA"])
+        image = validate_image_reference(_required("IMAGE_REF", os.environ), target)
+        commit = validate_commit(_required("GITHUB_SHA", os.environ))
         if candidate:
-            tag = os.environ["CANDIDATE_TAG"]
+            tag = _required("CANDIDATE_TAG", os.environ)
             if not _TAG.fullmatch(tag):
                 raise VerificationError("CANDIDATE_TAG is invalid")
             revision, url = verify_candidate(
@@ -169,8 +209,9 @@ def main(arguments: Sequence[str] = ()) -> int:
         else:
             revision = verify_service(describe_service(target), image, commit)
             probe(PUBLIC_ORIGIN, timeout=15)
+            probe_mcp(PUBLIC_ORIGIN, timeout=15)
             sys.stdout.write(
-                f"Verified {revision}: {commit}, {image}, 100% traffic, scale-to-zero, public health/discovery\n"
+                f"Verified {revision}: {commit}, {image}, 100% traffic, scale-to-zero, public health/discovery/MCP\n"
             )
     except (
         KeyError,

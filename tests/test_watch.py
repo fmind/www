@@ -12,6 +12,26 @@ from granian.cli import cli
 from watchfiles import watch
 
 
+def _server_arguments() -> list[str]:
+    config = tomllib.loads(Path("mise.toml").read_text())
+    command = shlex.split(config["tasks"]["watch:server"]["run"])
+    return command[command.index("granian") + 1 :]
+
+
+@pytest.mark.parametrize(("override", "host"), [(None, "127.0.0.1"), ("192.0.2.10", "192.0.2.10")])
+def test_server_binds_loopback_unless_explicitly_overridden(
+    monkeypatch: pytest.MonkeyPatch, override: str | None, host: str
+) -> None:
+    # Development serves drafts, so only an explicit GRANIAN_HOST may expose it beyond localhost.
+    if override is None:
+        monkeypatch.delenv("GRANIAN_HOST", raising=False)
+    else:
+        monkeypatch.setenv("GRANIAN_HOST", override)
+
+    with cli.make_context("granian", _server_arguments(), auto_envvar_prefix="GRANIAN") as context:
+        assert context.params["host"] == host
+
+
 @pytest.mark.parametrize(
     ("relative_path", "reloads"),
     [
@@ -29,8 +49,7 @@ from watchfiles import watch
 def test_server_reload_scope(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, relative_path: str, reloads: bool
 ) -> None:
-    config = tomllib.loads(Path("mise.toml").read_text())
-    command = shlex.split(config["tasks"]["watch:server"]["run"])
+    arguments = _server_arguments()
     for directory in ("src", "content", "static"):
         (tmp_path / directory).mkdir()
     changed = tmp_path / relative_path
@@ -38,7 +57,7 @@ def test_server_reload_scope(
     changed.write_text("before")
     monkeypatch.chdir(tmp_path)
 
-    with cli.make_context("granian", command[command.index("granian") + 1 :]) as context:
+    with cli.make_context("granian", arguments) as context:
         paths = context.params["reload_paths"] or (tmp_path,)
         with closing(watch(*paths, step=50, rust_timeout=500, yield_on_timeout=True)) as changes:
             # Prime the OS watcher before changing a file, without a timing-based sleep.

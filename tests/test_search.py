@@ -1,3 +1,4 @@
+import unicodedata
 from datetime import UTC, datetime
 
 from www.models import Article
@@ -72,3 +73,21 @@ def test_article_index_composes_search_and_case_insensitive_tag() -> None:
     assert view.active_tag == "Python"
     assert [item.slug for item in view.results] == ["python"]
     assert view.years == ()
+
+
+def test_search_folds_unicode_forms_on_both_sides() -> None:
+    index = SearchIndex(
+        (
+            article("author", "Médéric on MLOps", "Straße notes", "Body", "MLOps"),
+            article("other", "Unrelated", "Topic", "me de ric", "Cloud"),
+        )
+    )
+
+    # A decomposed accent must not split the word into unrelated short tokens.
+    decomposed = unicodedata.normalize("NFD", "Médéric")
+    assert decomposed != "Médéric"
+    assert [item.slug for item in index.search(decomposed)] == ["author"]
+    assert [item.slug for item in index.search("Médéric")] == ["author"]
+    # Fullwidth "MLOps", as typed with some East Asian input methods.
+    assert [item.slug for item in index.search("\uff2d\uff2c\uff2f\uff50\uff53")] == ["author"]
+    assert [item.slug for item in index.search("STRASSE")] == ["author"]

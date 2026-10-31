@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from litestar import Request
-from litestar.enums import HttpMethod
+from litestar.enums import HttpMethod, MediaType
 from litestar.response import Response
 from litestar.types import ASGIApp
 
@@ -48,7 +48,12 @@ async def static_asset_response(
     if_match = request.headers.get("if-match")
     if if_match is not None and not strong_etag_matches(if_match, etag):
         # Evaluate this strong precondition before cache and range logic.
-        response = Response(b"", headers={"cache-control": cache_control, "etag": etag}, status_code=412)
+        response = Response(
+            b"",
+            headers={"cache-control": cache_control, "etag": etag},
+            media_type=MediaType.TEXT,
+            status_code=412,
+        )
         return response.to_asgi_response(app=None, request=request)
     if etag_matches(request.headers.get("if-none-match", ""), etag):
         response = Response(b"", headers={"cache-control": cache_control, "etag": etag}, status_code=304)

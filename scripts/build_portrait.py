@@ -16,7 +16,9 @@ def export_portrait(source: Path, destination: Path) -> None:
         raise ValueError("keep the original portrait outside static/ and pass that private master")
     try:
         with Image.open(source) as original:
-            if original.format != "JPEG":
+            # Pillow reports a JPEG that embeds an MPF secondary image (camera preview or
+            # Ultra HDR gain map) as MPO; the export keeps only the primary frame.
+            if original.format not in {"JPEG", "MPO"}:
                 raise ValueError("portrait master must be a JPEG image")
             profile = original.info.get("icc_profile")
             portrait = ImageOps.exif_transpose(original).convert("RGB")

@@ -43,7 +43,7 @@ The workflow is structured as follows:
 
 The [Agent Development Kit (ADK)](https://github.com/google/adk-python) provides a great set of features to handle everything you need for building agents. In this specific use case, I focused on its ability to handle **OAuth**, to let the user grant access to their slides and drive.
 
-![Overview of Google ADK and Vertex AI Agent Engine (Source: https://cloud.google.com/agent-builder/agent-engine/overview )](/static/img/articles/powering-up-your-agent-in-production-with-adk-oauth-and-gemini-enterprise/03.webp)
+![Overview of Google ADK and Vertex AI Agent Engine (Source: https://cloud.google.com/agent-builder/agent-engine/overview)](/static/img/articles/powering-up-your-agent-in-production-with-adk-oauth-and-gemini-enterprise/03.webp)
 
 Overview of Google ADK and Vertex AI Agent Engine (Source: [https://cloud.google.com/agent-builder/agent-engine/overview](https://cloud.google.com/agent-builder/agent-engine/overview))
 
@@ -51,11 +51,11 @@ In the notebook prototype, authentication relied on local credentials. This is n
 
 ### Why OAuth?
 
-[OAuth 2.0](https://oauth.net/2/) provides excellent security guarantees and granularity. It allows users to grant specific permissions (scopes) without sharing their passwords with the agent. In this case, we need access to the [Google Drive API](https://developers.google.com/drive/api?authuser=1) (to copy the presentation) and the [Google Slides API](https://developers.google.com/slides/api?authuser=1) (to read and write slide content).
+[OAuth 2.0](https://oauth.net/2/) provides excellent security guarantees and granularity. It allows users to grant specific permissions (scopes) without sharing their passwords with the agent. In this case, we need access to the [Google Drive API](https://developers.google.com/drive/api) (to copy the presentation) and the [Google Slides API](https://developers.google.com/slides/api) (to read and write slide content).
 
 While OAuth is not an easy concept to grasp for newcomers, it’s a key component to provide more security in enterprise applications.
 
-![OAuth flow for a tool with Google ADK (Source: https://google.github.io/adk-docs/tools/authentication/ )](/static/img/articles/powering-up-your-agent-in-production-with-adk-oauth-and-gemini-enterprise/04.webp)
+![OAuth flow for a tool with Google ADK (Source: https://google.github.io/adk-docs/tools/authentication/)](/static/img/articles/powering-up-your-agent-in-production-with-adk-oauth-and-gemini-enterprise/04.webp)
 
 OAuth flow for a tool with Google ADK (Source: [https://google.github.io/adk-docs/tools/authentication/](https://google.github.io/adk-docs/tools/authentication/))
 
@@ -219,7 +219,7 @@ Note: As the Gemini Enterprise exposition API is still in private preview, I can
 
 ### Seamless Exposition
 
-[Gemini Enterprise](https://cloud.google.com/gemini/enterprise?authuser=1) gives you a quick way to expose your agent securely and conveniently. This directly addresses the “[UI bottleneck](https://www.fmind.dev/articles/the-real-ai-agent-bottleneck-is-the-damn-ui/)” mentioned earlier.
+[Gemini Enterprise](https://cloud.google.com/gemini/enterprise) gives you a quick way to expose your agent securely and conveniently. This directly addresses the “[UI bottleneck](https://www.fmind.dev/articles/the-real-ai-agent-bottleneck-is-the-damn-ui/)” mentioned earlier.
 
 This approach has significant advantages over deploying a separate UI (like Streamlit):
 

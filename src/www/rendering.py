@@ -65,7 +65,6 @@ NAV_LINKS: Final = (
 _RESERVED_CONTEXT: Final = frozenset(
     {"current_year", "metadata", "nav_links", "nonce", "page", "stylesheet_url"},
 )
-_SCRIPT_END = re.compile(r"</\s*script\b", re.IGNORECASE)
 _UNSAFE_FRAGMENT_ELEMENTS: Final = frozenset({"base", "embed", "iframe", "link", "meta", "object", "script", "style"})
 _UNSAFE_URL_PREFIXES: Final = ("data:", "javascript:", "vbscript:")
 _URL_ATTRIBUTES: Final = frozenset({"action", "formaction", "href", "poster", "src", "xlink:href"})
@@ -118,8 +117,8 @@ def create_environment(asset_hashes: Mapping[str, str]) -> Environment:
 
 
 def _format_go_float(value: float, digits: int) -> str:
-    """Match the fixed, ungrouped output of Go's direct ``fmt`` verbs."""
-    return f"{value:.{digits}f}"
+    """Format like ``format_decimal`` (half away from zero) without grouping, for SVG attributes."""
+    return format_decimal(value, digits).replace(",", "")
 
 
 class Renderer:
@@ -198,7 +197,7 @@ class _TrustedFragmentParser(HTMLParser):
 
     def handle_endtag(self, tag: str) -> None:
         if tag.casefold() in _UNSAFE_FRAGMENT_ELEMENTS:
-            self._reject("must not contain script or style elements")
+            self._reject(f"must not contain <{tag.casefold()}> elements")
 
     def handle_decl(self, decl: str) -> None:
         del decl
@@ -210,7 +209,7 @@ class _TrustedFragmentParser(HTMLParser):
 
     def _validate_element(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         if tag.casefold() in _UNSAFE_FRAGMENT_ELEMENTS:
-            self._reject("must not contain script or style elements")
+            self._reject(f"must not contain <{tag.casefold()}> elements")
         for name, value in attrs:
             normalized_name = name.casefold()
             if normalized_name.startswith("on") or normalized_name in {"srcdoc", "style"}:
@@ -277,9 +276,8 @@ def _trusted_json_ld(value: object, known: Mapping[str, Markup] | None = None) -
     except json.JSONDecodeError as error:
         msg = "structured_data must be valid JSON"
         raise ValueError(msg) from error
-    if _SCRIPT_END.search(value):
-        msg = "structured_data must not close its script element"
-        raise ValueError(msg)
-    # JSON parsing and the closing-tag guard above make this the reviewed
-    # JSON-LD boundary; escaping it would turn JSON quotes into HTML entities.
-    return Markup(value)  # noqa: S704
+    # Valid JSON can hold "<" only inside strings, where the \u003c escape is
+    # equivalent. With no "<" left, no "</script" or "<!--<script" sequence can
+    # end the element early or swallow the page. HTML escaping would instead
+    # turn JSON quotes into entities.
+    return Markup(value.replace("<", "\\u003c"))  # noqa: S704

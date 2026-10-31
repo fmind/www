@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import hashlib
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -108,6 +110,38 @@ def _static_response(
     return Response(body, headers=headers, status_code=status_code)
 
 
+@dataclass(frozen=True, slots=True)
+class _Snapshot:
+    """An immutable startup body with its validator, hashed once instead of per request."""
+
+    body: bytes
+    etag: str
+
+    @classmethod
+    def of(cls, body: bytes) -> _Snapshot:
+        # Weak: compression may re-encode the body, but the content is identical.
+        return cls(body, f'W/"{hashlib.sha256(body).hexdigest()}"')
+
+
+def _snapshot_response(
+    request: AppRequest,
+    snapshot: _Snapshot,
+    content_type: str,
+    cache_control: str,
+    *,
+    cors: bool = False,
+    extra_headers: dict[str, str] | None = None,
+) -> Response[bytes]:
+    """Serve a snapshot, or a 304 that keeps the 200's validator, cache, Vary, and CORS fields."""
+    headers = {**(extra_headers or {}), "etag": snapshot.etag}
+    if etag_matches(request.headers.get("if-none-match", ""), snapshot.etag):
+        headers["cache-control"] = cache_control
+        if cors:
+            headers["access-control-allow-origin"] = "*"
+        return Response(b"", headers=headers, status_code=304)
+    return _static_response(snapshot.body, content_type, cache_control, cors=cors, extra_headers=headers)
+
+
 def _redirect(path: str) -> Redirect:
     return Redirect(path, status_code=301)
 
@@ -120,8 +154,10 @@ def _raw_query(request: AppRequest) -> str:
     return request.scope.get("query_string", b"").decode("latin-1")
 
 
-def _raw_path(request: AppRequest) -> str:
-    return request.scope.get("raw_path", b"").split(b"?", 1)[0].decode("latin-1")
+def _request_path(request: AppRequest) -> str:
+    # Routing strips trailing slashes. SiteMiddleware keeps the decoded public
+    # path, so an encoded slash (/agents%2F) redirects like a literal one.
+    return request.scope["state"]["request_path"]
 
 
 def _security_policy() -> bytes:
@@ -175,6 +211,7 @@ def create_app(
     page_search = public_search if page_articles == public_articles else SearchIndex(page_articles)
     related = related_article_index(page_articles)
     markdown_by_slug = article_markdown_index(article_collection.all)
+    markdown_snapshots = {slug: _Snapshot.of(text.encode()) for slug, text in markdown_by_slug.items()}
 
     home_structured_data = get_structured_data()
     home_page = home_metadata(home_structured_data)
@@ -223,17 +260,18 @@ def create_app(
         "services": get_services(),
     }
 
-    profile = render_profile_json(summaries)
-    profile_schema = render_profile_schema()
-    feed = render_atom_feed(public_articles).encode()
-    sitemap = render_sitemap(public_articles).encode()
+    profile = _Snapshot.of(render_profile_json(summaries))
+    profile_schema = _Snapshot.of(render_profile_schema())
+    feed = _Snapshot.of(render_atom_feed(public_articles).encode())
+    sitemap = _Snapshot.of(render_sitemap(public_articles).encode())
     llms = render_llms_txt(public_articles)
-    llms_full = render_llms_full(llms, public_articles, markdown_by_slug).encode()
-    llms_bytes = llms.encode()
-    home_markdown = render_home_markdown(summaries)
-    api_catalog = render_api_catalog()
-    skill_body, skill_index = public_skill()
-    server_card: bytes | None = None
+    llms_full = _Snapshot.of(render_llms_full(llms, public_articles, markdown_by_slug).encode())
+    llms_index_snapshot = _Snapshot.of(llms.encode())
+    home_markdown = _Snapshot.of(render_home_markdown(summaries))
+    api_catalog = _Snapshot.of(render_api_catalog())
+    skill_body, skill_index = (_Snapshot.of(body) for body in public_skill())
+    root_files = {path: _Snapshot.of(response.body) for path, response in application_assets.root_files.items()}
+    server_card: _Snapshot | None = None
 
     def render_page(
         request: AppRequest,
@@ -259,7 +297,7 @@ def create_app(
 
     @route("/static", http_method=_READ_METHODS, sync_to_thread=False)
     def static_root(request: AppRequest) -> Redirect | Response[bytes]:
-        if not _raw_path(request).endswith("/"):
+        if not _request_path(request).endswith("/"):
             query = _raw_query(request)
             return _redirect("/static/" + (f"?{query}" if query else ""))
         return _static_response(b"404 page not found\n", "text/plain; charset=utf-8", _NO_CACHE, status_code=404)
@@ -287,16 +325,18 @@ def create_app(
 
     @route(list(application_assets.root_files), http_method=_READ_METHODS, sync_to_thread=False)
     def root_file(request: AppRequest) -> Response[bytes]:
-        response: StaticResponse = application_assets.root_files[request.scope["path"]]
-        return _static_response(response.body, response.content_type, _DAY_CACHE)
+        path = request.scope["path"]
+        response: StaticResponse = application_assets.root_files[path]
+        return _snapshot_response(request, root_files[path], response.content_type, _DAY_CACHE)
 
     @route(["/security.txt", "/.well-known/security.txt"], http_method=_READ_METHODS, sync_to_thread=False)
     def security_policy() -> Response[bytes]:
         return _static_response(_security_policy(), "text/plain; charset=utf-8", _DAY_CACHE)
 
     @route("/api/profile", http_method=_READ_METHODS, sync_to_thread=False)
-    def profile_api() -> Response[bytes]:
-        return _static_response(
+    def profile_api(request: AppRequest) -> Response[bytes]:
+        return _snapshot_response(
+            request,
             profile,
             "application/json; charset=utf-8",
             _HOUR_CACHE_WITHOUT_REVALIDATION,
@@ -305,18 +345,21 @@ def create_app(
         )
 
     @route("/api/profile/schema.json", http_method=_READ_METHODS, sync_to_thread=False)
-    def profile_schema_api() -> Response[bytes]:
-        return _static_response(profile_schema, "application/schema+json; charset=utf-8", _HOUR_CACHE, cors=True)
+    def profile_schema_api(request: AppRequest) -> Response[bytes]:
+        return _snapshot_response(
+            request, profile_schema, "application/schema+json; charset=utf-8", _HOUR_CACHE, cors=True
+        )
 
     @route(
         ["/mcp/server-card", "/.well-known/mcp/server-card.json"],
         http_method=_READ_METHODS,
         sync_to_thread=False,
     )
-    def mcp_server_card() -> Response[bytes]:
+    def mcp_server_card(request: AppRequest) -> Response[bytes]:
         if server_card is None:
             raise RuntimeError("MCP discovery requires application startup")
-        return _static_response(
+        return _snapshot_response(
+            request,
             server_card,
             "application/mcp-server-card+json; charset=utf-8",
             _HOUR_CACHE,
@@ -324,33 +367,34 @@ def create_app(
         )
 
     @route("/llms.txt", http_method=_READ_METHODS, sync_to_thread=False)
-    def llms_index() -> Response[bytes]:
-        return _static_response(llms_bytes, "text/plain; charset=utf-8", _HOUR_CACHE)
+    def llms_index(request: AppRequest) -> Response[bytes]:
+        return _snapshot_response(request, llms_index_snapshot, "text/plain; charset=utf-8", _HOUR_CACHE)
 
     @route("/llms-full.txt", http_method=_READ_METHODS, sync_to_thread=False)
-    def llms_full_index() -> Response[bytes]:
+    def llms_full_index(request: AppRequest) -> Response[bytes]:
         # Agents read the bulk export; search engines should index the individual articles instead.
-        return _static_response(
-            llms_full, "text/plain; charset=utf-8", _HOUR_CACHE, extra_headers={"x-robots-tag": "noindex"}
+        return _snapshot_response(
+            request, llms_full, "text/plain; charset=utf-8", _HOUR_CACHE, extra_headers={"x-robots-tag": "noindex"}
         )
 
     @route("/sitemap.xml", http_method=_READ_METHODS, sync_to_thread=False)
-    def sitemap_index() -> Response[bytes]:
-        return _static_response(sitemap, "application/xml; charset=utf-8", _HOUR_CACHE)
+    def sitemap_index(request: AppRequest) -> Response[bytes]:
+        return _snapshot_response(request, sitemap, "application/xml; charset=utf-8", _HOUR_CACHE)
 
     @route("/articles/feed.xml", http_method=_READ_METHODS, sync_to_thread=False)
-    def atom_feed() -> Response[bytes]:
-        return _static_response(feed, "application/atom+xml; charset=utf-8", _HOUR_CACHE)
+    def atom_feed(request: AppRequest) -> Response[bytes]:
+        return _snapshot_response(request, feed, "application/atom+xml; charset=utf-8", _HOUR_CACHE)
 
     @route("/agents", http_method=_READ_METHODS, sync_to_thread=True)
     def agents(request: AppRequest) -> Redirect | Response[str]:
-        if _raw_path(request).endswith("/"):
+        if _request_path(request).endswith("/"):
             return _redirect("/agents")
         return render_page(request, PageTemplate.AGENTS, agents_page)
 
     @route("/.well-known/api-catalog", http_method=_READ_METHODS, sync_to_thread=False)
-    def catalog() -> Response[bytes]:
-        return _static_response(
+    def catalog(request: AppRequest) -> Response[bytes]:
+        return _snapshot_response(
+            request,
             api_catalog,
             'application/linkset+json; profile="https://www.rfc-editor.org/info/rfc9727"; charset=utf-8',
             _HOUR_CACHE,
@@ -359,22 +403,22 @@ def create_app(
         )
 
     @route("/.well-known/agent-skills/index.json", http_method=_READ_METHODS, sync_to_thread=False)
-    def skills_index() -> Response[bytes]:
-        return _static_response(skill_index, "application/json; charset=utf-8", _HOUR_CACHE, cors=True)
+    def skills_index(request: AppRequest) -> Response[bytes]:
+        return _snapshot_response(request, skill_index, "application/json; charset=utf-8", _HOUR_CACHE, cors=True)
 
     @route(AGENT_SKILL_PATH, http_method=_READ_METHODS, sync_to_thread=False)
-    def skill() -> Response[bytes]:
-        return _static_response(skill_body, "text/markdown; charset=utf-8", _HOUR_CACHE, cors=True)
+    def skill(request: AppRequest) -> Response[bytes]:
+        return _snapshot_response(request, skill_body, "text/markdown; charset=utf-8", _HOUR_CACHE, cors=True)
 
     @route("/privacy", http_method=_READ_METHODS, sync_to_thread=True)
     def privacy(request: AppRequest) -> Redirect | Response[str]:
-        if _raw_path(request).endswith("/"):
+        if _request_path(request).endswith("/"):
             return _redirect("/privacy")
         return render_page(request, PageTemplate.PRIVACY, privacy_page)
 
     @route("/connect", http_method=_READ_METHODS, sync_to_thread=True)
     def connect(request: AppRequest) -> Redirect | Response[str]:
-        if _raw_path(request).endswith("/"):
+        if _request_path(request).endswith("/"):
             return _redirect("/connect")
         return render_page(
             request,
@@ -385,7 +429,7 @@ def create_app(
 
     @route("/scan", http_method=_READ_METHODS, sync_to_thread=True)
     def scan(request: AppRequest) -> Redirect | Response[str]:
-        if _raw_path(request).endswith("/"):
+        if _request_path(request).endswith("/"):
             return _redirect("/scan")
         return render_page(request, PageTemplate.SCAN, scan_page, {"connect_url": CONNECT_URL})
 
@@ -400,7 +444,7 @@ def create_app(
 
     @route("/articles", http_method=_READ_METHODS, sync_to_thread=True)
     def articles_index(request: AppRequest) -> Redirect | Response[str]:
-        if not _raw_path(request).endswith("/"):
+        if not _request_path(request).endswith("/"):
             query = _raw_query(request)
             return _redirect("/articles/" + (f"?{query}" if query else ""))
         view = article_index_data(
@@ -420,13 +464,14 @@ def create_app(
     def article_redirect_or_markdown(
         slug: FromPath[str], request: AppRequest
     ) -> Redirect | Response[bytes] | Response[str]:
-        if _raw_path(request).endswith("/"):
+        if _request_path(request).endswith("/"):
             article = article_collection.by_slug.get(slug)
             if article is None or (article.draft and runtime_config.environment is Environment.PRODUCTION):
                 return render_not_found(request)
             if prefers_markdown(request.headers.get("accept", "")):
-                return _static_response(
-                    markdown_by_slug[slug].encode(),
+                return _snapshot_response(
+                    request,
+                    markdown_snapshots[slug],
                     "text/markdown; charset=utf-8",
                     _HOUR_CACHE,
                     cors=True,
@@ -456,8 +501,9 @@ def create_app(
             if article is None or (article.draft and runtime_config.environment is Environment.PRODUCTION):
                 return render_not_found(request)
             # The fixed export is a duplicate representation; search engines credit the article page.
-            return _static_response(
-                markdown_by_slug[article_slug].encode(),
+            return _snapshot_response(
+                request,
+                markdown_snapshots[article_slug],
                 "text/markdown; charset=utf-8",
                 _HOUR_CACHE,
                 cors=True,
@@ -469,7 +515,7 @@ def create_app(
 
     @route("/sites", http_method=_READ_METHODS, sync_to_thread=True)
     def sites_index(request: AppRequest) -> Redirect | Response[str]:
-        if not _raw_path(request).endswith("/"):
+        if not _request_path(request).endswith("/"):
             return _redirect("/sites/")
         return render_page(
             request,
@@ -480,7 +526,7 @@ def create_app(
 
     @route("/sites/{slug:str}", http_method=_READ_METHODS, sync_to_thread=True)
     def site_page(slug: FromPath[str], request: AppRequest) -> Redirect | Response[str]:
-        if not _raw_path(request).endswith("/"):
+        if not _request_path(request).endswith("/"):
             query = _raw_query(request)
             target = f"/sites/{quote(slug, safe='')}/"
             return _redirect(target + (f"?{query}" if query else ""))
@@ -509,8 +555,8 @@ def create_app(
     def home(request: AppRequest) -> Response[str] | Response[bytes]:
         headers = {"vary": "Accept", "link": AGENT_LINKS}
         if prefers_markdown(request.headers.get("accept", "")):
-            return _static_response(
-                home_markdown, "text/markdown; charset=utf-8", _HOUR_CACHE, cors=True, extra_headers=headers
+            return _snapshot_response(
+                request, home_markdown, "text/markdown; charset=utf-8", _HOUR_CACHE, cors=True, extra_headers=headers
             )
         response = render_page(request, PageTemplate.HOME, home_page, home_context)
         response.headers.update(headers)
@@ -555,7 +601,7 @@ def create_app(
     async def lifespan(_: Litestar) -> AsyncGenerator[None]:
         nonlocal server_card
         try:
-            server_card = await render_mcp_server_card(mcp_server)
+            server_card = _Snapshot.of(await render_mcp_server_card(mcp_server))
             async with mcp_app.router.lifespan_context(mcp_app):
                 yield
         finally:

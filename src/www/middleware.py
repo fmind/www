@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import secrets
 from datetime import UTC, datetime
 from time import perf_counter
@@ -64,6 +65,8 @@ _SILENT_PATHS = frozenset(
 )
 _SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
 _SAME_ORIGIN_FETCH_SITES = frozenset({"", "same-origin", "none"})
+_MCP_PATHS = frozenset({"/mcp", "/mcp/"})
+_REPEATED_SLASHES = re.compile(r"/{2,}")
 
 
 class Logger(Protocol):
@@ -207,8 +210,10 @@ class SiteMiddleware:
         nonce = secrets.token_urlsafe(18)
         state["csp_nonce"] = nonce
         # Mounted ASGI applications may rewrite scope["path"]. Preserve the
-        # public request path for observability and privacy decisions.
-        path = scope.get("path", "")
+        # public request path for observability and privacy decisions. This
+        # boundary runs before Litestar routing, which collapses repeated
+        # slashes: do the same so //mcp or //privacy cannot bypass path policy.
+        path = _REPEATED_SLASHES.sub("/", scope.get("path", ""))
         state["request_path"] = path
         request_headers = Headers.from_scope(scope)
         host = request_headers.get("host", "").partition(":")[0].lower()
@@ -272,7 +277,7 @@ class SiteMiddleware:
                 for name, value in _security_headers(nonce, self.environment).items():
                     response_headers[name] = value
                 _vary_accept_encoding(response_headers)
-                if path in {"/mcp", "/mcp/"}:
+                if path in _MCP_PATHS:
                     # Protocol responses are per request. Prevent intermediaries
                     # from storing or transforming JSON-RPC envelopes.
                     response_headers["cache-control"] = "no-cache, no-transform"
@@ -293,7 +298,7 @@ class SiteMiddleware:
 
         fetch_site = request_headers.get("sec-fetch-site", "")
         if (
-            path in {"/mcp", "/mcp/"}
+            path in _MCP_PATHS
             and scope.get("method", "") not in _SAFE_METHODS
             and fetch_site not in _SAME_ORIGIN_FETCH_SITES
         ):

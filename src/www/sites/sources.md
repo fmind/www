@@ -39,17 +39,17 @@ The [GKE cluster fee](https://cloud.google.com/kubernetes-engine/pricing) remain
 
 ## Managed API baselines
 
-| Model             | Input/M | Output/M | Cache read/M | Five-minute cache write/M | Context limit   | Max output |
-| ----------------- | ------- | -------- | ------------ | ------------------------- | --------------- | ---------- |
-| Gemini 3.8 Flash  | 0.75    | 3.75     | 0.075        | Storage fees              | 1,048,576 input | 65,536     |
-| Claude Haiku 5.5  | 0.10    | 0.50     | 0.01         | 0.125                     | 1,000,000       | 128,000    |
-| Claude Sonnet 5.5 | 2       | 10       | 0.10         | 2.50                      | 1,000,000       | 128,000    |
-| Claude Opus 5.5   | 4       | 20       | 0.20         | 5                         | 1,000,000       | 128,000    |
-| GPT-6 Astra       | 10      | 50       | 1            | 12.50                     | 1,050,000       | 128,000    |
+| Model             | Input/M | Output/M | Cache read/M | Five-minute cache write/M | Context limit             | Max output |
+| ----------------- | ------- | -------- | ------------ | ------------------------- | ------------------------- | ---------- |
+| Gemini 3.8 Flash  | 0.75    | 3.75     | 0.075        | Storage fees              | 1,048,576 input           | 65,536     |
+| Claude Haiku 5.5  | 0.10    | 0.50     | 0.01         | 0.125                     | 1,000,000                 | 128,000    |
+| Claude Sonnet 5.5 | 2       | 10       | 0.10         | 2.50                      | 1,000,000                 | 128,000    |
+| Claude Opus 5.5   | 4       | 20       | 0.20         | 5                         | 1,000,000                 | 128,000    |
+| GPT-6 Astra       | 10      | 50       | 1            | 12.50                     | 1,050,000 (922,000 input) | 128,000    |
 
 - [Claude pricing](https://platform.claude.com/docs/en/about-claude/pricing), [model limits](https://platform.claude.com/docs/en/models/overview), and [cache rules](https://platform.claude.com/docs/en/build-with-claude/prompt-caching): Haiku prompts above 100,000 tokens use $0.50 input/$2.50 output, $0.05 cache read/$0.625 five-minute cache write for the entire request, including cached prompt tokens. Sonnet and Opus retain standard rates across their context windows. All three 5.5 models require at least 512 cache tokens. Standard global routing is assumed; residency, fast mode, and tool premiums are excluded.
 - [Gemini pricing](https://ai.google.dev/gemini-api/docs/pricing#gemini-3.8-flash), [model limits](https://ai.google.dev/gemini-api/docs/models/gemini-3.8-flash), and [cache rules](https://ai.google.dev/gemini-api/docs/generate-content/caching): introductory input, output, cache-read and $0.50/M token-hour explicit cache storage prices double January 1, 2027. Input and output limits are separate; no unverified combined-context cap is imposed. Output includes thinking tokens. The calculator models five-minute explicit GenerateContent caches with a 4,096-token minimum, not guaranteed implicit cache hits.
-- [Astra model pricing](https://developers.openai.com/api/docs/models/gpt-6-astra): input over 272,000 tokens doubles input/cache rates and multiplies output by 1.5 for the entire request. API rates are separate from subscriptions and tool charges.
+- [Astra model pricing and limits](https://developers.openai.com/api/docs/models/gpt-6-astra): input over 272,000 tokens doubles input/cache rates and multiplies output by 1.5 for the entire request. Input is capped at 922,000 tokens inside the 1,050,000-token context window (rechecked October 31, 2026). API rates are separate from subscriptions and tool charges.
 
 Batch rates are half the standard token rates. Cache and batch discounts are modeled separately; commitments never discount API calls. Task-quality rows follow the returned baseline order, with one row for the fleet and one per API. Acceptance percentages allow zero or values from 0.0000001 through 100, keeping cost division and chart arithmetic finite. Smaller nonzero values, including values that underflow to zero, produce web validation feedback and are rejected by MCP.
 

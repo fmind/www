@@ -33,6 +33,15 @@ trivy = "0.76.1"
 typos = "1.51.1"
 zizmor = "1.31.1"
 
+# MCP Registry publisher for the release skill. The release also ships registry server
+# assets, so select the publisher archive per platform (signature side files excluded).
+[tools."github:modelcontextprotocol/registry"]
+version = "1.8.6"
+
+[tools."github:modelcontextprotocol/registry".platforms]
+linux-x64 = { asset_pattern = "mcp-publisher_linux_amd64.tar.gz" }
+macos-arm64 = { asset_pattern = "mcp-publisher_darwin_arm64.tar.gz" }
+
 [tasks.all]
 alias = "a"
 description = "Format, check, test, build, and exercise browser contracts"
@@ -63,7 +72,8 @@ run = "tailwindcss-extra -i assets/css/input.css -o static/dist/styles.css --min
 
 [tasks."build:fonts"]
 description = "Rebuild the self-hosted WOFF2 subsets from pinned upstream releases"
-run = "uv run --script scripts/build_fonts.py"
+# scripts/build_fonts.py.lock pins fonttools' brotli and zopfli extras; refresh it with `uv lock --script`.
+run = "uv run --locked --script scripts/build_fonts.py"
 
 [tasks."build:image"]
 description = "Build the linux/amd64 production OCI image as a local archive"
@@ -88,6 +98,7 @@ depends = [
   "check:images",
   "check:leaks",
   "check:lighthouse",
+  "check:links:local",
   "check:lint",
   "check:scan",
   "check:types",
@@ -97,9 +108,9 @@ depends = [
 
 [tasks."check:actions"]
 alias = "ca"
-description = "Lint and audit GitHub Actions workflows (actionlint + zizmor)"
+description = "Lint GitHub Actions workflows and audit .github/ (actionlint + zizmor)"
 # Select offline mode explicitly: the workflow audit requires no credentials.
-run = ["actionlint", "zizmor --offline .github/workflows/"]
+run = ["actionlint", "zizmor --offline .github/"]
 
 [tasks."check:dockerfile"]
 alias = "cd"
@@ -147,6 +158,10 @@ run = [
   "gitleaks dir . --config assets/gitleaks-dir.toml --redact=100 --verbose",
 ]
 
+[tasks."check:leaks:full"]
+description = "Audit the complete Git history for leaked secrets (weekly security workflow)"
+run = "gitleaks git --redact=100 --verbose"
+
 [tasks."check:lighthouse"]
 description = "Test the Lighthouse qualification harness without network access"
 run = "node --test scripts/lighthouse.test.mjs"
@@ -154,7 +169,13 @@ run = "node --test scripts/lighthouse.test.mjs"
 [tasks."check:links"]
 alias = "ck"
 description = "Check publication, portfolio, and documentation links"
-run = "lychee --root-dir \"$PWD\" . src/www/data.py"
+# --hidden adds .agents/skills; .gitignore still keeps .venv and caches out.
+run = "lychee --hidden --root-dir \"$PWD\" . src/www/data.py"
+
+[tasks."check:links:local"]
+description = "Check local file links and Markdown anchors offline (lychee)"
+# Fragments are checked only offline: many remote docs render anchors with JavaScript.
+run = "lychee --offline --hidden --include-fragments --no-progress --root-dir \"$PWD\" . src/www/data.py"
 
 [tasks."check:lint"]
 alias = "cl"
@@ -166,6 +187,10 @@ description = "Scan Dockerfile and infrastructure for misconfigurations (trivy c
 # Unset the owner's global policy, then state the complete repository policy so
 # local and CI scans cannot diverge through inherited configuration.
 run = "env -u TRIVY_CONFIG trivy config --exit-code=1 --severity LOW,MEDIUM,HIGH,CRITICAL --ignorefile .trivyignore --skip-dirs tmp --skip-dirs .venv --skip-dirs dist ."
+
+[tasks."check:scan:full"]
+description = "Scan the full checkout for vulnerabilities, secrets, and misconfigurations (weekly security workflow)"
+run = "env -u TRIVY_CONFIG trivy fs --exit-code=1 --severity HIGH,CRITICAL --scanners vuln,secret,misconfig --skip-dirs tmp --skip-dirs .venv --skip-dirs dist ."
 
 [tasks."check:tofu"]
 description = "Validate, lint, and test the OpenTofu configuration"
@@ -191,11 +216,15 @@ run = "typos content/articles"
 
 [tasks."check:vuln"]
 alias = "cv"
-description = "Scan Python dependencies for known vulnerabilities (uv + trivy)"
+description = "Scan Python and mise npm tool dependencies for known vulnerabilities (uv + trivy)"
 run = [
   "uv audit --preview-features audit-command --locked",
+  "uv audit --preview-features audit-command --locked --script scripts/build_fonts.py",
   # Scan the maintained lock, not third-party checkouts under tmp/.
   "env -u TRIVY_CONFIG trivy fs --exit-code=1 --severity HIGH,CRITICAL --scanners vuln --ignorefile .trivyignore uv.lock",
+  # mise locks npm tools (Lighthouse, Playwright) as pnpm-format aube-lock.yaml. Dependabot
+  # never reads it, and Trivy skips it unless the file name is mapped to the pnpm parser.
+  "env -u TRIVY_CONFIG trivy fs --exit-code=1 --severity HIGH,CRITICAL --scanners vuln --ignorefile .trivyignore --file-patterns 'pnpm:aube-lock\\.yaml' .mise/locks",
 ]
 
 [tasks.clean]
@@ -317,4 +346,6 @@ run = "tailwindcss-extra -i assets/css/input.css -o static/dist/styles.css --wat
 hide = true
 depends = ["build:css"]
 # Watch startup inputs only; browser artifacts and build output must not restart workers.
-run = 'GRANIAN_PORT="${PORT:-8080}" uv run --locked granian --interface asgi --reload --reload-paths src --reload-paths content --reload-paths static --host 0.0.0.0 www.app:app'
+# Granian binds 127.0.0.1 by default, keeping development drafts off the local network;
+# `GRANIAN_HOST=0.0.0.0 mise run watch` opts in to LAN access (for example from a phone).
+run = 'GRANIAN_PORT="${PORT:-8080}" uv run --locked granian --interface asgi --reload --reload-paths src --reload-paths content --reload-paths static www.app:app'

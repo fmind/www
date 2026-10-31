@@ -4,7 +4,9 @@
 *.tfstate.*
 *.tfvars
 .cache/
-.claude/
+# Keep local Claude Code state out of Git, but track the skills link.
+.claude/*
+!.claude/skills
 .coverage
 .env
 .pytest_cache/

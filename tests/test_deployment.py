@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 import sys
 from collections.abc import Sequence
+from pathlib import Path
 
 import pytest
 
@@ -80,7 +82,7 @@ def test_valid_release_restamps_commit_and_routes_traffic_to_the_new_revision() 
             "update-traffic",
             *SCOPE,
             "--to-revisions=www-fmind-dev-manual-test=100",
-            "--remove-tags=manual-candidate",
+            "--remove-tags=manual-candidate,candidate",
             "--quiet",
         ),
     )
@@ -126,6 +128,15 @@ def test_invalid_arguments_exit_with_usage_without_invoking_gcloud(
     captured = capsys.readouterr()
     assert captured.out == ""
     assert captured.err.startswith("usage: mise run deploy <digest-ref> <commit-sha>\n")
+
+
+def test_ci_promotion_drops_the_candidate_tag_that_manual_rollouts_also_clear() -> None:
+    workflow = (Path(__file__).resolve().parents[1] / ".github" / "workflows" / "deploy.yml").read_text()
+
+    # A tag left on a promoted revision keeps it publicly served after a later rollback.
+    assert re.search(rf"^  CANDIDATE_TAG: {deploy.CI_TAG}$", workflow, re.MULTILINE)
+    promotion = workflow.split("- name: Promote the verified revision", 1)[1].split("- name:", 1)[0]
+    assert '--to-revisions "$REVISION=100" --remove-tags "$CANDIDATE_TAG"' in promotion
 
 
 def test_successful_update_is_followed_by_traffic_promotion() -> None:

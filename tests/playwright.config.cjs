@@ -6,6 +6,8 @@ module.exports = defineConfig({
   testDir: ".",
   testMatch: "browser.spec.cjs",
   outputDir: "../tmp/browser-results",
+  // A committed test.only would silently narrow the CI gate; the other configs inherit this.
+  forbidOnly: !!process.env.CI,
   // Each context is isolated and the shared server only serves immutable data.
   workers: 2,
   reporter: "list",

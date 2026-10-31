@@ -23,6 +23,7 @@ from PIL import Image, UnidentifiedImageError
 
 from www.data import METADATA
 from www.highlighting import highlight_code
+from www.images import SOURCE_EXTENSIONS
 from www.models import DERIVATIVE_WIDTHS, Article, ArticleSection, ArticleSummary
 from www.tags import is_tag, tag_names
 
@@ -36,6 +37,21 @@ _CAPTION = re.compile(
     re.DOTALL,
 )
 _IMAGE = re.compile(r'<img src="(/static/img/articles/[^"]+)"')
+_MEDIA_PREFIX = "/static/img/articles/"
+# Ids that pages/article.html, base.html and their partials already own. A body
+# heading that slugs to one of them takes a "-N" suffix instead of duplicating it.
+_TEMPLATE_IDS = frozenset(
+    {
+        "article-author",
+        "article-sections",
+        "consent",
+        "copy-link-status",
+        "main-content",
+        "related-articles",
+        "section-menu",
+        "section-toolbar",
+    }
+)
 _HTML_TAG = re.compile(r"<[^>]*>")
 _INVALID_URL_ESCAPE = re.compile(r"%(?![0-9A-Fa-f]{2})")
 _THREE_BACKSLASH_BREAK = re.compile(r"(?<!\\)\\{3}(?=\r?\n|$)")
@@ -201,11 +217,17 @@ def _parse_date(name: str, field: str, value: str) -> datetime:
 
 def _cover(static_dir: Path, slug: str) -> str:
     directory = static_dir / "img" / "articles" / slug
-    for extension in (".webp", ".gif", ".png", ".jpg"):
-        candidate = directory / f"cover{extension}"
-        if candidate.is_file():
-            return f"/static/img/articles/{slug}/{candidate.name}"
-    raise ArticleError(f'missing article cover under "static/img/articles/{slug}"')
+    # Accept every source format that `images.py` derives from, case-insensitively
+    # as it does, and pick by its fixed preference order when several exist.
+    covers = sorted(path for path in directory.glob("cover.*") if path.stem == "cover" and path.is_file())
+    for extension in SOURCE_EXTENSIONS:
+        for candidate in covers:
+            if candidate.suffix.lower() == extension:
+                return f"/static/img/articles/{slug}/{candidate.name}"
+    raise ArticleError(
+        f'missing article cover under "static/img/articles/{slug}": '
+        f"expected one of {', '.join(f'cover{extension}' for extension in SOURCE_EXTENSIONS)}"
+    )
 
 
 def _card_cover(static_dir: Path, slug: str) -> str:
@@ -245,6 +267,12 @@ def _heading_text(tokens: Sequence[Token]) -> str:
     )
 
 
+def _html_inline(content: str) -> Token:
+    token = Token("html_inline", "", 0)
+    token.content = content
+    return token
+
+
 def _normalize_headings(tokens: Sequence[Token]) -> tuple[ArticleSection, ...]:
     sections: list[ArticleSection] = []
     headings = [token for token in tokens if token.type == "heading_open"]
@@ -259,7 +287,7 @@ def _normalize_headings(tokens: Sequence[Token]) -> tuple[ArticleSection, ...]:
                     token.tag = f"h{min(6, int(token.tag[1]) + shift)}"
 
     seen: dict[str, int] = {}
-    identifiers: set[str] = set()
+    identifiers = set(_TEMPLATE_IDS)
     for index, token in enumerate(tokens):
         if token.type != "heading_open" or index + 1 >= len(tokens):
             continue
@@ -272,8 +300,13 @@ def _normalize_headings(tokens: Sequence[Token]) -> tuple[ArticleSection, ...]:
             count += 1
             identifier = f"{base}-{count}"
         seen[base] = count + 1
-        identifiers.add(identifier)
+        # Slugs never contain "_", so the text id cannot match an earlier heading id.
+        text_identifier = f"{identifier}_text"
+        identifiers.update((identifier, text_identifier))
         token.attrSet("id", identifier)
+        # Name the heading by its text alone: its name would otherwise also take the
+        # section link's label, as in "Setup Link to section: Setup".
+        token.attrSet("aria-labelledby", text_identifier)
         # Name the anchor with the rendered heading text: the raw source would
         # expose Markdown link syntax and URLs to screen readers and MCP sections.
         label = " ".join(_heading_text(inline.children or []).split())
@@ -285,13 +318,19 @@ def _normalize_headings(tokens: Sequence[Token]) -> tuple[ArticleSection, ...]:
         link.attrSet("class", "heading-anchor")
         link.attrSet("aria-label", f"Link to section: {label}")
         # A drawn icon keeps section controls out of copied/imported heading text.
-        marker = Token("html_inline", "", 0)
-        marker.content = (
+        marker = _html_inline(
             '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" '
             'fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false">'
             '<path d="M4 9h16M3 15h16M10 3 8 21M16 3l-2 18"/></svg>'
         )
-        inline.children = [*(inline.children or []), link, marker, Token("link_close", "a", -1)]
+        inline.children = [
+            _html_inline(f'<span id="{text_identifier}">'),
+            *(inline.children or []),
+            _html_inline("</span>"),
+            link,
+            marker,
+            Token("link_close", "a", -1),
+        ]
     return tuple(sections)
 
 
@@ -332,14 +371,23 @@ def _normalize_goldmark_three_backslashes(tokens: Sequence[Token]) -> None:
                 break_count -= 1
 
 
-def _render_markdown(markdown: str) -> tuple[str, tuple[ArticleSection, ...]]:
+def _render_markdown(markdown: str) -> tuple[str, tuple[ArticleSection, ...], tuple[tuple[str, str], ...]]:
     environment: EnvType = {}
     tokens = _ARTICLE_MARKDOWN.parse(markdown, environment)
     _normalize_goldmark_three_backslashes(tokens)
     sections = _normalize_headings(tokens)
     rendered = _ARTICLE_MARKDOWN.renderer.render(tokens, _ARTICLE_MARKDOWN.options, environment)
+    # Read sources and alt text from the Markdown tokens after `_image_rule` set the
+    # final alt: caption folding later empties a figure's HTML alt on purpose.
+    media = tuple(
+        (str(child.attrGet("src") or ""), str(child.attrGet("alt") or ""))
+        for token in tokens
+        if token.type == "inline"
+        for child in token.children or ()
+        if child.type == "image"
+    )
     # Goldmark uses the semantic HTML5 element for GFM strikethrough.
-    return rendered.replace("<s>", "<del>").replace("</s>", "</del>"), sections
+    return rendered.replace("<s>", "<del>").replace("</s>", "</del>"), sections, media
 
 
 def _caption_text(fragment: str) -> str:
@@ -366,6 +414,17 @@ def _asset_path(static_dir: Path, source: str) -> Path:
     if not path.is_relative_to(root):
         raise ArticleError(f"body image escapes the static asset tree: {source!r}")
     return path
+
+
+def _validate_body_media(static_dir: Path, media: Sequence[tuple[str, str]]) -> None:
+    """Reject body images and videos that cannot render: CSP allows only local media."""
+    for source, alt in media:
+        if not source.startswith(_MEDIA_PREFIX):
+            raise ArticleError(f"body media {source!r} must be a file under {_MEDIA_PREFIX}")
+        if not _asset_path(static_dir, source).is_file():
+            raise ArticleError(f"missing body media {source!r}")
+        if not alt.strip():
+            raise ArticleError(f"body media {source!r} needs alt text")
 
 
 def _webp_chunk_dimensions(chunk: bytes, prefix: bytes, size: int) -> tuple[int, int] | None:
@@ -504,9 +563,11 @@ def parse_article(name: str, data: bytes, static_dir: Path = Path("static")) -> 
         tags = tuple(raw_tags)
         if not tags:
             raise ArticleError(f'parse "{name}": at least one tag is required')
-        for tag in tags:
+        for index, tag in enumerate(tags):
             if not is_tag(tag):
                 raise ArticleError(f'parse "{name}": unknown tag {tag!r} (allowed: {", ".join(tag_names())})')
+            if tag in tags[:index]:
+                raise ArticleError(f'parse "{name}": duplicate tag {tag!r}')
         raw_draft = metadata.get("draft", False)
         if not isinstance(raw_draft, bool):
             raise ArticleError(f'parse "{name}": draft must be a boolean')
@@ -519,7 +580,8 @@ def parse_article(name: str, data: bytes, static_dir: Path = Path("static")) -> 
         image_path = _cover(static_dir, slug)
         card_image_path = _card_cover(static_dir, slug)
         markdown = markdown_bytes.decode("utf-8")
-        rendered, sections = _render_markdown(markdown)
+        rendered, sections, media = _render_markdown(markdown)
+        _validate_body_media(static_dir, media)
         body = enhance_body_images(rendered, static_dir)
         word_count = len(markdown.split())
         reading_minutes = max(1, (word_count + WORDS_PER_MINUTE - 1) // WORDS_PER_MINUTE)

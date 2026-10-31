@@ -85,7 +85,7 @@ Architecture of Combo-Banana
 - **The Interface:** [**Gradio**](https://gradio.app/) Used to build the interactive web UI entirely in Python, avoiding the need for complex front-end development and significantly speeding up iteration.
 - **The Backend:** [**Python**](https://www.python.org/) The backbone of the application, handling core logic and orchestrating the sequence of image processing steps.
 - **The Engine:** [**Nano Banana**](https://ai.google.dev/gemini-api/docs/image-generation) The AI powerhouse driving complex tasks like high-fidelity background removal and segmentation. This project was a fantastic opportunity to leverage its impressive capabilities. In future releases, other models could be combined with Nano-Banana.
-- **Deployment:** [**Google Cloud Run**](https://cloud.google.com/run?authuser=1) A serverless platform ensuring the tool is accessible, cost-effective (scales to zero), and scalable on demand within an organization’s infrastructure.
+- **Deployment:** [**Google Cloud Run**](https://cloud.google.com/run) A serverless platform ensuring the tool is accessible, cost-effective (scales to zero), and scalable on demand within an organization’s infrastructure.
 
 ### The Road Ahead: From Prototype to Platform
 

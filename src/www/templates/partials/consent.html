@@ -19,7 +19,11 @@
     var stored = function () {
       try { return localStorage.getItem(key); } catch (error) { return null; }
     };
+    // gtag.js honours this documented opt-out flag; consent "denied" alone still sends cookieless pings.
+    var disable = 'ga-disable-' + id;
+    var opener = null;
     var load = function () {
+      window[disable] = false;
       if (window.gtag) {
         window.gtag('consent', 'update', { analytics_storage: 'granted' });
         return;
@@ -35,6 +39,8 @@
       document.head.appendChild(script);
     };
     var forget = function () {
+      // Stop a tag already loaded on this page from sending anything else.
+      window[disable] = true;
       if (window.gtag) window.gtag('consent', 'update', { analytics_storage: 'denied' });
       // GA cookies sit on the registrable domain, shared with the course subdomains.
       document.cookie.split(';').forEach(function (cookie) {
@@ -50,12 +56,18 @@
         var choice = button.getAttribute('data-consent');
         try { localStorage.setItem(key, choice); } catch (error) {}
         if (choice === 'granted') load(); else forget();
+        var focused = banner.contains(document.activeElement);
         banner.hidden = true;
+        // Hiding the focused button would drop keyboard focus to <body>: return it to the
+        // control that opened the banner, or to the footer control that reopens it.
+        var target = opener || document.querySelector('[data-consent-open]');
+        if (focused && target) target.focus({ preventScroll: !opener });
       });
     });
     document.querySelectorAll('[data-consent-open]').forEach(function (control) {
       control.hidden = false;
       control.addEventListener('click', function () {
+        opener = control;
         banner.hidden = false;
         banner.querySelector('button').focus();
       });

@@ -511,7 +511,7 @@ API_BASELINES = (
         "2026-11-29",
         "",
         "OpenAI's published Astra name. Above 272,000 input tokens, full-request rates rise to $20 input / $75 output per million. No announced end date.",
-        1_050_000,
+        922_000,
         128_000,
         1_050_000,
     ),

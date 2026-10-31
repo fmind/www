@@ -16,6 +16,13 @@ from scripts.verify_deployment import verify_service
 IMAGE = "europe-west1-docker.pkg.dev/www-fmind-dev/app/www-fmind-dev@sha256:" + "a" * 64
 COMMIT = "b" * 40
 REVISION = "www-fmind-dev-00001-abc"
+TARGET_ENVIRONMENT = {
+    "REGION": "europe-west1",
+    "PROJECT_ID": "www-fmind-dev",
+    "REPOSITORY": "app",
+    "SERVICE_NAME": "www-fmind-dev",
+}
+INITIALIZED = {"jsonrpc": "2.0", "id": 1, "result": {"serverInfo": {"name": "www", "version": "2.6.0"}}}
 
 
 @pytest.fixture
@@ -131,17 +138,22 @@ def test_release_command_checks_public_health(
 
     def respond(request: httpx2.Request) -> httpx2.Response:
         paths.append(request.url.path)
+        if request.url.path == "/mcp":
+            return httpx2.Response(200, json=INITIALIZED)
         return httpx2.Response(http_status, json={"status": health})
 
-    client = httpx2.Client(transport=httpx2.MockTransport(respond))
-    monkeypatch.setattr(verify_deployment.httpx2, "Client", lambda **_kwargs: client)
+    # Each probe opens and closes its own client; keep the real class before patching it.
+    client_class = httpx2.Client
+    monkeypatch.setattr(
+        verify_deployment.httpx2, "Client", lambda **_kwargs: client_class(transport=httpx2.MockTransport(respond))
+    )
     healthy = http_status == 200 and health == "ok"
     assert verify_deployment.main() == (0 if healthy else 1)
     assert len(commands) == 1
     assert commands[0][1:4] == ("run", "services", "describe")
     output = capsys.readouterr()
     if healthy:
-        assert paths == ["/health", "/api/profile", "/.well-known/mcp/server-card.json"]
+        assert paths == ["/health", "/api/profile", "/.well-known/mcp/server-card.json", "/mcp"]
         assert "100% traffic" in output.out
         assert not output.err
     else:
@@ -150,12 +162,70 @@ def test_release_command_checks_public_health(
         assert not output.out
 
 
-def test_missing_release_environment_fails_safely(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+@pytest.mark.parametrize(
+    ("mode", "missing"),
+    [((), "IMAGE_REF"), ((), "GITHUB_SHA"), (("candidate",), "CANDIDATE_TAG"), (("candidate",), "IMAGE_REF")],
+)
+def test_missing_release_environment_names_the_variable(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], mode: tuple[str, ...], missing: str
 ) -> None:
-    monkeypatch.delenv("IMAGE_REF", raising=False)
-    assert verify_deployment.main() == 1
-    assert "deployment verification failed" in capsys.readouterr().err
+    for key, value in {
+        **TARGET_ENVIRONMENT,
+        "IMAGE_REF": IMAGE,
+        "GITHUB_SHA": COMMIT,
+        "CANDIDATE_TAG": "candidate",
+    }.items():
+        monkeypatch.setenv(key, value)
+    monkeypatch.delenv(missing)
+    monkeypatch.setattr(verify_deployment.shutil, "which", pytest.fail)
+
+    assert verify_deployment.main(mode) == 1
+    error = capsys.readouterr().err
+    assert error.startswith(f"deployment verification failed: {missing} is not set; export it as ")
+    assert "KeyError" not in error
+
+
+def _post_promotion_mcp(monkeypatch: pytest.MonkeyPatch, respond: Any) -> list[httpx2.Request]:
+    requests: list[httpx2.Request] = []
+
+    def record(request: httpx2.Request) -> httpx2.Response:
+        requests.append(request)
+        return respond(request)
+
+    client = httpx2.Client(transport=httpx2.MockTransport(record))
+    monkeypatch.setattr(verify_deployment.httpx2, "Client", lambda **_kwargs: client)
+    return requests
+
+
+def test_public_mcp_probe_initializes_with_the_production_host_and_origin(monkeypatch: pytest.MonkeyPatch) -> None:
+    requests = _post_promotion_mcp(monkeypatch, lambda _request: httpx2.Response(200, json=INITIALIZED))
+
+    verify_deployment.probe_mcp("https://www.fmind.dev", timeout=15)
+
+    [request] = requests
+    assert (request.method, str(request.url)) == ("POST", "https://www.fmind.dev/mcp")
+    assert request.headers["host"] == "www.fmind.dev"
+    assert request.headers["origin"] == "https://www.fmind.dev"
+    assert json.loads(request.content)["method"] == "initialize"
+
+
+@pytest.mark.parametrize(
+    ("response", "error"),
+    [
+        (httpx2.Response(421, text="Invalid Host header"), httpx2.HTTPStatusError),
+        (httpx2.Response(200, json={"jsonrpc": "2.0", "id": 1, "error": {"code": -32600}}), ValueError),
+        (httpx2.Response(200, json={"result": {"serverInfo": "www"}}), ValueError),
+        (httpx2.Response(200, json=[INITIALIZED]), ValueError),
+    ],
+    ids=("rejected-host", "json-rpc-error", "malformed-server-info", "not-an-object"),
+)
+def test_public_mcp_probe_rejects_unusable_endpoints(
+    monkeypatch: pytest.MonkeyPatch, response: httpx2.Response, error: type[Exception]
+) -> None:
+    _post_promotion_mcp(monkeypatch, lambda _request: response)
+
+    with pytest.raises(error):
+        verify_deployment.probe_mcp("https://www.fmind.dev", timeout=15)
 
 
 TAG = "candidate"
@@ -254,9 +324,11 @@ def test_candidate_command_probes_tagged_url_and_records_revision(
     monkeypatch.setattr(verify_deployment.shutil, "which", lambda _: "/usr/bin/gcloud")
     monkeypatch.setattr(verify_deployment.subprocess, "run", describe)
     hosts: set[str] = set()
+    methods: set[str] = set()
 
     def respond(request: httpx2.Request) -> httpx2.Response:
         hosts.add(request.url.host)
+        methods.add(request.method)
         return httpx2.Response(200 if healthy else 503, json={"status": "ok"})
 
     client = httpx2.Client(transport=httpx2.MockTransport(respond))
@@ -264,6 +336,8 @@ def test_candidate_command_probes_tagged_url_and_records_revision(
 
     assert verify_deployment.main(("candidate",)) == (0 if healthy else 1)
     assert hosts == {"candidate---www-fmind-dev-ba55y5pbla-ew.a.run.app"}
+    # The tagged run.app host is outside the MCP host allowlist, so the candidate gets no POST.
+    assert methods == {"GET"}
     if healthy:
         assert output.read_text(encoding="utf-8") == f"revision={REVISION}\n"
         assert "Verified candidate" in capsys.readouterr().out

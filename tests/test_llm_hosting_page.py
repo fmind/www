@@ -14,10 +14,11 @@ from litestar import Litestar
 from litestar.testing import TestClient
 
 import www.sites.economics as economics
+import www.sites.inputs as hosting_inputs
 from tests.llm_hosting_support import view
 from www.sites.agent import compare_hosting
 from www.sites.calculator import build_llm_self_hosting_view
-from www.sites.data import API_BASELINES, DEMAND_PRESETS, FRONTIER_MODELS
+from www.sites.data import API_BASELINES, DEFAULT_HOSTING_INPUTS, DEMAND_PRESETS, FRONTIER_MODELS
 from www.sites.inputs import hosting_url, scenario_parameters
 
 PAGE = "/sites/llm-self-hosting/?mode=advanced"
@@ -149,6 +150,63 @@ def test_page_links_only_to_rendered_sections_and_states_editable_assumptions(cl
     custom = client.get(f"{PAGE}&overhead=0&throughput=250&utilization=80").text
     assert "Model weights plus 0% reserve" in custom
     assert "Capacity assumes 250 output tokens/s per model copy, with 80% usable" in custom
+
+
+def api_table(html: str) -> str:
+    start = html.index("Monthly costs and break-even at the selected input and output token mix")
+    return html[start : html.index("</table>", start)]
+
+
+def test_blocked_fleets_replace_break_even_capacity_verdicts(client: AppClient) -> None:
+    # A100 lacks native FP8 kernels: no break-even exists, and the fleet is not merely too small.
+    unsupported = client.get(PAGE, params={"node": "a2-ultra-1g", "quant": "fp8"}).text
+    assert "Beyond this fleet" not in unsupported
+    assert "Within modeled capacity" not in unsupported
+    assert unsupported.count('<dd class="font-semibold">Unsupported configuration</dd>') == len(API_BASELINES)
+    assert api_table(unsupported).count("<td>Unsupported configuration</td>") == len(API_BASELINES)
+
+    query = {"input-tokens": "300000", "tokens": "1000"}
+    assert view(query).estimate.context_issue
+    accepted = sum(not api.request_issue for api in view(query).apis)
+    over_context = client.get(PAGE, params=query).text
+    assert "Beyond this fleet" not in over_context
+    assert api_table(over_context).count("<td>Exceeds model context</td>") == accepted > 0
+
+    # An unconfirmed multi-host fleet needs a pilot in both the cards and the table.
+    multi_host = client.get(PAGE, params={"mode": "advanced", "model": "kimi-k3"}).text
+    assert "Beyond this fleet" not in multi_host
+    assert multi_host.count("Capacity needs a multi-host pilot") == 2 * len(API_BASELINES)
+
+
+def test_catalog_hides_footprints_of_unsupported_checkpoints(client: AppClient) -> None:
+    html = client.get(PAGE, params={"model": "mistral-small-4", "quant": "nvfp4"}).text
+    rows = re.findall(r"<tr>(.*?)</tr>", html[html.index('id="frontier-table"') :], flags=re.DOTALL)
+    qwen = next(row for row in rows if ">Qwen3.5 4B</a>" in row)  # No NVFP4 checkpoint exists.
+    gemma = next(row for row in rows if ">Gemma 4 26B A4B</a>" in row)
+    assert qwen.count("<td>—</td>") == 2
+    assert " GB</td>" not in qwen
+    assert " GB</td>" in gemma
+    assert "<td>—</td>" not in gemma
+
+
+def test_assumption_copy_renders_the_inputs_and_snapshot(client: AppClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    cached = client.get(PAGE, params={"api-mode": "cached"}).text
+    assert (
+        "Minimum: 512 for Claude Sonnet 5.5, Claude Haiku 5.5, Claude Opus 5.5; 1,024 for GPT-6 Astra; "
+        "4,096 for Gemini 3.8 Flash. Ineligible requests use standard rates."
+    ) in cached
+    monkeypatch.setattr(
+        economics,
+        "API_BASELINES",
+        tuple(replace(row, cache_minimum=2048) if row.name == "GPT-6 Astra" else row for row in API_BASELINES),
+    )
+    assert "; 2,048 for GPT-6 Astra; " in client.get(PAGE, params={"api-mode": "cached"}).text
+
+    defaults = replace(DEFAULT_HOSTING_INPUTS, tokens_per_second=250, target_utilization=80, memory_overhead_pct=10)
+    monkeypatch.setattr(hosting_inputs, "DEFAULT_HOSTING_INPUTS", defaults)
+    simple = client.get("/sites/llm-self-hosting/").text
+    assert "Assumes 250 generated tokens/s per model copy, with 80% usable." in simple
+    assert "GB weights + 10% reserve = " in simple
 
 
 # Simple-mode choices, section order, and fixed-fleet explanations.

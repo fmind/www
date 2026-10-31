@@ -55,8 +55,9 @@
                 <tr>
                   <th scope="row"><a class="link link-primary font-semibold" href="{{ row.model.weights_url }}" target="_blank" rel="noopener noreferrer">{{ row.model.name }}</a><span class="block text-xs font-normal text-base-content/70 mt-1">{{ row.model.creator }} · {{ model_size(row.model) }} parameters</span></th>
                   <td><a class="link" href="{{ row.model.weights_url }}" target="_blank" rel="noopener noreferrer">{{ row.model.license }}</a><span class="block text-xs text-base-content/70">{{ row.model.license_class }}</span></td>
-                  <td>{{ format_go_float(row.estimate.required_memory_gb, 0) }} GB</td>
-                  <td>{{ format_count(row.estimate.total_nodes, "node") }} / {{ format_count(row.estimate.total_gpus, "TPU" if "TPU" in view.selected_node.gpu else "GPU") }}</td>
+                  {# Unsupported rows have no real checkpoint or topology to size. #}
+                  {% if row.estimate.compatibility_issue %}<td>—</td><td>—</td>{% else %}<td>{{ format_go_float(row.estimate.required_memory_gb, 0) }} GB</td>
+                  <td>{{ format_count(row.estimate.total_nodes, "node") }} / {{ format_count(row.estimate.total_gpus, "TPU" if "TPU" in view.selected_node.gpu else "GPU") }}</td>{% endif %}
                   <td>{% if row.estimate.compatibility_issue %}Unavailable{% else %}{{ format_usd(row.estimate.total_monthly_usd) }}{% endif %}</td>
                   <td>{{ row.decision }}</td>
                 </tr>

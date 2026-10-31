@@ -84,6 +84,29 @@ run "website_cost_and_recovery_contract" {
 run "keyless_ci_identity_contract" {
   command = plan
 
+  # Distinct identities, so a binding granted to the wrong account fails below.
+  override_resource {
+    target = google_service_account.github_actions_sa
+    values = {
+      name  = "projects/www-fmind-dev/serviceAccounts/github-actions@www-fmind-dev.iam.gserviceaccount.com"
+      email = "github-actions@www-fmind-dev.iam.gserviceaccount.com"
+    }
+  }
+  override_resource {
+    target = google_service_account.github_security_sa
+    values = {
+      name  = "projects/www-fmind-dev/serviceAccounts/github-security@www-fmind-dev.iam.gserviceaccount.com"
+      email = "github-security@www-fmind-dev.iam.gserviceaccount.com"
+    }
+  }
+  override_resource {
+    target = google_service_account.cloudrun_sa
+    values = {
+      name  = "projects/www-fmind-dev/serviceAccounts/www-fmind-dev-run@www-fmind-dev.iam.gserviceaccount.com"
+      email = "www-fmind-dev-run@www-fmind-dev.iam.gserviceaccount.com"
+    }
+  }
+
   assert {
     condition = (
       google_iam_workload_identity_pool_provider.github_provider.attribute_mapping["attribute.workflow_ref"] == "assertion.workflow_ref" &&
@@ -118,6 +141,32 @@ run "keyless_ci_identity_contract" {
       google_service_account_iam_member.security_wif_impersonate.member == "principalSet://iam.googleapis.com/projects/997496187785/locations/global/workloadIdentityPools/github-actions-pool/attribute.workflow_ref/fmind/www/.github/workflows/security.yml@refs/heads/main"
     )
     error_message = "Only the main-branch security workflow may impersonate the read-only scanner."
+  }
+
+  # SECURITY.md keeps the deployer and scanner roles separate and least-privilege.
+  assert {
+    condition = (
+      google_artifact_registry_repository_iam_member.repo_writer.role == "roles/artifactregistry.writer" &&
+      google_artifact_registry_repository_iam_member.repo_writer.member == "serviceAccount:github-actions@www-fmind-dev.iam.gserviceaccount.com" &&
+      google_cloud_run_v2_service_iam_member.github_actions_run_developer.role == "roles/run.developer" &&
+      google_cloud_run_v2_service_iam_member.github_actions_run_developer.member == "serviceAccount:github-actions@www-fmind-dev.iam.gserviceaccount.com" &&
+      google_project_iam_member.github_actions_run_viewer.role == "roles/run.viewer" &&
+      google_project_iam_member.github_actions_run_viewer.member == "serviceAccount:github-actions@www-fmind-dev.iam.gserviceaccount.com" &&
+      google_service_account_iam_member.github_actions_act_as_run.role == "roles/iam.serviceAccountUser" &&
+      google_service_account_iam_member.github_actions_act_as_run.service_account_id == "projects/www-fmind-dev/serviceAccounts/www-fmind-dev-run@www-fmind-dev.iam.gserviceaccount.com" &&
+      google_service_account_iam_member.github_actions_act_as_run.member == "serviceAccount:github-actions@www-fmind-dev.iam.gserviceaccount.com"
+    )
+    error_message = "The deployer may only push images, deploy this one service, read Cloud Run, and act as the runtime account."
+  }
+
+  assert {
+    condition = (
+      google_artifact_registry_repository_iam_member.security_repo_reader.role == "roles/artifactregistry.reader" &&
+      google_artifact_registry_repository_iam_member.security_repo_reader.member == "serviceAccount:github-security@www-fmind-dev.iam.gserviceaccount.com" &&
+      google_cloud_run_v2_service_iam_member.security_run_viewer.role == "roles/run.viewer" &&
+      google_cloud_run_v2_service_iam_member.security_run_viewer.member == "serviceAccount:github-security@www-fmind-dev.iam.gserviceaccount.com"
+    )
+    error_message = "The scanner may only pull images and read this one service."
   }
 }
 

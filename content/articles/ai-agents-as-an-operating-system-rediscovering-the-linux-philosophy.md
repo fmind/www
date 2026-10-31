@@ -81,7 +81,7 @@ What we are doing is rediscovering the [**Linux Philosophy**](https://en.wikiped
 
 ### 🛠️ Experience from the Field
 
-- **Development:** During my day-to-day development, I now rely almost entirely on CLI tools combined with raw text context. It is incredibly liberating. I’m deeply curious to see how far this pure approach can scale. We are even seeing frameworks adapt to this reality; for instance, the Google ADK recently [added native bash tools](https://www.google.com/search?q=https://github.com/google/adk-python/blob/780093f389bfbffce965c89ca888d49f992219c1/src/google/adk/tools/bash_tool.py%23L62) to give agents direct shell access.
+- **Development:** During my day-to-day development, I now rely almost entirely on CLI tools combined with raw text context. It is incredibly liberating. I’m deeply curious to see how far this pure approach can scale. We are even seeing frameworks adapt to this reality; for instance, the Google ADK recently [added native bash tools](https://github.com/google/adk-python/blob/780093f389bfbffce965c89ca888d49f992219c1/src/google/adk/tools/bash_tool.py#L62) to give agents direct shell access.
 
 _Side Note: I finally feel less guilty about the_ [_1283+ commits on my dotfiles_](https://github.com/fmind/dotfiles) _._
 
@@ -106,7 +106,7 @@ Just as the industry needed Kubernetes to safely orchestrate Linux containers ac
 - **Dynamic Service Discovery:** An Istio-like service mesh for agents, allowing them to route tasks to specialized peers without hardcoded endpoints.
 - **Message Queues:** Enabling agents to share state and context asynchronously, freeing up expensive context windows.
 
-![Istio Architecture (Source: https://istio.io/latest/docs/ops/deployment/architecture/ )](/static/img/articles/ai-agents-as-an-operating-system-rediscovering-the-linux-philosophy/02.webp)
+![Istio Architecture (Source: https://istio.io/latest/docs/ops/deployment/architecture/)](/static/img/articles/ai-agents-as-an-operating-system-rediscovering-the-linux-philosophy/02.webp)
 
 Istio Architecture (Source: [https://istio.io/latest/docs/ops/deployment/architecture/](https://istio.io/latest/docs/ops/deployment/architecture/))
 

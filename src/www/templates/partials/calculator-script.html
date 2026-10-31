@@ -57,7 +57,11 @@ if (document.querySelector('[data-hosting-calculator]')) {
   };
   async function updateScenario(url, source) {
     // Only this same-origin, server-rendered calculator supplies replacement markup.
-    if (url.origin !== location.origin || url.pathname !== location.pathname) return;
+    // Elsewhere, such as a non-canonical calculator path, navigate normally instead of dropping the action.
+    if (url.origin !== location.origin || url.pathname !== location.pathname) {
+      location.assign(url.href);
+      return;
+    }
     if (pendingScenario) cancelScenario();
     var request = { controller: new AbortController(), state: formState() };
     pendingScenario = request;

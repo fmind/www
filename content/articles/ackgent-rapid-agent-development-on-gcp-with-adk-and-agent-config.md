@@ -65,11 +65,11 @@ This template encapsulates best practices for structuring a project where config
 
 The Ackgent repository is built with efficiency, robustness, and Developer Experience (DX) in mind:
 
-- **Modern Python Management with** [**`uv`**](https://www.google.com/search?q=%5Bhttps://github.com/astral-sh/uv%5D%28https://github.com/astral-sh/uv%29&authuser=1) **:** We leverage `uv` (the blazing-fast Python package manager written in Rust) to streamline dependency resolution and virtual environment management, significantly speeding up setup and CI/CD pipelines.
-- **Task Execution with** [**`just`**](https://www.google.com/search?q=%5Bhttps://github.com/casey/just%5D%28https://github.com/casey/just%29&authuser=1) **:** `just` serves as a convenient command runner, simplifying common tasks like installing dependencies with `just project` or deploying to the cloud with `just deploy`.
-- **Code Quality Tooling:** Integrated [`pre-commit`](https://www.google.com/search?q=%5Bhttps://pre-commit.com/%5D%28https://pre-commit.com/%29&authuser=1) hooks ensure code quality and consistency from the start, utilizing formatters and linters like `check-toml` , `check-yaml` , or `check-json` .
+- **Modern Python Management with** [**`uv`**](https://github.com/astral-sh/uv) **:** We leverage `uv` (the blazing-fast Python package manager written in Rust) to streamline dependency resolution and virtual environment management, significantly speeding up setup and CI/CD pipelines.
+- **Task Execution with** [**`just`**](https://github.com/casey/just) **:** `just` serves as a convenient command runner, simplifying common tasks like installing dependencies with `just project` or deploying to the cloud with `just deploy`.
+- **Code Quality Tooling:** Integrated [`pre-commit`](https://pre-commit.com/) hooks ensure code quality and consistency from the start, utilizing formatters and linters like `check-toml` , `check-yaml` , or `check-json` .
 - **`evalset`** **Configuration:** The repository includes ADK capability for defining and running evaluation datasets ([`evalset`](https://google.github.io/adk-docs/evaluate/)), crucial for rigorously testing and benchmarking agent performance iteratively.
-- **Customizable Cloud Run Deployment:** Designed for scalability, the example includes configurations and `just` recipes for deploying the agents as serverless containers on [Google Cloud Run](https://cloud.google.com/run?authuser=1).
+- **Customizable Cloud Run Deployment:** Designed for scalability, the example includes configurations and `just` recipes for deploying the agents as serverless containers on [Google Cloud Run](https://cloud.google.com/run).
 - **Advanced Agent Capabilities:** Demonstrations of **Tools**, **Callbacks**, and **MCP** integration within the Agent Config framework.
 
 ![Ackgent on Cloud Run gives you access to key metrics, logs, SLOs and Error to better observe your agent in production](/static/img/articles/ackgent-rapid-agent-development-on-gcp-with-adk-and-agent-config/03.webp)

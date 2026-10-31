@@ -79,6 +79,9 @@ def test_hand_calculated_tokens_context_and_costs_for_selected_servers() -> None
     assert haiku.context_percent == pytest.approx(0.2634)
     assert haiku.per_thousand_requests_usd == pytest.approx(0.2634)
     assert haiku.month_usd == pytest.approx(1.5804)
+    # Context share divides by each model's maximum input, not its total context window.
+    astra = next(model for model in view.models if model.name == "GPT-6 Astra")
+    assert (astra.input_token_limit, astra.context_percent) == (922_000, pytest.approx(100 * 2634 / 922_000))
     assert not any(model.needs_review for model in view.models)
 
 
@@ -165,6 +168,8 @@ def test_page_metadata_validation_redirects_and_404(client: TestClient) -> None:
     assert invalid.status_code == 200
     assert "Some inputs need attention" in invalid.text
     assert "between 1 and 10,000,000" in invalid.text
+    # Million-dollar budgets use an M suffix instead of thousands of k.
+    assert "$521.0k\u2013$52.1M" in client.get(PATH + "?requests=10000000").text
     one = client.get(PATH + "?server=memory&requests=10")
     assert "953 tokens of tool definitions on every request" in one.text
     assert one.text.count(" checked/>") == 1

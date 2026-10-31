@@ -24,6 +24,8 @@ The current candidate uses `python:3.14.10-slim@sha256:3cabfd7d7aaf394e6040e79fa
 
 Recheck the [Debian Security Tracker](https://security-tracker.debian.org/tracker/) and exact serving scan before relying on these assessments. They are reachability reviews, not CVE suppressions. Retired scan histories remain in Git history and CI artifacts.
 
+To renew this review, run `gh workflow run security.yml` and take `<run-id>` from the run URL it prints. If it prints none, use the run from `gh run list --workflow security.yml --event workflow_dispatch --limit 1 --json databaseId,createdAt` only when its `createdAt` is later than your dispatch; an older run holds stale evidence. Wait with `gh run watch <run-id> --exit-status`: a failure can be a new fixable finding, and the evidence is still uploaded. Then run `gh run download <run-id> -n deployed-image-advisories -D <temporary-directory>`. Its `digests.txt` lists each serving or tagged revision digest, and `<revision>.json` holds that image's unfiltered HIGH/CRITICAL findings. Compare the CVE and instance set with the table, recheck the Debian tracker, then update the digests, counts, and dates above.
+
 ## Data and recovery
 
 Analytics omit visitor identifiers and expire after 180 days. Private Cloud Run operational logs can contain IPs, user agents, and full URLs and expire after 30 days. See [README](README.md#analytics-and-privacy).

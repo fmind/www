@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import http.client
 import json
 import os
 import subprocess
@@ -12,7 +13,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal, InvalidOperation
-from urllib.error import HTTPError, URLError
+from urllib.error import HTTPError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -146,7 +147,9 @@ class Reader:
             raise AnalyticsError(
                 f"BigQuery HTTP {exc.code}; check table existence and read permissions. No report produced."
             ) from exc
-        except (URLError, TimeoutError) as exc:
+        except (OSError, http.client.HTTPException) as exc:
+            # URLError and TimeoutError are OSErrors; a connection reset or an incomplete
+            # body can also interrupt the read itself.
             raise AnalyticsError("BigQuery read timed out or failed; no partial report produced.") from exc
         self.downloaded += len(body)
         if self.downloaded > MAX_BYTES:
@@ -254,9 +257,7 @@ def breakdown(events: list[Event], start: date, days: int, zone: ZoneInfo) -> di
         "bot_share_percent": round(100 * bots / len(events), 2) if events else None,
         "unknown_bot_events": sum(event.bot is None for event in events),
         "html_4xx": sum(400 <= event.status < 500 for event in events),
-        "html_5xx": sum(event.status >= 500 for event in events),
         "non_bot_4xx": sum(event.bot is False and 400 <= event.status < 500 for event in events),
-        "non_bot_5xx": sum(event.bot is False and event.status >= 500 for event in events),
         "daily_views": {
             (start + timedelta(days=i)).isoformat(): daily[(start + timedelta(days=i)).isoformat()] for i in range(days)
         },

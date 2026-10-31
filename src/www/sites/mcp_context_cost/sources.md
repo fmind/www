@@ -4,12 +4,12 @@ Verified 2026-10-13. This calculator counts the tool definitions that measured M
 
 ## Tool catalogs
 
-| Server     | Captured configuration                                                   | Tools | Reference tokens | Measured   |
-| ---------- | ------------------------------------------------------------------------ | ----: | ---------------: | ---------- |
-| GitHub     | v1.12.2, default toolset                                                 |    45 |           10,989 | 2026-09-20 |
-| Filesystem | `@modelcontextprotocol/server-filesystem@1.0.0`, empty allowed directory |    14 |            1,681 | 2026-10-13 |
-| Memory     | `@modelcontextprotocol/server-memory@1.0.0`, scratch memory path         |     9 |              953 | 2026-10-13 |
-| Playwright | `@playwright/mcp@0.0.83`, default tools, headless/isolated flags         |    25 |            3,745 | 2026-10-13 |
+| Server     | Captured configuration                                                                                                                               | Tools | Reference tokens | Measured   |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ----: | ---------------: | ---------- |
+| GitHub     | [v1.12.2](https://github.com/github/github-mcp-server/tree/v1.12.2), default toolset                                                                 |    45 |           10,989 | 2026-09-20 |
+| Filesystem | [`@modelcontextprotocol/server-filesystem@1.0.0`](https://registry.npmjs.org/@modelcontextprotocol/server-filesystem/1.0.0), empty allowed directory |    14 |            1,681 | 2026-10-13 |
+| Memory     | [`@modelcontextprotocol/server-memory@1.0.0`](https://registry.npmjs.org/@modelcontextprotocol/server-memory/1.0.0), scratch memory path             |     9 |              953 | 2026-10-13 |
+| Playwright | [`@playwright/mcp@0.0.83`](https://registry.npmjs.org/@playwright/mcp/0.0.83), default tools, headless/isolated flags                                |    25 |            3,745 | 2026-10-13 |
 
 GitHub comes exclusively from pushed benchmark commit [`e83ad9431e41ffd745384a04c49b95d8e1090691`](https://github.com/fmind/mcp-context-benchmark/tree/e83ad9431e41ffd745384a04c49b95d8e1090691): [results](https://github.com/fmind/mcp-context-benchmark/blob/e83ad9431e41ffd745384a04c49b95d8e1090691/results.json), [analyzer](https://github.com/fmind/mcp-context-benchmark/blob/e83ad9431e41ffd745384a04c49b95d8e1090691/analyze.py), and [methods](https://github.com/fmind/mcp-context-benchmark/blob/e83ad9431e41ffd745384a04c49b95d8e1090691/METHODS.md). Public raw files were compared with the local committed ref, without reading uncommitted benchmark work. The default catalog is deliberately separate from its 90-tool all catalog. Its exact read-only/focused aggregates are not interchangeable with our proportional count estimates.
 

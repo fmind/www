@@ -390,6 +390,23 @@ def _hosting_accelerators(
                 measured_completion=0,
             )
         estimate = estimate_hosting(model, chosen_node, chosen_quant, scenario)
+        if not matched_hardware:
+            # pools[0] is only a placeholder: report a reason shared by every machine that offers the plan.
+            reasons = {
+                configuration_issue(
+                    replace(inputs, node_pool_id=pool.id, quantization_id=default_quant_id, billing_plan=target_plan),
+                    check_workload=False,
+                )
+                for pool in pools
+                if any(price.plan is target_plan for price in pool.prices)
+            }
+            estimate = replace(
+                estimate,
+                compatibility_issue=reasons.pop()
+                if len(reasons) == 1
+                else f"No {family} machine in this catalog has a verified {model.name} configuration for these settings",
+                qualified=False,
+            )
         if chosen_plan is not inputs.billing_plan:
             estimate = replace(
                 estimate,

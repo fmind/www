@@ -212,7 +212,7 @@ SPECIALIZATIONS = (
         "Google • V492QQ4JJKEB",
     ),
     CertificationEntry(
-        "https://www.udemy.com/certificate/UC-XALJEh7G/",
+        "https://www.udemy.com/certificate/UC-XALJEH7G/",
         "udemy.webp",
         "AI: Reinforcement Learning",
         "Udemy • UC-XALJEH7G",

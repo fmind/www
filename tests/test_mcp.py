@@ -7,7 +7,8 @@ import json
 import pytest
 from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
-from mcp_types import CallToolResult, InputRequiredResult, TextContent
+from mcp.shared.exceptions import MCPError
+from mcp_types import INVALID_PARAMS, CallToolResult, InputRequiredResult, TextContent
 
 from www.content import article_summaries, load_articles, visible_articles
 from www.mcp import create_mcp_server, render_mcp_server_card
@@ -175,6 +176,32 @@ async def test_search_tool_filters_by_a_known_tag(mcp_server: MCPServer[None]) -
 
     with pytest.raises(ToolError, match="unknown tag 'Agents'; use one of: Agent, Coding"):
         await mcp_server.call_tool("search_articles", {"query": "agent", "tag": "Agents"})
+
+
+@pytest.mark.anyio
+async def test_tools_reject_unknown_arguments_and_advertise_closed_schemas(mcp_server: MCPServer[None]) -> None:
+    tools = await mcp_server.list_tools()
+    assert all(tool.input_schema.get("additionalProperties") is False for tool in tools)
+
+    for name, arguments in (
+        # The calculator page's query keys are not tool arguments; defaults must not apply silently.
+        ("compare_mcp_context_cost", {"server": ["memory"], "requests": 5}),
+        ("compare_mcp_context_cost", {"servers": ["memory"], "requests": 5}),
+        ("search_articles", {"query": "agents", "max_results": 1}),
+        ("get_profile", {"unexpected": 1}),
+    ):
+        with pytest.raises(ToolError, match=rf"Unknown argument\(s\) for {name}: "):
+            await mcp_server.call_tool(name, arguments)
+    with pytest.raises(ToolError, match="Unknown tool: nope"):
+        await mcp_server.call_tool("nope", {})
+
+
+@pytest.mark.anyio
+async def test_prompt_caller_mistakes_are_invalid_params(mcp_server: MCPServer[None]) -> None:
+    for name, arguments in (("assess_fit", {}), ("brief_me", {"audience": "x", "extra": "y"}), ("nope", {})):
+        with pytest.raises(MCPError) as caught:
+            await mcp_server.get_prompt(name, arguments)
+        assert caught.value.code == INVALID_PARAMS
 
 
 @pytest.mark.anyio

@@ -8,7 +8,7 @@ syndicated = "https://medium.com/@fmind/deploying-ai-agents-in-the-enterprise-us
 draft = false
 +++
 
-### **Deploying AI Agents in the Enterprise without** Losing **your Humanity u**sing ADK and Google Cloud
+### Deploying AI Agents in the Enterprise without Losing your Humanity using ADK and Google Cloud
 
 The excitement around AI agents is palpable. From automating complex workflows to providing personalized experiences, the potential is enormous. But as Data Scientists and developers rush to build proof-of-concepts, a significant hurdle emerges when it’s time to deploy these agents within a real-world organization.
 
@@ -16,7 +16,7 @@ I’ve recently been tackling these exact challenges with my customers. The goal
 
 AgentOps is uniquely challenging because it combines the inherent complexity of non-deterministic systems (like Machine Learning) with the stringent requirements of enterprise security and the need to expose these applications securely to a wide audience.
 
-In this article, we’ll explore the challenges of deploying agents in a corporate environment and dive into practical strategies using [Google Cloud Platform (GCP)](https://cloud.google.com/gcp?authuser=1), based on the findings and code in my [GitHub Repository](https://github.com/fmind/search-agent/tree/main/search_agent).
+In this article, we’ll explore the challenges of deploying agents in a corporate environment and dive into practical strategies using [Google Cloud Platform (GCP)](https://cloud.google.com/gcp), based on the findings and code in my [GitHub Repository](https://github.com/fmind/search-agent/tree/main/search_agent).
 
 ![Source: Gemini App](/static/img/articles/deploying-ai-agents-in-the-enterprise-using-adk-and-google-cloud/cover.webp)
 
@@ -26,11 +26,11 @@ Source: Gemini App
 
 Deploying an application in an organization isn’t just about making the code run on a server. It’s about integrating it seamlessly and securely into the existing IT ecosystem. This means considering:
 
-- **Networking:** Your agent likely needs to live within a [Virtual Private Cloud (VPC)](https://cloud.google.com/vpc/docs/overview?authuser=1), behind firewalls, and potentially protected by a [Web Application Firewall (WAF)](https://cloud.google.com/security/products/waf?authuser=1).
+- **Networking:** Your agent likely needs to live within a [Virtual Private Cloud (VPC)](https://cloud.google.com/vpc/docs/overview), behind firewalls, and potentially protected by a [Web Application Firewall (WAF)](https://cloud.google.com/security/products/waf).
 - **Authentication Mechanisms:** How do users access the agent? Organizations often use complex identity providers (IdPs) leveraging protocols like [OIDC (OpenID Connect)](https://openid.net/connect/) or [SAML (Security Assertion Markup Language)](https://en.wikipedia.org/wiki/Security_Assertion_Markup_Language).
 - **Security and Risk:** Exposing an unauthenticated application on the public internet is a recipe for disaster, potentially leaking sensitive data or allowing unauthorized access to internal systems.
 
-A critical aspect of AgentOps is **identity propagation**. If an agent is designed to access a user’s resources (like reading their emails or calendar), it must be able to verify _who_ the user is. This requires robust authentication that connects the user’s identity from the front-end all the way through to the agent’s backend logic, often managed through systems like [IAM (Identity and Access Management)](https://cloud.google.com/iam/docs/overview?authuser=1).
+A critical aspect of AgentOps is **identity propagation**. If an agent is designed to access a user’s resources (like reading their emails or calendar), it must be able to verify _who_ the user is. This requires robust authentication that connects the user’s identity from the front-end all the way through to the agent’s backend logic, often managed through systems like [IAM (Identity and Access Management)](https://cloud.google.com/iam/docs/overview).
 
 Furthermore, a production-ready agent needs multiple exposition mechanisms:
 
@@ -46,7 +46,7 @@ Achieving all three securely is the core of the AgentOps exposition challenge.
 
 ### Exploring Deployment Strategies on GCP 🚀
 
-Google Cloud provides both powerful models (like [Gemini](https://deepmind.google/technologies/gemini/), accessed via [Vertex AI](https://cloud.google.com/vertex-ai?authuser=1)) and robust infrastructure solutions. We explored several paths to deploy a sample search agent, evaluating them based on flexibility, security, and ease of use.
+Google Cloud provides both powerful models (like [Gemini](https://deepmind.google/technologies/gemini/), accessed via [Vertex AI](https://cloud.google.com/vertex-ai)) and robust infrastructure solutions. We explored several paths to deploy a sample search agent, evaluating them based on flexibility, security, and ease of use.
 
 The architecture diagram below illustrates the two main paths I evaluated for secure deployment on GCP:
 
@@ -91,7 +91,7 @@ The easiest path is often the most dangerous. Cloud providers make it simple to 
 
 #### Option 2: The Opinionated Path — Vertex AI Agent Engine 🤖
 
-[Vertex AI Agent Engine](https://cloud.google.com/vertex-ai/generative-ai/docs/agent-engine/overview?authuser=1) offers a managed, opinionated approach to deploying agents (Path 2 in the architecture diagram).
+[Vertex AI Agent Engine](https://cloud.google.com/vertex-ai/generative-ai/docs/agent-engine/overview) offers a managed, opinionated approach to deploying agents (Path 2 in the architecture diagram).
 
 ```justfile
 # deploy to agent engine
@@ -108,7 +108,7 @@ List of Agents on Vertex AI Agent Engine
 
 - **Out-of-the-box:** Streamlines the deployment process.
 - **Monitoring:** Provides a dedicated console dashboard to monitor agent performance and sessions.
-- **Authentication:** Offers relatively easy mechanisms to [authenticate](https://cloud.google.com/vertex-ai/generative-ai/docs/agent-engine/manage/access?authuser=1) and use the agent from other applications via REST API or the [Python SDK](https://cloud.google.com/vertex-ai/generative-ai/docs/agent-engine/use/adk?authuser=1#vertex-ai-sdk-for-python).
+- **Authentication:** Offers relatively easy mechanisms to [authenticate](https://cloud.google.com/vertex-ai/generative-ai/docs/agent-engine/manage/access) and use the agent from other applications via REST API or the [Python SDK](https://cloud.google.com/vertex-ai/generative-ai/docs/agent-engine/use/adk#vertex-ai-sdk-for-python).
 
 ![Search Agent running on Vertex AI Agent Engine](/static/img/articles/deploying-ai-agents-in-the-enterprise-using-adk-and-google-cloud/05.webp)
 
@@ -118,13 +118,13 @@ Search Agent running on Vertex AI Agent Engine
 
 - **Flexibility:** You cannot deploy a custom Web UI or an A2A endpoint directly; it only exposes a REST API.
 - **Control:** Less control over the underlying resources.
-- **Pricing:** The [pricing model](https://cloud.google.com/vertex-ai/pricing?authuser=1#agent_engine) per hardware is less flexible compared to request-based solutions.
+- **Pricing:** The [pricing model](https://cloud.google.com/vertex-ai/pricing#agent_engine) per hardware is less flexible compared to request-based solutions.
 
 **Verdict:** A great starting point for deploying API-based agents, but a lack of flexibility for UI and A2A exposition. As the product becomes more mature, it should become the go-to option on GCP.
 
 #### Option 3: The Sweet Spot — Cloud Run 🏃‍♀️
 
-[Cloud Run](https://cloud.google.com/run/docs/overview/what-is-cloud-run?authuser=1) is Google Cloud’s serverless container platform, and it emerged as the best trade-off for deploying agents today (Path 1 in the architecture diagram).
+[Cloud Run](https://cloud.google.com/run/docs/overview/what-is-cloud-run) is Google Cloud’s serverless container platform, and it emerged as the best trade-off for deploying agents today (Path 1 in the architecture diagram).
 
 ```justfile
 # deploy to cloud run
@@ -143,7 +143,7 @@ List of Services deployed on Cloud Run
 - **Simplicity:** Cloud Run is incredibly easy and convenient to use, often requiring just a single CLI command for deployment.
 - **Total Control:** You manage everything, from the hardware used (CPU, GPU) to scalability settings and exposition mechanisms.
 - **Versatility:** You can expose a Web UI, an API server, and an A2A endpoint all from the _same_ instance, simplifying maintenance.
-- **Pricing:** The [pricing](https://cloud.google.com/run/pricing?hl=en&authuser=1) is highly flexible — you pay per resource consumed, and it can scale down to zero.
+- **Pricing:** The [pricing](https://cloud.google.com/run/pricing?hl=en) is highly flexible — you pay per resource consumed, and it can scale down to zero.
 - **Ecosystem:** Cloud Run integrates seamlessly with other GCP services and provides excellent operational features: Dashboards, Logging, Revision Management, SLOs, and Alerting.
 
 ![Agent running on Cloud Run](/static/img/articles/deploying-ai-agents-in-the-enterprise-using-adk-and-google-cloud/07.webp)
@@ -154,7 +154,7 @@ Agent running on Cloud Run
 
 #### Option 4: The Future — AgentSpace 🔮
 
-The main problem of AgentOps, as discussed, is exposition and identity management. This is where [Google AgentSpace](https://cloud.google.com/products/agentspace?hl=en&authuser=1) comes in.
+The main problem of AgentOps, as discussed, is exposition and identity management. This is where [Google AgentSpace](https://cloud.google.com/products/agentspace?hl=en) comes in.
 
 AgentSpace is an intranet search, AI assistant, and agentic platform. On top of that, it can solve our challenges by adding an exposition and identity layer on top of Vertex AI Agent Engine, complementing it perfectly. Over time, it might become the best solution for integrating agents while developers can focus on building the backend systems.
 
@@ -170,11 +170,11 @@ When choosing Cloud Run, we still need a way to secure it. We want a single solu
 
 While options like implementing custom authentication within the application using OIDC or SAML exist, they add significant complexity to the codebase.
 
-For the repository, we chose Google’s [**Identity-Aware Proxy (IAP)**](https://cloud.google.com/iap/docs/concepts-overview?authuser=1).
+For the repository, we chose Google’s [**Identity-Aware Proxy (IAP)**](https://cloud.google.com/iap/docs/concepts-overview).
 
 #### Why IAP?
 
-IAP is a [zero-trust](https://cloud.google.com/beyondcorp?authuser=1) access solution that allows you to manage access to applications running on GCP. It acts as a gatekeeper (as shown in Path 1 of the architecture diagram), verifying user identity and context before authorizing access to the application.
+IAP is a [zero-trust](https://cloud.google.com/beyondcorp) access solution that allows you to manage access to applications running on GCP. It acts as a gatekeeper (as shown in Path 1 of the architecture diagram), verifying user identity and context before authorizing access to the application.
 
 - **Simplicity:** It works great out of the box without requiring complex changes to the application code.
 - **Versatility:** It provides authentication both for end-users (via browser redirects) and services (via headers).
@@ -188,7 +188,7 @@ Configuring IAP for a Cloud Run service is straightforward. You enable IAP on th
 
 Identity Access Proxy (IAP) Management on Cloud Run
 
-When a user tries to access the Web UI, IAP intercepts the request, authenticates the user (usually via Google Sign-In, though [external identities](https://cloud.google.com/iap/docs/external-identities?authuser=1) are supported), and grants access if authorized.
+When a user tries to access the Web UI, IAP intercepts the request, authenticates the user (usually via Google Sign-In, though [external identities](https://cloud.google.com/iap/docs/external-identities) are supported), and grants access if authorized.
 
 ![Google Sign-In Page to Authenticate the End User](/static/img/articles/deploying-ai-agents-in-the-enterprise-using-adk-and-google-cloud/10.webp)
 
@@ -198,11 +198,11 @@ Google Sign-In Page to Authenticate the End User
 
 Agent Web UI with ADK after Sign-In
 
-You can find more details in the [Google documentation on securing Cloud Run with IAP](https://cloud.google.com/run/docs/securing/identity-aware-proxy-cloud-run?authuser=1).
+You can find more details in the [Google documentation on securing Cloud Run with IAP](https://cloud.google.com/run/docs/securing/identity-aware-proxy-cloud-run).
 
 #### Service Authentication (API and A2A) 🤝
 
-For [programmatic access](https://cloud.google.com/run/docs/authenticating/developers?authuser=1) (API calls or A2A communication), the authentication flow is different. Services typically use [service accounts](https://cloud.google.com/iam/docs/service-accounts?authuser=1) and must provide an OpenID Connect (OIDC) token (a [JWT](https://jwt.io/introduction)) in the `Authorization` header of the request.
+For [programmatic access](https://cloud.google.com/run/docs/authenticating/developers) (API calls or A2A communication), the authentication flow is different. Services typically use [service accounts](https://cloud.google.com/iam/docs/service-accounts) and must provide an OpenID Connect (OIDC) token (a [JWT](https://jwt.io/introduction)) in the `Authorization` header of the request.
 
 IAP validates this token (which must be signed by Google and have the correct audience — the Cloud Run URL or IAP Client ID) before allowing the request to reach the agent.
 

@@ -69,7 +69,7 @@ def test_article_sections_follow_normalized_h2_and_unique_anchors(tmp_path: Path
     assert [section.label for section in item.sections] == ["A bold link & code"] * 2
     assert len({section.identifier for section in item.sections}) == 2
     for section in item.sections:
-        assert f'<h2 id="{section.identifier}">' in item.html
+        assert f'<h2 id="{section.identifier}" aria-labelledby="{section.identifier}_text">' in item.html
 
 
 @pytest.mark.parametrize(("body", "count"), [("Body only.", 0), ("## One section\n\nBody.", 1)])
@@ -95,6 +95,7 @@ def test_parse_article_rejects_unknown_frontmatter_with_source_line(tmp_path: Pa
         ({"updated": '"2026-07-01"'}, "must not precede"),
         ({"description": '"A teaser cut off by an import…"'}, "complete sentence"),
         ({"description": '"A teaser cut off by an import..."'}, "complete sentence"),
+        ({"tags": '["Agent", "LLM", "Agent"]'}, "duplicate tag 'Agent'"),
     ],
 )
 def test_parse_article_rejects_invalid_metadata(tmp_path: Path, metadata: dict[str, str], message: str) -> None:
@@ -157,6 +158,31 @@ def test_parse_article_allows_a_host_that_only_prefixes_the_site_name(tmp_path: 
     assert item.canonical == "https://www.fmind.dev.example/original"
 
 
+@pytest.mark.parametrize("name", ["cover.jpeg", "cover.JPG", "cover.gif"])
+def test_cover_accepts_every_source_format_that_images_derive_from(tmp_path: Path, name: str) -> None:
+    static = assets(tmp_path)
+    directory = static / "img" / "articles" / "example"
+    (directory / "cover.webp").unlink()
+    (directory / name).write_bytes(image())
+
+    item = parse_article("content/articles/example.md", source(), static)
+
+    assert item.image_url.endswith(f"/static/img/articles/example/{name}")
+
+
+def test_cover_prefers_webp_and_names_the_accepted_formats(tmp_path: Path) -> None:
+    static = assets(tmp_path)
+    directory = static / "img" / "articles" / "example"
+    (directory / "cover.png").write_bytes(image())
+    assert parse_article("content/articles/example.md", source(), static).image_url.endswith("/cover.webp")
+
+    (directory / "cover.webp").unlink()
+    (directory / "cover.png").unlink()
+    (directory / "cover.tiff").write_bytes(image())
+    with pytest.raises(ArticleError, match=r"missing article cover .*expected one of cover\.webp, .*cover\.jpeg"):
+        parse_article("content/articles/example.md", source(), static)
+
+
 def test_published_content_uses_every_tag_and_defines_its_color() -> None:
     used_tags = {tag for article in load_articles().all for tag in article.tags}
     names = tag_names()
@@ -183,8 +209,8 @@ Text with ~~old~~ syntax and a footnote.[^1]
 """
     item = parse_article("content/articles/example.md", source(body), assets(tmp_path))
 
-    assert '<h2 id="heading">' in item.html
-    assert '<h3 id="detail">' in item.html
+    assert '<h2 id="heading" aria-labelledby="heading_text">' in item.html
+    assert '<h3 id="detail" aria-labelledby="detail_text">' in item.html
     assert "<del>old</del>" in item.html
     assert "footnote" in item.html
     assert "<script>" not in item.html
@@ -393,6 +419,7 @@ def test_inline_images_stay_inline_and_explicit_mp4_becomes_video(tmp_path: Path
     static = assets(tmp_path)
     directory = static / "img" / "articles" / "example"
     (directory / "icon.png").write_bytes(image(16, 16))
+    (directory / "demo.mp4").write_bytes(b"\0\0\0\x18ftypmp42")
     body = """See ![icon](/static/img/articles/example/icon.png) inline.
 
 ![editor demo](/static/img/articles/example/demo.mp4)
@@ -404,6 +431,31 @@ def test_inline_images_stay_inline_and_explicit_mp4_becomes_video(tmp_path: Path
     assert '<img decoding="async" width="16" height="16"' in item.html
     assert "<video muted loop playsinline autoplay controls" in item.html
     assert 'aria-label="editor demo"' in item.html
+
+
+@pytest.mark.parametrize(
+    ("markdown", "message"),
+    [
+        (
+            "![demo](/static/img/articles/example/missing.mp4)",
+            r"missing body media '/static/img/articles/example/missing\.mp4'",
+        ),
+        ("![chart](/static/img/articles/example/missing.png)", "missing body media"),
+        (
+            "![chart](https://example.com/chart.png)",
+            r"body media 'https://example\.com/chart\.png' must be a file under",
+        ),
+        ("![chart](figure.png)", r"body media 'figure\.png' must be a file under /static/img/articles/"),
+        (
+            "![](/static/img/articles/example/figure.png)",
+            r"body media '/static/img/articles/example/figure\.png' needs alt text",
+        ),
+        ("[![ ](/static/img/articles/example/figure.png)](https://example.com)", "needs alt text"),
+    ],
+)
+def test_body_media_must_be_local_existing_and_described(tmp_path: Path, markdown: str, message: str) -> None:
+    with pytest.raises(ArticleError, match=message):
+        parse_article("content/articles/example.md", source(markdown), assets(tmp_path))
 
 
 def test_load_articles_sorts_and_filters_drafts(tmp_path: Path) -> None:
@@ -437,9 +489,21 @@ def test_real_archive_loads_and_has_no_public_drafts() -> None:
     assert all(item.html.strip() and item.reading_minutes >= 1 for item in collection.all)
     assert not any(item.draft for item in collection.all)
     assert sum(item.html.count("<figure>") for item in archived) == 306
-    assert sum(item.html.count("<figcaption>") for item in archived) == 248
+    assert sum(item.html.count("<figcaption>") for item in archived) == 256
     assert sum(item.html.count('<pre class="chroma">') for item in archived) == 156
     assert not any(re.search(r"<a\b[^>]*>\s*</a>", item.html) for item in collection.all)
+
+    for item in collection.all:
+        prose = re.sub(r"<pre\b.*?</pre>|<code>.*?</code>", "", item.html, flags=re.DOTALL)
+        # Unbalanced or space-flanked emphasis from imports renders as literal markers.
+        assert "**" not in prose, item.slug
+        # Links go to their targets, not through Google Search, its redirector, or the author's account.
+        hrefs = re.findall(r'href="([^"]+)"', item.html)
+        assert not [href for href in hrefs if re.match(r"https://www\.google\.com/(search|url)\b", href)], item.slug
+        assert not [href for href in hrefs if "authuser=" in href], item.slug
+        # Heading ids, their text-span ids and footnote ids must stay unique per page.
+        identifiers = re.findall(r'\bid="([^"]+)"', item.html)
+        assert len(identifiers) == len(set(identifiers)), item.slug
 
     for item in collection.all:
         previous_level = 1  # The article template supplies the page's h1.
@@ -452,8 +516,10 @@ def test_real_archive_loads_and_has_no_public_drafts() -> None:
 @pytest.mark.parametrize("body", ["## Setup\n\n## Setup-1\n\n## Setup", "## Setup\n\n## Setup\n\n## Setup-1"])
 def test_heading_links_do_not_collide_with_literal_suffixes(tmp_path: Path, body: str) -> None:
     item = parse_article("content/articles/example.md", source(body), assets(tmp_path))
-    identifiers = re.findall(r'<h2 id="([^"]+)">', item.html)
+    identifiers = re.findall(r'<h2 id="([^"]+)"', item.html)
     assert len(identifiers) == len(set(identifiers)) == 3
+    every_id = re.findall(r'\bid="([^"]+)"', item.html)
+    assert len(every_id) == len(set(every_id)) == 6
     for identifier in identifiers:
         assert item.html.count(f'href="#{identifier}"') == 1
 
@@ -464,19 +530,35 @@ def test_heading_links_preserve_formatting_and_authored_links(tmp_path: Path) ->
         source("## A **bold** [link](https://example.com)\n\n## A **bold** [link](https://example.com)"),
         assets(tmp_path),
     )
-    headings = re.findall(r'<h2 id="([^"]+)">(.*?)</h2>', item.html)
+    headings = re.findall(
+        r'<h2 id="([^"]+)" aria-labelledby="\1_text"><span id="\1_text">(.*?)</span>(<a [^>]*>.*?</a>)</h2>',
+        item.html,
+    )
     assert len(headings) == 2
-    for identifier, heading in headings:
-        assert f'href="#{identifier}" class="heading-anchor"' in heading
-        # The accessible name is the rendered text, never the Markdown source or its URL.
-        assert 'aria-label="Link to section: A bold link"' in heading
-        assert "🔗" not in heading
-        assert 'aria-hidden="true" focusable="false"' in heading
-        assert re.sub(r"<[^>]+>", "", heading) == "A bold link"
-        assert "<strong>bold</strong>" in heading
-        assert '<a href="https://example.com">link</a>' in heading
-        assert heading.count("<a ") == heading.count("</a>") == 2
+    for identifier, text, anchor in headings:
+        # The heading is named by its text span alone, so the anchor's label never joins its name.
+        assert re.sub(r"<[^>]+>", "", text) == "A bold link"
+        assert "<strong>bold</strong>" in text
+        assert '<a href="https://example.com">link</a>' in text
+        assert text.count("<a ") == text.count("</a>") == 1
+        assert anchor.startswith(f'<a href="#{identifier}" class="heading-anchor"')
+        # The link name is the rendered text, never the Markdown source or its URL.
+        assert 'aria-label="Link to section: A bold link"' in anchor
+        assert "🔗" not in anchor
+        assert 'aria-hidden="true" focusable="false"' in anchor
     assert headings[0][0] != headings[1][0]
+
+
+def test_heading_ids_never_reuse_ids_owned_by_the_article_page(tmp_path: Path) -> None:
+    body = "## Consent\n\n## Main content\n\n## Related articles\n\n## Consent"
+    item = parse_article("content/articles/example.md", source(body), assets(tmp_path))
+
+    assert re.findall(r'<h2 id="([^"]+)"', item.html) == [
+        "consent-1",
+        "main-content-1",
+        "related-articles-1",
+        "consent-2",
+    ]
 
 
 def test_mcp_section_titles_use_rendered_heading_text(tmp_path: Path) -> None:

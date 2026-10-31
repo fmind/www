@@ -56,26 +56,34 @@ test(
       await expect(banner.locator("p").first()).toHaveText(
         "With your consent, Google Analytics measures which pages help visitors so I can improve them.",
       );
+      const settings = page.getByRole("button", { name: "Cookie settings", exact: true });
       await banner.getByRole("button", { name: "Reject", exact: true }).click();
       await expect(banner).toBeHidden();
+      // Focus leaves the hidden banner for the control that reopens it, without scrolling there.
+      await expect(settings).toBeFocused();
+      expect(await page.evaluate(() => scrollY)).toBe(0);
       expect(await page.evaluate(() => localStorage.getItem("fmind-consent"))).toBe("denied");
       await page.reload();
       await expect(banner).toBeHidden();
       await page.locator("footer").getByRole("link", { name: "Privacy", exact: true }).click();
       await expect(page).toHaveURL(/\/privacy$/);
       expect(google).toEqual([]);
-      const settings = page.getByRole("button", { name: "Cookie settings", exact: true });
       await settings.click();
       await banner.getByRole("button", { name: "Accept", exact: true }).click();
       await expect.poll(() => google.length).toBe(1);
       expect(await page.evaluate(() => localStorage.getItem("fmind-consent"))).toBe("granted");
+      // gtag.js checks this flag before sending; consent "denied" alone still sends cookieless pings.
+      const optOut = "ga-disable-" + new URL(google[0]).searchParams.get("id");
+      expect(await page.evaluate((flag) => window[flag], optOut)).toBe(false);
       for (const choice of ["Reject", "Accept"]) {
         await settings.click();
         await banner.getByRole("button", { name: choice, exact: true }).click();
+        await expect(settings).toBeFocused();
         const consent = await page.evaluate(() =>
           window.dataLayer.filter((entry) => entry[0] === "consent").at(-1)[2].analytics_storage
         );
         expect(consent).toBe(choice === "Accept" ? "granted" : "denied");
+        expect(await page.evaluate((flag) => window[flag], optOut)).toBe(choice === "Reject");
       }
       expect(google).toHaveLength(1);
       await settings.click();
@@ -86,7 +94,11 @@ test(
         await settings.click();
         await expect(banner).toBeVisible();
         await expect(banner.getByRole("button", { name: "Accept", exact: true })).toBeFocused();
-        await banner.getByRole("button", { name: "Reject", exact: true }).click();
+        await page.keyboard.press("Tab");
+        await expect(banner.getByRole("button", { name: "Reject", exact: true })).toBeFocused();
+        await page.keyboard.press("Enter");
+        await expect(banner).toBeHidden();
+        await expect(settings).toBeFocused();
       }
       expect(google).toHaveLength(1);
       await page.setViewportSize({ width: 320, height: 568 });
@@ -678,6 +690,22 @@ test("calculator reports network failure and recovers on retry", async ({ page }
   await page.unroute("**/sites/llm-self-hosting/?*");
   await page.locator("#update-comparison").click();
   await expect(page.locator("[data-update-status]")).toHaveText("Comparison updated.");
+});
+
+test("calculator actions still work from a non-canonical calculator path", async ({ page }) => {
+  for (const path of ["/sites//llm-self-hosting/?mode=advanced", "/sites/llm%2Dself-hosting/?mode=advanced"]) {
+    await page.goto(path);
+    await page.locator("#requests").fill("234");
+    await page.locator("#update-comparison").click();
+    // The update falls back to normal navigation on the canonical calculator URL.
+    await expect(page).toHaveURL(/\/sites\/llm-self-hosting\/\?.*requests=234/);
+    await expect(page.locator("#requests")).toHaveValue("234");
+    // Once canonical, progressive enhancement updates in place again.
+    await page.locator("#requests").fill("345");
+    await page.locator("#update-comparison").click();
+    await expect(page.locator("[data-update-status]")).toHaveText("Comparison updated.");
+    expect(new URL(page.url()).searchParams.get("requests")).toBe("345");
+  }
 });
 
 test("calculator keeps edits made while an update is in flight", async ({ page }) => {
@@ -1306,6 +1334,22 @@ test("article heading links copy the full section URL", async ({ page, context }
   await expect(page.getByRole("status")).toHaveText("Link copied");
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(destination);
   await expect(page).toHaveURL(destination);
+});
+
+test("article headings are named by their text, not by their section links", async ({ page }) => {
+  await page.goto("/articles/cag-vs-rag-choosing-the-right-strategy-for-your-ai-application/");
+  const links = page.locator(".article-page .prose .heading-anchor");
+  const count = await links.count();
+  expect(count).toBeGreaterThan(1);
+  for (let index = 0; index < count; index += 1) {
+    const link = links.nth(index);
+    const label = (await link.getAttribute("aria-label")).replace(/^Copy link to section: /, "");
+    // The link stays inside its heading, which takes its name from the text span alone.
+    const heading = link.locator("..");
+    expect(await heading.evaluate((element) => /^H[2-6]$/.test(element.tagName))).toBe(true);
+    await expect(heading).toHaveAccessibleName(label);
+    await expect(page.getByRole("heading", { name: label, exact: true })).toHaveCount(1);
+  }
 });
 
 test("article anchors remain useful when clipboard access is denied", async ({ page }) => {

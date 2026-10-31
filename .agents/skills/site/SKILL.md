@@ -8,10 +8,10 @@ metadata:
 
 # Decision Pages
 
-Build within the existing Litestar/Jinja application, with Python as the sole formula implementation.
+Build within the existing Litestar/Jinja application, with Python as the sole formula implementation. Keep each tool minimal: few inputs, one headline answer, and every section open (no `<details>`), with setup notes directly above "Method and limitations". Add an input only when the headline answer needs it, and reuse `src/www/sites/data.py:API_BASELINES` instead of a second price table.
 
 1. Verify volatile prices, licenses, and benchmarks against current primary sources. Store immutable dated snapshots under `src/www/sites/`; separate sourced facts from editable assumptions.
-1. Register the page in `src/www/data.py:SITE_PAGES`, then wire its route, template, metadata, and view through `src/www/app.py` and `src/www/pages.py`. The registry feeds sitemap, JSON, LLM text, MCP, and article relationships.
+1. Register the page in `src/www/data.py:SITE_PAGES`, then wire its route, template, metadata, and view through `src/www/app.py`, `src/www/pages.py`, and `src/www/rendering.py:PageTemplate`. The registry feeds sitemap, JSON, LLM text, MCP, and article relationships.
 1. Keep typed parsing, formulas, and view composition in their owning `src/www/sites/` modules. Reject non-finite/out-of-range values; page fallback defaults must show validation messages, while MCP invalid input must fail. Round up whole billable resources.
 1. Keep hosting modules in place; independent tools live in a named subpackage such as `mcp_context_cost/`. Preserve its measurement provenance and present reference token counts as estimates, never actual provider usage.
 1. Reuse templates, macros, and the central renderer. Use a native GET form for shareable scenarios; JavaScript provides progressive enhancement only. Keep assumptions, units, source dates, capacity limits, and pilot requirements visible.

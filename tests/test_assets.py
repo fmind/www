@@ -69,7 +69,7 @@ def test_load_assets_fails_without_generated_stylesheet(tmp_path: Path) -> None:
     static = static_tree(tmp_path)
     (static / "dist" / "styles.css").unlink()
 
-    with pytest.raises(RuntimeError, match="generated stylesheet"):
+    with pytest.raises(RuntimeError, match=r"generated stylesheet .*; run `mise run build:css`$"):
         load_application_assets(static)
 
 

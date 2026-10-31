@@ -35,7 +35,7 @@ exclude_path = [
   "\\.json$",
   "\\.toml$",
   "\\.yml$",
-  "infra/",
+  "^(\\./)?infra/",
   "src/www/templates/",
   "static/dist/",
   "tmp/",

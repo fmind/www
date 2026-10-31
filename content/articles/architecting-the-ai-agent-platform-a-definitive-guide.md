@@ -124,7 +124,7 @@ To be truly autonomous, the runtime needs specific capabilities that ease develo
 You don’t always need a heavy Airflow setup with DAGs, but you do need:
 
 - **Task Schedulers / Event Buses:** To trigger agents asynchronously (e.g., “New Ticket Created” -\> “Wake up Triage Agent”).
-- **API Management:** Exposing agents via standard Gateways like [Apigee](https://cloud.google.com/apigee?authuser=1) or [Gravitee](https://www.gravitee.io/).
+- **API Management:** Exposing agents via standard Gateways like [Apigee](https://cloud.google.com/apigee) or [Gravitee](https://www.gravitee.io/).
 
 **Standardization is Key:** Practitioners are heavily encouraged to adopt standards like [**MCP (Model Context Protocol)**](https://modelcontextprotocol.io/) and [**A2A (Agent-to-Agent)**](https://a2aprotocol.ai/) interfaces. Your platform cannot be an island; it must act as a network where your agents can call tools or even _other_ agents to complete complex tasks.
 
@@ -158,7 +158,7 @@ Source: Fmind.dev
 2. **Operational (Structured):** Transactional data (SQL DBs) required to _do_ work (e.g., update a CRM record). Builders should favor APIs over direct DB access here to ensure business logic integrity.
 3. **Data Lake (Analytical):** Historical data for insights and decision making. Requires a Semantic Layer and Data Catalog so the agent understands what “Revenue” actually means before running a query.
 
-**The Sync Problem:** Syncing these systems is painful. Each sync risks data duplication and inconsistency. We are moving toward a convergence of OLAP and OLTP with systems like [Google AlloyDB](https://cloud.google.com/products/alloydb?authuser=1) or [Databricks Lakebase](https://www.databricks.com/product/lakebase) to eliminate the copy/desync nightmare.
+**The Sync Problem:** Syncing these systems is painful. Each sync risks data duplication and inconsistency. We are moving toward a convergence of OLAP and OLTP with systems like [Google AlloyDB](https://cloud.google.com/products/alloydb) or [Databricks Lakebase](https://www.databricks.com/product/lakebase) to eliminate the copy/desync nightmare.
 
 ### 6. Observability
 

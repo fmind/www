@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
+import { execFile } from "node:child_process";
 import { access, mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 
 import * as harness from "./lighthouse.mjs";
 
@@ -162,6 +164,36 @@ test("prepareArtifactDirectories rejects a symlink before creating through it", 
     /symbolic link|outside.*tmp/u,
   );
   await assert.rejects(access(join(external, "artifacts")), { code: "ENOENT" });
+});
+
+test("prepareArtifactDirectories clears reports left by an earlier run", async (context) => {
+  await mkdir(REPOSITORY_TMP, { recursive: true });
+  const fixture = await mkdtemp(join(REPOSITORY_TMP, "lighthouse-stale-test-"));
+  context.after(async () => {
+    await rm(fixture, { force: true, recursive: true });
+  });
+  await mkdir(join(fixture, "reports"));
+  const stale = join(fixture, "reports", "003-sitemap-agents-desktop.json");
+  await writeFile(stale, "{}", "utf8");
+
+  const { reportsDirectory } = await harness.prepareArtifactDirectories(fixture);
+
+  await access(reportsDirectory);
+  await assert.rejects(access(stale), { code: "ENOENT" });
+});
+
+test("the harness runs when Node starts it through a symbolic link", async (context) => {
+  await mkdir(REPOSITORY_TMP, { recursive: true });
+  const fixture = await mkdtemp(join(REPOSITORY_TMP, "lighthouse-entry-test-"));
+  context.after(async () => {
+    await rm(fixture, { force: true, recursive: true });
+  });
+  const link = join(fixture, "lighthouse.mjs");
+  await symlink(join(REPOSITORY_ROOT, "scripts", "lighthouse.mjs"), link);
+
+  // A silent exit 0 here would let a qualification pass without auditing a page.
+  const { stdout } = await promisify(execFile)(process.execPath, [link, "--help"], { timeout: 30_000 });
+  assert.match(stdout, /--base-url/u);
 });
 
 test("parseSitemapPaths validates canonical pages and retargets only their paths", () => {
@@ -354,7 +386,7 @@ test("sitemap accepts the canonical privacy and agent pages", () => {
   }
 });
 
-test("runAudit retries once on NO_NAVSTART and does not retry score failures", async (context) => {
+test("runAudit retries once on NO_NAVSTART and does not retry other score failures", async (context) => {
   await mkdir(REPOSITORY_TMP, { recursive: true });
   const fixture = await mkdtemp(join(REPOSITORY_TMP, "lighthouse-retry-test-"));
   context.after(async () => {
@@ -414,11 +446,239 @@ test("runAudit retries once on NO_NAVSTART and does not retry score failures", a
       const outputArgument = arguments_.find((item) => item.startsWith("--output-path="));
       const outputPath = outputArgument.slice("--output-path=".length);
       const report = perfectReport(audit);
-      report.categories.performance.score = 0.95;
+      report.categories.accessibility.score = 0.95;
       await writeFile(outputPath, JSON.stringify(report), "utf8");
       return { code: 0, signal: null, stderr: "", stdout: "", timedOut: false };
     },
   );
   assert.equal(scoreFailureCalls, 1);
   assert.equal(unrecovered.passed, false);
+  assert.equal(unrecovered.performanceRuns, undefined);
+});
+
+test("runAudit keeps only the tail of a failed Lighthouse debug stream", async (context) => {
+  await mkdir(REPOSITORY_TMP, { recursive: true });
+  const fixture = await mkdtemp(join(REPOSITORY_TMP, "lighthouse-detail-test-"));
+  context.after(async () => {
+    await rm(fixture, { force: true, recursive: true });
+  });
+  const artifactDirectories = await harness.prepareArtifactDirectories(fixture);
+  const audit = {
+    artifact: "reports/001-sitemap-home-mobile.json",
+    formFactor: "mobile",
+    index: 1,
+    path: "/",
+    phase: "sitemap",
+    repeat: 1,
+    url: "https://candidate.example/",
+  };
+  const debugStream = `${"LH:status Loading page\n".repeat(1000)}Error: PROTOCOL_TIMEOUT\n    at Driver.sendCommand`;
+
+  const result = await harness.runAudit(
+    audit,
+    BASE_URL,
+    artifactDirectories,
+    { chromiumPath: "/usr/bin/chromium" },
+    async () => ({ code: 1, signal: null, stderr: debugStream, stdout: "", timedOut: false }),
+  );
+
+  assert.equal(result.passed, false);
+  const [executionError] = result.errors;
+  assert.match(executionError, /^lighthouse exited with code 1: …/u);
+  assert.match(executionError, /Error: PROTOCOL_TIMEOUT\n {4}at Driver\.sendCommand$/u);
+  assert.ok(executionError.length < 2200, `failure detail is ${executionError.length} characters`);
+  assert.equal(
+    harness.describeFailure({ ...audit, errors: ["performance score 0.99", "agentic-browsing\nscore 0.5"] }),
+    "1: mobile / run 1 — performance score 0.99; agentic-browsing score 0.5",
+  );
+});
+
+const MEDIAN_AUDIT = {
+  artifact: "reports/002-sitemap-articles-mobile.json",
+  formFactor: "mobile",
+  index: 2,
+  path: "/articles/",
+  phase: "sitemap",
+  repeat: 1,
+  url: "https://candidate.example/articles/",
+};
+
+function reportWith(scores, extra = {}) {
+  const report = perfectReport(MEDIAN_AUDIT);
+  for (const [category, score] of Object.entries(scores)) report.categories[category].score = score;
+  return { ...report, ...extra };
+}
+
+// Plays one scripted Lighthouse report per call and records where each was written.
+function scriptedLighthouse(reports) {
+  const outputs = [];
+  async function lighthouse(_command, arguments_) {
+    const report = reports[outputs.length];
+    const outputPath = arguments_.find((item) => item.startsWith("--output-path=")).slice("--output-path=".length);
+    outputs.push(outputPath);
+    assert.ok(report, `unexpected Lighthouse run ${outputs.length}`);
+    await writeFile(outputPath, JSON.stringify(report), "utf8");
+    return report.runtimeError
+      ? { code: 1, signal: null, stderr: report.runtimeError.code, stdout: "", timedOut: false }
+      : { code: 0, signal: null, stderr: "", stdout: "", timedOut: false };
+  }
+  return { lighthouse, outputs };
+}
+
+async function medianFixture(context) {
+  await mkdir(REPOSITORY_TMP, { recursive: true });
+  const fixture = await mkdtemp(join(REPOSITORY_TMP, "lighthouse-median-test-"));
+  context.after(async () => {
+    await rm(fixture, { force: true, recursive: true });
+  });
+  return harness.prepareArtifactDirectories(fixture);
+}
+
+test("runAudit judges a performance-only miss by the median of three kept runs", async (context) => {
+  const artifactDirectories = await medianFixture(context);
+  const { lighthouse, outputs } = scriptedLighthouse([
+    reportWith({ performance: 0.97 }),
+    reportWith({}),
+    reportWith({}),
+  ]);
+
+  const result = await harness.runAudit(
+    MEDIAN_AUDIT,
+    BASE_URL,
+    artifactDirectories,
+    { chromiumPath: "/usr/bin/chromium" },
+    lighthouse,
+  );
+
+  assert.equal(outputs.length, 3);
+  assert.equal(result.passed, true);
+  assert.deepEqual(result.errors, []);
+  assert.equal(result.scores.performance, 1);
+  assert.equal(result.performanceMedian, 1);
+  assert.equal(result.artifact, MEDIAN_AUDIT.artifact);
+  assert.deepEqual(result.performanceRuns, [
+    { artifact: "reports/002-sitemap-articles-mobile.json", score: 0.97 },
+    { artifact: "reports/002-sitemap-articles-mobile-performance-run-2.json", score: 1 },
+    { artifact: "reports/002-sitemap-articles-mobile-performance-run-3.json", score: 1 },
+  ]);
+  for (const run of result.performanceRuns) await access(join(artifactDirectories.outputDirectory, run.artifact));
+
+  const manifest = { audits: [MEDIAN_AUDIT], baseUrl: BASE_URL.href, mode: "portfolio" };
+  const summary = harness.summarize(manifest, [result], "passed");
+  assert.equal(summary.passedAudits, 1);
+  assert.deepEqual(summary.performanceReruns.map((audit) => audit.performanceRuns), [result.performanceRuns]);
+  assert.match(
+    harness.renderSummary(summary),
+    /## Performance medians[\s\S]*- 2: mobile \/articles\/ run 1 — performance runs 0\.97, 1, 1; median 1; passed\n/u,
+  );
+});
+
+test("runAudit fails a performance miss whose median stays below 1", async (context) => {
+  const artifactDirectories = await medianFixture(context);
+  const { lighthouse, outputs } = scriptedLighthouse([
+    reportWith({ performance: 0.97 }),
+    reportWith({}),
+    reportWith({ performance: 0.98 }),
+  ]);
+
+  const result = await harness.runAudit(
+    MEDIAN_AUDIT,
+    BASE_URL,
+    artifactDirectories,
+    { chromiumPath: "/usr/bin/chromium" },
+    lighthouse,
+  );
+
+  assert.equal(outputs.length, 3);
+  assert.equal(result.passed, false);
+  assert.equal(result.performanceMedian, 0.98);
+  assert.equal(result.scores.performance, 0.98);
+  assert.deepEqual(result.errors, ["performance median is 0.98 over runs 0.97, 1, 0.98, expected 1"]);
+  const summary = harness.summarize(
+    { audits: [MEDIAN_AUDIT], baseUrl: BASE_URL.href, mode: "portfolio" },
+    [result],
+    "failed",
+  );
+  assert.deepEqual(summary.failures[0].performanceRuns, result.performanceRuns);
+  assert.match(harness.renderSummary(summary), /performance runs 0\.97, 1, 0\.98; median 0\.98; failed/u);
+});
+
+test("runAudit re-runs performance only when every other category is exactly 1", async (context) => {
+  const artifactDirectories = await medianFixture(context);
+  const cases = {
+    "another category also misses": reportWith({ performance: 0.9, seo: 0.92 }),
+    "performance has no score": reportWith({ performance: null }),
+    "the run reports a runtime error": reportWith(
+      { performance: 0.9 },
+      { runtimeError: { code: "PROTOCOL_TIMEOUT", message: "PROTOCOL_TIMEOUT" } },
+    ),
+  };
+  for (const [name, report] of Object.entries(cases)) {
+    await context.test(name, async () => {
+      const { lighthouse, outputs } = scriptedLighthouse([report]);
+      const result = await harness.runAudit(
+        MEDIAN_AUDIT,
+        BASE_URL,
+        artifactDirectories,
+        { chromiumPath: "/usr/bin/chromium" },
+        lighthouse,
+      );
+      assert.equal(outputs.length, 1);
+      assert.equal(result.passed, false);
+      assert.equal(result.performanceRuns, undefined);
+    });
+  }
+});
+
+test("runAudit fails when a performance re-run misses another category", async (context) => {
+  const artifactDirectories = await medianFixture(context);
+  const { lighthouse, outputs } = scriptedLighthouse([
+    reportWith({ performance: 0.97 }),
+    reportWith({ accessibility: 0.98 }),
+    reportWith({}),
+  ]);
+
+  const result = await harness.runAudit(
+    MEDIAN_AUDIT,
+    BASE_URL,
+    artifactDirectories,
+    { chromiumPath: "/usr/bin/chromium" },
+    lighthouse,
+  );
+
+  assert.equal(outputs.length, 3);
+  assert.equal(result.passed, false);
+  assert.equal(result.performanceMedian, null);
+  assert.equal(result.scores.performance, 0.97);
+  assert.deepEqual(result.errors, [
+    "performance runs 0.97, 1, 1 have no valid median",
+    "performance run 2: accessibility score is 0.98, expected 1",
+  ]);
+});
+
+test("runAudit keeps the NO_NAVSTART retry inside each performance run", async (context) => {
+  const artifactDirectories = await medianFixture(context);
+  const navstart = reportWith(
+    { "agentic-browsing": null, performance: null },
+    { runtimeError: { code: "NO_NAVSTART", message: "NO_NAVSTART" } },
+  );
+  const { lighthouse, outputs } = scriptedLighthouse([
+    navstart,
+    reportWith({ performance: 0.97 }),
+    navstart,
+    reportWith({}),
+    reportWith({}),
+  ]);
+
+  const result = await harness.runAudit(
+    MEDIAN_AUDIT,
+    BASE_URL,
+    artifactDirectories,
+    { chromiumPath: "/usr/bin/chromium" },
+    lighthouse,
+  );
+
+  assert.equal(outputs.length, 5);
+  assert.equal(result.passed, true);
+  assert.deepEqual(result.performanceRuns.map((run) => run.score), [0.97, 1, 1]);
 });

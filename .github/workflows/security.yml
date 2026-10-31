@@ -12,7 +12,7 @@ concurrency:
 jobs:
   scan:
     name: Full-history and source scan
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - name: Checkout complete history
@@ -29,13 +29,14 @@ jobs:
       - name: Install security scanners
         run: mise install --locked -y gitleaks trivy
       - name: Scan complete Git history
-        run: gitleaks git --redact=100 --verbose
+        run: mise run check:leaks:full
       - name: Scan full checkout
-        run: env -u TRIVY_CONFIG trivy fs --exit-code=1 --severity HIGH,CRITICAL --scanners vuln,secret,misconfig --skip-dirs tmp --skip-dirs .venv --skip-dirs dist .
+        # Delegate to the task so the weekly scan reproduces locally and cannot drift.
+        run: mise run check:scan:full
   deployed-image:
     name: Scan images receiving production traffic
     if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
       contents: read

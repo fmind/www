@@ -12,12 +12,24 @@ from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.context import Context
 from mcp.server.mcpserver.exceptions import ToolError
 from mcp.server.transport_security import TransportSecurityMiddleware, TransportSecuritySettings
-from mcp_types import GetPromptResult, Icon, InputRequiredResult, Prompt, ToolAnnotations
+from mcp.shared.exceptions import MCPError
+from mcp_types import (
+    INVALID_PARAMS,
+    CallToolResult,
+    GetPromptResult,
+    Icon,
+    InputRequiredResult,
+    Prompt,
+    Tool,
+    ToolAnnotations,
+)
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.applications import Starlette
+from starlette.middleware import Middleware
 from starlette.requests import Request
 from starlette.responses import Response
 from starlette.routing import Route
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 from www.data import (
     BADGES,
@@ -86,7 +98,29 @@ _PROMPT_RESULT_DESCRIPTIONS = {
 
 
 class _PortfolioMCPServer(MCPServer[None]):
-    """Preserve prompt metadata that MCPServer does not derive."""
+    """Preserve prompt metadata and reject inputs that MCPServer would accept silently."""
+
+    @override
+    async def list_tools(self) -> list[Tool]:
+        # Advertise the closed argument set that call_tool enforces.
+        return [
+            tool.model_copy(update={"input_schema": {**tool.input_schema, "additionalProperties": False}})
+            for tool in await super().list_tools()
+        ]
+
+    @override
+    async def call_tool(
+        self, name: str, arguments: dict[str, Any], context: Context[None, Any] | None = None
+    ) -> CallToolResult | InputRequiredResult:
+        # The SDK ignores unknown keys, so a misspelled argument would silently
+        # apply its default. Fail like an invalid value: an isError tool result.
+        tool = next((tool for tool in await super().list_tools() if tool.name == name), None)
+        if tool is not None:
+            known = tool.input_schema.get("properties", {})
+            if unknown := sorted(set(arguments) - set(known)):
+                expected = ", ".join(known) or "no arguments"
+                raise ToolError(f"Unknown argument(s) for {name}: {', '.join(unknown)}; expected: {expected}")
+        return await super().call_tool(name, arguments, context)
 
     @override
     async def list_prompts(self) -> list[Prompt]:
@@ -112,7 +146,13 @@ class _PortfolioMCPServer(MCPServer[None]):
         arguments: dict[str, Any] | None = None,
         context: Context[None, Any] | None = None,
     ) -> GetPromptResult | InputRequiredResult:
-        result = await super().get_prompt(name, arguments, context)
+        try:
+            result = await super().get_prompt(name, arguments, context)
+        except ValueError as exc:
+            # MCPServer reports unknown prompts and missing or extra arguments as
+            # ValueError, which the dispatcher logs at ERROR and returns as an
+            # internal error. They are caller mistakes: -32602 without an alert.
+            raise MCPError(INVALID_PARAMS, str(exc)) from exc
         if isinstance(result, InputRequiredResult):
             return result
         description = _PROMPT_RESULT_DESCRIPTIONS.get(name)
@@ -468,6 +508,33 @@ async def render_mcp_server_card(server: MCPServer[None]) -> bytes:
     return (json.dumps(card, ensure_ascii=False, indent=2) + "\n").encode()
 
 
+class _PostOnly:
+    """Answer every MCP method but POST before the SDK transport sees it.
+
+    The transport omits Allow on DELETE and answers other methods with
+    Allow: GET, POST, DELETE, although stateless JSON mode serves neither GET
+    nor DELETE.
+    """
+
+    def __init__(self, app: ASGIApp, validator: TransportSecurityMiddleware) -> None:
+        self._app = app
+        self._validator = validator
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["method"] == "POST":
+            await self._app(scope, receive, send)
+            return
+        # Legacy Streamable HTTP explicitly permits 405 when no GET stream is
+        # offered. An idle SDK stream otherwise reaches Cloud Run's timeout.
+        response = await self._validator.validate_request(Request(scope, receive)) or Response(
+            "MCP accepts POST only; notification streams and sessions are not supported.\n",
+            status_code=405,
+            headers={"Allow": "POST"},
+            media_type="text/plain",
+        )
+        await response(scope, receive, send)
+
+
 def create_mcp_http_app(server: MCPServer[None]) -> Starlette:
     """Serve finite MCP requests without opening unused notification streams."""
     security = TransportSecuritySettings(
@@ -501,20 +568,11 @@ def create_mcp_http_app(server: MCPServer[None]) -> Starlette:
         max_request_body_size=1 << 20,
         transport_security=security,
     )
-    validator = TransportSecurityMiddleware(security)
-
-    async def reject_stream(request: Request) -> Response:
-        rejected = await validator.validate_request(request)
-        if rejected is not None:
-            return rejected
-        # Legacy Streamable HTTP explicitly permits 405 when no GET stream is
-        # offered. An idle SDK stream otherwise reaches Cloud Run's timeout.
-        return Response(
-            "MCP requests use POST; notification streams are not supported.\n",
-            status_code=405,
-            headers={"Allow": "POST"},
-            media_type="text/plain",
-        )
-
-    app.router.routes.insert(0, Route("/", reject_stream, methods=["GET", "HEAD"]))
+    # The SDK route forwards every method to its transport, and Starlette
+    # cannot route "every method but POST", so wrap that single route.
+    (route,) = app.router.routes
+    if not isinstance(route, Route):
+        raise TypeError(f"Expected the MCP SDK to serve one Route, got {route!r}")
+    guard = Middleware(_PostOnly, validator=TransportSecurityMiddleware(security))
+    app.router.routes[0] = Route(route.path, route.endpoint, middleware=[guard])
     return app

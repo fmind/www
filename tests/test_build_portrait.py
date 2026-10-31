@@ -56,6 +56,22 @@ def test_export_reports_unreadable_master(tmp_path: Path) -> None:
     assert isinstance(raised.value.__cause__, OSError)
 
 
+def test_export_accepts_a_camera_jpeg_with_a_secondary_image(tmp_path: Path) -> None:
+    master = tmp_path / "camera.jpg"
+    Image.new("RGB", (64, 48), "blue").save(
+        master, "MPO", save_all=True, append_images=[Image.new("RGB", (16, 12), "red")]
+    )
+    with Image.open(master) as camera:
+        assert (camera.format, getattr(camera, "n_frames", 1)) == ("MPO", 2)
+
+    export_portrait(master, tmp_path / "public.jpg")
+    with Image.open(tmp_path / "public.jpg") as result:
+        assert (result.format, getattr(result, "n_frames", 1), result.size) == ("JPEG", 1, (64, 48))
+        pixel = result.getpixel((0, 0))
+        assert isinstance(pixel, tuple)
+        assert pixel[2] > 240
+
+
 def test_export_rejects_non_jpeg(tmp_path: Path) -> None:
     master = tmp_path / "master.png"
     Image.new("RGB", (2, 2)).save(master)

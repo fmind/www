@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import http.client
 import json
+import ssl
 import subprocess
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from email.message import Message
-from urllib.error import HTTPError
+from urllib.error import HTTPError, URLError
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -50,8 +52,6 @@ def test_local_midnight_boundaries_bots_errors_and_missing_days() -> None:
     assert current["bot_events"] == 2
     assert current["unknown_bot_events"] == 1
     assert current["html_4xx"] == 1
-    assert current["html_5xx"] == 1
-    assert current["non_bot_5xx"] == 0
     assert current["referrers"] == {"same-site": 1, "example.org": 1}
     assert current["tagged_views"] == 1
     assert current["daily_views"] == {
@@ -88,7 +88,13 @@ def test_dst_comparison_uses_calendar_days_and_empty_history_is_explicit() -> No
     assert previous["bot_share_percent"] is None
 
 
-def metadata(rows: int = 2, modified: str = "1") -> bytes:
+def metadata(
+    rows: int = 2,
+    modified: str = "1",
+    *,
+    extra: tuple[str, ...] = (),
+    payload: tuple[str, ...] = analytics.PAYLOAD_FIELDS,
+) -> bytes:
     # Deliberately different from selectedFields order: REST follows the schema.
     return json.dumps(
         {
@@ -101,22 +107,25 @@ def metadata(rows: int = 2, modified: str = "1") -> bytes:
                     {
                         "name": "jsonPayload",
                         "type": "RECORD",
-                        "fields": [{"name": name, "type": "STRING"} for name in analytics.PAYLOAD_FIELDS],
+                        "fields": [{"name": name, "type": "STRING"} for name in payload],
                     },
+                    *({"name": name, "type": "STRING"} for name in extra),
                 ]
             },
         }
     ).encode()
 
 
-def wire_row(identifier: str = "event-1", status: str = "200.0", bot: str | None = "false") -> dict[str, object]:
-    return {
-        "f": [
-            {"v": identifier},
-            {"v": "1789000000.5"},
-            {"v": {"f": [{"v": value} for value in ("analytics_pageview", "/", status, bot, "", "", "", "")]}},
-        ]
-    }
+def wire_row(
+    identifier: str = "event-1",
+    status: str | None = "200.0",
+    bot: str | None = "false",
+    *,
+    msg: str = "analytics_pageview",
+    payload: bool = True,
+) -> dict[str, object]:
+    dimensions = {"f": [{"v": value} for value in (msg, "/", status, bot, "", "", "", "")]}
+    return {"f": [{"v": identifier}, {"v": "1789000000.5"}, {"v": dimensions if payload else "flattened"}]}
 
 
 class FakeRead:
@@ -165,6 +174,11 @@ def test_pagination_schema_order_and_duplicate_events() -> None:
         ((metadata(), page(cursor="same"), page(cursor="same")), "Repeated"),
         ((metadata(), page(wire_row(status="200.5"))), "Invalid HTTP status"),
         ((metadata(), page(wire_row(bot="unknown"))), "Invalid bot flag"),
+        ((metadata(extra=("severity",)),), "table schema changed"),
+        ((metadata(payload=analytics.PAYLOAD_FIELDS[:-1]),), "payload schema changed"),
+        ((metadata(), page(wire_row(msg="http_request"))), "Unexpected event"),
+        ((metadata(), page(wire_row(status=None))), "Missing status"),
+        ((metadata(), page(wire_row(payload=False))), "payload missing"),
     ],
 )
 def test_incomplete_or_invalid_reads_fail_without_reporting(responses: tuple[bytes, ...], message: str) -> None:
@@ -195,6 +209,93 @@ def test_reader_caps_bytes_and_does_not_echo_http_error_body(monkeypatch: pytest
     monkeypatch.setattr(analytics, "urlopen", lambda *_args, **_kwargs: Response())
     with pytest.raises(analytics.AnalyticsError, match="64 MiB"):
         analytics.Reader("secret-token", downloaded=analytics.MAX_BYTES - 10)("/data", {})
+
+
+@pytest.mark.parametrize(
+    "failure",
+    [
+        URLError("name resolution failed"),
+        TimeoutError("read timed out"),
+        ConnectionResetError("connection reset by peer"),
+        ssl.SSLError("bad record mac"),
+        http.client.IncompleteRead(b"partial"),
+    ],
+    ids=("url", "timeout", "reset", "tls", "incomplete"),
+)
+def test_reader_network_failures_stay_inside_the_error_contract(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], failure: Exception
+) -> None:
+    class Response:
+        def __enter__(self) -> Response:
+            return self
+
+        def __exit__(self, *_args: object) -> None:
+            pass
+
+        def read(self, _size: int) -> bytes:
+            raise failure
+
+    monkeypatch.setattr(analytics, "urlopen", lambda *_args, **_kwargs: Response())
+    with pytest.raises(analytics.AnalyticsError, match="timed out or failed") as error:
+        analytics.Reader("secret-token")("/data", {})
+    assert error.value.__cause__ is failure
+    assert "secret-token" not in str(error.value)
+
+    monkeypatch.setattr(analytics, "access_token", lambda: "secret-token")
+    assert analytics.main(["--timezone", "UTC"]) == 1
+    output = capsys.readouterr()
+    assert output.out == ""
+    assert output.err == "website-analytics: BigQuery read timed out or failed; no partial report produced.\n"
+
+
+@pytest.mark.parametrize(
+    ("responses", "message"),
+    [
+        ([""], "one active gcloud configuration"),
+        (["default\nother"], "one active gcloud configuration"),
+        (["default", "reader@example.test"], "Credential override configured"),
+        (["default", "(unset)", "", "/private/token-file"], "Credential override configured"),
+        (["default", "(unset)", "", "", "(unset)"], "No gcloud account"),
+        (["default", "(unset)", "", "", "owner@example.test", ""], "no access token"),
+    ],
+    ids=("no-configuration", "many-configurations", "impersonation", "token-file", "no-account", "empty-token"),
+)
+def test_auth_fails_closed_on_ambiguous_gcloud_identity(
+    monkeypatch: pytest.MonkeyPatch, responses: list[str], message: str
+) -> None:
+    for name in (
+        "CLOUDSDK_AUTH_ACCESS_TOKEN",
+        "CLOUDSDK_AUTH_ACCESS_TOKEN_FILE",
+        "CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE",
+        "CLOUDSDK_AUTH_IMPERSONATE_SERVICE_ACCOUNT",
+    ):
+        monkeypatch.delenv(name, raising=False)
+    answers = iter(responses)
+    monkeypatch.setattr(analytics, "gcloud", lambda *_args: next(answers))
+    with pytest.raises(analytics.AnalyticsError, match=message):
+        analytics.access_token()
+
+
+@pytest.mark.parametrize(
+    ("days", "end_offset", "allowed"),
+    [(90, 0, True), (90, 1, False), (89, 2, True), (7, -1, False)],
+    ids=("oldest-window", "beyond-retention", "inside-retention", "future-end"),
+)
+def test_main_keeps_both_windows_inside_retention_before_authenticating(
+    monkeypatch: pytest.MonkeyPatch, days: int, end_offset: int, allowed: bool
+) -> None:
+    today = datetime.now(UTC).date()
+    authenticated: list[bool] = []
+
+    def token() -> str:
+        authenticated.append(True)
+        return "secret-token"
+
+    monkeypatch.setattr(analytics, "access_token", token)
+    monkeypatch.setattr(analytics, "collect", lambda _read: ([], 0))
+    end = (today - timedelta(days=end_offset)).isoformat()
+    status = analytics.main(["--days", str(days), "--end-date", end, "--timezone", "UTC"])
+    assert (status, authenticated) == ((0, [True]) if allowed else (1, []))
 
 
 def test_auth_pins_account_and_projects_and_rejects_overrides(monkeypatch: pytest.MonkeyPatch) -> None:

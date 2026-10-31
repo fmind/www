@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 import re
+import unicodedata
 from collections import Counter
 from dataclasses import dataclass
 
@@ -35,8 +36,11 @@ def fold_plural(term: str) -> str:
 
 
 def tokenize(text: str) -> tuple[str, ...]:
-    # Treat underscores as word boundaries rather than part of a search token.
-    fields = (part for part in _TOKEN_BOUNDARY.split(text.lower().replace("_", " ")) if part)
+    # NFKC composes decomposed accents (which \w would split) and folds
+    # fullwidth forms; casefold matches "straße" with "STRASSE". Treat
+    # underscores as word boundaries rather than part of a search token.
+    folded = unicodedata.normalize("NFKC", text).casefold().replace("_", " ")
+    fields = (part for part in _TOKEN_BOUNDARY.split(folded) if part)
     return tuple(fold_plural(field) for field in fields)
 
 

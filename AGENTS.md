@@ -4,20 +4,21 @@ Python 3.14, Litestar, strict Jinja, Tailwind/DaisyUI, and Granian. No client fr
 
 ## Delivery
 
-- `mise.toml` is the canonical task contract for local work, hooks, and CI. See [README](README.md#tasks) and `mise tasks` for commands.
-- Definition of done: `mise run all` passes without unresolved warnings; infrastructure changes also pass `mise run check:tofu`. New behavior needs a regression test.
-- `all` needs Docker Engine/Buildx and first-run network access, but no cloud credentials.
-- Network link checks, cross-browser tests, and Lighthouse are separate tasks. Run those relevant to the change; never weaken checks to get a green release.
-- Inspect Git status/diffs and preserve unrelated work and staged selections. Use OS temporary directories for agent scratch; no repository-local review reports. Remove only task-owned temporary artifacts.
-- Commit, push, release, deploy, apply infrastructure, and spend require owner authorization. Reuse authority already given. Use Conventional Commits without attribution; published tags are immutable.
-- Keep Cloud Run **service and revision minimum instances at 0**, maximum 5, and request-based CPU (`cpu_idle = true`). Raising capacity or enabling always-on instances requires explicit owner authorization.
-- OpenTofu owns service settings; CI owns only the image digest and traffic promotion. A `main` deployment must scan and smoke-test its pushed immutable digest, verify a no-traffic `candidate` revision, then promote exactly that revision and verify ready revision, traffic, health, and errors.
+- **Use the mise task contract**: `mise.toml` serves local work, hooks, and CI. See [README](README.md#tasks) and `mise tasks` for commands, and [README](README.md#development) for prerequisites.
+- **Pass `mise run all` before done**: it must pass without unresolved warnings; infrastructure changes also pass `mise run check:tofu`, and new behavior needs a regression test. Run it in the foreground, because background runs have been killed under memory pressure.
+- **Iterate with focused tests**: run `mise run build:css` once, because app startup reads the generated stylesheet, then `uv run --locked pytest tests/<file>.py`.
+- **Run affected out-of-gate checks**: network link checks, cross-browser tests, and Lighthouse are separate tasks; run those relevant to the change.
+- **Keep scratch outside the repository**: use OS temporary directories and commit no review reports.
+- **A `main` push deploys production**: pushing needs deploy authority; published tags are immutable.
+- **Get consent before restyling**: layout, style, component, or home-page structure changes need the owner's OK on a proposal branch with before/after screenshots. Content edits inside existing components are fine; new pages reuse existing components unchanged.
+- **Keep Cloud Run scale-to-zero**: service and revision minimum instances 0, maximum 5, and request-based CPU (`cpu_idle = true`). Raising capacity or enabling always-on instances needs explicit owner authorization.
+- **CI owns only digest and traffic**: OpenTofu owns service settings. A `main` deployment must scan and smoke-test its pushed immutable digest, verify a no-traffic `candidate` revision, then promote exactly that revision and verify ready revision, traffic, and health; review error logs separately with the owner identity.
 
 ## Ownership
 
 - `data.py`, `models.py`, `tags.py`: immutable portfolio, shared types, site registry, closed tag vocabulary.
 - `app.py`: startup snapshot, routes, middleware composition, MCP lifespan, teardown.
-- `mcp.py`: read-only tools, finite HTTP transport, capabilities, and discovery. GET/HEAD must return 405 instead of opening idle notification streams; retain SDK host/origin validation.
+- `mcp.py`: read-only tools, finite HTTP transport, capabilities, and discovery. Every non-POST method returns 405 with `Allow: POST`, so GET/HEAD never open idle notification streams; retain SDK host/origin validation.
 - `content.py`, `images.py`, `assets.py`, `search.py`: validated publications, media derivatives, static inventory/hashes, BM25 article search.
 - `publications.py`: canonical profile JSON/schema, feeds, sitemap, LLM text; shared by HTTP and MCP.
 - `agent_discovery.py`, `agent_skills/`: API catalog, representation negotiation, packaged visitor skill/index; separate from `.agents/` maintenance skills.
@@ -30,15 +31,18 @@ Python 3.14, Litestar, strict Jinja, Tailwind/DaisyUI, and Granian. No client fr
 
 ## Invariants
 
-- Parse external input at boundaries and fail with contextual chained errors. Construct validated articles, search, assets, publications, renderer, and MCP once; requests must not observe partial state.
-- Keep Jinja `StrictUndefined` and autoescape. Only `rendering.py` may trust validated article/biography HTML or guarded JSON-LD.
-- Keep the site light-only and assets self-hosted. Google Sans is body text, Google Sans Code is code. Use existing macros and small nonce-authorized page interactions; do not add a JS bundle without a real module graph.
-- Tailwind classes belong in `src/www/templates/**/*.html`. Authored build inputs go in `assets/`; final public artifacts go in `static/`. Pages link one content-addressed stylesheet, `/styles.css?v=<hash>` (Tailwind output plus syntax colors, served from memory); CSP allows no inline `<style>`.
-- The validated article collection is the only publication source; drafts never enter production discovery. Current Markdown is the authoritative article body.
-- Register tools in `data.py:SITE_PAGES` and wire routes/templates/views explicitly. Formulas remain server-owned. MCP calculator input rejects invalid values instead of silently applying defaults.
-- Tags require a `tags.py` entry, matching CSS rule, and article use. Generate reviewed image derivatives and provenance lock after media changes; `check:images` never writes.
-- Keep `content.py:FIGURE_SIZES` aligned with article CSS. Figures never pan; captions require repeated alt text. Diagram labels must remain about 12px or larger at 1280px and height at most about 1300px.
-- Build fonts only with `scripts/build_fonts.py`; keep required assets, CSS faces, and template preloads synchronized. Preserve subset-specific face names. Keep private portrait masters outside `static/`; export with `build:portrait`.
-- First-party analytics remain cookieless and aggregate, with 180-day expiry and empty `country` until a trusted geography boundary exists. Google Analytics 4 (`google_analytics_id`) loads only on www.fmind.dev after an explicit Accept in `partials/consent.html`, with rejection as easy as acceptance and no advertising features or Google signals; never load it before consent, and keep `/privacy` and the CSP's Google hosts in step with it. The scheduled image scanner stays read-only; maintain advisory triage in `SECURITY.md`.
+- **Validate at boundaries, construct once**: parse external input at boundaries and fail with contextual chained errors. Construct validated articles, search, assets, publications, renderer, and MCP once; requests must not observe partial state.
+- **Trust markup only in `rendering.py`**: keep Jinja `StrictUndefined` and autoescape. Only `rendering.py` may trust validated article/biography HTML or guarded JSON-LD.
+- **Stay light-only and self-hosted**: Google Sans is body text, Google Sans Code is code. Use existing macros and small nonce-authorized page interactions; do not add a JS bundle without a real module graph.
+- **Serve one content-addressed stylesheet**: Tailwind classes belong in `src/www/templates/**/*.html`. Authored build inputs go in `assets/`; final public artifacts go in `static/`. Pages link `/styles.css?v=<hash>` (Tailwind output plus syntax colors, served from memory); CSP allows no inline `<style>`.
+- **Publish only validated articles**: the validated article collection is the only publication source; drafts never enter production discovery. Current Markdown is the authoritative article body.
+- **Register tools explicitly**: register tools in `data.py:SITE_PAGES` and wire routes/templates/views explicitly. Formulas remain server-owned. MCP tools reject invalid values and unknown argument keys instead of silently applying defaults.
+- **Keep tags and media reviewed**: tags require a `tags.py` entry, matching CSS rule, and article use. Generate reviewed image derivatives and provenance lock after media changes; `check:images` never writes.
+- **Keep figures readable without panning**: keep `content.py:FIGURE_SIZES` aligned with article CSS. Captions require repeated alt text. Diagram labels must remain about 12px or larger at 1280px and height at most about 1300px.
+- **Build fonts only with the generator**: use `scripts/build_fonts.py`; keep required assets, CSS faces, and template preloads synchronized. Preserve subset-specific face names.
+- **Keep portrait masters private**: keep them outside `static/`; export with `build:portrait`.
+- **Keep analytics cookieless or consented**: first-party analytics remain cookieless and aggregate, with 180-day expiry and empty `country` until a trusted geography boundary exists. Google Analytics 4 (`google_analytics_id`) loads only on www.fmind.dev after an explicit Accept in `partials/consent.html`, with rejection as easy as acceptance and no advertising features or Google signals; never load it before consent, and keep `/privacy` and the CSP's Google hosts in step with it.
+- **Keep the scheduled image scanner read-only**: maintain advisory triage in `SECURITY.md`.
+- **Keep the CLI contract**: the PyPI `fmind` CLI (github.com/fmind/cli) consumes the `/api/profile` keys in its `PROFILE_SHAPE`, `/articles/<slug>.md`, and the `/mcp` transport; release a CLI update before removing or renaming any of them.
 
 Task procedures live in `.agents/skills/`: `article`, `site`, `infra`, `release`, `website-analytics`, and `finops-analytics`. Keep instructions concise and avoid repeating the README or task definitions.

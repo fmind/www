@@ -18,7 +18,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   browsers:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
       BROWSER_BASE_URL: ${{ inputs.target == 'production' && 'https://www.fmind.dev' || '' }}
@@ -59,8 +59,10 @@ jobs:
             tmp/cross-browser-results
             tmp/browser-results
           retention-days: 14
+          # Green local runs leave no evidence; the default `warn` would annotate every one.
+          if-no-files-found: ignore
   lighthouse:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

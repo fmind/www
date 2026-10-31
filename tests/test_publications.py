@@ -147,7 +147,21 @@ def test_absolute_article_html_only_rewrites_root_relative_urls() -> None:
             '![c](https://www.fmind.dev/cover.webp "Say \\"hi\\"")\n\n[c]: /cover.webp (Say "hi")\n',
         ),
         ("![![nested](/keep/)](/cover.webp)", "![![nested](/keep/)](https://www.fmind.dev/cover.webp)"),
-        ("<script>\n[literal](/keep/)\n</script>\n", "<script>\n[literal](/keep/)\n</script>\n"),
+        # Articles render raw HTML as text, so the link inside is a real link.
+        (
+            "<script>\n[literal](/keep/)\n</script>\n",
+            "<script>\n[literal](https://www.fmind.dev/keep/)\n</script>\n",
+        ),
+        ("A claim[^1].\n\n[^1]: /articles/\n", "A claim[^1].\n\n[^1]: /articles/\n"),
+        (
+            "A claim[^1].\n\n[^1]: Note.\n\n    See [x](/articles/).\n",
+            "A claim[^1].\n\n[^1]: Note.\n\n    See [x](https://www.fmind.dev/articles/).\n",
+        ),
+        ("Claim^[See [x](/articles/).]\n", "Claim^[See [x](https://www.fmind.dev/articles/).]\n"),
+        (
+            "| a | b |\n|---|---|\n| [x](/one/) | [y](/two/) |\n",
+            "| a | b |\n|---|---|\n| [x](https://www.fmind.dev/one/) | [y](https://www.fmind.dev/two/) |\n",
+        ),
         ("", ""),
     ],
 )

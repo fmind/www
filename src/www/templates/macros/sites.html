@@ -88,10 +88,20 @@
 {%- endmacro %}
 
 {% macro api_options(view) -%}
-  <div class="rounded-2xl border border-base-300 bg-base-100 p-6 md:p-8"><fieldset class="min-w-0"><legend class="font-heading text-2xl font-bold">API delivery and reuse</legend> <label class="block font-semibold mt-4 mb-2" for="api-mode">API pricing mode</label> <select id="api-mode" name="api-mode" class="select w-full" aria-describedby="api-mode-help"><option value="standard"{% if view.inputs.api_mode == "standard" %} selected{% endif %}>Standard · interactive requests</option> <option value="batch"{% if view.inputs.api_mode == "batch" %} selected{% endif %}>Batch · flexible deadlines</option> <option value="cached"{% if view.inputs.api_mode == "cached" %} selected{% endif %}>Cached prefix · repeated context</option></select><p id="api-mode-help" class="text-sm text-base-content/75 leading-relaxed mt-3">Batch: 50% off, with up to 24-hour completion. Caching: reuse an exact prefix. Discounts are not stacked.</p><div class="grid grid-cols-1 sm:grid-cols-2 gap-5 mt-5">{{ number_input("cache-prefix", "Shared prefix tokens (cached mode)", view.form_values["cache-prefix"], "0", "1000000", "1", "Minimum: 4,096 for Gemini; 512 for Claude 5.5; 1,024 for Astra. Ineligible requests use standard rates.") }}{{ number_input("cache-requests", "Calls per cache group (cached mode)", view.form_values["cache-requests"], "1", "1000000", "1", "Calls sharing an exact prefix within five minutes, including the first. Each group pays write or storage fees.") }}</div><p class="text-sm text-base-content/75 leading-relaxed mt-4">Assumes no misses within each group: Gemini five-minute storage, Claude five-minute writes, and Astra 30-minute retention.</p></fieldset></div>
+  <div class="rounded-2xl border border-base-300 bg-base-100 p-6 md:p-8"><fieldset class="min-w-0"><legend class="font-heading text-2xl font-bold">API delivery and reuse</legend> <label class="block font-semibold mt-4 mb-2" for="api-mode">API pricing mode</label> <select id="api-mode" name="api-mode" class="select w-full" aria-describedby="api-mode-help"><option value="standard"{% if view.inputs.api_mode == "standard" %} selected{% endif %}>Standard · interactive requests</option> <option value="batch"{% if view.inputs.api_mode == "batch" %} selected{% endif %}>Batch · flexible deadlines</option> <option value="cached"{% if view.inputs.api_mode == "cached" %} selected{% endif %}>Cached prefix · repeated context</option></select><p id="api-mode-help" class="text-sm text-base-content/75 leading-relaxed mt-3">Batch: 50% off, with up to 24-hour completion. Caching: reuse an exact prefix. Discounts are not stacked.</p><div class="grid grid-cols-1 sm:grid-cols-2 gap-5 mt-5">{{ number_input("cache-prefix", "Shared prefix tokens (cached mode)", view.form_values["cache-prefix"], "0", "1000000", "1", "Minimum: " ~ cache_minimums(view) ~ ". Ineligible requests use standard rates.") }}{{ number_input("cache-requests", "Calls per cache group (cached mode)", view.form_values["cache-requests"], "1", "1000000", "1", "Calls sharing an exact prefix within five minutes, including the first. Each group pays write or storage fees.") }}</div><p class="text-sm text-base-content/75 leading-relaxed mt-4">Assumes no misses within each group: Gemini five-minute storage, Claude five-minute writes, and Astra 30-minute retention.</p></fieldset></div>
+{%- endmacro %}
+
+{% macro cache_minimums(view) -%}
+  {%- for group in view.apis|groupby("baseline.cache_minimum") %}{{ format_decimal(group.grouper, 0) }} for {{ group.list|map(attribute="baseline.name")|join(", ") }}{% if not loop.last %}; {% endif %}{% endfor -%}
+{%- endmacro %}
+
+{# An unsupported fleet has no meaningful break-even, so its capacity flag is not a sizing verdict. #}
+{% macro break_even_blocker(view) -%}
+  {%- if view.estimate.compatibility_issue %}Unsupported configuration{% elif view.estimate.context_issue %}Exceeds model context{% endif -%}
 {%- endmacro %}
 
 {% macro api_cards(view) -%}
+  {% set blocker = break_even_blocker(view) %}
   <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 md:hidden" role="group" aria-label="API monthly cost cards">
     {% for row in view.apis|sort(attribute="monthly_usd") %}
       <article class="rounded-2xl border border-base-300 bg-base-100 p-5">
@@ -100,9 +110,9 @@
         {% if not row.request_issue %}<dl class="text-sm mt-4 space-y-3">
           {% if view.inputs.mode == "advanced" %}<div><dt class="text-base-content/70">Standard input / output per 1M tokens</dt><dd class="font-semibold">{{ format_usd2(row.baseline.input_per_million) }} / {{ format_usd2(row.baseline.output_per_million) }}</dd></div>{% endif %}
           <div><dt class="text-base-content/70">Per 1,000 requests</dt><dd class="font-semibold">{{ format_usd2(row.per_thousand_requests_usd) }}</dd></div>
-          <div><dt class="text-base-content/70">Break-even for this fixed fleet</dt><dd class="font-semibold">{{ format_decimal(row.break_even_requests, 0) }} requests/month</dd></div>
+          <div><dt class="text-base-content/70">Break-even for this fixed fleet</dt><dd class="font-semibold">{% if blocker %}{{ blocker }}{% else %}{{ format_decimal(row.break_even_requests, 0) }} requests/month{% endif %}</dd></div>
         </dl>{% endif %}
-        {% if not row.request_issue %}{% if not view.estimate.topology_confirmed %}<p class="text-sm mt-3">Capacity needs a multi-host pilot.</p>{% elif row.break_even_fits %}<p class="text-sm mt-3">Within modeled capacity; quality still unproved.</p>{% else %}<p class="text-sm font-semibold mt-3">Beyond this fleet's modeled capacity.</p>{% endif %}{% endif %}
+        {% if not row.request_issue and not blocker %}{% if not view.estimate.topology_confirmed %}<p class="text-sm mt-3">Capacity needs a multi-host pilot.</p>{% elif row.break_even_fits %}<p class="text-sm mt-3">Within modeled capacity; quality still unproved.</p>{% else %}<p class="text-sm font-semibold mt-3">Beyond this fleet's modeled capacity.</p>{% endif %}{% endif %}
         {% if row.needs_review %}<p class="text-sm font-semibold mt-3">Price needs review; check the source.</p>{% endif %}
       </article>
     {% endfor %}
@@ -135,6 +145,7 @@
 
 {% macro simple_results(view) -%}
   {% set available = view.apis|rejectattr("request_issue")|sort(attribute="monthly_usd")|list %}
+  {% set blocker = break_even_blocker(view) %}
   <section aria-labelledby="executive-result" class="space-y-5">
     <div class="rounded-2xl border border-primary/30 bg-primary/5 p-5 md:p-6">
       <h2 id="executive-result" class="font-heading text-2xl md:text-3xl font-bold scroll-mt-24">{{ hosting_decision_title(view) }}</h2>
@@ -146,7 +157,7 @@
       {% if available %}{{ metric_card("Managed APIs / month", format_budget(available[0].monthly_usd) ~ "–" ~ format_budget(available[-1].monthly_usd), "Same token budget across the APIs below. Model quality and actual token usage vary.") }}{% endif %}
       {{ metric_card("Illustrative setup", format_count(view.estimate.total_gpus, "TPU" if "TPU" in view.selected_node.gpu else "GPU"), view.selected_node.name ~ ". " ~ format_count(view.inputs.replicas, "replica") ~ " (complete model copies).") }}
     </div>{% endif %}
-    <p class="text-sm text-base-content/75">Assumes 100 generated tokens/s per model copy, with 65% usable. This is a budget scenario; GPU speed, response time, and quality need a pilot.</p>
+    <p class="text-sm text-base-content/75">Assumes {{ format_number(view.inputs.tokens_per_second) }} generated tokens/s per model copy, with {{ format_number(view.inputs.target_utilization) }}% usable. This is a budget scenario; GPU speed, response time, and quality need a pilot.</p>
     {{ accelerator_comparison(view) }}
     <div>
       <h3 class="font-heading text-xl font-bold">Managed APIs · same token budget</h3>
@@ -165,7 +176,7 @@
     <section id="hosting-break-even" aria-labelledby="hosting-break-even-title" class="rounded-xl border border-base-300 bg-base-100 p-5">
       <h3 id="hosting-break-even-title" class="font-heading text-lg font-bold">When could self-hosting cost less?</h3>
       <p class="text-sm text-base-content/75 mt-3">Break-even holds this setup, token mix, and usage window fixed. More GPUs or operating costs change the threshold. Quality still needs testing.</p>
-      <dl class="mt-4 divide-y divide-base-300 text-sm">{% for row in view.apis|sort(attribute="monthly_usd") %}<div class="py-3 sm:flex sm:justify-between gap-4"><dt class="font-semibold">{{ row.baseline.name }}</dt><dd>{% if row.request_issue %}{{ row.request_issue }}{% elif not view.estimate.topology_confirmed %}Needs a multi-host pilot{% elif row.break_even_fits %}About {{ format_number(row.break_even_requests) }} calls/month{% else %}Beyond this setup's assumed capacity{% endif %}</dd></div>{% endfor %}</dl>
+      <dl class="mt-4 divide-y divide-base-300 text-sm">{% for row in view.apis|sort(attribute="monthly_usd") %}<div class="py-3 sm:flex sm:justify-between gap-4"><dt class="font-semibold">{{ row.baseline.name }}</dt><dd>{% if row.request_issue %}{{ row.request_issue }}{% elif blocker %}{{ blocker }}{% elif not view.estimate.topology_confirmed %}Needs a multi-host pilot{% elif row.break_even_fits %}About {{ format_number(row.break_even_requests) }} calls/month{% else %}Beyond this setup's assumed capacity{% endif %}</dd></div>{% endfor %}</dl>
     </section>
   </section>
 {%- endmacro %}
@@ -174,7 +185,7 @@
   <section id="recommended-fleet" aria-labelledby="recommended-fleet-title" class="rounded-xl border border-base-300 bg-base-100 p-5">
     <h2 id="recommended-fleet-title" class="font-heading text-lg font-bold">Setup, running time, and assumptions</h2>
     <div class="space-y-3 mt-3 text-sm text-base-content/75 max-w-4xl">
-      <p><strong>{{ view.selected_model.name }} · {{ view.selected_quant.name }}</strong>. {{ format_go_float(view.estimate.weight_memory_gb, 1) }} GB weights + 25% reserve = {{ format_go_float(view.estimate.required_memory_gb, 1) }} GB per copy. The reserve does not calculate KV cache.</p>
+      <p><strong>{{ view.selected_model.name }} · {{ view.selected_quant.name }}</strong>. {{ format_go_float(view.estimate.weight_memory_gb, 1) }} GB weights + {{ format_number(view.inputs.memory_overhead_pct) }}% reserve = {{ format_go_float(view.estimate.required_memory_gb, 1) }} GB per copy. The reserve does not calculate KV cache.</p>
       <p>{{ view.selected_node.name }} is the lowest compute price in this catalog for the selected checkpoint and plan. <a class="link link-primary" href="{{ view.selected_model.recipe_url }}">Serving reference</a>.{% if view.selected_model.id == "mistral-small-4" %} The economical NVFP4 checkpoint needs quality testing; this catalog caps it at 16,384 context tokens on one G4. FP8 uses a larger machine. Compare alternatives in advanced settings.{% endif %}</p>
       <p>{% if view.selected_preset.scheduled %}Scheduled workload: {{ format_go_float(view.inputs.demand_window_hours, 1).removesuffix(".0") }} h per active day, {{ format_go_float(view.inputs.duty_cycle_percent / 100 * 730, 1).removesuffix(".0") }} h/month. This assumes nodes can start and stop within that budget; allow for startup in a pilot.{% else %}Always-on service: nodes run 24/7, even outside the {{ format_go_float(view.inputs.demand_window_hours, 1).removesuffix(".0") }}-hour usage window. Use advanced settings for scheduled shutdowns.{% endif %} {% if view.selected_price.committed %}Your commitment still bills 730 hours/month, including idle time.{% endif %} No spare failover copy is included.</p>
       <p>Exact estimate: {{ format_usd2(view.estimate.compute_monthly_usd) }} compute + {{ format_usd2(view.estimate.control_monthly_usd) }} GKE = {{ format_usd2(view.estimate.total_monthly_usd) }}/month. At half to twice the assumed speed, a resized setup would cost {{ format_budget(view.budget_low_usd) }}–{{ format_budget(view.budget_high_usd) }}/month.</p>
@@ -186,6 +197,7 @@
 
 {% macro results(view) -%}
   {% if view.inputs.mode == "simple" %}{{ simple_results(view) }}{% else %}
+  {% set blocker = break_even_blocker(view) %}
   <section aria-labelledby="executive-result" class="space-y-6">
     <div>
       <p class="text-sm uppercase tracking-[0.18em] text-primary font-semibold">Your scenario · {{ view.demand_label }}</p>
@@ -226,7 +238,7 @@
             <tr>
               <th scope="row"><a class="link link-primary" href="{{ row.baseline.source_url }}" target="_blank" rel="noopener noreferrer">{{ row.baseline.name }}</a></th>
               <td class="whitespace-nowrap">{{ format_usd2(row.baseline.input_per_million) }} / {{ format_usd2(row.baseline.output_per_million) }}</td>
-              {% if row.request_issue %}<td colspan="3" class="font-semibold">Unavailable: {{ row.request_issue }}</td>{% else %}<td class="font-bold whitespace-nowrap">{{ format_usd2(row.monthly_usd) }}</td><td>{{ format_usd2(row.per_thousand_requests_usd) }}</td><td>{{ format_number(row.break_even_requests) }} requests/month{% if row.break_even_fits %}<span class="block text-xs mt-1">Within modeled capacity; quality still unproved</span>{% else %}<span class="block text-xs font-semibold mt-1">Beyond this fleet's modeled capacity</span>{% endif %}</td>{% endif %}
+              {% if row.request_issue %}<td colspan="3" class="font-semibold">Unavailable: {{ row.request_issue }}</td>{% else %}<td class="font-bold whitespace-nowrap">{{ format_usd2(row.monthly_usd) }}</td><td>{{ format_usd2(row.per_thousand_requests_usd) }}</td><td>{% if blocker %}{{ blocker }}{% else %}{{ format_number(row.break_even_requests) }} requests/month{% if not view.estimate.topology_confirmed %}<span class="block text-xs mt-1">Capacity needs a multi-host pilot</span>{% elif row.break_even_fits %}<span class="block text-xs mt-1">Within modeled capacity; quality still unproved</span>{% else %}<span class="block text-xs font-semibold mt-1">Beyond this fleet's modeled capacity</span>{% endif %}{% endif %}</td>{% endif %}
             </tr>
           {% endfor %}
         </tbody>

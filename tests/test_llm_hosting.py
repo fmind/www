@@ -24,6 +24,7 @@ from www.sites.data import (
 )
 from www.sites.economics import api_monthly_cost, current_api_baselines, estimate_hosting
 from www.sites.formatting import (
+    format_budget,
     format_count,
     format_decimal,
     format_number,
@@ -657,6 +658,24 @@ def test_format_number_rolls_units_and_rounds_like_format_decimal(value: float, 
     assert format_number(value) == expected
 
 
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        (9.994, "$9.99"),
+        (999.4, "$999"),
+        (1250, "$1.3k"),
+        (999_949, "$999.9k"),
+        (999_960, "$1.0M"),
+        (15_972_606.15, "$16.0M"),
+        (52_104_000, "$52.1M"),
+        (999_960_000, "$1.0B"),
+        (12_400_000_000, "$12.4B"),
+    ],
+)
+def test_format_budget_rolls_into_millions_and_billions(value: float, expected: str) -> None:
+    assert format_budget(value) == expected
+
+
 def test_format_number_rounding_agrees_with_format_decimal() -> None:
     for value in (0.5, 1.5, 2.5, 12.5, 999.5):
         assert format_number(value) in {format_decimal(value, 0), "1.0k"}
@@ -791,7 +810,13 @@ def test_api_limits_enforce_combined_context_windows() -> None:
     gemini_limit = view({"input-tokens": "983040", "tokens": "65536"})
     assert not gemini_limit.apis[0].request_issue
     assert gemini_limit.apis[1].request_issue
-    assert not gemini_limit.apis[2].request_issue
+    assert gemini_limit.apis[2].request_issue == "Input exceeds the 922,000-token limit"
+
+    # Astra caps input at 922,000 tokens inside its 1,050,000-token context window.
+    astra_limit = view({"input-tokens": "922000", "tokens": "128000"})
+    assert not astra_limit.apis[2].request_issue
+    astra_over = view({"input-tokens": "922001", "tokens": "1000"})
+    assert astra_over.apis[2].request_issue == "Input exceeds the 922,000-token limit"
 
 
 def test_pilot_confirmation_survives_a_shared_url() -> None:
@@ -1237,6 +1262,11 @@ def test_one_off_demand_cannot_borrow_a_whole_month_of_capacity() -> None:
 def test_flex_start_requires_batch_delivery() -> None:
     parameters = {"node": "a4", "billing": "flex"}
     assert build_llm_self_hosting_view(parameters).estimate.compatibility_issue
+    # The GPU card names the Flex-start blocker, not an unrelated placeholder machine such as G2.
+    gpu, tpu = view(parameters).accelerators
+    assert gpu.estimate.compatibility_issue.startswith("Flex-start queues bounded jobs")
+    assert not gpu.estimate.qualified
+    assert tpu.estimate.compatibility_issue == "No Cloud TPU machine in this catalog offers the flex billing plan"
     assert not build_llm_self_hosting_view(parameters | {"api-mode": "batch"}).estimate.compatibility_issue
     with pytest.raises(ValueError, match="Flex-start"):
         compare_hosting(parameters)

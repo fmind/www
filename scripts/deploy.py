@@ -18,6 +18,8 @@ _CONFIG_NAMES = ("REGION", "PROJECT_ID", "REPOSITORY", "SERVICE_NAME")
 # verification reads the same label, so a manual rollout must restamp it.
 COMMIT_LABEL = "commit-sha"
 MANUAL_TAG = "manual-candidate"
+# CI verifies its no-traffic revision under this tag (`CANDIDATE_TAG` in deploy.yml).
+CI_TAG = "candidate"
 _USAGE = "usage: mise run deploy <digest-ref> <commit-sha>\n"
 
 
@@ -115,8 +117,9 @@ def build_deploy_commands(
             f"--tag={MANUAL_TAG}",
             "--quiet",
         ),
-        # Drop the manual tag on promotion: a tagged revision stays publicly reachable after traffic moves on
-        # (a 2026-10-12 build was still served on its manual-candidate URL on 2026-10-24).
+        # Drop both candidate tags on promotion: a tagged revision stays publicly reachable after traffic moves on
+        # (a 2026-10-12 build was still served on its manual-candidate URL on 2026-10-24). Clearing the CI tag
+        # keeps a rolled-back or failed CI revision off its candidate URL. gcloud skips tags the service lacks.
         (
             "gcloud",
             "run",
@@ -124,7 +127,7 @@ def build_deploy_commands(
             "update-traffic",
             *scope,
             f"--to-revisions={revision}=100",
-            f"--remove-tags={MANUAL_TAG}",
+            f"--remove-tags={MANUAL_TAG},{CI_TAG}",
             "--quiet",
         ),
     )

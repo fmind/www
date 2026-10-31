@@ -10,13 +10,22 @@ from markdown_it.rules_inline.image import image as image_rule
 from markdown_it.rules_inline.link import link as link_rule
 from markdown_it.rules_inline.state_inline import StateInline
 from markdown_it.token import Token
+from mdit_py_plugins.footnote import footnote_plugin
 
 LinkRewriter = Callable[[str], str]
 
 
 def _parser() -> MarkdownIt:
-    """Return a fresh parser so per-call rule instrumentation is isolated."""
-    return MarkdownIt("commonmark")
+    """Return a fresh parser so per-call rule instrumentation is isolated.
+
+    Block syntax matches the article renderer (raw HTML off, footnotes on), so
+    exports rewrite the links the HTML page renders. Tables stay off: every
+    cell maps to its row's line, so cell segments would repeat edits. Inline
+    footnotes (^[...]) stay off too: their bodies parse as a nested substring
+    the link tracker cannot place, while as plain brackets their links stay in
+    the top-level segment and are rewritten.
+    """
+    return MarkdownIt("commonmark", {"html": False}).use(footnote_plugin, inline=False)
 
 
 def _string_attr(token: Token, name: str) -> str:
