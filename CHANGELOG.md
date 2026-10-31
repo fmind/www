@@ -2,6 +2,26 @@
 
 All notable changes to this project are documented in this file.
 
+## [2.6.1] - 2026-10-31
+
+### 🐛 Bug Fixes
+
+- Harden MCP, privacy, and deployment after a full review
+- _(deploy)_ Read no shared cache in the id-token job and gate manual deploys
+
+### 📚 Documentation
+
+- Document non-interactive MCP Registry auth and normalize MLOps repo link
+- _(agents)_ Record the approved visual style and the tmp/ rule
+
+### ⚙️ Build & CI
+
+- Switch to BetterLeaks and jactionlint and split offline and network checks
+
+### 🧹 Miscellaneous
+
+- Update MLOps course and skills GitHub links to fmind
+
 ## [2.6.0] - 2026-10-29
 
 ### 🚀 Features
