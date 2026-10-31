@@ -118,22 +118,9 @@ jobs:
           # Cloud Run consumes the scanned digest below. Avoid mutating an
           # unscanned `latest` pointer before that scan has passed.
           tags: ${{ env.AR_HOSTNAME }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          # Rebuild the small runtime stage so its `apt-get upgrade` layer picks up
-          # Debian security fixes instead of replaying a cached, older result.
-          no-cache-filters: runner
-      - name: Select the daily Trivy database cache
-        id: trivy-cache
-        run: echo "key=trivy-db-${RUNNER_OS}-$(date -u +%F)" >> "$GITHUB_OUTPUT"
-      - name: Restore the Trivy vulnerability database
-        # Restore-only: this job never writes the Trivy database cache. Entries
-        # for main are written only by main-branch runs of the verify job.
-        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: ~/.cache/trivy/db
-          key: ${{ steps.trivy-cache.outputs.key }}
-          restore-keys: trivy-db-${{ runner.os }}-
+          # This job holds id-token; never read shared caches. No BuildKit or Trivy cache:
+          # the verify job runs third-party code and could poison either. The build
+          # starts clean (fresh Debian security fixes too) and Trivy downloads its database.
       - name: Scan pushed image digest
         env:
           IMAGE_REF: ${{ env.AR_HOSTNAME }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}@${{ steps.build.outputs.digest }}

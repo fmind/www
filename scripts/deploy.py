@@ -58,8 +58,8 @@ type Verifier = Callable[[DeploymentTarget, str, str, str], None]
 
 
 def run_command(arguments: Sequence[str]) -> int:
-    """Run validated gcloud argv with inherited streams and signals."""
-    return subprocess.run(tuple(arguments), check=False).returncode  # noqa: S603 - fixed gcloud argv only.
+    """Run validated mise or gcloud argv with inherited streams and signals."""
+    return subprocess.run(tuple(arguments), check=False).returncode  # noqa: S603 - fixed, validated argv only.
 
 
 def validate_image_reference(image_reference: str, target: DeploymentTarget) -> str:
@@ -75,6 +75,17 @@ def validate_commit(commit: str) -> str:
     if not _COMMIT.fullmatch(commit):
         raise DeploymentUsageError("commit must be a full 40-character lowercase SHA")
     return commit
+
+
+def build_gate_commands(image_reference: str) -> tuple[tuple[str, ...], ...]:
+    """Return the digest gates CI runs before deployment: the Trivy scan, then the image smoke test.
+
+    Reusing the mise tasks keeps one scanner policy and one smoke contract for CI and manual rollouts.
+    """
+    return (
+        ("mise", "run", "check:image:digest", image_reference),
+        ("mise", "run", "test:image", image_reference),
+    )
 
 
 def build_deploy_commands(
@@ -152,7 +163,7 @@ def main(
     runner: Runner | None = None,
     verifier: Verifier | None = None,
 ) -> int:
-    """Validate first, then run each gcloud step, stopping at the first failure."""
+    """Validate first, gate the digest, then run each gcloud step, stopping at the first failure."""
     try:
         deployment_target = target or DeploymentTarget.from_environment()
         release_arguments = tuple(sys.argv[1:] if arguments is None else arguments)
@@ -164,6 +175,12 @@ def main(
 
     execute = runner or run_command
     try:
+        # Scan and smoke-test the digest before any Cloud Run change, as CI does:
+        # the registry also holds digests that CI rejected.
+        for gate in build_gate_commands(release_arguments[0]):
+            if returncode := execute(gate):
+                sys.stderr.write(f"image gate {gate[2]} failed; nothing was deployed\n")
+                return returncode
         if returncode := execute(commands[0]):
             return returncode
         try:
@@ -179,8 +196,10 @@ def main(
             sys.stderr.write(f"candidate verification failed: {type(error).__name__}; traffic was not promoted\n")
             return 1
         return execute(commands[1])
-    except FileNotFoundError:
-        sys.stderr.write("deployment failed: gcloud is not installed or executable\n")
+    except FileNotFoundError as error:
+        sys.stderr.write(
+            f"deployment failed: {error.filename or 'a required command'} is not installed or executable\n"
+        )
         return 127
 
 

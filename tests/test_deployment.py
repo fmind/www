@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 from scripts import deploy, verify_deployment
-from scripts.deploy import DeploymentTarget, Runner, build_deploy_commands, main
+from scripts.deploy import DeploymentTarget, Runner, build_deploy_commands, build_gate_commands, main
 
 TARGET = DeploymentTarget(
     region="europe-west1",
@@ -22,6 +22,10 @@ TARGET = DeploymentTarget(
 )
 VALID_IMAGE = f"{TARGET.image_repository}@sha256:{'a' * 64}"
 VALID_COMMIT = "0123456789abcdef0123456789abcdef01234567"
+GATES = (
+    ("mise", "run", "check:image:digest", VALID_IMAGE),
+    ("mise", "run", "test:image", VALID_IMAGE),
+)
 VERIFY_CREATED_REVISION = deploy.verify_created_revision
 SCOPE = (
     "www-fmind-dev",
@@ -40,7 +44,7 @@ def offline_verification(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 class RecordingRunner:
-    """Record commands without invoking gcloud, returning scripted exit codes."""
+    """Record commands without invoking mise or gcloud, returning scripted exit codes."""
 
     def __init__(self, *returncodes: int) -> None:
         self.returncodes = list(returncodes)
@@ -50,13 +54,21 @@ class RecordingRunner:
         self.commands.append(tuple(arguments))
         return self.returncodes.pop(0) if self.returncodes else 0
 
+    @property
+    def gcloud_steps(self) -> list[str]:
+        return [command[3] for command in self.commands if command[0] == "gcloud"]
+
 
 class MissingExecutableRunner:
-    """Represent a host where gcloud is unavailable."""
+    """Represent a host where one executable is unavailable, as subprocess reports it."""
+
+    def __init__(self, missing: str) -> None:
+        self.missing = missing
 
     def __call__(self, arguments: Sequence[str]) -> int:
-        del arguments
-        raise FileNotFoundError("gcloud")
+        if arguments[0] == self.missing:
+            raise FileNotFoundError(2, "No such file or directory", self.missing)
+        return 0
 
 
 def test_valid_release_restamps_commit_and_routes_traffic_to_the_new_revision() -> None:
@@ -139,25 +151,45 @@ def test_ci_promotion_drops_the_candidate_tag_that_manual_rollouts_also_clear() 
     assert '--to-revisions "$REVISION=100" --remove-tags "$CANDIDATE_TAG"' in promotion
 
 
-def test_successful_update_is_followed_by_traffic_promotion() -> None:
+def test_gates_reuse_the_ci_scan_and_smoke_tasks_for_the_exact_digest() -> None:
+    assert build_gate_commands(VALID_IMAGE) == GATES
+
+    workflow = (Path(__file__).resolve().parents[1] / ".github" / "workflows" / "deploy.yml").read_text()
+    assert 'mise run check:image:digest "$IMAGE_REF"' in workflow
+    assert 'mise run test:image "$IMAGE_REF"' in workflow
+
+
+def test_successful_rollout_gates_the_digest_before_any_cloud_run_change() -> None:
     runner = RecordingRunner()
 
     assert main((VALID_IMAGE, VALID_COMMIT), target=TARGET, runner=runner) == 0
-    assert [command[3] for command in runner.commands] == ["update", "update-traffic"]
+    assert tuple(runner.commands[:2]) == GATES
+    assert runner.gcloud_steps == ["update", "update-traffic"]
+
+
+@pytest.mark.parametrize(("returncodes", "gate"), [((5,), "check:image:digest"), ((0, 6), "test:image")])
+def test_failed_image_gate_preserves_exit_status_and_never_calls_gcloud(
+    returncodes: tuple[int, ...], gate: str, capsys: pytest.CaptureFixture[str]
+) -> None:
+    runner = RecordingRunner(*returncodes)
+
+    assert main((VALID_IMAGE, VALID_COMMIT), target=TARGET, runner=runner) == returncodes[-1]
+    assert tuple(runner.commands) == GATES[: len(returncodes)]
+    assert capsys.readouterr().err == f"image gate {gate} failed; nothing was deployed\n"
 
 
 def test_failed_update_preserves_exit_status_and_never_moves_traffic() -> None:
-    runner = RecordingRunner(9)
+    runner = RecordingRunner(0, 0, 9)
 
     assert main((VALID_IMAGE, VALID_COMMIT), target=TARGET, runner=runner) == 9
-    assert [command[3] for command in runner.commands] == ["update"]
+    assert runner.gcloud_steps == ["update"]
 
 
 def test_failed_traffic_promotion_is_reported() -> None:
-    runner = RecordingRunner(0, 7)
+    runner = RecordingRunner(0, 0, 0, 7)
 
     assert main((VALID_IMAGE, VALID_COMMIT), target=TARGET, runner=runner) == 7
-    assert [command[3] for command in runner.commands] == ["update", "update-traffic"]
+    assert runner.gcloud_steps == ["update", "update-traffic"]
 
 
 def test_concurrent_revision_after_verification_never_receives_manual_traffic() -> None:
@@ -166,14 +198,14 @@ def test_concurrent_revision_after_verification_never_receives_manual_traffic() 
 
     def verify(target: DeploymentTarget, image: str, commit: str, revision: str) -> None:
         assert (target, image, commit) == (TARGET, VALID_IMAGE, VALID_COMMIT)
-        assert len(runner.commands) == 1
+        assert runner.gcloud_steps == ["update"]
         checked.append(revision)
         # A concurrent deploy can now become latest; promotion must use the
         # already verified name without another lookup of mutable service state.
 
     assert main((VALID_IMAGE, VALID_COMMIT), target=TARGET, runner=runner, verifier=verify) == 0
-    assert f"--to-revisions={checked[0]}=100" in runner.commands[1]
-    assert "--to-latest" not in runner.commands[1]
+    assert f"--to-revisions={checked[0]}=100" in runner.commands[-1]
+    assert "--to-latest" not in runner.commands[-1]
 
 
 @pytest.mark.parametrize("replaced", [False, True])
@@ -205,7 +237,7 @@ def test_failed_candidate_verification_never_promotes_or_exposes_diagnostics(
         raise ValueError("private provider diagnostics")
 
     assert main((VALID_IMAGE, VALID_COMMIT), target=TARGET, runner=runner, verifier=fail) == 1
-    assert len(runner.commands) == 1
+    assert runner.gcloud_steps == ["update"]
     assert capsys.readouterr().err == "candidate verification failed: ValueError; traffic was not promoted\n"
 
 
@@ -215,14 +247,15 @@ def test_invalid_revision_suffix_fails_before_deployment(suffix: str) -> None:
         build_deploy_commands((VALID_IMAGE, VALID_COMMIT), TARGET, revision_suffix=suffix)
 
 
-def test_missing_gcloud_is_a_safe_nonzero_failure(capsys: pytest.CaptureFixture[str]) -> None:
-    runner: Runner = MissingExecutableRunner()
+@pytest.mark.parametrize("missing", ["mise", "gcloud"])
+def test_missing_executable_is_a_safe_nonzero_failure(missing: str, capsys: pytest.CaptureFixture[str]) -> None:
+    runner: Runner = MissingExecutableRunner(missing)
 
     assert main((VALID_IMAGE, VALID_COMMIT), target=TARGET, runner=runner) == 127
 
     captured = capsys.readouterr()
     assert captured.out == ""
-    assert captured.err == "deployment failed: gcloud is not installed or executable\n"
+    assert captured.err == f"deployment failed: {missing} is not installed or executable\n"
 
 
 def test_module_invocation_rejects_missing_digest_without_gcloud() -> None:
