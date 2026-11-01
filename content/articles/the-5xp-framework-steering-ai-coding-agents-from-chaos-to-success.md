@@ -16,9 +16,9 @@ In my previous article, [_How I Revamped My Portfolio Website in 5 Nights Using 
 
 In this follow-up article, I present the exact structure I use for my AI-assisted projects. After exploring many iterations and tools, I found that the key to success is providing the AI with the right context in a brutally simple, highly maintainable way.
 
-![Photo by ZHIDA LI on Unsplash](/static/img/articles/the-5xp-framework-steering-ai-coding-agents-from-chaos-to-success/cover.webp)
+![Construction workers in hard hats climbing a yellow scaffolding frame against a blue sky — Photo by ZHIDA LI on Unsplash](/static/img/articles/the-5xp-framework-steering-ai-coding-agents-from-chaos-to-success/cover.webp)
 
-Photo by [ZHIDA LI](https://unsplash.com/@adam_l_ee?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Construction workers in hard hats climbing a yellow scaffolding frame against a blue sky — Photo by [ZHIDA LI](https://unsplash.com/@adam_l_ee?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
 
 > _**Note:**_ _To make it easier to adopt, I’ve created the_ [_AI Coding 5xP Template_](https://github.com/fmind/ai-coding-5xp-template) _repository. This repository acts as the single source of truth for the framework, providing a ready-to-use directory structure you can use for your own projects._
 
@@ -33,7 +33,7 @@ To steer the agent in the right direction, context is the fuel. It adapts the LL
 I have experimented with several approaches to provide context, and each comes with its own trade-offs:
 
 - **Autocompletion & Inference**: Tools like [GitHub Copilot](https://github.com/features/copilot) and [Google Antigravity](https://antigravity.google/) are great for getting decent work done by inferring information from your existing codebase. However, they struggle when you start a project from scratch or when you have to rigidly copy-paste instructions over and over again to keep the agent aligned.
-- **Interactive Scaffolding**: Frameworks like [Spec-kit](https://github.com/spec-kit) and [Conductor](https://github.com/gemini-cli-extensions/conductor) allow you to prepare your context by answering questions. In practice, I found these tools too verbose. They infer a lot of content from your answers that you wouldn’t necessarily write yourself, leading to dilution of the core instructions.
+- **Interactive Scaffolding**: Frameworks like [Spec Kit](https://github.com/github/spec-kit) and [Conductor](https://github.com/gemini-cli-extensions/conductor) allow you to prepare your context by answering questions. In practice, I found these tools too verbose. They infer a lot of content from your answers that you wouldn’t necessarily write yourself, leading to dilution of the core instructions.
 - **Protocol Integrations**: The [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) is a fantastic standard for extending the capacities of your coding model by securely exposing external tools. But relying purely on MCP can bloat your LLM’s context window. Once you hit 100 tools, the model loses its focus, and you end up micromanaging tool selection instead of writing code.
 - [**Agent Skills**](https://agentskills.io): Dynamically loading specific skills into your LLM is amazing for quick task execution via lazy loading. However, it’s incredibly hard to generalize skills on day one. It’s often more practical to create specific rules for your current project first, and later refactor the recurring ones into standalone skills.
 
@@ -115,8 +115,8 @@ The 5xP framework is the best trade-off I have found so far: it is brutally simp
 
 It does not take long to set up, but it forces you to think clearly about your project’s shape before you write a single line of code. And in the era of AI engineering, thinking clearly is your greatest superpower.
 
-![Photo by Van Tay Media on Unsplash](/static/img/articles/the-5xp-framework-steering-ai-coding-agents-from-chaos-to-success/02.webp)
+![Developer seen from behind, wearing a Don’t Be Bored shirt, writing code on a large monitor and a laptop — Photo by Van Tay Media on Unsplash](/static/img/articles/the-5xp-framework-steering-ai-coding-agents-from-chaos-to-success/02.webp)
 
-Photo by [Van Tay Media](https://unsplash.com/@vantaymedia?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Developer seen from behind, wearing a Don’t Be Bored shirt, writing code on a large monitor and a laptop — Photo by [Van Tay Media](https://unsplash.com/@vantaymedia?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
 
 Ready to start? Grab the [AI Coding 5xP Template](https://github.com/fmind/ai-coding-5xp-template) on GitHub to get up and running instantly.

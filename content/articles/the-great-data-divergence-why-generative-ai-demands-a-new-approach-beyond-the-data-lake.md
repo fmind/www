@@ -14,9 +14,9 @@ We built sophisticated ETL/ELT pipelines, meticulously organizing raw data into 
 
 **In this article, I will explore why this established paradigm is being fundamentally challenged by the rise of Generative AI**. I’ll break down the new data requirements driven by technologies like [Retrieval-Augmented Generation](https://en.wikipedia.org/wiki/Retrieval-augmented_generation) (RAG) and explain the core dilemma this creates for enterprise data strategy. Finally, I’ll argue that the path forward isn’t about building bigger data lakes, but about embracing a new, API-first paradigm for data access.
 
-![Photo by Aaron Burden on Unsplash](/static/img/articles/the-great-data-divergence-why-generative-ai-demands-a-new-approach-beyond-the-data-lake/cover.webp)
+![Wooden dock on a calm lake that mirrors a pine forest under a clear blue sky — Photo by Aaron Burden on Unsplash](/static/img/articles/the-great-data-divergence-why-generative-ai-demands-a-new-approach-beyond-the-data-lake/cover.webp)
 
-Photo by [Aaron Burden](https://unsplash.com/@aaronburden?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Wooden dock on a calm lake that mirrors a pine forest under a clear blue sky — Photo by [Aaron Burden](https://unsplash.com/@aaronburden?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
 
 ### The New Rules of the Game: Freshness, Context, and Low Latency
 
@@ -34,9 +34,9 @@ These applications don’t need a massive, historical dataset for training; they
 
 This new reality forces a critical question upon every data leader and architect: **Should we move all this real-time, unstructured, operational data into the data lake?**
 
-![https://www.databricks.com/glossary/medallion-architecture](/static/img/articles/the-great-data-divergence-why-generative-ai-demands-a-new-approach-beyond-the-data-lake/02.webp)
+![Medallion architecture: batch and streaming data refined through bronze, silver, and gold Delta Lake tables for BI and ML — Source: https://www.databricks.com/glossary/medallion-architecture](/static/img/articles/the-great-data-divergence-why-generative-ai-demands-a-new-approach-beyond-the-data-lake/02.webp)
 
-[https://www.databricks.com/glossary/medallion-architecture](https://www.databricks.com/glossary/medallion-architecture)
+Medallion architecture: batch and streaming data refined through bronze, silver, and gold Delta Lake tables for BI and ML — Source: [https://www.databricks.com/glossary/medallion-architecture](https://www.databricks.com/glossary/medallion-architecture)
 
 On one hand, the traditionalist view is compelling. Moving everything to the lake promises to maintain our “single source of truth.” It allows us to apply the same governance, security, and management frameworks we’ve spent years perfecting. It seems like the safe, logical extension of our current strategy.
 
@@ -50,9 +50,9 @@ I believe the solution isn’t to force new workloads into old architectures. Th
 
 The future is not about moving the data; it’s about creating standardized, high-performance pathways to access the data where it lives. The new center of the Gen AI data universe will not be a storage system, but an **API Management layer**, like [Google Apigee](https://cloud.google.com/apigee).
 
-![https://cloud.google.com/architecture/best-practices-securing-applications-and-apis-using-apigee](/static/img/articles/the-great-data-divergence-why-generative-ai-demands-a-new-approach-beyond-the-data-lake/03.webp)
+![Apigee security controls along the API chain from users to backend, such as OAuth 2.0, API keys, quotas, threat protection, and mutual TLS — Source: https://cloud.google.com/architecture/best-practices-securing-applications-and-apis-using-apigee](/static/img/articles/the-great-data-divergence-why-generative-ai-demands-a-new-approach-beyond-the-data-lake/03.webp)
 
-[https://cloud.google.com/architecture/best-practices-securing-applications-and-apis-using-apigee](https://cloud.google.com/architecture/best-practices-securing-applications-and-apis-using-apigee)
+Apigee security controls along the API chain from users to backend, such as OAuth 2.0, API keys, quotas, threat protection, and mutual TLS — Source: [https://cloud.google.com/architecture/best-practices-securing-applications-and-apis-using-apigee](https://cloud.google.com/architecture/best-practices-securing-applications-and-apis-using-apigee)
 
 In this model:
 
@@ -63,11 +63,11 @@ In this model:
 
 This API-first approach solves the latency and duplication problem while allowing for robust governance. We can apply security, rate limiting, monitoring, and versioning at the API layer, ensuring controlled and observable access to our most critical data assets.
 
-This evolution is already beginning to be standardized. Emerging concepts like Google’s [**Agent-to-Agent (A2A)**](https://a2aproject.github.io/A2A/latest/) **communication** and the open-source [**Model-Context Protocol (MCP)**](https://modelcontextprotocol.io/introduction) are building the foundational grammar for this new world. They aim to create a universal language for how models and agents request and receive context, abstracting away the underlying data source and treating everything as a service to be called upon.
+This evolution is already beginning to be standardized. Emerging concepts like Google’s [**Agent-to-Agent (A2A)**](https://a2aproject.github.io/A2A/latest/) **communication** and the open-source [**Model Context Protocol (MCP)**](https://modelcontextprotocol.io/introduction) are building the foundational grammar for this new world. They aim to create a universal language for how models and agents request and receive context, abstracting away the underlying data source and treating everything as a service to be called upon.
 
-![https://developers.googleblog.com/en/a2a-a-new-era-of-agent-interoperability/](/static/img/articles/the-great-data-divergence-why-generative-ai-demands-a-new-approach-beyond-the-data-lake/04.webp)
+![A2A protocol: a client agent and a remote agent exchange artifacts through secure collaboration, task management, UX negotiation, and capability discovery — Source: https://developers.googleblog.com/en/a2a-a-new-era-of-agent-interoperability/](/static/img/articles/the-great-data-divergence-why-generative-ai-demands-a-new-approach-beyond-the-data-lake/04.webp)
 
-[https://developers.googleblog.com/en/a2a-a-new-era-of-agent-interoperability/](https://developers.googleblog.com/en/a2a-a-new-era-of-agent-interoperability/)
+A2A protocol: a client agent and a remote agent exchange artifacts through secure collaboration, task management, UX negotiation, and capability discovery — Source: [https://developers.googleblog.com/en/a2a-a-new-era-of-agent-interoperability/](https://developers.googleblog.com/en/a2a-a-new-era-of-agent-interoperability/)
 
 ### The Future is Distributed, Connected by APIs
 

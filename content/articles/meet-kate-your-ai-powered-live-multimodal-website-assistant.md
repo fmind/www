@@ -10,7 +10,7 @@ draft = false
 
 Imagine a world where you can interact with websites using just your voice, having a conversation with an AI assistant that understands your needs and retrieves the information you’re looking for. That’s the world Kate is building.
 
-![Meet Kate: Your AI-Powered, Live Multimodal Website Assistant 🤖](/static/img/articles/meet-kate-your-ai-powered-live-multimodal-website-assistant/cover.webp)
+![Kate avatar: a robot with a glowing blue face and headphones, the name KATE printed on its chest](/static/img/articles/meet-kate-your-ai-powered-live-multimodal-website-assistant/cover.webp)
 
 Kate is an [open-source](https://github.com/fmind/kate?tab=MIT-1-ov-file#readme) (MIT), cutting-edge [multimodal](https://cloud.google.com/use-cases/multimodal-ai?hl=en) [live assistant](https://ai.google.dev/gemini-api/docs/multimodal-live) that leverages the power of [Gemini 2.0](https://blog.google/technology/google-deepmind/google-gemini-ai-update-december-2024/) and [Vertex AI Search](https://cloud.google.com/enterprise-search?hl=en) to provide a seamless and engaging user experience. She listens to your questions, understands your intent, and responds with relevant information from the website you’re browsing.
 
@@ -59,8 +59,8 @@ Building Kate was an exciting journey, but it also came with its challenges:
 
 Just a couple of years ago, building a live assistant like Kate seemed like a distant dream. Today, thanks to the rapid advancements in generative AI, it’s a reality. Kate is a testament to the progress we’ve made and a reminder that we’re still just scratching the surface of what’s possible.
 
-[**Kate is open source and available on GitHub**](https://github.com/fmind/kate) **.** If you’re interested in exploring the future of human-computer interaction, I encourage you to check out the project and contribute to its development. Feel free to reach me on [LinkedIn](https://www.linkedin.com/in/fmind-dev/) or my website: [https://www.fmind.dev/](https://www.fmind.dev/) if you want to build a new solution.
+[**Kate is open source and available on GitHub**](https://github.com/fmind/kate)**.** If you’re interested in exploring the future of human-computer interaction, I encourage you to check out the project and contribute to its development. Feel free to reach me on [LinkedIn](https://www.linkedin.com/in/fmind-dev/) or my website: [https://www.fmind.dev/](https://www.fmind.dev/) if you want to build a new solution.
 
-![Photo by Andy Kelly on Unsplash](/static/img/articles/meet-kate-your-ai-powered-live-multimodal-website-assistant/03.webp)
+![Young girl holding hands with a Pepper humanoid robot decorated with pink flowers in a shopping arcade — Photo by Andy Kelly on Unsplash](/static/img/articles/meet-kate-your-ai-powered-live-multimodal-website-assistant/03.webp)
 
-Photo by [Andy Kelly](https://unsplash.com/@askkell?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Young girl holding hands with a Pepper humanoid robot decorated with pink flowers in a shopping arcade — Photo by [Andy Kelly](https://unsplash.com/@askkell?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)

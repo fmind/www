@@ -1,6 +1,6 @@
 +++
 title = "Supagents: One Source to Rule Your Coding Subagents"
-description = "The AI providers are in a horse race. Every quarter, a new model lands, a new harness ships, and the gap between “the best tool for this task” and “the best tool overall” keeps moving."
+description = "Supagents compiles one Markdown persona per subagent into the native formats of Claude Code, Gemini CLI, GitHub Copilot, Cursor, OpenCode, and Kilo Code."
 date = "2026-05-10"
 tags = ["Coding", "Project"]
 slug = "supagents-one-source-to-rule-your-coding-subagents"
@@ -122,7 +122,7 @@ The flags I reach for daily:
 
 - `--dry-run` — preview every write without touching the filesystem.
 - `--check` — exit non-zero if any output would change. This is the CI flag. Wire it into a GitHub Action and you get a hard guarantee that committed sources match committed outputs.
-- `--target CLAUDE` (repeatable) — operate on a single target. Great when you are iterating on a Gemini-only tweak and don’t want to rewrite five files.
+- `--target GEMINI` (repeatable) — operate on a single target. Great when you are iterating on a Gemini-only tweak and don’t want to rewrite five files.
 - `--verbose` — print the unchanged files too. Helpful when something is mysteriously not updating and you want to confirm supagents _saw_ the source.
 
 Builds are idempotent. If a source has not changed since last build, supagents preserves the output’s mtime so file watchers and pre-commit hooks don’t re-fire on noise.

@@ -14,7 +14,7 @@ As someone deeply involved in AI, Generative AI, and MLOps, I saw another opport
 
 This led to the creation of [**GenV (Generative AI for Video Analytics)**](https://github.com/fmind/GenV), a [Python notebook](https://github.com/fmind/GenV/blob/main/GenV_Generative_AI_for_Video_Analytics.ipynb) designed as an agent to distill Google Meet recordings into structured, actionable insights. Similar to my previous [BKFC project for Google Chat](https://www.fmind.dev/articles/bkfc-an-agentic-workflow-for-gathering-knowledge-from-google-chat/), the goal was to build a practical, focused agentic workflow using powerful, accessible tools like [Google Colab](https://colab.google/), [Google Cloud Storage](https://cloud.google.com/storage), the [Vertex AI API](https://cloud.google.com/vertex-ai/docs/start/introduction-unified-platform), and specifically, [Vertex AI’s Gemini models](https://cloud.google.com/vertex-ai/generative-ai/docs/overview).
 
-![GenV: An Agentic Workflow for Actionable Insights from Google Meet Recordings](/static/img/articles/genv-an-agentic-workflow-for-actionable-insights-from-google-meet-recordings/cover.webp)
+![Tired coworkers holding their heads in front of laptops showing grids of video meeting participants](/static/img/articles/genv-an-agentic-workflow-for-actionable-insights-from-google-meet-recordings/cover.webp)
 
 ### The Motivation: From Video Overload to Clear Takeaways
 
@@ -182,4 +182,4 @@ This highlights that sophisticated AI benefits don’t always require complex co
 
 What other types of content could benefit from automated, structured insight extraction using Generative AI? Let me know your thoughts!
 
-![GenV: An Agentic Workflow for Actionable Insights from Google Meet Recordings](/static/img/articles/genv-an-agentic-workflow-for-actionable-insights-from-google-meet-recordings/02.webp)
+![Man in a blazer pointing at floating holographic dashboards of charts and meeting participant profiles](/static/img/articles/genv-an-agentic-workflow-for-actionable-insights-from-google-meet-recordings/02.webp)

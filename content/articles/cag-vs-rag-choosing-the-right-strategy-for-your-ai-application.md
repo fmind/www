@@ -12,9 +12,9 @@ As AI Engineers, we constantly seek the most effective ways to provide Large Lan
 
 **In this article, we’ll break down the key differences between CAG and RAG, focusing on two critical aspects: latency and price**. We’ll explore findings from a practical benchmark to understand the trade-offs, discuss the often-overlooked factor of implementation complexity, and provide recommendations to help you decide which approach best suits your specific needs, whether you’re building a quick prototype or optimizing a production system.
 
-![Photo by Andres Siimon on Unsplash](/static/img/articles/cag-vs-rag-choosing-the-right-strategy-for-your-ai-application/cover.webp)
+![Black-and-white portrait of a man in a deerstalker hat peering through a magnifying glass — Photo by Andres Siimon on Unsplash](/static/img/articles/cag-vs-rag-choosing-the-right-strategy-for-your-ai-application/cover.webp)
 
-Photo by [Andres Siimon](https://unsplash.com/@johnmcclane?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Black-and-white portrait of a man in a deerstalker hat peering through a magnifying glass — Photo by [Andres Siimon](https://unsplash.com/@johnmcclane?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
 
 ### 🥊The Contenders: CAG and RAG Explained
 
@@ -151,6 +151,6 @@ For a deeper dive into the analysis mentioned, check out these resources:
 - **Price Estimation Sheet:** [Comparison: CAG vs. RAG — Ranking](https://docs.google.com/spreadsheets/d/1WPmoqWB5UUO2tq9-z2ng2t_a6K6fqdzJTLQZxOytP4U/edit?usp=sharing)
 - **My entry to Kaggle "Gemini Long Context" competition**: [https://docs.google.com/presentation/d/1H7Kq8Ur3f76mknLcugR0ZaBFqtba6foLQS_i7KG_4Sc/edit#slide=id.g315f80125e3_1_48](https://docs.google.com/presentation/d/1H7Kq8Ur3f76mknLcugR0ZaBFqtba6foLQS_i7KG_4Sc/edit#slide=id.g315f80125e3_1_48)
 
-![Photo by Conner Baker on Unsplash](/static/img/articles/cag-vs-rag-choosing-the-right-strategy-for-your-ai-application/06.webp)
+![Observatory domes on a mountaintop under a night sky full of stars and the Milky Way — Photo by Conner Baker on Unsplash](/static/img/articles/cag-vs-rag-choosing-the-right-strategy-for-your-ai-application/06.webp)
 
-Photo by [Conner Baker](https://unsplash.com/@connerbaker?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Observatory domes on a mountaintop under a night sky full of stars and the Milky Way — Photo by [Conner Baker](https://unsplash.com/@connerbaker?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)

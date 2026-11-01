@@ -12,9 +12,9 @@ For many who grew up in the French-speaking world, the television series “[C�
 
 This project was inspired by a desire to replicate that engaging, conversational dynamic using modern technology for my daughter. The goal was to leverage the latest advancements in generative AI — specifically the [multi-speaker text-to-speech](https://ai.google.dev/gemini-api/docs/speech-generation#multi-speaker) (TTS) capabilities of [Google’s Gemini models](https://ai.google.dev/gemini-api/docs) — to programmatically generate similar educational content. This project, titled “It’s Not Artificial,” demonstrates the power of this approach, and the results are highly promising!
 
-![Photo by Pawel Czerwinski on Unsplash](/static/img/articles/its-not-artificial-recreating-a-conversational-format-with-gemini-s-multi-speaker-text-to-speech/cover.webp)
+![Glowing blue light trails forming overlapping sound waves on a black background — Photo by Pawel Czerwinski on Unsplash](/static/img/articles/its-not-artificial-recreating-a-conversational-format-with-gemini-s-multi-speaker-text-to-speech/cover.webp)
 
-Photo by [Pawel Czerwinski](https://unsplash.com/@pawel_czerwinski?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Glowing blue light trails forming overlapping sound waves on a black background — Photo by [Pawel Czerwinski](https://unsplash.com/@pawel_czerwinski?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
 
 ### The Concept: A Dynamic Duo Powered by AI 💡
 
@@ -137,8 +137,8 @@ This experiment highlights a shift towards more natural and intuitive human-comp
 
 The success of formats like “C’est pas sorcier” demonstrates the educational power of conversation. With tools like Gemini, this principle can be programmatically integrated into our digital experiences, fostering a new generation of dynamic and engaging learning tools. In the future, the project could also generate images and videos to support the episode.
 
-- **Link to the Github Repository**: [https://github.com/fmind/it-is-not-artificial/blob/main/It_is_Not_Artificial-C'est_Pas_Artificel.ipynb](https://github.com/fmind/it-is-not-artificial/blob/main/It_is_Not_Artificial-C%27est_Pas_Artificel.ipynb)
+- **Link to the GitHub Repository**: [https://github.com/fmind/it-is-not-artificial/blob/main/It_is_Not_Artificial-C'est_Pas_Artificel.ipynb](https://github.com/fmind/it-is-not-artificial/blob/main/It_is_Not_Artificial-C%27est_Pas_Artificel.ipynb)
 
-![Photo by Sander Sammy on Unsplash](/static/img/articles/its-not-artificial-recreating-a-conversational-format-with-gemini-s-multi-speaker-text-to-speech/02.webp)
+![Hooded wizard with green eyes holding a glowing orb of light in his palm — Photo by Sander Sammy on Unsplash](/static/img/articles/its-not-artificial-recreating-a-conversational-format-with-gemini-s-multi-speaker-text-to-speech/02.webp)
 
-Photo by [Sander Sammy](https://unsplash.com/@sammywilliams?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Hooded wizard with green eyes holding a glowing orb of light in his palm — Photo by [Sander Sammy](https://unsplash.com/@sammywilliams?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)

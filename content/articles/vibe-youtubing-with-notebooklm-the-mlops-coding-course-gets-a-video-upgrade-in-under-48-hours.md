@@ -1,6 +1,6 @@
 +++
 title = "Vibe Youtubing with NotebookLM: The MLOps Coding Course Gets a Video Upgrade in Under 48 Hours"
-description = "I’m incredibly excited to announce the launch of the first video series for my MLOps Coding Course, covering the introduction and the entire first chapter on AI/ML Project Initialization!"
+description = "I launched the first video series of my MLOps Coding Course, covering the introduction and the entire first chapter, made with NotebookLM in under 48 hours."
 date = "2025-08-26"
 tags = ["LLM", "Demo"]
 slug = "vibe-youtubing-with-notebooklm-the-mlops-coding-course-gets-a-video-upgrade-in-under-48-hours"
@@ -44,9 +44,9 @@ It was a profound experience. [NotebookLM](https://notebooklm.google.com/) respe
 
 This experience has solidified my belief that we are in a new era of content creation. Tools like NotebookLM don’t replace human expertise; they _amplify_ it. They empower us to focus on our unique strengths — our knowledge, our creative vision, our deep understanding of the subject — while automating the tedious and time-consuming tasks.
 
-![Source: https://blog.google/technology/google-labs/notebook-lm-audio-video-overviews-more-languages-longer-content/](/static/img/articles/vibe-youtubing-with-notebooklm-the-mlops-coding-course-gets-a-video-upgrade-in-under-48-hours/04.webp)
+![NotebookLM Video Overview slides titled Unlocking the World’s Stories, shown in English, Spanish, Chinese, and Arabic — Source: https://blog.google/technology/google-labs/notebook-lm-audio-video-overviews-more-languages-longer-content/](/static/img/articles/vibe-youtubing-with-notebooklm-the-mlops-coding-course-gets-a-video-upgrade-in-under-48-hours/04.webp)
 
-Source: [https://blog.google/technology/google-labs/notebook-lm-audio-video-overviews-more-languages-longer-content/](https://blog.google/technology/google-labs/notebook-lm-audio-video-overviews-more-languages-longer-content/)
+NotebookLM Video Overview slides titled Unlocking the World’s Stories, shown in English, Spanish, Chinese, and Arabic — Source: [https://blog.google/technology/google-labs/notebook-lm-audio-video-overviews-more-languages-longer-content/](https://blog.google/technology/google-labs/notebook-lm-audio-video-overviews-more-languages-longer-content/)
 
 I see immense potential for this technology in both professional and personal projects. It’s a true productivity superpower. **I highly encourage you to try it out,** especially now that [NotebookLM’s video and audio overviews are available in over 80 languages](https://blog.google/technology/google-labs/notebook-lm-audio-video-overviews-more-languages-longer-content/), opening up these capabilities to a global audience.
 
@@ -55,7 +55,7 @@ I see immense potential for this technology in both professional and personal pr
 This is just the beginning! I’ll be releasing more video overviews for the MLOps Coding Course in the coming months. Stay tuned for updates. In the meantime, I’d love to hear from you. Have you tried NotebookLM’s video overview feature? What are your experiences with AI-assisted content creation? Let’s discuss in the comments below!
 
 - **MLOps Coding Course**: [https://mlops-coding-course.fmind.dev/](https://mlops-coding-course.fmind.dev/)
-- **GitHub (** [**CC-BY-4.0 license**](https://github.com/fmind/mlops-coding-course#) **)**: [https://github.com/fmind/mlops-coding-course](https://github.com/fmind/mlops-coding-course)
+- **GitHub ([CC-BY-4.0 license](https://github.com/fmind/mlops-coding-course#))**: [https://github.com/fmind/mlops-coding-course](https://github.com/fmind/mlops-coding-course)
 - **Playlist for the 1st Chapter on Initialization**: [https://www.youtube.com/playlist?list=PLPCnNL6Y2PbTxRS24rkQ7mATQXjbR0PU7](https://www.youtube.com/playlist?list=PLPCnNL6Y2PbTxRS24rkQ7mATQXjbR0PU7)
 
-![Vibe Youtubing with NotebookLM: The MLOps Coding Course Gets a Video Upgrade in Under 48 Hours](/static/img/articles/vibe-youtubing-with-notebooklm-the-mlops-coding-course-gets-a-video-upgrade-in-under-48-hours/05.webp)
+![Cartoon of people and friendly robots in a cinema watching a space adventure on a screen titled Our Creation!](/static/img/articles/vibe-youtubing-with-notebooklm-the-mlops-coding-course-gets-a-video-upgrade-in-under-48-hours/05.webp)

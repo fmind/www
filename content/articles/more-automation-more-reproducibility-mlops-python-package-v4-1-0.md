@@ -10,9 +10,9 @@ draft = false
 
 The [**MLOps Python Package**](https://github.com/fmind/mlops-python-package) is your go-to solution for building robust and reproducible machine learning workflows. With the latest v4.1.0 release, we’ve doubled down on automation and reproducibility, making your MLOps journey smoother than ever.
 
-![Credit to ashishpatel26 for the diagram and his contribution!](/static/img/articles/more-automation-more-reproducibility-mlops-python-package-v4-1-0/cover.webp)
+![Mind map of the MLOps Python Package covering tools, code, configs, data, model, docs, observability, packaging, and tips — Credit to ashishpatel26 for the diagram and his contribution!](/static/img/articles/more-automation-more-reproducibility-mlops-python-package-v4-1-0/cover.webp)
 
-Credit to [ashishpatel26](https://github.com/ashishpatel26) for the diagram and his contribution!
+Mind map of the MLOps Python Package covering tools, code, configs, data, model, docs, observability, packaging, and tips — Credit to [ashishpatel26](https://github.com/ashishpatel26) for the diagram and his contribution!
 
 ### What’s New in v4.1.0?
 
@@ -250,6 +250,6 @@ cookiecutter gh:fmind/cookiecutter-mlops-package
 
 In the coming days, we will also update the [**MLOps Coding Course**](https://github.com/fmind/mlops-coding-course). Follow me on [X](https://x.com/fmind_dev), [GitHub](https://github.com/fmind), [my blog](https://www.fmind.dev/articles/), [LinkedIn](https://www.linkedin.com/in/fmind-dev/) to stay tuned!
 
-![Photo by Lenny Kuhne on Unsplash](/static/img/articles/more-automation-more-reproducibility-mlops-python-package-v4-1-0/02.webp)
+![Robotic arms working on a car body on an automated factory assembly line — Photo by Lenny Kuhne on Unsplash](/static/img/articles/more-automation-more-reproducibility-mlops-python-package-v4-1-0/02.webp)
 
-Photo by [Lenny Kuhne](https://unsplash.com/@lennykuhne?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Robotic arms working on a car body on an automated factory assembly line — Photo by [Lenny Kuhne](https://unsplash.com/@lennykuhne?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)

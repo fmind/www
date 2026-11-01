@@ -12,13 +12,13 @@ draft = false
 
 **In this article, I outline a project I developed to field questions about my resume and deepen my understanding of Generative AI**. The first section introduces the use case, objectives, and tools chosen for the project. The second section details the steps involved in converting unstructured documents into Chroma DB, a vector database. The third section elaborates on how to construct and integrate a chatbot assistant utilizing the OpenAI API, HuggingFace Spaces, and Gradio. Finally, I delve into the merits of learning through practical experience, along with critical design choices — such as the deliberate decision not to employ LangChain for this project.
 
-![Forging a Personal Chatbot with OpenAI API, Chroma DB, HuggingFace Spaces, and Gradio 🔥](/static/img/articles/forging-a-personal-chatbot-with-openai-api-chroma-db-huggingface-spaces-and-gradio/cover.webp)
+![Toy Story meme: Buzz shows a worried Woody that generative AI is everywhere](/static/img/articles/forging-a-personal-chatbot-with-openai-api-chroma-db-huggingface-spaces-and-gradio/cover.webp)
 
 ### A Case for a Chatbot 💼
 
 #### What? 💬
 
-- **Develop a chatbot capable of answering questions related to my** [**LinkedIn profile**](https://www.linkedin.com/in/fmind-dev/) **.**
+- **Develop a chatbot capable of answering questions related to my** [**LinkedIn profile**](https://www.linkedin.com/in/fmind-dev/)**.**
 - Process unstructured documents and rank them based on user queries.
 - Deploy the chatbot online and integrate it into [my website](https://www.fmind.dev/).
 
@@ -206,9 +206,11 @@ interface = gr.ChatInterface(
 
 **Choosing the right hosting option proved to be the most challenging decision**. While cloud providers like [AWS](https://aws.amazon.com/), [GCP](https://cloud.google.com/), and [Azure](https://azure.microsoft.com/en-us) offer scalable solutions, they come with a complex setup process involving permissions and public access. Conversely, I found [HuggingFace Spaces](https://huggingface.co/spaces) to be user-friendly, cost-effective, and natively supportive of Gradio. **Given that personal websites typically don’t demand high scalability, I opted for HuggingFace Spaces.**
 
-![Hosting on HuggingFace Spaces: https://huggingface.co/spaces/fmind/resume](/static/img/articles/forging-a-personal-chatbot-with-openai-api-chroma-db-huggingface-spaces-and-gradio/03.webp)
+![Gradio chat interface of the Fmind Chatbot on HuggingFace Spaces, with example questions about Médéric Hurier](/static/img/articles/forging-a-personal-chatbot-with-openai-api-chroma-db-huggingface-spaces-and-gradio/03.webp)
 
-Hosting on HuggingFace Spaces: [https://huggingface.co/spaces/fmind/resume](https://huggingface.co/spaces/fmind/resume)
+Gradio chat interface of the Fmind Chatbot on HuggingFace Spaces, with example questions about Médéric Hurier
+
+_Update (November 2026): the HuggingFace Space demo has been retired and the chatbot no longer runs on this website. The code and steps above remain for reference._
 
 #### Chatbot Integration: Embed with a Web Component 📲
 

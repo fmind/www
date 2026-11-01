@@ -18,9 +18,9 @@ She was stuck. Manually translating 155 slides is not just tedious; it’s a rec
 
 Listening to her predicament, I thought, “There has to be a faster way.” During my lunch break, I decided to take a crack at it. I figured hacking together a quick solution would be faster than waiting for a permission slip.
 
-![Source: Gemini App](/static/img/articles/slides-to-translate-when-it-says-no-build-a-0-04-solution-on-your-lunch-break/cover.webp)
+![Split image: a frustrated man checking printed slides by hand beside a smiling developer working on a laptop — Source: Gemini App](/static/img/articles/slides-to-translate-when-it-says-no-build-a-0-04-solution-on-your-lunch-break/cover.webp)
 
-Source: Gemini App
+Split image: a frustrated man checking printed slides by hand beside a smiling developer working on a laptop — Source: Gemini App
 
 **And it was. In less than an hour, I had a working solution.**
 
@@ -177,8 +177,8 @@ We no longer have to wait for permission. With tools like Gemini and platforms l
 
 So next time you’re stuck waiting on a process, maybe ask yourself: “Could I just build this myself?” You might be surprised by what you can accomplish before you’ve even finished your sandwich!
 
-_You can find the full project and notebook on GitHub here:_ [https://github.com/fmind/slides-to-translate/](https://github.com/fmind/slides-to-translate/) _._
+_You can find the full project and notebook on GitHub here:_ [https://github.com/fmind/slides-to-translate/](https://github.com/fmind/slides-to-translate/).
 
-![Source: Gemini App](/static/img/articles/slides-to-translate-when-it-says-no-build-a-0-04-solution-on-your-lunch-break/03.webp)
+![Bearded wizard with a lightning-charged staff typing on a laptop among floating code windows — Source: Gemini App](/static/img/articles/slides-to-translate-when-it-says-no-build-a-0-04-solution-on-your-lunch-break/03.webp)
 
-Source: Gemini App
+Bearded wizard with a lightning-charged staff typing on a laptop among floating code windows — Source: Gemini App

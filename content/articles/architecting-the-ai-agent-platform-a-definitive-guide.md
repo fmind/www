@@ -16,9 +16,9 @@ Building a single agent in a notebook is easy. Building a system that serves, se
 
 In this guide, I will deconstruct the architecture of a production-grade AI Agent Platform, breaking it down into its system context, containers, and component layers.
 
-![Source: Gemini (Nano Banana Pro)](/static/img/articles/architecting-the-ai-agent-platform-a-definitive-guide/cover.webp)
+![Neon hexagon of the platform layers, from Interaction to Observability inside a Trust boundary, driving AI agent gears — Source: Gemini (Nano Banana Pro)](/static/img/articles/architecting-the-ai-agent-platform-a-definitive-guide/cover.webp)
 
-Source: Gemini (Nano Banana Pro)
+Neon hexagon of the platform layers, from Interaction to Observability inside a Trust boundary, driving AI agent gears — Source: Gemini (Nano Banana Pro)
 
 ### System Context: The PaaS Approach
 
@@ -43,9 +43,9 @@ To function, the AI Agent Platform relies on five high-level systems:
 - **Information Systems:** The context providers (Operational DBs, Data Lakes, Knowledge Bases).
 - **Cloud Infrastructure:** The bedrock providing compute and reliability.
 
-![Source: Fmind.dev](/static/img/articles/architecting-the-ai-agent-platform-a-definitive-guide/02.webp)
+![System context diagram: employees, integrators, developers, and external systems use the AI Agent Platform, backed by IAM, models, apps, data, and cloud — Source: Fmind.dev](/static/img/articles/architecting-the-ai-agent-platform-a-definitive-guide/02.webp)
 
-Source: Fmind.dev
+System context diagram: employees, integrators, developers, and external systems use the AI Agent Platform, backed by IAM, models, apps, data, and cloud — Source: Fmind.dev
 
 ### The Container Architecture
 
@@ -59,9 +59,9 @@ To manage complexity, we divide the AI Agent Platform into **7 Logical Container
 6. **Observability:** The monitoring and evaluation stack.
 7. **Trust:** The security and governance control plane.
 
-![Source: Fmind.dev](/static/img/articles/architecting-the-ai-agent-platform-a-definitive-guide/03.webp)
+![Container diagram of the AI Agent Platform linking the Interaction, Development, Core, Information, Foundation, Observability, and Trust layers — Source: Fmind.dev](/static/img/articles/architecting-the-ai-agent-platform-a-definitive-guide/03.webp)
 
-Source: Fmind.dev
+Container diagram of the AI Agent Platform linking the Interaction, Development, Core, Information, Foundation, Observability, and Trust layers — Source: Fmind.dev
 
 Let’s hack through these layers one by one.
 
@@ -69,9 +69,9 @@ Let’s hack through these layers one by one.
 
 The Interaction layer is the portal. It is where the carbon lifeforms (us) communicate with the silicon.
 
-![Source: Fmind.dev](/static/img/articles/architecting-the-ai-agent-platform-a-definitive-guide/04.webp)
+![Interaction layer: an Agent Hub exposes chatbot and custom UIs, plus email, voice, and chat SaaS channels, with requests to Core and auth by Trust — Source: Fmind.dev](/static/img/articles/architecting-the-ai-agent-platform-a-definitive-guide/04.webp)
 
-Source: Fmind.dev
+Interaction layer: an Agent Hub exposes chatbot and custom UIs, plus email, voice, and chat SaaS channels, with requests to Core and auth by Trust — Source: Fmind.dev
 
 There are three primary ways to expose your agents:
 
@@ -85,9 +85,9 @@ In the future, I expect **Generative UI** to take over by 2026. This is where th
 
 This is the factory floor. My experience shows a **50/50 split** between developers (code-based) and integrators (no/low code), so your platform must support both paths to avoid limiting speed or flexibility.
 
-![Source: Fmind.dev](/static/img/articles/architecting-the-ai-agent-platform-a-definitive-guide/05.webp)
+![Development layer: a code-based path (SDK, SCM, CI/CD) and a no-code path (visual designer, iPaaS) both deploy agents to the Core — Source: Fmind.dev](/static/img/articles/architecting-the-ai-agent-platform-a-definitive-guide/05.webp)
 
-Source: Fmind.dev
+Development layer: a code-based path (SDK, SCM, CI/CD) and a no-code path (visual designer, iPaaS) both deploy agents to the Core — Source: Fmind.dev
 
 #### Code-Based (The Developer Path)
 
@@ -107,9 +107,9 @@ This path is for business analysts using Visual Builders and iPaaS ([Integration
 
 The Core is the heartbeat. It houses the **Execution Engine**, the runtime responsible for the agent’s cognitive loop.
 
-![Source: Fmind.dev](/static/img/articles/architecting-the-ai-agent-platform-a-definitive-guide/06.webp)
+![Core layer: gateways (API management, A2A and MCP) and orchestration (event bus, scheduler) feed an agent runtime with sessions, memory, tools, and sandbox — Source: Fmind.dev](/static/img/articles/architecting-the-ai-agent-platform-a-definitive-guide/06.webp)
 
-Source: Fmind.dev
+Core layer: gateways (API management, A2A and MCP) and orchestration (event bus, scheduler) feed an agent runtime with sessions, memory, tools, and sandbox — Source: Fmind.dev
 
 #### The Execution Engine
 
@@ -132,9 +132,9 @@ You don’t always need a heavy Airflow setup with DAGs, but you do need:
 
 The Foundation layer is the bedrock of the AI Agent Platforms, providing both Foundation Models and Infrastructure solutions to the agents.
 
-![Source: Fmind.dev](/static/img/articles/architecting-the-ai-agent-platform-a-definitive-guide/07.webp)
+![Foundation layer: model routing and context caching over custom hosting and MaaS, running on storage, compute, IaC, and artifact management — Source: Fmind.dev](/static/img/articles/architecting-the-ai-agent-platform-a-definitive-guide/07.webp)
 
-Source: Fmind.dev
+Foundation layer: model routing and context caching over custom hosting and MaaS, running on storage, compute, IaC, and artifact management — Source: Fmind.dev
 
 #### Model Strategy
 
@@ -150,9 +150,9 @@ Standard cloud primitives apply here. Compute, Blob Storage, and **Artifact Mana
 
 An agent without data is a hallucination machine. The Information layer feeds the context required for decision-making.
 
-![Source: Fmind.dev](/static/img/articles/architecting-the-ai-agent-platform-a-definitive-guide/08.webp)
+![Information layer: a data lake with lineage, catalog, semantic layer, and OLAP exchanges data with knowledge (RAG, search) and operational stores — Source: Fmind.dev](/static/img/articles/architecting-the-ai-agent-platform-a-definitive-guide/08.webp)
 
-Source: Fmind.dev
+Information layer: a data lake with lineage, catalog, semantic layer, and OLAP exchanges data with knowledge (RAG, search) and operational stores — Source: Fmind.dev
 
 1. **Knowledge (Unstructured):** Documentation and guidelines stored in shared drives or online websites. These are typically indexed by a **RAG Engine** or **Search Engine** to explain _how_ the company works.
 2. **Operational (Structured):** Transactional data (SQL DBs) required to _do_ work (e.g., update a CRM record). Builders should favor APIs over direct DB access here to ensure business logic integrity.
@@ -164,9 +164,9 @@ Source: Fmind.dev
 
 If there is one thing humans must remain in control of, it is **supervising the agents.**
 
-![Source: Fmind.dev](/static/img/articles/architecting-the-ai-agent-platform-a-definitive-guide/09.webp)
+![Observability layer: supervision (tracing, logging, auditing, alerting) fed by billing, usage analytics, and Gen AI evaluation with human labelling — Source: Fmind.dev](/static/img/articles/architecting-the-ai-agent-platform-a-definitive-guide/09.webp)
 
-Source: Fmind.dev
+Observability layer: supervision (tracing, logging, auditing, alerting) fed by billing, usage analytics, and Gen AI evaluation with human labelling — Source: Fmind.dev
 
 - **Supervision:** The entry point. You need to collect logs, traces, and audit trails. Alerts should notify operators immediately when an agent loops or fails.
 - **Evaluation:** The hardest part. You need pipelines where Foundation Models (or humans) review agent traces to score them on metrics such as **Factuality, Relevance, and Accuracy**.
@@ -177,9 +177,9 @@ Source: Fmind.dev
 
 Finally, the Trust layer. Agents are high-leverage tools; without governance, they are a liability that could create havoc.
 
-![Source: Fmind.dev](/static/img/articles/architecting-the-ai-agent-platform-a-definitive-guide/10.webp)
+![Trust layer: role-based IAM for users and agents, a governance registry with marketplaces, and security guardrails against leaks and prompt injection — Source: Fmind.dev](/static/img/articles/architecting-the-ai-agent-platform-a-definitive-guide/10.webp)
 
-Source: Fmind.dev
+Trust layer: role-based IAM for users and agents, a governance registry with marketplaces, and security guardrails against leaks and prompt injection — Source: Fmind.dev
 
 - **IAM (Identity & Access Management):** RBAC is mandatory. Furthermore, **Tool Authentication** (OIDC/OAuth) ensures the agent only takes actions the _user_ is authorized to take (acting on behalf of the user).
 - **Security:** Guardrails. You need to filter content, prevent **Prompt Injection** (jailbreaks), and detect malicious content _before_ the LLM sees it. **Secret Management** is also critical to protect secrets like API keys.
@@ -193,6 +193,6 @@ Whether you are a developer writing complex orchestration logic or an integrator
 
 Start with the core, secure the trust layer, and never underestimate the importance of observability. The agents are coming — make sure you have the platform to manage them and give them both power and control.
 
-![Source: Gemini (Nano Banana Pro)](/static/img/articles/architecting-the-ai-agent-platform-a-definitive-guide/11.webp)
+![Neon futuristic city where humanoid AI agents walk among server racks, with the text Thank you for exploring the future of AI agents — Source: Gemini (Nano Banana Pro)](/static/img/articles/architecting-the-ai-agent-platform-a-definitive-guide/11.webp)
 
-Source: Gemini (Nano Banana Pro)
+Neon futuristic city where humanoid AI agents walk among server racks, with the text Thank you for exploring the future of AI agents — Source: Gemini (Nano Banana Pro)

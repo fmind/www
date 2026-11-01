@@ -12,9 +12,9 @@ In the fast-paced world of product retail, agility is crucial for the teams brin
 
 While essential, these repetitive tasks can consume hours, diverting designers from the creative work they do best. What if designers could automate these specific workflows themselves, without wrestling with complex software or waiting for engineering resources?
 
-![Source: Nano Banana](/static/img/articles/combo-banana-building-custom-image-workflows-in-record-time/cover.webp)
+![Many-armed superhero banana runs auto-crop, background removal, resize, and color correction to turn a raw phone photo into a clean product shot — Source: Nano Banana](/static/img/articles/combo-banana-building-custom-image-workflows-in-record-time/cover.webp)
 
-Source: Nano Banana
+Many-armed superhero banana runs auto-crop, background removal, resize, and color correction to turn a raw phone photo into a clean product shot — Source: Nano Banana
 
 This challenge inspired a recent project: [**Combo-Banana**](https://github.com/fmind/combo-banana). A simple open-source prototype based on [Google's Nano Banana](https://blog.google/products/gemini/updated-image-editing-model/) designed to demonstrate just how quickly we can build applications that deliver immediate value to our teammates on the field. This project is about empowering designers to create their own multi-step image editing pipelines.
 
@@ -106,8 +106,8 @@ As this project demonstrates, we don’t need massive engineering teams or long 
 
 This is a phenomenal opportunity for builders and entrepreneurs within any organization. **The tools are ready. It’s time to build!**
 
-- **Github Repository**: [https://github.com/fmind/combo-banana](https://github.com/fmind/combo-banana)
+- **GitHub Repository**: [https://github.com/fmind/combo-banana](https://github.com/fmind/combo-banana)
 
-![Source: Combo-Banana](/static/img/articles/combo-banana-building-custom-image-workflows-in-record-time/06.webp)
+![Robotic banana machine in a futuristic studio running a Combo-Banana workflow on product photos, captioned Tools are ready, it is time to build — Source: Combo-Banana](/static/img/articles/combo-banana-building-custom-image-workflows-in-record-time/06.webp)
 
-Source: Combo-Banana
+Robotic banana machine in a futuristic studio running a Combo-Banana workflow on product photos, captioned Tools are ready, it is time to build — Source: Combo-Banana

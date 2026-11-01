@@ -12,9 +12,9 @@ The MLOps ecosystem is evolving into a sophisticated symphony, composed of diver
 
 To manage this complexity, it became essential to develop and own [**abstractions**](https://en.wikipedia.org/wiki/Abstraction) that encapsulate the underlying complexity, offering a seamless and adaptable architecture for integrating new components. For instance, [Apache Spark](https://spark.apache.org/) emerged as an exemplary abstraction for managing Big Data applications at scale, courtesy of its immutable and lazy programming approach. Complementary systems like [Hive Metastore](https://hive.apache.org/) further enriched the ecosystem with its capabilities. This raises a pivotal question: Can similar solutions be adopted for MLOps?
 
-![Photo by Julio Rionaldo on Unsplash](/static/img/articles/become-the-maestro-of-your-mlops-abstractions/cover.webp)
+![Violinist playing in an orchestra, bow raised in front of sheet music on a stand — Photo by Julio Rionaldo on Unsplash](/static/img/articles/become-the-maestro-of-your-mlops-abstractions/cover.webp)
 
-Photo by [Julio Rionaldo](https://unsplash.com/@juliorionaldo?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Violinist playing in an orchestra, bow raised in front of sheet music on a stand — Photo by [Julio Rionaldo](https://unsplash.com/@juliorionaldo?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
 
 In this article, I aim to delineate a roadmap for constructing robust MLOps platforms and projects. Initially, I will underscore the importance of devising and mastering your own MLOps abstractions. Following this, I will outline key design patterns essential for forging simple yet potent abstractions for your projects. Lastly, I will delve into real-world case studies, illustrating the critical role of abstractions in the success of various projects.
 
@@ -40,9 +40,9 @@ Direct integration of each component in a project poses several risks. On one ha
 
 Creating your own abstractions in MLOps is essential due to [the absence of a universal standard](https://mlops.community/we-need-posix-for-mlops/) like [POSIX for UNIX systems](https://en.wikipedia.org/wiki/POSIX) in our industry. Diverse model libraries such as Scikit-learn, XGBoost, PyTorch, Lightning, TensorFlow, and JAX present different interfaces for managing AI/ML models. Similarly, platforms like GCP, Azure, and Databricks offer varied toolkits for training and serving models. Relying solely on a single toolkit or platform can stifle innovation and confine you to solutions with limited control.
 
-![Photo by Martijn Baudoin on Unsplash](/static/img/articles/become-the-maestro-of-your-mlops-abstractions/03.webp)
+![Tangle of cables, circuit boards, and old electronics wired together in a cramped workshop — Photo by Martijn Baudoin on Unsplash](/static/img/articles/become-the-maestro-of-your-mlops-abstractions/03.webp)
 
-Photo by [Martijn Baudoin](https://unsplash.com/@martijnbaudoin?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Tangle of cables, circuit boards, and old electronics wired together in a cramped workshop — Photo by [Martijn Baudoin](https://unsplash.com/@martijnbaudoin?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
 
 By developing your own abstractions, you gain the flexibility to adopt solutions at your pace, conceal unnecessary complexities, and achieve interoperability by integrating multiple systems as needed. The investment in creating your own abstractions, if executed effectively, is manageable. Consider the universality of USB-C for computer I/O or Docker for application portability as analogous examples.
 
@@ -86,7 +86,7 @@ To illustrate the design patterns highlighted in the previous section, let’s t
 
 ZenML proves especially valuable in ecosystems that utilize diverse software stacks (e.g., Databricks, SageMaker, Kubernetes, etc.), or when there’s a need to rapidly switch or incorporate other solutions. It exemplifies how design patterns can simplify user experiences and harmonize development environments.
 
-![Become the maestro of your MLOps abstractions](/static/img/articles/become-the-maestro-of-your-mlops-abstractions/07.webp)
+![ZenML stack linking the code repo to an orchestrator, feature store, artifact store, experiment tracker, deployment, and monitoring](/static/img/articles/become-the-maestro-of-your-mlops-abstractions/07.webp)
 
 #### Case 2: Evidently (Monitoring)
 
@@ -185,7 +185,7 @@ class TrainingJob(Job):
         return locals()
 ```
 
-Lastly, the package incorporates an [adapter pattern](https://en.wikipedia.org/wiki/Adapter_pattern) for [configuration file loading](https://github.com/fmind/mlops-python-package/blob/618b83a0f1d8f218d131a8f415e95a44929654af/src/wines/configs.py). Although [OmegaConf](https://omegaconf.readthedocs.io/) can parse and merge YAML files, it lacks native support for cloud storage like S3 or GCP. Integrating with the [cloudpathlib](https://cloudpathlib.drivendata.org/stable/) package allows for configuration file access from any location, seamlessly hiding internal complexities.
+Lastly, the package incorporates an [adapter pattern](https://en.wikipedia.org/wiki/Adapter_pattern) for [configuration file loading](https://github.com/fmind/mlops-python-package/blob/618b83a0f1d8f218d131a8f415e95a44929654af/src/wines/configs.py). Although [OmegaConf](https://omegaconf.readthedocs.io/) can parse and merge YAML files, it lacks native support for cloud storage like S3 or GCS. Integrating with the [cloudpathlib](https://cloudpathlib.drivendata.org/stable/) package allows for configuration file access from any location, seamlessly hiding internal complexities.
 
 ```python
 import typing as T
@@ -206,6 +206,6 @@ def load_config(path: str) -> Config:
 
 This article exemplifies how design patterns can be effectively utilized to evolve MLOps codebases and facilitate the integration of external components. This approach aligns with [David J. Wheeler’s foundational theorem of software development](https://en.wikipedia.org/wiki/Fundamental_theorem_of_software_engineering), which posits, _‘We can solve any problem by introducing an extra level of indirection’._ Crafting robust abstractions requires time and [thoughtful consideration](https://www.youtube.com/watch?v=f84n5oFoZBc); often, it’s wiser to start without them and then implement them to encapsulate emerging patterns.
 
-![Become the maestro of your MLOps abstractions](/static/img/articles/become-the-maestro-of-your-mlops-abstractions/09.webp)
+![Improvise. Adapt. Overcome. meme with Improvise crossed out and replaced by Abstract, echoing the article’s conclusion](/static/img/articles/become-the-maestro-of-your-mlops-abstractions/09.webp)
 
-While abstractions offer significant benefits, they cannot fully address the ‘curse of components’ inherent in the [MLOps landscape](https://mattturck.com/landscape/mad2023.pdf). The sheer complexity of integrating every conceivable solution in the market with others presents a daunting, perhaps intractable, challenge. This complexity could potentially stifle innovation and hinder long-term integration efforts. The concept of a **‘** [**Language of the System**](https://www.youtube.com/watch?v=ROor6_NGIWU) **’**, as articulated by Rich Hickey in his insightful talk, could be a game-changer for MLOps in this regard. Until such a paradigm emerges, the best practice is to maintain strong abstractions and strive for simplicity in your codebase.
+While abstractions offer significant benefits, they cannot fully address the ‘curse of components’ inherent in the [MLOps landscape](https://mattturck.com/landscape/mad2023.pdf). The sheer complexity of integrating every conceivable solution in the market with others presents a daunting, perhaps intractable, challenge. This complexity could potentially stifle innovation and hinder long-term integration efforts. The concept of a ‘[**Language of the System**](https://www.youtube.com/watch?v=ROor6_NGIWU)’, as articulated by Rich Hickey in his insightful talk, could be a game-changer for MLOps in this regard. Until such a paradigm emerges, the best practice is to maintain strong abstractions and strive for simplicity in your codebase.

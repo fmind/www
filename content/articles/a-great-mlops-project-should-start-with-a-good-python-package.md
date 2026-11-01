@@ -82,4 +82,4 @@ To reflect on this task, I like to compare programming to martial arts. The goal
 
 As a final note, I always love to discuss development practices with my peers. Feel free to drop me a message on the [MLOps Community Slack](https://go.mlops.community/slack), [create an issue on GitHub](https://github.com/fmind/mlops-python-package/issues), or [contribute directly to the repository](https://github.com/fmind/mlops-python-package/pulls). [This is the power of open source after all](https://www.youtube.com/watch?v=9sJUDx7iEJw) :)
 
-![A great MLOps project should start with a good Python Package 🐍](/static/img/articles/a-great-mlops-project-should-start-with-a-good-python-package/05.webp)
+![Neo from The Matrix in a kung fu stance in the dojo training program](/static/img/articles/a-great-mlops-project-should-start-with-a-good-python-package/05.webp)

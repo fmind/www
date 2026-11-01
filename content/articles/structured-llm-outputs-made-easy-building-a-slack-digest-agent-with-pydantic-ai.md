@@ -10,7 +10,7 @@ draft = false
 
 As developers and AI practitioners, many of us belong to vibrant online communities, like the [MLOps Community on Slack](https://go.mlops.community/slack). These platforms are fantastic hubs for knowledge sharing, discussion, and collaboration. However, they can also become overwhelming sources of information. Keeping up with dozens of channels and hundreds of messages daily is a real challenge!
 
-![Structured LLM Outputs Made Easy: Building a Slack Digest Agent with Pydantic AI](/static/img/articles/structured-llm-outputs-made-easy-building-a-slack-digest-agent-with-pydantic-ai/cover.webp)
+![This is fine meme: a dog sips coffee in a burning room labeled Tons of unread Slack threads](/static/img/articles/structured-llm-outputs-made-easy-building-a-slack-digest-agent-with-pydantic-ai/cover.webp)
 
 Wouldn’t it be great to have a personal assistant that could sift through the noise, identify the most relevant conversations, and summarize them neatly for you?
 
@@ -172,9 +172,9 @@ def fetch_slack_content(
 
 This gives us confidence that `digest_output` will have all the required fields (`title`, `summary`, `takeaways`) and nested structures (SlackThreadDigest and SlackWorkspaceDigest) we defined, ready for use in our application.
 
-![User Interface of the MLOps Digester showing the key information of a MLOps Community channel](/static/img/articles/structured-llm-outputs-made-easy-building-a-slack-digest-agent-with-pydantic-ai/06.webp)
+![User Interface of the MLOps Digester showing the key information of an MLOps Community channel](/static/img/articles/structured-llm-outputs-made-easy-building-a-slack-digest-agent-with-pydantic-ai/06.webp)
 
-User Interface of the MLOps Digester showing the key information of a MLOps Community channel
+User Interface of the MLOps Digester showing the key information of an MLOps Community channel
 
 ### Pydantic AI: A Quick Review
 
@@ -202,5 +202,3 @@ The [MLOps Digester](https://github.com/fmind/mlops-digester) project demonstrat
 If you’re building applications that consume LLM output, especially for data extraction, classification, or structured content generation, I highly recommend giving Pydantic AI a try.
 
 **Link to the GitHub Repository**: [https://github.com/fmind/mlops-digester/tree/main](https://github.com/fmind/mlops-digester/tree/main)
-
-Build a Slack Agent with Pydantic AI \[Step-by-Step Tutorial\]

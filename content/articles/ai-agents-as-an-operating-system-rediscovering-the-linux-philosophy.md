@@ -14,9 +14,9 @@ As of 2026, a simpler and clearer trend is emerging: **the Command Line Interfac
 
 To understand why this approach works, we need to look at where agent protocols struggled, and why the path forward means returning to the Linux philosophy.
 
-![Photo by Kevin Horvat on Unsplash](/static/img/articles/ai-agents-as-an-operating-system-rediscovering-the-linux-philosophy/cover.webp)
+![Silhouette of a person facing large monitors filled with code and terminal windows in a dark room — Photo by Kevin Horvat on Unsplash](/static/img/articles/ai-agents-as-an-operating-system-rediscovering-the-linux-philosophy/cover.webp)
 
-Photo by [Kevin Horvat](https://unsplash.com/@hidd3n?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Silhouette of a person facing large monitors filled with code and terminal windows in a dark room — Photo by [Kevin Horvat](https://unsplash.com/@hidd3n?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
 
 ### The Problem with MCP (Model Context Protocol)
 
@@ -83,7 +83,7 @@ What we are doing is rediscovering the [**Linux Philosophy**](https://en.wikiped
 
 - **Development:** During my day-to-day development, I now rely almost entirely on CLI tools combined with raw text context. It is incredibly liberating. I’m deeply curious to see how far this pure approach can scale. We are even seeing frameworks adapt to this reality; for instance, the Google ADK recently [added native bash tools](https://github.com/google/adk-python/blob/780093f389bfbffce965c89ca888d49f992219c1/src/google/adk/tools/bash_tool.py#L62) to give agents direct shell access.
 
-_Side Note: I finally feel less guilty about the_ [_1283+ commits on my dotfiles_](https://github.com/fmind/dotfiles) _._
+_Side Note: I finally feel less guilty about the_ [_1283+ commits on my dotfiles_](https://github.com/fmind/dotfiles).
 
 ### What’s Next? From Linux to Kubernetes for Agents
 
@@ -114,6 +114,6 @@ The history of software is wonderfully cyclical. We spent the last few years try
 
 **The next frontier is building the Kubernetes to run it.**
 
-![Photo by Growtika on Unsplash](/static/img/articles/ai-agents-as-an-operating-system-rediscovering-the-linux-philosophy/03.webp)
+![Rows of glowing blue 3D cubes stamped with the Kubernetes helm logo — Photo by Growtika on Unsplash](/static/img/articles/ai-agents-as-an-operating-system-rediscovering-the-linux-philosophy/03.webp)
 
-Photo by [Growtika](https://unsplash.com/@growtika?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Rows of glowing blue 3D cubes stamped with the Kubernetes helm logo — Photo by [Growtika](https://unsplash.com/@growtika?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)

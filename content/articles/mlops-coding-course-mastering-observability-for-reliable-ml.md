@@ -12,9 +12,9 @@ In [the last blog article](https://home.mlops.community/public/blogs/mlops-codin
 
 This article dives deep into the essential tools and practices for achieving comprehensive observability in your ML projects. We’ll unravel key concepts, showcase practical code examples from the accompanying [MLOps Python Package](https://github.com/fmind/mlops-python-package), and explore the benefits of integrating industry-leading solutions like [MLflow](https://mlflow.org/).
 
-![Photo by Elisa Schmidt on Unsplash](/static/img/articles/mlops-coding-course-mastering-observability-for-reliable-ml/cover.webp)
+![Coin-operated telescope overlooking a coastal city and its harbor — Photo by Elisa Schmidt on Unsplash](/static/img/articles/mlops-coding-course-mastering-observability-for-reliable-ml/cover.webp)
 
-Photo by [Elisa Schmidt](https://unsplash.com/@elisasch?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Coin-operated telescope overlooking a coastal city and its harbor — Photo by [Elisa Schmidt](https://unsplash.com/@elisasch?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
 
 _Note: The course is also available on the_ [_MLOps Community Learning Platform_](https://learn.mlops.community/courses/languages/mlops-coding-course/)
 
@@ -31,11 +31,11 @@ Deploying a model that initially shines with stellar performance only to witness
 
 [MLflow](https://mlflow.org/), the open-source platform we’ve come to rely on, rises to the occasion once again, providing a versatile and powerful set of tools for managing [the entire ML lifecycle](https://cloud.google.com/architecture/mlops-continuous-delivery-and-automation-pipelines-in-machine-learning). The [MLOps Coding Course](https://mlops-coding-course.fmind.dev/) leverages MLflow’s capabilities to the fullest, demonstrating how to:
 
-**1. Guarantee** [**Reproducibility**](https://mlops-coding-course.fmind.dev/7.%20Observability/7.0.%20Reproducibility.html) **with** [**MLflow Projects**](https://mlflow.org/docs/latest/projects.html) **:**
+**1. Guarantee** [**Reproducibility**](https://mlops-coding-course.fmind.dev/7.%20Observability/7.0.%20Reproducibility.html) **with** [**MLflow Projects**](https://mlflow.org/docs/latest/projects.html)**:**
 
 Standardize the way you package your ML code, dependencies, and environment configurations using [MLflow Projects](https://mlflow.org/docs/latest/projects.html). This ensures consistent execution across different environments and facilitates seamless sharing and collaboration.
 
-[**MLproject file**](https://github.com/fmind/mlops-python-package/blob/main/MLproject) **:**
+[**MLproject file**](https://github.com/fmind/mlops-python-package/blob/main/MLproject)**:**
 
 ```yaml
 # Define the structure of your MLflow project
@@ -48,11 +48,11 @@ entry_points:
     command: "PYTHONPATH=src python -m bikes {conf_file}"
 ```
 
-**2. Shine a Light on** [**Model Monitoring**](https://mlops-coding-course.fmind.dev/7.%20Observability/7.1.%20Monitoring.html) **with** [**MLflow Model Evaluation**](https://mlflow.org/docs/latest/model-evaluation/index.html) **:**
+**2. Shine a Light on** [**Model Monitoring**](https://mlops-coding-course.fmind.dev/7.%20Observability/7.1.%20Monitoring.html) **with** [**MLflow Model Evaluation**](https://mlflow.org/docs/latest/model-evaluation/index.html)**:**
 
 Employ [MLflow’s evaluate API](https://mlflow.org/docs/latest/model-evaluation/index.html) to compute and log a comprehensive suite of model performance metrics. Define thresholds to trigger alerts when metrics deviate from expected ranges.
 
-[**Evaluation Job file**](https://github.com/fmind/mlops-python-package/blob/main/src/bikes/jobs/evaluations.py) **:**
+[**Evaluation Job file**](https://github.com/fmind/mlops-python-package/blob/main/src/bikes/jobs/evaluations.py)**:**
 
 ```python
 from bikes.core import metrics as metrics_
@@ -73,7 +73,7 @@ Model Monitoring with [MLflow Model Evaluation](https://mlflow.org/docs/latest/m
 
 **For data and model drift detection, integrate** tools like [Evidently](https://www.evidentlyai.com/) to automate the generation of interactive reports. Visualize data drift, model performance variations, and other critical insights, enabling you to understand and address potential issues quickly.
 
-[**Evidently Example**](https://docs.evidentlyai.com/examples/introduction) **:**
+[**Evidently Example**](https://docs.evidentlyai.com/examples/introduction)**:**
 
 ```python
 import pandas as pd
@@ -96,7 +96,7 @@ report.show()  # Display the interactive report in a web browser
 
 During development, utilize a simple alerting service based on the [Plyer](https://plyer.readthedocs.io/) library. Send instant desktop notifications to developers about significant events in the MLOps pipeline.
 
-[**Alerting Service file**](https://github.com/fmind/mlops-python-package/blob/main/src/bikes/io/services.py) **:**
+[**Alerting Service file**](https://github.com/fmind/mlops-python-package/blob/main/src/bikes/io/services.py)**:**
 
 ```python
 from bikes.io import services
@@ -109,11 +109,11 @@ self.alerts_service.notify(title="Training Complete", message=f"Model version: {
 
 For production environments, integrate with powerful platforms like [Datadog](https://www.datadoghq.com/). Datadog offers comprehensive dashboards, customizable alerts, and flexible notification channels to keep you informed.
 
-**4. Trace the** [**Data/Model Lineage**](https://mlops-coding-course.fmind.dev/7.%20Observability/7.3.%20Lineage.html) **with** [**MLflow Dataset Tracking**](https://mlflow.org/docs/latest/tracking.html#tracking-datasets) **:**
+**4. Trace the** [**Data/Model Lineage**](https://mlops-coding-course.fmind.dev/7.%20Observability/7.3.%20Lineage.html) **with** [**MLflow Dataset Tracking**](https://mlflow.org/docs/latest/tracking.html#tracking-datasets)**:**
 
 Employ [MLflow Data API](https://mlflow.org/docs/latest/tracking/data-api.html) to meticulously track the lineage of your data, documenting its origin, transformations, and usage within your models. This creates a transparent and auditable record, essential for debugging, reproducibility, and data governance.
 
-[**Lineage in Training Job file**](https://github.com/fmind/mlops-python-package/blob/main/src/bikes/jobs/training.py) **:**
+[**Lineage in Training Job file**](https://github.com/fmind/mlops-python-package/blob/main/src/bikes/jobs/training.py)**:**
 
 ```python
 import mlflow.data.pandas_dataset as lineage
@@ -129,7 +129,7 @@ mlflow.log_input(dataset=inputs_lineage, context=self.run_config.name)
 
 Data Lineage information gathered with [MLflow Data API](https://mlflow.org/docs/latest/tracking/data-api.html)
 
-**5.** [**Manage Costs and Measure Success with KPIs**](https://mlops-coding-course.fmind.dev/7.%20Observability/7.4.%20Costs-KPIs.html) **:**
+**5.** [**Manage Costs and Measure Success with KPIs**](https://mlops-coding-course.fmind.dev/7.%20Observability/7.4.%20Costs-KPIs.html)**:**
 
 The [MLOps Python Package](https://github.com/fmind/mlops-python-package) provides a practical [notebook](https://github.com/fmind/mlops-python-package/blob/main/notebooks/indicators.ipynb) demonstrating how to extract and analyze technical cost and KPI data from an [MLflow server](https://mlflow.org/docs/latest/getting-started/running-notebooks/index.html). This data empowers you to understand resource consumption patterns, identify bottlenecks, and optimize your project’s performance and budget.
 
@@ -137,11 +137,11 @@ The [MLOps Python Package](https://github.com/fmind/mlops-python-package) provid
 
 Visualize the run time of experiment runs from the MLflow Server
 
-**6. Open the Black Box with** [**Explainability**](https://mlops-coding-course.fmind.dev/7.%20Observability/7.5.%20Explainability.html) **:**
+**6. Open the Black Box with** [**Explainability**](https://mlops-coding-course.fmind.dev/7.%20Observability/7.5.%20Explainability.html)**:**
 
 Integrate [SHAP (SHapley Additive exPlanations)](https://shap.readthedocs.io/en/latest/) to unveil the decision-making process of your models. Analyze feature importance scores, both globally and for individual predictions, to gain insights into model behavior, identify potential biases, and guide model improvement efforts.
 
-[**Explain samples from Models file**](https://github.com/fmind/mlops-python-package/blob/main/src/bikes/core/models.py) **:**
+[**Explain samples from Models file**](https://github.com/fmind/mlops-python-package/blob/main/src/bikes/core/models.py)**:**
 
 ```python
 @T.override
@@ -169,7 +169,7 @@ def explain_samples(self, inputs: schemas.Inputs) -> schemas.SHAPValues:
 
 [SHAP Values](https://shap.readthedocs.io/en/latest/example_notebooks/overviews/An%20introduction%20to%20explainable%20AI%20with%20Shapley%20values.html#) for explaining feature influences on data samples
 
-**7. Keep a Watchful Eye on** [**Infrastructure**](https://mlops-coding-course.fmind.dev/7.%20Observability/7.6.%20Infrastructure.html) **with** [**MLflow System Metrics**](https://mlflow.org/docs/latest/system-metrics/index.html) **:**
+**7. Keep a Watchful Eye on** [**Infrastructure**](https://mlops-coding-course.fmind.dev/7.%20Observability/7.6.%20Infrastructure.html) **with** [**MLflow System Metrics**](https://mlflow.org/docs/latest/system-metrics/index.html)**:**
 
 Enable [MLflow system metrics](https://mlflow.org/docs/latest/system-metrics/index.html) logging to capture valuable hardware performance indicators during the execution of your MLOps jobs. This data provides a window into resource utilization, helps you identify potential performance bottlenecks or issues, and enables you to make data-driven decisions regarding scaling and resource allocation.
 
@@ -183,6 +183,6 @@ Observability is the key to unlocking the true potential of your ML solutions. T
 
 Embrace the principles and practices outlined in the course, integrate powerful tools like [MLflow](https://mlflow.org/docs/latest/index.html), [Evidently](https://www.evidentlyai.com/) or [Datadog](https://www.datadoghq.com/solutions/machine-learning/), and watch your MLOps projects blossom with enhanced reliability, performance, and trustworthiness.
 
-![Photo by Luca Bravo on Unsplash](/static/img/articles/mlops-coding-course-mastering-observability-for-reliable-ml/07.webp)
+![Lighthouse at the end of a stone walkway on a rocky coast at dusk — Photo by Luca Bravo on Unsplash](/static/img/articles/mlops-coding-course-mastering-observability-for-reliable-ml/07.webp)
 
-Photo by [Luca Bravo](https://unsplash.com/@lucabravo?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Lighthouse at the end of a stone walkway on a rocky coast at dusk — Photo by [Luca Bravo](https://unsplash.com/@lucabravo?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)

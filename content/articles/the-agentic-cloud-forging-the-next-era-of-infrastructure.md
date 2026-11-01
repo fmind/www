@@ -16,9 +16,9 @@ Market Share of Cloud Providers ([Source](https://www.statista.com/chart/18819/w
 
 However, a paradigm shift is here, driven by Generative AI. This isn’t just another service to be added to a catalog of over 200 icons. It represents a new way of building, deploying, and managing software. I believe this new architectural pattern, which I call the **“Agentic Cloud,”** has the potential to dismantle the primary value proposition of the hyperscalers, creating the first genuine opportunity in a decade for new players to disrupt the market.
 
-![Photo by Paul Melki on Unsplash](/static/img/articles/the-agentic-cloud-forging-the-next-era-of-infrastructure/02.webp)
+![Medieval stone castle on a wooded hilltop above a village, like the hyperscalers' fortress — Photo by Paul Melki on Unsplash](/static/img/articles/the-agentic-cloud-forging-the-next-era-of-infrastructure/02.webp)
 
-Photo by [Paul Melki](https://unsplash.com/@paulmelki?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Medieval stone castle on a wooded hilltop above a village, like the hyperscalers' fortress — Photo by [Paul Melki](https://unsplash.com/@paulmelki?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
 
 ### The Fortress 🏰: What Makes the Cloud Giants Dominate?
 
@@ -30,9 +30,9 @@ Let’s be clear: the dominance of hyperscalers isn’t just about owning wareho
 - **Economies of Scale:** They operate at a scale that gives them [unparalleled efficiency](https://cloud.google.com/terms/sla?hl=en) in everything from negotiating hardware prices to managing energy consumption, which they can pass on as lower costs.
 - **Continuous Innovation:** They are constantly pushing the boundaries with new services, from pioneering serverless with [AWS Lambda](https://aws.amazon.com/lambda/) to building globally consistent databases like [GCP Spanner](https://cloud.google.com/spanner?hl=en), all while managing the maintenance burden for their customers.
 
-![Source: Médéric HURIER (Fmind)](/static/img/articles/the-agentic-cloud-forging-the-next-era-of-infrastructure/03.webp)
+![Hyperscaler cloud diagram: engineers use IaC, the console, and the CLI to wire a vast service catalog into a live application — Source: Médéric HURIER (Fmind)](/static/img/articles/the-agentic-cloud-forging-the-next-era-of-infrastructure/03.webp)
 
-Source: Médéric HURIER (Fmind)
+Hyperscaler cloud diagram: engineers use IaC, the console, and the CLI to wire a vast service catalog into a live application — Source: Médéric HURIER (Fmind)
 
 A smaller provider can lease the same data centers and buy the same servers, but they can’t compete with the tens of thousands of engineers and billions in R&D required to build and maintain this critical software layer.
 
@@ -51,16 +51,16 @@ Instead of competing on the _size of the catalog_, the new model competes on the
 
 I define an **Agentic Cloud** as an AI system that translates high-level, intent-driven specifications into fully provisioned, configured, deployed, and autonomously managed infrastructure and applications.
 
-![Source: Médéric HURIER (Fmind)](/static/img/articles/the-agentic-cloud-forging-the-next-era-of-infrastructure/04.webp)
+![Agentic Cloud diagram: architect, engineer, DevOps, and SRE agents turn user intent into a managed app on any provider — Source: Médéric HURIER (Fmind)](/static/img/articles/the-agentic-cloud-forging-the-next-era-of-infrastructure/04.webp)
 
-Source: Médéric HURIER (Fmind)
+Agentic Cloud diagram: architect, engineer, DevOps, and SRE agents turn user intent into a managed app on any provider — Source: Médéric HURIER (Fmind)
 
 This flips the script on how we deliver infrastructure:
 
 1. **Specification (The “Architect” Agent):** The user specifies the _what_, not the _how_. This could be through natural language (“I need a scalable e-commerce backend with a product catalog, user auth, and a recommendation engine”), a diagram, or even a photo of a whiteboard sketch. The agent asks clarifying questions to generate a detailed architectural plan.
 2. **Provisioning (The “Engineer” Agent):** The agent autonomously writes the necessary Infrastructure as Code (IaC) using best-of-breed open-source tools like [Terraform](https://developer.hashicorp.com/terraform) or [Pulumi](https://www.pulumi.com/). It configures networking, security groups, databases, and compute resources on any underlying IaaS provider, from AWS to a local bare-metal host.
 3. **Deployment (The “DevOps” Agent):** The agent deploys the application code (which could also be agent-generated), runs integration tests, and performs security scans, ultimately providing the user with a ready-to-use endpoint.
-4. **Autonomous Maintenance** (The “SRE” Agent): The agent continuously monitors the live system, autonomously performing tasks that are currently manual or require complex tooling:
+4. **Autonomous Maintenance** (The “SRE” Agent): The agent continuously monitors the live system, autonomously performing tasks that are currently manual or require complex tooling.
 
 ### Is This Really Happening? 🔭
 
@@ -68,7 +68,7 @@ This isn’t science fiction. Some foundational pieces are already falling into 
 
 - **Spec-to-Code (Kiro):** Projects like [Kiro](https://kiro.dev/) are already showing how high-level specifications and designs can be translated directly into functional application code. An Agentic Cloud applies this same principle to the infrastructure layer.
 - **Automated Design (Google Cloud ADC):** Google’s own [Application Design Center](https://cloud.google.com/application-design-center/docs/overview) is a clear bridge technology. It validates the demand for designing infrastructure with visual and natural language inputs. While it currently just assembles pre-defined GCP components, it’s a clear precursor to a dynamic, cross-cloud agent.
-- **Algorithmic Innovation (** [**AlphaEvolve**](https://deepmind.google/discover/blog/alphaevolve-a-gemini-powered-coding-agent-for-designing-advanced-algorithms/) **):** DeepMind’s work demonstrates that agents can go beyond just assembling known patterns; they can _innovate_ and discover novel, more efficient algorithms. An advanced agentic cloud could design entirely new network topologies or data storage strategies on the fly — a capability no static catalog can offer.
+- **Algorithmic Innovation ([AlphaEvolve](https://deepmind.google/discover/blog/alphaevolve-a-gemini-powered-coding-agent-for-designing-advanced-algorithms/)):** DeepMind’s work demonstrates that agents can go beyond just assembling known patterns; they can _innovate_ and discover novel, more efficient algorithms. An advanced agentic cloud could design entirely new network topologies or data storage strategies on the fly — a capability no static catalog can offer.
 
 ### Shifting the Value Stack 💸: The New Business Model
 
@@ -82,7 +82,7 @@ The primary value proposition is no longer the cloud provider’s curated softwa
 The consequences are profound:
 
 - **Commoditization of Cloud Providers:** Hyperscalers are forced to compete on the metrics of a simple utility company: the price, reliability, and energy efficiency of their raw hardware. Their multi-billion-dollar investment in their proprietary software platform would be massively devalued.
-- **A New Hope for Open Source:** Currently, many open-source companies (like Redhat or Postgres) monetize by selling a “managed service” on cloud marketplaces. An Agentic Cloud threatens this by being able to deploy and manage the open-source version itself. A new, more direct model emerges where the agent pays a micro-transaction to a trusted registry for a verified, secure package or subscribes to an API for premium features.
+- **A New Hope for Open Source:** Currently, many open-source companies (like Red Hat or Postgres) monetize by selling a “managed service” on cloud marketplaces. An Agentic Cloud threatens this by being able to deploy and manage the open-source version itself. A new, more direct model emerges where the agent pays a micro-transaction to a trusted registry for a verified, secure package or subscribes to an API for premium features.
 - **The Business to Build:** The next multi-trillion-dollar opportunity isn’t building another AWS. It’s building the definitive Agentic Cloud that sits on top of all of them.
 
 ### The Herculean Task Ahead 💪: Major Challenges
@@ -90,7 +90,7 @@ The consequences are profound:
 Let’s be realistic. Building a true Agentic Cloud is a monumental engineering challenge.
 
 - **Reliability & Determinism:** How do you stop an agent from “hallucinating” a critically flawed or insecure architecture? Ensuring robust, predictable, and idempotent results is paramount.
-- **Security:** An agent with programmatic API keys to create and modify your core infrastructure is the ultimate security risk. Securing the agent, its credentials, and the code it generates is a massive undertaking — a problem space where your expertise in computer security is especially relevant.
+- **Security:** An agent with programmatic API keys to create and modify your core infrastructure is the ultimate security risk. Securing the agent, its credentials, and the code it generates is a massive undertaking — a problem space where computer security expertise is especially relevant.
 - **Complex State Management:** Real-world infrastructure is stateful. The agent must be able to understand the current state, plan complex migrations, and safely handle failures without needing a human to intervene.
 - **The Long Tail of Integration:** Handling the mainstream use cases is one thing. The real world is messy, full of legacy systems, obscure third-party APIs, and weird corporate requirements that will challenge agent capabilities for years.
 
@@ -102,4 +102,4 @@ This technology has the power to level the playing field, enabling a small team 
 
 The race to assault the fortress is on!
 
-![The Agentic Cloud: Forging the Next Era of Infrastructure](/static/img/articles/the-agentic-cloud-forging-the-next-era-of-infrastructure/05.webp)
+![Army storming a stone fortress with cannons, ladders, and a siege tower amid fire and smoke](/static/img/articles/the-agentic-cloud-forging-the-next-era-of-infrastructure/05.webp)

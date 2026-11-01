@@ -61,6 +61,6 @@ In all these cases, most programming languages do not help as they are either to
 Other solutions can mitigate the need to rewrite existing applications:
 
 - **Create and explore specific-purpose programming languages** (e.g., query languages, data pipelines, programming paradigms …)
-- **Embrace** [**Polyglot Programming**](https://deanwampler.github.io/polyglotprogramming/) to combine the strength of several languages (e.g., TensorFlow relies both on C++ for performance and Python productivity).
+- **Embrace** [**Polyglot Programming**](https://deanwampler.github.io/polyglotprogramming/) to combine the strength of several languages (e.g., TensorFlow relies both on C++ for performance and Python for productivity).
 - **Remember that** [**premature optimization is the root of all evil**](http://wiki.c2.com/?PrematureOptimization), it is often more important to explore the edge cases of a problem before optimizing a narrow path.
 - **Remember that the requirements of a project will change over time**, the ability to adapt to new requirements remains important through the course of a project.

@@ -14,7 +14,7 @@ As an AI Engineer passionate about practical AI applications and MLOps, I freque
 
 Similar to my previous projects, [BKFC for Google Chat knowledge extraction](https://www.fmind.dev/articles/bkfc-an-agentic-workflow-for-gathering-knowledge-from-google-chat/) and [GenV for Google Meet video analysis](https://www.fmind.dev/articles/genv-an-agentic-workflow-for-actionable-insights-from-google-meet-recordings/), GitWorks leverages accessible tools like [Google Colab](https://colab.research.google.com/), the [GitHub API](https://docs.github.com/en/rest), and [Google’s Gemini models](https://ai.google.dev/gemini-api/docs/models) to create a focused, [agentic workflow](https://www.youtube.com/watch?v=Qd6anWv0mv0) solving a specific, real-world problem.
 
-![GitWorks: an AI Agent for Enforcing GitHub Repository Standards](/static/img/articles/gitworks-an-ai-agent-for-enforcing-github-repository-standards/cover.webp)
+![Cyborg developer with robotic arms smiling while writing code on a desktop monitor](/static/img/articles/gitworks-an-ai-agent-for-enforcing-github-repository-standards/cover.webp)
 
 ### The Motivation: From Manual Checks to Automated Compliance
 
@@ -148,4 +148,4 @@ How else could AI agents assist in enforcing standards or automating reviews in 
 
 **Find the notebook on GitHub:** [https://github.com/fmind/GitWorks](https://github.com/fmind/GitWorks/tree/main)
 
-![GitWorks: an AI Agent for Enforcing GitHub Repository Standards](/static/img/articles/gitworks-an-ai-agent-for-enforcing-github-repository-standards/02.webp)
+![Purple octopus wearing glasses typing on a glowing keyboard, surrounded by monitors full of code](/static/img/articles/gitworks-an-ai-agent-for-enforcing-github-repository-standards/02.webp)

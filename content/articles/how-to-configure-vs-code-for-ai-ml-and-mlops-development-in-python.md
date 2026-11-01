@@ -12,9 +12,9 @@ draft = false
 
 But possessing a good tool is only the beginning. **Just as a skilled craftsman must master their tools, it’s essential for programmers to become proficient with their editor for enhanced productivity**. In this article, I will outline the steps for configuring VS Code for data scientists and machine learning engineers. I’ll start by listing extensions that augment your programming environment. Then, I will share some settings and keybindings to enhance your development experience. Finally, I’ll provide tips and tricks to boost your coding efficiency with VS Code.
 
-![Photo by Andrew Ruiz on Unsplash](/static/img/articles/how-to-configure-vs-code-for-ai-ml-and-mlops-development-in-python/cover.webp)
+![Woodworker in a face shield turning wood on a lathe as shavings fly — Photo by Andrew Ruiz on Unsplash](/static/img/articles/how-to-configure-vs-code-for-ai-ml-and-mlops-development-in-python/cover.webp)
 
-Photo by [Andrew Ruiz](https://unsplash.com/@andrewruiz?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Woodworker in a face shield turning wood on a lathe as shavings fly — Photo by [Andrew Ruiz](https://unsplash.com/@andrewruiz?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
 
 ### Extensions 🔌
 
@@ -26,7 +26,7 @@ This section lists the extensions you can install from [VS Code Marketplace](htt
 - [**donjayamanne.python-environment-manager**](https://marketplace.visualstudio.com/items?itemName=donjayamanne.python-environment-manager): access and manage your Python environments (venv).
 - [**KevinRose.vsc-python-indent**](https://marketplace.visualstudio.com/items?itemName=KevinRose.vsc-python-indent): improve the default indentation for Python files.
 - [**ms-python.black-formatter**](https://marketplace.visualstudio.com/items?itemName=ms-python.black-formatter): format your code automatically.
-- [**ms-python.isort**](https://marketplace.visualstudio.com/items?itemName=ms-python.isort) **:** format your import statements automatically.
+- [**ms-python.isort**](https://marketplace.visualstudio.com/items?itemName=ms-python.isort)**:** format your import statements automatically.
 - [**ms-python.mypy-type-checker**](https://marketplace.visualstudio.com/items?itemName=ms-python.mypy-type-checker): source typing for Python. Great to validate your code and communicate how it should be used.
 - [**ms-python.pylint**](https://marketplace.visualstudio.com/items?itemName=ms-python.pylint): linting support for Python. Improve your code quality and avoid code smells.
 - [**ms-python.python**](https://marketplace.visualstudio.com/items?itemName=ms-python.python): language support for Python (linting, debugging, code formatting, and more).
@@ -98,7 +98,7 @@ Allow me to emphasise the value of Vim with an anecdote. During my master’s de
 
 The best part is that you can use Vim within VS Code as your primary or secondary keybinding. All it takes is installing the [VSCodeVim](https://marketplace.visualstudio.com/items?itemName=vscodevim.vim) extension and configuring some settings. Keep in mind that mastering Vim requires time, effort, and practice, but if you plan to edit lots of code files in the near future, it’s a valuable investment!
 
-**Bonus: You can use Vim in your Browser with the** [**Vimum**](https://github.com/philc/vimium) **extension.**
+**Bonus: You can use Vim in your Browser with the** [**Vimium**](https://github.com/philc/vimium) **extension.**
 
 - [**vscodevim.vim**](https://marketplace.visualstudio.com/items?itemName=vscodevim.vim): Vim emulation for VS Code, highly recommended!
 - [**VSpaceCode.vspacecode**](https://marketplace.visualstudio.com/items?itemName=VSpaceCode.vspacecode): Spacemacs like keybindings (advanced shortcuts relying on Vim leader key).
@@ -132,17 +132,17 @@ GitHub Copilot proves invaluable in various scenarios: it assists in generating 
 
 Within VS Code, there are two sets of configurations: [Settings](https://code.visualstudio.com/docs/getstarted/settings) that control the application’s behavior and [Keybindings](https://code.visualstudio.com/docs/getstarted/keybindings) that modify your shortcuts. Both can be edited from the “Gear” icon located at the bottom left of VS Code.
 
-#### [Settings](https://gist.github.com/fmind/67c1ce34d0f21005b4aa7aa79b9162aa#file-settings-json) 🔧
+#### [Settings](https://web.archive.org/web/20250127202331/https://gist.github.com/fmind/67c1ce34d0f21005b4aa7aa79b9162aa#file-settings-json) 🔧
 
-Below, you’ll find [the link to the settings I utilize with VS Code](https://gist.github.com/fmind/67c1ce34d0f21005b4aa7aa79b9162aa#file-settings-json). Each setting is annotated to help you understand what it does. Keep in mind that you can hover your cursor over a setting key in VS Code to access more information about that setting. You can also switch between the textual and visual interface using the “Go to document” icon at the top left of the editor settings.
+Below, you’ll find [the link to the settings I utilize with VS Code](https://web.archive.org/web/20250127202331/https://gist.github.com/fmind/67c1ce34d0f21005b4aa7aa79b9162aa#file-settings-json). Each setting is annotated to help you understand what it does. Keep in mind that you can hover your cursor over a setting key in VS Code to access more information about that setting. You can also switch between the textual and visual interface using the “Go to document” icon at the top left of the editor settings.
 
 **Remember that it’s essential to tailor the settings to your preferences since every user is unique**. Additionally, strive to understand what each setting does to optimize your satisfaction and productivity.
 
-![https://gist.github.com/fmind/67c1ce34d0f21005b4aa7aa79b9162aa#file-settings-json (163 lines)](/static/img/articles/how-to-configure-vs-code-for-ai-ml-and-mlops-development-in-python/05.webp)
+![Annotated VS Code settings.json, 163 lines: a comment explains each setting, such as spell checking and cursor behavior — archived gist](/static/img/articles/how-to-configure-vs-code-for-ai-ml-and-mlops-development-in-python/05.webp)
 
-[https://gist.github.com/fmind/67c1ce34d0f21005b4aa7aa79b9162aa#file-settings-json](https://gist.github.com/fmind/67c1ce34d0f21005b4aa7aa79b9162aa#file-settings-json) (163 lines)
+Annotated VS Code settings.json, 163 lines: a comment explains each setting, such as spell checking and cursor behavior — [archived gist](https://web.archive.org/web/20250127202331/https://gist.github.com/fmind/67c1ce34d0f21005b4aa7aa79b9162aa#file-settings-json)
 
-#### [Keybindings](https://gist.github.com/fmind/67c1ce34d0f21005b4aa7aa79b9162aa#file-keybindings-json) 🎹
+#### [Keybindings](https://web.archive.org/web/20250127202331/https://gist.github.com/fmind/67c1ce34d0f21005b4aa7aa79b9162aa#file-keybindings-json) 🎹
 
 **Keybindings are primarily a matter of personal preference**. Some individuals may opt for minor modifications, while others may choose to completely rebind commands to their liking.
 
@@ -152,7 +152,7 @@ In my case, I prefer to assign quick shortcuts to the most frequently used comma
 
 By default, most desktop applications use the Alt key to navigate through the application menu, allowing actions like “Alt+i i” to access the “Insert” menu and insert an image into a Word document. In VS Code, you can disable this behavior by setting `"window.enableMenuBarMnemonics": false` and create your own custom keybindings. Another advantage is that this behavior works across all major operating systems: Linux, Mac, and Windows.
 
-[The code snippet provided below replaces Alt-key shortcuts with custom keybindings](https://gist.github.com/fmind/67c1ce34d0f21005b4aa7aa79b9162aa#file-keybindings-json). For example, pressing “Alt+j” will move to the next editor, and “Alt+,” will open a new terminal. The code snippet is divided into several sections:
+[The code snippet provided below replaces Alt-key shortcuts with custom keybindings](https://web.archive.org/web/20250127202331/https://gist.github.com/fmind/67c1ce34d0f21005b4aa7aa79b9162aa#file-keybindings-json). For example, pressing “Alt+j” will move to the next editor, and “Alt+,” will open a new terminal. The code snippet is divided into several sections:
 
 1. **ACTIONS**: Primary shortcuts associated with each key on your keyboard.
 2. **DISABLED**: Resolving conflicts found in the extensions I’m using.
@@ -160,9 +160,9 @@ By default, most desktop applications use the Alt key to navigate through the ap
 4. **POPUPS**: Navigating popup menus similar to Vim.
 5. **TERMINALS**: Shortcuts related to terminal manipulation.
 
-![https://gist.github.com/fmind/67c1ce34d0f21005b4aa7aa79b9162aa#file-keybindings-json (300 lines)](/static/img/articles/how-to-configure-vs-code-for-ai-ml-and-mlops-development-in-python/06.webp)
+![VS Code keybindings.json, 300 lines: Alt+letter shortcuts mapped to commands such as showAllSymbols and navigateBack — archived gist](/static/img/articles/how-to-configure-vs-code-for-ai-ml-and-mlops-development-in-python/06.webp)
 
-[https://gist.github.com/fmind/67c1ce34d0f21005b4aa7aa79b9162aa#file-keybindings-json](https://gist.github.com/fmind/67c1ce34d0f21005b4aa7aa79b9162aa#file-keybindings-json) (300 lines)
+VS Code keybindings.json, 300 lines: Alt+letter shortcuts mapped to commands such as showAllSymbols and navigateBack — [archived gist](https://web.archive.org/web/20250127202331/https://gist.github.com/fmind/67c1ce34d0f21005b4aa7aa79b9162aa#file-keybindings-json)
 
 ### Tips and Tricks 👉
 
@@ -170,17 +170,17 @@ By default, most desktop applications use the Alt key to navigate through the ap
 
 Leverage VS Code’s ‘[Settings Sync](https://code.visualstudio.com/docs/editor/settings-sync)’ feature for a seamless development experience across multiple machines. Activate this by clicking the ‘Gear’ icon at the bottom-left of the application to synchronize your configurations, facilitating effortless transitions between different [work profiles](https://code.visualstudio.com/docs/editor/profiles) like Java/Python or personal/professional.
 
-![https://code.visualstudio.com/docs/editor/settings-sync](/static/img/articles/how-to-configure-vs-code-for-ai-ml-and-mlops-development-in-python/07.webp)
+![VS Code Manage gear menu with Turn on Settings Sync highlighted — Source: https://code.visualstudio.com/docs/editor/settings-sync](/static/img/articles/how-to-configure-vs-code-for-ai-ml-and-mlops-development-in-python/07.webp)
 
-[https://code.visualstudio.com/docs/editor/settings-sync](https://code.visualstudio.com/docs/editor/settings-sync)
+VS Code Manage gear menu with Turn on Settings Sync highlighted — Source: [https://code.visualstudio.com/docs/editor/settings-sync](https://code.visualstudio.com/docs/editor/settings-sync)
 
 #### 2. Command Palette 🎨
 
 Quickly access VS Code’s shortcuts through the [Command Palette](https://code.visualstudio.com/docs/getstarted/userinterface#_command-palette) by using ‘CTRL+SHIFT+P’. Ideal for infrequent commands or when the exact name eludes you. This feature is an essential tool in the VS Code arsenal!
 
-![https://code.visualstudio.com/docs/getstarted/userinterface#\_command-palette](/static/img/articles/how-to-configure-vs-code-for-ai-ml-and-mlops-development-in-python/08.webp)
+![VS Code Command Palette listing commands with their keyboard shortcuts, such as Add Cursor Above — Source: https://code.visualstudio.com/docs/getstarted/userinterface#\_command-palette](/static/img/articles/how-to-configure-vs-code-for-ai-ml-and-mlops-development-in-python/08.webp)
 
-[https://code.visualstudio.com/docs/getstarted/userinterface#\_command-palette](https://code.visualstudio.com/docs/getstarted/userinterface#_command-palette)
+VS Code Command Palette listing commands with their keyboard shortcuts, such as Add Cursor Above — Source: [https://code.visualstudio.com/docs/getstarted/userinterface#\_command-palette](https://code.visualstudio.com/docs/getstarted/userinterface#_command-palette)
 
 #### 3. Put the mouse away 🐭
 
@@ -188,9 +188,9 @@ Optimize your coding workflow by mastering keyboard shortcuts; [they surpass the
 
 Consider [remapping the Caps Lock key to Ctrl (Windows/Linux) or Cmd (Mac)](https://www.endpointdev.com/blog/2023/04/use-caps-lock-as-escape/) to prevent finger strain.
 
-![https://stackoverflow.com/questions/14021283/position-of-fingers-for-better-productivity-in-vim](/static/img/articles/how-to-configure-vs-code-for-ai-ml-and-mlops-development-in-python/09.gif)
+![Touch-typing home row: left fingers rest on A S D F and right fingers on J K L and semicolon — Source: https://stackoverflow.com/questions/14021283/position-of-fingers-for-better-productivity-in-vim](/static/img/articles/how-to-configure-vs-code-for-ai-ml-and-mlops-development-in-python/09.gif)
 
-[https://stackoverflow.com/questions/14021283/position-of-fingers-for-better-productivity-in-vim](https://stackoverflow.com/questions/14021283/position-of-fingers-for-better-productivity-in-vim)
+Touch-typing home row: left fingers rest on A S D F and right fingers on J K L and semicolon — Source: [https://stackoverflow.com/questions/14021283/position-of-fingers-for-better-productivity-in-vim](https://stackoverflow.com/questions/14021283/position-of-fingers-for-better-productivity-in-vim)
 
 #### 4. Code Workspace File 🗄️
 
@@ -270,17 +270,17 @@ I also recommend you subscribe to these sources of tips and tricks:
 - [https://code.visualstudio.com/updates](https://code.visualstudio.com/updates) (official blog)
 - [https://www.youtube.com/channel/UCs5Y5_7XK8HLDX0SLNwkd3w](https://www.youtube.com/channel/UCs5Y5_7XK8HLDX0SLNwkd3w) (official YouTube account)
 
-![https://vscode.email/about](/static/img/articles/how-to-configure-vs-code-for-ai-ml-and-mlops-development-in-python/15.webp)
+![VSCode.Email newsletter About page: VS Code tools, articles, and tips delivered by email — Source: https://vscode.email/about](/static/img/articles/how-to-configure-vs-code-for-ai-ml-and-mlops-development-in-python/15.webp)
 
-[https://vscode.email/about](https://vscode.email/about)
+VSCode.Email newsletter About page: VS Code tools, articles, and tips delivered by email — Source: [https://vscode.email/about](https://vscode.email/about)
 
 #### 10. Use GhostText to use VS Code on the web 👻
 
 When VS Code’s reach seems limited, [GhostText](https://ghosttext.fregante.com/) emerges as an ally. This [Browser](https://chromewebstore.google.com/detail/ghosttext/godiecgffnchndlihlpaajjcplehddca)/[VS Code](https://marketplace.visualstudio.com/items?itemName=fregante.ghost-text) extension enables you to edit browser text areas directly in VS Code. It offers bi-directional sync, allowing edits anywhere, anytime. Disengage sync when your editing is complete.
 
-![https://ghosttext.fregante.com/](/static/img/articles/how-to-configure-vs-code-for-ai-ml-and-mlops-development-in-python/16.webp)
+![GhostText syncing a GitHub comment box with a VS Code editor as you type — Source: https://ghosttext.fregante.com/](/static/img/articles/how-to-configure-vs-code-for-ai-ml-and-mlops-development-in-python/16.webp)
 
-[https://ghosttext.fregante.com/](https://ghosttext.fregante.com/)
+GhostText syncing a GitHub comment box with a VS Code editor as you type — Source: [https://ghosttext.fregante.com/](https://ghosttext.fregante.com/)
 
 ### Conclusions 🌅
 
@@ -288,6 +288,6 @@ When VS Code’s reach seems limited, [GhostText](https://ghosttext.fregante.com
 
 Farewell, skilled developer, may your code be efficient and your professional path successful!
 
-![Photo by Taylor Brandon on Unsplash](/static/img/articles/how-to-configure-vs-code-for-ai-ml-and-mlops-development-in-python/17.webp)
+![Rider in a cowboy hat on a white horse in a meadow at sunset — Photo by Taylor Brandon on Unsplash](/static/img/articles/how-to-configure-vs-code-for-ai-ml-and-mlops-development-in-python/17.webp)
 
-Photo by [Taylor Brandon](https://unsplash.com/@house_42?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Rider in a cowboy hat on a white horse in a meadow at sunset — Photo by [Taylor Brandon](https://unsplash.com/@house_42?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)

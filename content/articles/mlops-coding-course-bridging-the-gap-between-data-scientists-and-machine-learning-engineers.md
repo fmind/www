@@ -42,7 +42,7 @@ Finally, the course tackles the crucial aspect of [**sharing your MLOps projects
 
 The course goes beyond static content, offering:
 
-- [**Mentoring Sessions**](https://mlops-coding-course.fmind.dev/0.%20Overview/0.4.%20Mentoring.html) **:** Personalized guidance and support from experienced MLOps professionals to help you apply the course concepts to your specific challenges.
+- [**Mentoring Sessions**](https://mlops-coding-course.fmind.dev/0.%20Overview/0.4.%20Mentoring.html)**:** Personalized guidance and support from experienced MLOps professionals to help you apply the course concepts to your specific challenges.
 
 ### Companion Repository: MLOps Python Package
 
@@ -56,6 +56,6 @@ Whether you’re a data scientist eager to explore the world of MLOps or a seaso
 
 _Thanks to the course’s co-author_ [_Matthieu Jimenez_](https://website.jimenez.lu/) _for their support and contributions._
 
-![Photo by Aditya Chinchure on Unsplash](/static/img/articles/mlops-coding-course-bridging-the-gap-between-data-scientists-and-machine-learning-engineers/02.webp)
+![Concert crowd under bright green, blue, and pink stage lights with confetti falling — Photo by Aditya Chinchure on Unsplash](/static/img/articles/mlops-coding-course-bridging-the-gap-between-data-scientists-and-machine-learning-engineers/02.webp)
 
-Photo by [Aditya Chinchure](https://unsplash.com/@adityachinchure?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Concert crowd under bright green, blue, and pink stage lights with confetti falling — Photo by [Aditya Chinchure](https://unsplash.com/@adityachinchure?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)

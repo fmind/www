@@ -11,9 +11,9 @@ draft = false
 
 [Large Language Model](https://en.wikipedia.org/wiki/Large_language_model) (LLM) is such an exciting topic. Since [the release of ChatGPT](https://openai.com/blog/chatgpt), we saw [a surge of innovation](https://www.entrepreneur.com/leadership/how-to-use-chatgpt-to-unlock-new-levels-of-innovation/446151) ranging from [education mentorship](https://techcrunch.com/2023/05/05/openai-chatgpt-chegg-edtech/) to [finance advisory](https://www.bloomberg.com/company/press/bloomberggpt-50-billion-parameter-llm-tuned-finance/). Each week is a new opportunity for [addressing new kinds of problems](https://blog.character.ai/introducing-character/), [increasing human productivity](https://www.jasper.ai/), or [improving existing solutions](https://gamerant.com/skyrim-mod-ai-npc-memories/). Yet, we may wonder if this is just a new [hype cycle](https://www.gartner.com/en/research/methodologies/gartner-hype-cycle) or if [organizations are truly adopting LLMs at scale](https://www.forbes.com/sites/forbestechcouncil/2023/04/25/the-generative-ai-frontier-mastering-llm-adoption-for-ceos-and-ctos-to-drive-business-success/) …
 
-![Photo by Brett Jordan on Unsplash](/static/img/articles/fixing-the-mlops-survey-on-llms-with-chatgpt-api-lessons-learned/cover.webp)
+![Wooden letter tiles spelling CHOOSE YOUR WORDS on a white background — Photo by Brett Jordan on Unsplash](/static/img/articles/fixing-the-mlops-survey-on-llms-with-chatgpt-api-lessons-learned/cover.webp)
 
-Photo by [Brett Jordan](https://unsplash.com/@brett_jordan?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Wooden letter tiles spelling CHOOSE YOUR WORDS on a white background — Photo by [Brett Jordan](https://unsplash.com/@brett_jordan?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
 
 In March 2023, the [MLOps Community](https://mlops.community/) issued [a survey about LLMs in production](https://docs.google.com/forms/d/e/1FAIpQLSerEryK4xHEZTq0hSu-sVmBHilOzaT71BfCQgXe_uIRgIah-g/viewform) to picture the state of adoption. [The survey is full of interesting insights](https://podcasters.spotify.com/pod/show/mlops/episodes/EXCLUSIVE-EPISODE--LLM-Key-Results-e229lbi), but there is a catch: **80% of the questions are** [**open-ended**](https://en.wikipedia.org/wiki/Open-ended_question) **, which means respondents answered the survey freely from a few keywords to full sentences**. I volunteered to clean up the answers with the help of ChatGPT and let the community get a grasp of the survey experiences.
 
@@ -145,7 +145,7 @@ def associate(model, instructions: str, inputs: pd.Series, batch_size: int = 20,
 
 The text snippet below shows the prompt associated with Question 3: “What is your use case/use cases?”. The first four sentences described the task to be done by ChatGPT. The next two instructions explain the output format for the model. For simplicity's sake, I choose to use [JSON lines](https://jsonlines.org/) (i.e., JSON records separated by newlines) to easily parse the output with Python. Ultimately, the last sentences give an example of the expected input and output of the model.
 
-Here we can see that the task is quite complex, as the model needs to understand both the fields associated with the answer (e.g., analyze logs -\> Computer Security) and find common NLP tasks from the inputs (e.g., question and classify text -\> Questions Answering, Text Classification).
+Here we can see that the task is quite complex, as the model needs to understand both the fields associated with the answer (e.g., analyze logs -\> Computer Security) and find common NLP tasks from the inputs (e.g., question and classify text -\> Question Answering, Text Classification).
 
 ```text
 I received answers from an MLOps survey about Large Language Models (LLMs).
@@ -223,11 +223,11 @@ You can find [the evaluation notebook at the following address](https://colab.re
 
 We can see in the plot below the number of good and bad answers per information extracted. Some information was easily fixed by ChatGPT (e.g., topics, tools, approaches, tasks, …) while others were more challenging to the model (e.g., challenges, reasons, title, …). My conclusions for this evaluation are 1) it’s easier for the model to extract common knowledge for low-variety answers (e.g., NLP tasks), and 2) high-variety answers such as titles and reasons are more diverse and thus more open to interpretation.
 
-![Fixing the MLOps Survey on LLMs with ChatGPT API: Lessons Learned](/static/img/articles/fixing-the-mlops-survey-on-llms-with-chatgpt-api-lessons-learned/05.webp)
+![Stacked bar chart of good and bad ChatGPT answers per survey field: topics and tools mostly good, reasons and challenges often bad](/static/img/articles/fixing-the-mlops-survey-on-llms-with-chatgpt-api-lessons-learned/05.webp)
 
 The plot below shows the final evaluation of the model for my use case. Overall, ChatGPT API gave more good answers (514) than bad ones (289). Qualitatively, even bad results contained relevant values that improved the process. This made the manual review less painful than I first expected.
 
-![Fixing the MLOps Survey on LLMs with ChatGPT API: Lessons Learned](/static/img/articles/fixing-the-mlops-survey-on-llms-with-chatgpt-api-lessons-learned/06.webp)
+![Bar chart of overall ChatGPT API results: 514 good answers versus 289 bad ones](/static/img/articles/fixing-the-mlops-survey-on-llms-with-chatgpt-api-lessons-learned/06.webp)
 
 #### Conclusions (for my use case):
 

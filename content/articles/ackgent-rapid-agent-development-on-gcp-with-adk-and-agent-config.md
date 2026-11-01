@@ -8,19 +8,19 @@ syndicated = "https://medium.com/@fmind/ackgent-rapid-agent-development-on-gcp-w
 draft = false
 +++
 
-The AI agent landscape is exploding, but development speed is hitting a wall. We need a faster, more accessible way to build and iterate. In my current role, I spend my days optimizing the experience of building and deploying AI agents. I’ve witnessed firsthand the incredible use cases my customers’ developers — agents that streamline complex workflows, automate intricate decision-making, and unlock new data insights. The potential is massive, but the reality of development is often friction-filled.
+The AI agent landscape is exploding, but development speed is hitting a wall. We need a faster, more accessible way to build and iterate. In my current role, I spend my days optimizing the experience of building and deploying AI agents. I’ve witnessed firsthand the incredible use cases my customers’ developers build — agents that streamline complex workflows, automate intricate decision-making, and unlock new data insights. The potential is massive, but the reality of development is often friction-filled.
 
 **Despite the advancements in foundational models, the process of taking an agent from concept to production remains too slow and overly complex.** Developers get bogged down in boilerplate code, infrastructure wrangling, and the mechanics of tool integration, rather than focusing on the actual logic and value the agent provides. We drastically need to improve the speed at which we can iterate, while simultaneously making the whole process more accessible to a broader range of builders. Enter [**Ackgent**](https://github.com/fmind/ackgent), a demonstration of how [Google ADK](https://google.github.io/adk-docs/) and [Agent Config](https://google.github.io/adk-docs/agents/config/) can be used to quickly build and deploy AI agents with a declarative approach.
 
-![Source: Gemini App](/static/img/articles/ackgent-rapid-agent-development-on-gcp-with-adk-and-agent-config/cover.webp)
+![Cartoon developer at three monitors under a sign reading Declarative AI: just tell it what to do (good luck!) — Source: Gemini App](/static/img/articles/ackgent-rapid-agent-development-on-gcp-with-adk-and-agent-config/cover.webp)
 
-Source: Gemini App
+Cartoon developer at three monitors under a sign reading Declarative AI: just tell it what to do (good luck!) — Source: Gemini App
 
 ### The Shift from Imperative to Declarative
 
 The traditional approach to building agents is largely _imperative_. You write Python (or similar) code detailing exactly _how_ the agent should execute tasks, manage state, call tools, and handle errors. This offers maximum control but comes at the cost of speed and simplicity.
 
-What if we could shift to a _declarative_ approach? What if we could define _what_ the agent should do, and let a robust framework handle the execution? This is the promise of [Agent Config](https://google.github.io/adk-docs/agents/config/), a new feature of [Agent Developer Kit (ADK)](https://google.github.io/adk-docs/) introduced in [the release v.1.12.0](https://github.com/google/adk-python/releases/tag/v1.12.0).
+What if we could shift to a _declarative_ approach? What if we could define _what_ the agent should do, and let a robust framework handle the execution? This is the promise of [Agent Config](https://google.github.io/adk-docs/agents/config/), a new feature of [Agent Development Kit (ADK)](https://google.github.io/adk-docs/) introduced in [release v1.12.0](https://github.com/google/adk-python/releases/tag/v1.12.0).
 
 [Agent Config](https://google.github.io/adk-docs/agents/config/) allows developers to define the entire behavior of an agent — its goals, instructions, tools, and integrations — using a structured configuration file written in YAML. This addresses both the need for speed and the need for accessibility.
 
@@ -32,7 +32,7 @@ The central insight here is that **config helps you focus on the use case, not t
 
 - **External Tools:** You can easily connect your agents to real-world APIs, databases, and services.
 - **Callbacks:** Hooks are available to inject custom Python logic at specific points in the agent lifecycle (e.g., for pre-processing input, validating output, logging, or monitoring).
-- **MCP (Multi-agent Communication Protocol) Servers:** Agent Config supports integration with MCP servers, enabling sophisticated communication, governance, and orchestration in complex multi-agent systems.
+- **MCP (Model Context Protocol) Servers:** Agent Config supports integration with MCP servers, enabling sophisticated communication, governance, and orchestration in complex multi-agent systems.
 
 &nbsp;
 
@@ -65,9 +65,9 @@ This template encapsulates best practices for structuring a project where config
 
 The Ackgent repository is built with efficiency, robustness, and Developer Experience (DX) in mind:
 
-- **Modern Python Management with** [**`uv`**](https://github.com/astral-sh/uv) **:** We leverage `uv` (the blazing-fast Python package manager written in Rust) to streamline dependency resolution and virtual environment management, significantly speeding up setup and CI/CD pipelines.
-- **Task Execution with** [**`just`**](https://github.com/casey/just) **:** `just` serves as a convenient command runner, simplifying common tasks like installing dependencies with `just project` or deploying to the cloud with `just deploy`.
-- **Code Quality Tooling:** Integrated [`pre-commit`](https://pre-commit.com/) hooks ensure code quality and consistency from the start, utilizing formatters and linters like `check-toml` , `check-yaml` , or `check-json` .
+- **Modern Python Management with** [**`uv`**](https://github.com/astral-sh/uv)**:** We leverage `uv` (the blazing-fast Python package manager written in Rust) to streamline dependency resolution and virtual environment management, significantly speeding up setup and CI/CD pipelines.
+- **Task Execution with** [**`just`**](https://github.com/casey/just)**:** `just` serves as a convenient command runner, simplifying common tasks like installing dependencies with `just project` or deploying to the cloud with `just deploy`.
+- **Code Quality Tooling:** Integrated [`pre-commit`](https://pre-commit.com/) hooks ensure code quality and consistency from the start, utilizing formatters and linters like `check-toml`, `check-yaml`, or `check-json`.
 - **`evalset`** **Configuration:** The repository includes ADK capability for defining and running evaluation datasets ([`evalset`](https://google.github.io/adk-docs/evaluate/)), crucial for rigorously testing and benchmarking agent performance iteratively.
 - **Customizable Cloud Run Deployment:** Designed for scalability, the example includes configurations and `just` recipes for deploying the agents as serverless containers on [Google Cloud Run](https://cloud.google.com/run).
 - **Advanced Agent Capabilities:** Demonstrations of **Tools**, **Callbacks**, and **MCP** integration within the Agent Config framework.
@@ -107,7 +107,9 @@ generate_content_config:
 tools:
   - name: agent.tools.now
   - name: agent.tools.today
+```
 
+```python
 """Tools for agents."""
 
 # %% IMPORTS
@@ -136,7 +138,7 @@ def today() -> str:
 
 #### 2. The Internet Agent (Search Tools)
 
-The [Internet agent](https://github.com/fmind/ackgent/blob/main/agent/internet_agent.yaml) is configured to access an external MCP Server. In this case, we are using [markdown-mcp](https://github.com/microsoft/markitdown?tab=readme-ov-file), a server developed by Microsoft to quickly retrieve any source into a markdown, including external links. The MCP is started as a STDIO server, with a timeout of 10 seconds.
+The [Internet agent](https://github.com/fmind/ackgent/blob/main/agent/internet_agent.yaml) is configured to access an external MCP Server. In this case, we are using [markitdown-mcp](https://github.com/microsoft/markitdown?tab=readme-ov-file), a server developed by Microsoft to quickly convert any source into Markdown, including external links. The MCP is started as a STDIO server, with a timeout of 10 seconds.
 
 ```yaml
 # yaml-language-server: $schema=https://raw.githubusercontent.com/google/adk-python/refs/heads/main/src/google/adk/agents/config_schemas/AgentConfig.json
@@ -204,6 +206,6 @@ We are moving towards a future where the ability to create AI agents is truly de
 
 - **Link to GitHub Repository**: [https://github.com/fmind/ackgent](https://github.com/fmind/ackgent)
 
-![Source: Gemini App](/static/img/articles/ackgent-rapid-agent-development-on-gcp-with-adk-and-agent-config/05.webp)
+![Glowing AI superhero rising from tangled cables as monitors read Declarative Agents Rule and Mission Accomplished — Source: Gemini App](/static/img/articles/ackgent-rapid-agent-development-on-gcp-with-adk-and-agent-config/05.webp)
 
-Source: Gemini App
+Glowing AI superhero rising from tangled cables as monitors read Declarative Agents Rule and Mission Accomplished — Source: Gemini App

@@ -10,9 +10,9 @@ draft = false
 
 [Python](https://www.python.org/) is the beloved language of data scientists, machine learning engineers, and anyone dabbling in the fascinating world of AI. But with its ever-evolving landscape of versions and dependencies, managing your Python environment can quickly turn into a chaotic nightmare. Fear not, fellow data wizards! This blog post introduces you to [**pyenv**](https://github.com/pyenv/pyenv), your secret weapon for taming the Python beast and ensuring a smooth, reproducible, and headache-free development experience.
 
-![https://m.xkcd.com/1987/](/static/img/articles/taming-python-installation-with-pyenv-for-ai-ml-and-mlops-projects/cover.webp)
+![xkcd comic: a tangled graph of pip, Homebrew, Anaconda, and system Pythons pointing to scattered install paths — Source: https://m.xkcd.com/1987/](/static/img/articles/taming-python-installation-with-pyenv-for-ai-ml-and-mlops-projects/cover.webp)
 
-[https://m.xkcd.com/1987/](https://m.xkcd.com/1987/)
+xkcd comic: a tangled graph of pip, Homebrew, Anaconda, and system Pythons pointing to scattered install paths — Source: [https://m.xkcd.com/1987/](https://m.xkcd.com/1987/)
 
 ### The Python Version Problem
 

@@ -18,9 +18,9 @@ Then I discovered [**Agent Skills**](https://agentskills.io/home), and everythin
 
 I was immediately hooked. They offer the specific trade-off I had been looking for: **lightweight enough to be flexible, yet opinionated enough to be useful.**
 
-![Source: Gemini App](/static/img/articles/mlops-coding-skills-bridging-the-gap-between-specs-and-agents/cover.webp)
+![Meditating robot on a bridge between a SPECS monolith and an AGENTS cloud, surrounded by Docker, just, uv, and GitHub icons — Source: Gemini App](/static/img/articles/mlops-coding-skills-bridging-the-gap-between-specs-and-agents/cover.webp)
 
-Source: Gemini App
+Meditating robot on a bridge between a SPECS monolith and an AGENTS cloud, surrounded by Docker, just, uv, and GitHub icons — Source: Gemini App
 
 In this article, I want to share how I used Agent Skills to turn the theoretical “MLOps Coding Course” into a practical, actionable library: the [**MLOps Coding Skills**](https://github.com/fmind/mlops-coding-skills) project.
 
@@ -28,7 +28,7 @@ In this article, I want to share how I used Agent Skills to turn the theoretical
 
 For the past few months, I’ve been deep in the trenches writing the [**MLOps Coding Course**](https://github.com/fmind/mlops-coding-course). It is a comprehensive curriculum teaching production-grade MLOps, from robust project initialization to advanced observability.
 
-![MLOps Coding Skills: Bridging the Gap Between Specs and Agents](/static/img/articles/mlops-coding-skills-bridging-the-gap-between-specs-and-agents/02.webp)
+![Mind map of the MLOps Python Package practices: install, usage, tools, CLI, code, configs, data, docs, model, package, observability, and tips](/static/img/articles/mlops-coding-skills-bridging-the-gap-between-specs-and-agents/02.webp)
 
 But as I wrote the documentation, I felt a friction point. Learning the standards is one thing; remembering to apply them in the heat of coding is another.
 
@@ -107,6 +107,6 @@ If you are tired of fighting your AI to follow your style, stop arguing with it.
 
 _Check out the full_ [***MLOps Coding Skills repository***](https://github.com/fmind/mlops-coding-skills) _to see the library in action._
 
-![Source: Gemini App](/static/img/articles/mlops-coding-skills-bridging-the-gap-between-specs-and-agents/03.webp)
+![Golden meditating robot linking a human hand to flowing code blocks, titled MLOps Coding Skills: The Path to Enlightenment — Source: Gemini App](/static/img/articles/mlops-coding-skills-bridging-the-gap-between-specs-and-agents/03.webp)
 
-Source: Gemini App
+Golden meditating robot linking a human hand to flowing code blocks, titled MLOps Coding Skills: The Path to Enlightenment — Source: Gemini App

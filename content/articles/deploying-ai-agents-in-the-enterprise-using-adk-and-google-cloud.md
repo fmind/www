@@ -18,9 +18,9 @@ AgentOps is uniquely challenging because it combines the inherent complexity of 
 
 In this article, we’ll explore the challenges of deploying agents in a corporate environment and dive into practical strategies using [Google Cloud Platform (GCP)](https://cloud.google.com/gcp), based on the findings and code in my [GitHub Repository](https://github.com/fmind/search-agent/tree/main/search_agent).
 
-![Source: Gemini App](/static/img/articles/deploying-ai-agents-in-the-enterprise-using-adk-and-google-cloud/cover.webp)
+![Rows of identical white humanoid robots with smiling face screens standing in a glass office tower — Source: Gemini App](/static/img/articles/deploying-ai-agents-in-the-enterprise-using-adk-and-google-cloud/cover.webp)
 
-Source: Gemini App
+Rows of identical white humanoid robots with smiling face screens standing in a glass office tower — Source: Gemini App
 
 ### The AgentOps Challenge: Bridging the Gap Between POC and Production 🛡️
 
@@ -34,13 +34,13 @@ A critical aspect of AgentOps is **identity propagation**. If an agent is design
 
 Furthermore, a production-ready agent needs multiple exposition mechanisms:
 
-1. [**A Web UI**](https://github.com/google/adk-web) **:** For quick testing and human interaction.
-2. [**An API Endpoint**](https://google.github.io/adk-docs/get-started/testing/) **:** To integrate the agent into other applications and services.
-3. [**Agent-to-Agent (A2A) Protocol**](https://google.github.io/adk-docs/a2a/) **:** For interoperability and complex multi-agent systems.
+1. [**A Web UI**](https://github.com/google/adk-web)**:** For quick testing and human interaction.
+2. [**An API Endpoint**](https://google.github.io/adk-docs/get-started/testing/)**:** To integrate the agent into other applications and services.
+3. [**Agent-to-Agent (A2A) Protocol**](https://google.github.io/adk-docs/a2a/)**:** For interoperability and complex multi-agent systems.
 
-![Source: https://codelabs.developers.google.com/intro-a2a-purchasing-concierge#0](/static/img/articles/deploying-ai-agents-in-the-enterprise-using-adk-and-google-cloud/02.webp)
+![Agentic application where an agent with sub-agents calls tools through an MCP server and black-box agents over the A2A protocol — Source: https://codelabs.developers.google.com/intro-a2a-purchasing-concierge#0](/static/img/articles/deploying-ai-agents-in-the-enterprise-using-adk-and-google-cloud/02.webp)
 
-Source: [https://codelabs.developers.google.com/intro-a2a-purchasing-concierge#0](https://codelabs.developers.google.com/intro-a2a-purchasing-concierge#0)
+Agentic application where an agent with sub-agents calls tools through an MCP server and black-box agents over the A2A protocol — Source: [https://codelabs.developers.google.com/intro-a2a-purchasing-concierge#0](https://codelabs.developers.google.com/intro-a2a-purchasing-concierge#0)
 
 Achieving all three securely is the core of the AgentOps exposition challenge.
 
@@ -184,9 +184,9 @@ IAP is a [zero-trust](https://cloud.google.com/beyondcorp) access solution that 
 
 Configuring IAP for a Cloud Run service is straightforward. You enable IAP on the service and define which principals (users, groups or domains) are allowed access via IAM on the Security Tab.
 
-![Identity Access Proxy (IAP) Management on Cloud Run](/static/img/articles/deploying-ai-agents-in-the-enterprise-using-adk-and-google-cloud/09.webp)
+![Identity-Aware Proxy (IAP) Management on Cloud Run](/static/img/articles/deploying-ai-agents-in-the-enterprise-using-adk-and-google-cloud/09.webp)
 
-Identity Access Proxy (IAP) Management on Cloud Run
+Identity-Aware Proxy (IAP) Management on Cloud Run
 
 When a user tries to access the Web UI, IAP intercepts the request, authenticates the user (usually via Google Sign-In, though [external identities](https://cloud.google.com/iap/docs/external-identities) are supported), and grants access if authorized.
 
@@ -351,6 +351,6 @@ This journey won’t be as easy as some might think, but leveraging powerful and
 
 _Explore the code and deployment configurations discussed in this article on my GitHub repository:_ [https://github.com/fmind/search-agent](https://github.com/fmind/search-agent)
 
-![Source: Gemini App](/static/img/articles/deploying-ai-agents-in-the-enterprise-using-adk-and-google-cloud/14.webp)
+![Cartoon robots panning and mining for gold nuggets in a Wild West boomtown, illustrating the AgentOps gold rush — Source: Gemini App](/static/img/articles/deploying-ai-agents-in-the-enterprise-using-adk-and-google-cloud/14.webp)
 
-Source: Gemini App
+Cartoon robots panning and mining for gold nuggets in a Wild West boomtown, illustrating the AgentOps gold rush — Source: Gemini App

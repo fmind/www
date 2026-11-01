@@ -12,21 +12,21 @@ draft = false
 
 **In this article, I present 4 steps to install Kubeflow on Apple Silicon**, using [Rancher Desktop](https://rancherdesktop.io/) for setting up Docker/Kubernetes. In the end, I list the problems I encountered during the installation of Kubeflow Pipelines.
 
-![How to install Kubeflow Pipelines v2 on Apple Silicon](/static/img/articles/how-to-install-kubeflow-on-apple-silicon/cover.webp)
+![Kubeflow logo: a blue faceted heptagon above the Kubeflow wordmark](/static/img/articles/how-to-install-kubeflow-on-apple-silicon/cover.webp)
 
-### Step 1: Install Rancher Desktop to setup Kubernetes
+### Step 1: Install Rancher Desktop to set up Kubernetes
 
 [**Rancher Desktop**](https://rancherdesktop.io/) **is the most friendly solution I found to install Docker and Kubernetes**. While Docker Desktop is also a popular option, this solution now has a significant price tag for companies with more than 250 employees OR \$10 million in annual revenue.
 
 Once you install Rancher Desktop, you need to configure it using the startup window below. Select the stable version of Kubernetes and let Rancher Desktop configure the path automatically. In this case, we use containerd [as this is the default container runtime for Kubernetes](https://blog.tilt.dev/2022/03/04/rancher-desktop-container-runtimes.html).
 
-![How to install Kubeflow Pipelines v2 on Apple Silicon](/static/img/articles/how-to-install-kubeflow-on-apple-silicon/02.webp)
+![Rancher Desktop welcome window with Kubernetes v1.24.4 (stable), the containerd runtime, and automatic PATH configuration selected](/static/img/articles/how-to-install-kubeflow-on-apple-silicon/02.webp)
 
 I also recommend you to adjust the \# CPUs and the Memory (GB) in `Preferences > Virtual Machine` to avoid Out of Memory errors (OOM).
 
 **You should now be able to access the** **`kubectl`** **command in your terminal**. If not, check that your PATH environment variable includes `$HOME/.rd/bin` where Rancher Desktop binaries are installed by default.
 
-### Step 2 : Install Kubeflow Pipelines
+### Step 2: Install Kubeflow Pipelines
 
 The official instructions to install Kubeflow Pipelines are available on the [documentation website](https://www.kubeflow.org/docs/components/pipelines/v1/installation/localcluster-deployment/#deploying-kubeflow-pipelines) for KFP v1. You can also find the latest instructions on [Kubeflow Pipelines GitHub repository](https://github.com/kubeflow/pipelines/tree/58052eafc10d42dcbd3ab38abf5c944d25af0e4b/manifests/kustomize) for KFP v2. **As you can see, there is no easy one-click solution available at the time, but we can easily adapt the instructions.**
 
@@ -56,7 +56,7 @@ kubectl get pods -n kubeflow --watch
 
 **Once all Kubeflow Pipelines Pods have the RUNNING Status, you can move to the next step**.
 
-![How to install Kubeflow Pipelines v2 on Apple Silicon](/static/img/articles/how-to-install-kubeflow-on-apple-silicon/03.webp)
+![Terminal output of kubectl get pods listing the Kubeflow Pipelines pods, such as ml-pipeline and metadata-grpc, all Running](/static/img/articles/how-to-install-kubeflow-on-apple-silicon/03.webp)
 
 ### Step 3: Port Forwarded
 
@@ -68,7 +68,7 @@ kubectl port-forward -n kubeflow svc/ml-pipeline-ui 8443:80
 
 **You should now be able to access Kubeflow Pipelines at this address:** [**http://localhost:8443/#/pipelines**](http://localhost:8443/#/pipelines)
 
-![How to install Kubeflow Pipelines v2 on Apple Silicon](/static/img/articles/how-to-install-kubeflow-on-apple-silicon/04.webp)
+![Kubeflow Pipelines UI listing the four default pipelines: two tutorials and the TFX taxi tip and XGBoost demos](/static/img/articles/how-to-install-kubeflow-on-apple-silicon/04.webp)
 
 You can see in the screenshot above the pipelines shipped by default with Kubeflow Pipelines.
 
@@ -83,13 +83,13 @@ I tried all the pipelines available, but some of them had issues that do not see
 - 🛑 **\[Demo\] XGBoost — Iterative model training**: the container that trains the model (Xgboost train) does not include the CMake utility.
 - 🛑 **\[Demo\] TFX — Taxi prediction model training**: the pipeline only works on GCP as indicated in the description of the pipeline.
 
-![How to install Kubeflow Pipelines v2 on Apple Silicon](/static/img/articles/how-to-install-kubeflow-on-apple-silicon/06.webp)
+![Kubeflow Pipelines runs list: the two tutorial runs succeeded, while the TFX taxi tip and XGBoost demo runs failed](/static/img/articles/how-to-install-kubeflow-on-apple-silicon/06.webp)
 
 ### (Optional) What went wrong
 
 This guide was written after many trials and errors. You can find below the issues I encountered during the installation of Kubeflow Pipelines v2.
 
-- **Constant ErrImagePull and ImagePullBackoff during installation**: I was not able to install KFP with the docker (moby) engine because of this error. One workaround is to connect directly to the Cluster Node and pull the image directly to fix this error:
+- **Constant ErrImagePull and ImagePullBackOff during installation**: I was not able to install KFP with the docker (moby) engine because of this error. One workaround is to connect directly to the Cluster Node and pull the image directly to fix this error:
 
 &nbsp;
 
@@ -102,7 +102,7 @@ docker pull ...
 
 - **Slow UI with Rancher Desktop port forwarding**: Rancher Desktop provides a GUI to set up port forwarding. However, the KFP UI was not responsive when I follow this method.
 
-![How to install Kubeflow Pipelines v2 on Apple Silicon](/static/img/articles/how-to-install-kubeflow-on-apple-silicon/07.webp)
+![Rancher Desktop Port Forwarding settings listing Kubeflow services, such as ml-pipeline-ui, each with a Forward button](/static/img/articles/how-to-install-kubeflow-on-apple-silicon/07.webp)
 
 - **Solutions not compatible with Apple Silicon**: other alternatives to Rancher Desktop like [minikube](https://minikube.sigs.k8s.io/docs/start/) and [kind](https://kind.sigs.k8s.io/) didn’t work on my system (although I did not investigate these issues further).
 

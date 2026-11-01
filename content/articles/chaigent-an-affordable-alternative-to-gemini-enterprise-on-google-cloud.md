@@ -14,7 +14,7 @@ The era of simple chatbots is over. Companies are now racing to build [**AI Agen
 
 However, for some organizations or specific use cases, the cost can be a friction point. The catalog price sits at **~\$7/user/month** for agent users and **~\$35/user/month** for visual agent builders. While this pricing is competitive for knowledge workers who gain significant productivity, it can be prohibitive for large audiences with lower usage frequency, such as field workers or occasional users.
 
-**Enter Chaigent:** [**https://github.com/fmind/chaigent**](https://github.com/fmind/chaigent) **.**
+**Enter Chaigent:** [**https://github.com/fmind/chaigent**](https://github.com/fmind/chaigent)**.**
 
 ![Chaigent is an affordable alternative to Gemini Enterprise (Source: Gemini App)](/static/img/articles/chaigent-an-affordable-alternative-to-gemini-enterprise-on-google-cloud/cover.webp)
 
@@ -32,8 +32,8 @@ Architecture of Chaigent (Source: Fmind.dev)
 
 The architecture consists of three main layers:
 
-1. **Frontend (** [**Chainlit**](https://chainlit.io/) **on** [**Cloud Run**](https://cloud.google.com/run) **)**: A Python-based UI that handles user sessions, chat history, and authentication.
-2. **Backend (** [**Vertex AI Agent Engine**](https://cloud.google.com/products/agent-engine) **)**: The “brain” of the operation, capable of reasoning and tool use.
+1. **Frontend ([Chainlit](https://chainlit.io/) on [Cloud Run](https://cloud.google.com/run))**: A Python-based UI that handles user sessions, chat history, and authentication.
+2. **Backend ([Vertex AI Agent Engine](https://cloud.google.com/products/agent-engine))**: The “brain” of the operation, capable of reasoning and tool use.
 3. **Persistence & Auth**: [**Cloud SQL**](https://cloud.google.com/sql) for storing chat history and feedback, and [**OAuth**](https://oauth.net/2/) (Google, GitHub, etc.) for secure identity management.
 
 This approach allows you to pay for **consumption only** (Cloud Run CPU + Vertex AI tokens), significantly reducing costs for intermittent usage patterns compared to a flat per-seat license.
@@ -135,6 +135,6 @@ The decision comes down to ROI. At ~\$7/month/user for Gemini Enterprise, you ne
 
 If you are ready to trade some convenience for control and cost savings, go build your own agents!
 
-![Source: Gemini App](/static/img/articles/chaigent-an-affordable-alternative-to-gemini-enterprise-on-google-cloud/06.webp)
+![Slot machine reading Chaigent Jackpot with Research, Task, and Chat reels and the slogan Build your winning agent team — Source: Gemini App](/static/img/articles/chaigent-an-affordable-alternative-to-gemini-enterprise-on-google-cloud/06.webp)
 
-Source: Gemini App
+Slot machine reading Chaigent Jackpot with Research, Task, and Chat reels and the slogan Build your winning agent team — Source: Gemini App

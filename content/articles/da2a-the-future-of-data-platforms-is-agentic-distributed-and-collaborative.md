@@ -37,7 +37,7 @@ To answer that same question, you simply ask a root “Orchestrator Agent.” Th
 
 Da2a implements this vision with a root orchestrator and two specialized agents: one for an **e-commerce** dataset and another for a **marketing** dataset, both based on real-world data from the [Olist store in Brazil](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce).
 
-**GitHub Repository:** [https://github.com/fmind/da2a](https://github.com/fmind/da2a "null")
+**GitHub Repository:** [https://github.com/fmind/da2a](https://github.com/fmind/da2a)
 
 You can ask the e-commerce agent, “How many orders were placed in São Paulo?” or the marketing agent, “What were our top lead sources last year?”. Better yet, you can ask the root orchestrator a question that requires both, like, _“What is the total sales revenue from sellers who were acquired via ‘Display’ advertising?”_
 
@@ -57,9 +57,9 @@ Architecture of the Da2a Application, with Marketing and E-Commerce agents colla
 
 The architecture consists of:
 
-1. [**A Root Agent**](https://github.com/fmind/da2a/tree/main/da2a) **:** The orchestrator that receives user requests, plans the execution, and delegates tasks.
+1. [**A Root Agent**](https://github.com/fmind/da2a/tree/main/da2a)**:** The orchestrator that receives user requests, plans the execution, and delegates tasks.
 2. **Domain Agents:** The [`ecommerce_agent`](https://github.com/fmind/da2a/tree/main/ecommerce) and [`marketing_agent`](https://github.com/fmind/da2a/tree/main/marketing), each running as an independent service with its own database.
-3. [**Agent Cards**](https://a2a-protocol.org/latest/tutorials/python/3-agent-skills-and-card/) **:** Each domain agent exposes a JSON “agent card” that acts like a digital business card, describing its name, capabilities, and how to communicate with it.
+3. [**Agent Cards**](https://a2a-protocol.org/latest/tutorials/python/3-agent-skills-and-card/)**:** Each domain agent exposes a JSON “agent card” that acts like a digital business card, describing its name, capabilities, and how to communicate with it.
 
 The root agent is configured to know about these remote agents. Here is a simplified look at the code from the da2a [`agent.py`](https://github.com/fmind/da2a/blob/main/da2a/agent.py) file, which sets up the connection to the remote agents using their "agent cards."
 
@@ -68,8 +68,8 @@ import google.adk.agents.remote_a2a_agent as a2a
 import google.adk.tools.agent_tool as at
 
 # The URL points to the 'agent card' of the remote agent
-AGENT_CARD_ECOMMERCE = "[https://da2a-ecommerce.fmind.dev/a2a/ecommerce/.well-known/agent-card.json](https://da2a-ecommerce.fmind.dev/a2a/ecommerce/.well-known/agent-card.json)"
-AGENT_CARD_MARKETING = "[https://da2a-marketing.fmind.dev/a2a/marketing/.well-known/agent-card.json](https://da2a-marketing.fmind.dev/a2a/marketing/.well-known/agent-card.json)"
+AGENT_CARD_ECOMMERCE = "https://da2a-ecommerce.fmind.dev/a2a/ecommerce/.well-known/agent-card.json"
+AGENT_CARD_MARKETING = "https://da2a-marketing.fmind.dev/a2a/marketing/.well-known/agent-card.json"
 
 # Create local proxy objects for the remote agents
 ecommerce_agent = a2a.RemoteA2aAgent(

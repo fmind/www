@@ -12,9 +12,9 @@ Let’s be honest, we’ve all been there. You start an MLOps project with the b
 
 The problem? Traditional, monolithic MLOps pipelines are inherently **rigid**. They couple your individual MLOps steps tightly, making them difficult to modify, reuse, or even understand in the long run. This inflexibility slows down iteration, hinders experimentation, and ultimately, increases the risk of your AI/ML project.
 
-![Photo by SELİM ARDA ERYILMAZ on Unsplash](/static/img/articles/stop-building-rigid-ai-ml-pipelines-embrace-reusable-components-for-flexible-mlops/cover.webp)
+![Welder in a trench joining sections of a large steel pipeline — Photo by SELİM ARDA ERYILMAZ on Unsplash](/static/img/articles/stop-building-rigid-ai-ml-pipelines-embrace-reusable-components-for-flexible-mlops/cover.webp)
 
-Photo by [SELİM ARDA ERYILMAZ](https://unsplash.com/@selimarda6006?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Welder in a trench joining sections of a large steel pipeline — Photo by [SELİM ARDA ERYILMAZ](https://unsplash.com/@selimarda6006?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
 
 **The Solution: Reusable Artifacts and DAGs**
 
@@ -24,15 +24,15 @@ Think of it like this: Instead of baking a single, giant cake (your pipeline), y
 
 **Breaking Down the Artifact-Driven Approach**
 
-![Stop Building Rigid AI/ML Pipelines: Embrace Reusable Components for Flexible MLOps](/static/img/articles/stop-building-rigid-ai-ml-pipelines-embrace-reusable-components-for-flexible-mlops/02.webp)
+![Docker image wrapping a Python package whose scripts.py entrypoint runs tuning, training, transition, and inference jobs from YAML configs](/static/img/articles/stop-building-rigid-ai-ml-pipelines-embrace-reusable-components-for-flexible-mlops/02.webp)
 
 The core idea is to encapsulate each step of your MLOps process into independent, reusable artifacts. These artifacts typically take the form of:
 
-- [**Python Packages**](https://realpython.com/python-wheels/) **:** Containing core logic for tasks like data preprocessing, feature engineering, or model training, where a [package is divided into jobs](https://github.com/fmind/mlops-python-package/tree/main/src/bikes/jobs) and exposed through entrypoints (e.g., [project scripts](https://github.com/fmind/mlops-python-package/blob/f16d240dabf0c16012a7a2adce5d76428a25624c/pyproject.toml#L47)).
-- [**Docker Images**](https://docs.docker.com/reference/dockerfile/) **:** Providing isolated, reproducible environments for running your code, packaged with their dependencies in a [Dockerfile](https://github.com/fmind/mlops-python-package/blob/main/Dockerfile).
-- [**Config Files**](https://mlops-coding-course.fmind.dev/3.%20Productionizing/3.4.%20Configurations.html) **:** Controlling the behavior of your code without requiring code changes (e.g., model hyperparameters, input/output files, …).
+- [**Python Packages**](https://realpython.com/python-wheels/)**:** Containing core logic for tasks like data preprocessing, feature engineering, or model training, where a [package is divided into jobs](https://github.com/fmind/mlops-python-package/tree/main/src/bikes/jobs) and exposed through entrypoints (e.g., [project scripts](https://github.com/fmind/mlops-python-package/blob/f16d240dabf0c16012a7a2adce5d76428a25624c/pyproject.toml#L47)).
+- [**Docker Images**](https://docs.docker.com/reference/dockerfile/)**:** Providing isolated, reproducible environments for running your code, packaged with their dependencies in a [Dockerfile](https://github.com/fmind/mlops-python-package/blob/main/Dockerfile).
+- [**Config Files**](https://mlops-coding-course.fmind.dev/3.%20Productionizing/3.4.%20Configurations.html)**:** Controlling the behavior of your code without requiring code changes (e.g., model hyperparameters, input/output files, …).
 
-![Stop Building Rigid AI/ML Pipelines: Embrace Reusable Components for Flexible MLOps](/static/img/articles/stop-building-rigid-ai-ml-pipelines-embrace-reusable-components-for-flexible-mlops/03.webp)
+![Data processing, machine learning, and orchestration repos on GitHub, each built by CI/CD into a Python package installed in a Docker image](/static/img/articles/stop-building-rigid-ai-ml-pipelines-embrace-reusable-components-for-flexible-mlops/03.webp)
 
 These artifacts are stored in a **code repository** like [GitHub](https://github.com/) and built by a [**CI/CD**](https://en.wikipedia.org/wiki/CI/CD) like [GitHub Actions](https://github.com/features/actions) on [release](https://github.com/fmind/mlops-python-package/releases). Here’s how it looks in practice:
 
@@ -41,9 +41,9 @@ These artifacts are stored in a **code repository** like [GitHub](https://github
 
 **From Artifacts to Action: Orchestration with DAGs**
 
-![https://airflow.apache.org/docs/apache-airflow/stable/core-concepts/dags.html](/static/img/articles/stop-building-rigid-ai-ml-pipelines-embrace-reusable-components-for-flexible-mlops/04.webp)
+![Airflow DAG graph where a branching task runs one branch to success while the other branch and the join task are skipped — Source: https://airflow.apache.org/docs/apache-airflow/stable/core-concepts/dags.html](/static/img/articles/stop-building-rigid-ai-ml-pipelines-embrace-reusable-components-for-flexible-mlops/04.webp)
 
-[https://airflow.apache.org/docs/apache-airflow/stable/core-concepts/dags.html](https://airflow.apache.org/docs/apache-airflow/stable/core-concepts/dags.html)
+Airflow DAG graph where a branching task runs one branch to success while the other branch and the join task are skipped — Source: [https://airflow.apache.org/docs/apache-airflow/stable/core-concepts/dags.html](https://airflow.apache.org/docs/apache-airflow/stable/core-concepts/dags.html)
 
 Now that we have our reusable artifacts, how do we combine them into a meaningful workflow? This is where [**Directed Acyclic Graphs (DAGs)**](https://airflow.apache.org/docs/apache-airflow/stable/core-concepts/dags.html) come into play. A DAG, often managed by orchestration tools like [**Apache Airflow**](https://airflow.apache.org/), [Dagster](https://dagster.io/), and [Prefect](https://www.prefect.io/), allows you to define a workflow as a series of interconnected tasks, each loading and executing artifacts.
 
@@ -51,11 +51,11 @@ Now that we have our reusable artifacts, how do we combine them into a meaningfu
 
 Let’s look at how we can assemble our artifacts into distinct workflows.
 
-![Stop Building Rigid AI/ML Pipelines: Embrace Reusable Components for Flexible MLOps](/static/img/articles/stop-building-rigid-ai-ml-pipelines-embrace-reusable-components-for-flexible-mlops/05.webp)
+![Weekly training DAG that processes data, tunes, trains, and promotes a model in parallel for the US, China, and India](/static/img/articles/stop-building-rigid-ai-ml-pipelines-embrace-reusable-components-for-flexible-mlops/05.webp)
 
 The training DAG will **prepare the data** (yellow squares), **tune/train the model** (orange and red squares), and **promote the model** (purple squares) if the new model outperforms the previous version. The DAG can parallelize the step execution (e.g., by country or product category) to improve performance, and adapt the resources allocated to each step (e.g., big countries get more powerful compute instances).
 
-![Stop Building Rigid AI/ML Pipelines: Embrace Reusable Components for Flexible MLOps](/static/img/articles/stop-building-rigid-ai-ml-pipelines-embrace-reusable-components-for-flexible-mlops/06.webp)
+![Daily inference DAG that processes data and runs batch inference with the production model in parallel for the US, China, and India](/static/img/articles/stop-building-rigid-ai-ml-pipelines-embrace-reusable-components-for-flexible-mlops/06.webp)
 
 The Inference DAG can use the same software artifacts as the training DAG. In this case, the data processing package is reused to **process data**, and the machine learning package can generate predictions through **batch inference**. As input, this step takes the production model stored in a model registry like [MLflow](https://mlflow.org/).
 
@@ -77,6 +77,6 @@ Embracing reusable artifacts and DAGs is a paradigm shift in MLOps. It’s about
 
 So, the next time you start an [MLOps project](https://github.com/fmind/cookiecutter-mlops-package), remember the professional kitchen analogy. Stock your pantry with high-quality artifacts, and use DAGs to orchestrate your culinary (or machine learning) masterpieces.
 
-![Photo by Calum Lewis on Unsplash](/static/img/articles/stop-building-rigid-ai-ml-pipelines-embrace-reusable-components-for-flexible-mlops/07.webp)
+![Spoons of colorful spices with chili peppers and fresh herbs laid out on a marble counter — Photo by Calum Lewis on Unsplash](/static/img/articles/stop-building-rigid-ai-ml-pipelines-embrace-reusable-components-for-flexible-mlops/07.webp)
 
-Photo by [Calum Lewis](https://unsplash.com/@calumlewis?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Spoons of colorful spices with chili peppers and fresh herbs laid out on a marble counter — Photo by [Calum Lewis](https://unsplash.com/@calumlewis?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)

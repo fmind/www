@@ -141,7 +141,7 @@ The moment I find the most instructive is the winner. v7 came from generation 2�
 
 Three patterns where I deliberately do not reach for evolutions, and the skill refuses to seed a brief when it spots them:
 
-- **The task is a one-line bug fix, rename, or doc edit.** Just do it. The overhead of a genetic loop is paid in seconds; the task is paid in seconds. The ratio is wrong.
+- **The task is a one-line bug fix, rename, or doc edit.** Just do it. The overhead of a genetic loop is paid in minutes; the task is paid in seconds. The ratio is wrong.
 - **There is no mechanical measure — not even a proxy.** “Make this prose more engaging” has no shell exit and no number. Use a normal review.
 - **The user has already decided the design.** “Implement X.” is a levers job, not an evolutions job. Don’t manufacture a search space just to use the tool.
 
@@ -157,7 +157,9 @@ Most teams, today, are spending compute the way a 1990s team spent CPU time on a
 
 The practical nudge I’ll leave you with: next time a _which design wins?_ thread starts on Slack, count the design points raised against the design points measured. If the ratio is wildly skewed toward opinion — and it usually is — that is the shape of a question agent-evolutions was built to swallow.
 
-### The three install paths mirror the three coding agents:
+### Install the plugin
+
+The four install paths mirror the four coding agents:
 
 ```text
 # Claude Code

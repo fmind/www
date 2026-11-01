@@ -8,11 +8,11 @@ syndicated = "https://medium.com/@fmind/poetry-was-good-uv-is-better-an-mlops-mi
 draft = false
 +++
 
-As an MLOps Engineer, I’m always on the lookout for tools and technologies that can streamline workflows, boost performance, and enhance the maintainability of MLOps projects. Recently, I made a significant shift in the [MLOps Python Package ](https://github.com/fmind/mlops-python-package)— a repository dedicated to sharing best practices for MLOps in Python. I transitioned from [Poetry](https://python-poetry.org/), a popular dependency management and packaging tool, to [Uv](https://docs.astral.sh/uv/), a newer, blazing-fast alternative.
+As an MLOps Engineer, I’m always on the lookout for tools and technologies that can streamline workflows, boost performance, and enhance the maintainability of MLOps projects. Recently, I made a significant shift in the [MLOps Python Package](https://github.com/fmind/mlops-python-package) — a repository dedicated to sharing best practices for MLOps in Python. I transitioned from [Poetry](https://python-poetry.org/), a popular dependency management and packaging tool, to [Uv](https://docs.astral.sh/uv/), a newer, blazing-fast alternative.
 
-![Photo by Chris Briggs on Unsplash](/static/img/articles/poetry-was-good-uv-is-better-an-mlops-migration-story/cover.webp)
+![Five sandhill cranes flying together across a cloudy blue sky — Photo by Chris Briggs on Unsplash](/static/img/articles/poetry-was-good-uv-is-better-an-mlops-migration-story/cover.webp)
 
-Photo by [Chris Briggs](https://unsplash.com/@cgbriggs19?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Five sandhill cranes flying together across a cloudy blue sky — Photo by [Chris Briggs](https://unsplash.com/@cgbriggs19?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
 
 This wasn’t a decision I took lightly. Poetry has served my teammates and me well on many MLOps projects, but Uv’s promise of enhanced speed and stricter adherence to Python Enhancement Proposals (PEPs) piqued our interest. **After thoroughly testing it out, we were convinced. The transition is a resounding success, and we’re excited to share our experience and why we believe Uv might be the right choice for your AI/ML projects too.**
 
@@ -188,6 +188,6 @@ The transition from Poetry to Uv in our “[MLOps Python Package](https://github
 
 We encourage you to explore Uv and see if it’s the right fit for your projects. The future of Python dependency management is here, and it’s faster and more standardized than ever before!
 
-![Photo by Harley-Davidson on Unsplash](/static/img/articles/poetry-was-good-uv-is-better-an-mlops-migration-story/02.webp)
+![Motorcyclist leaning a Harley-Davidson into a curve on a mountain road — Photo by Harley-Davidson on Unsplash](/static/img/articles/poetry-was-good-uv-is-better-an-mlops-migration-story/02.webp)
 
-Photo by [Harley-Davidson](https://unsplash.com/@harleydavidson?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Motorcyclist leaning a Harley-Davidson into a curve on a mountain road — Photo by [Harley-Davidson](https://unsplash.com/@harleydavidson?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)

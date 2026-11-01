@@ -12,17 +12,17 @@ In the fast-paced world of content creation, efficiency is key. Manually craftin
 
 In this article, I’ll walk you through how I built GentWriter, showcasing the potential of ADK for creating specialized AI agents. We’ll look at its features, the development experience, and how it leverages a multi-agent system to streamline content creation.
 
-![Photo by Dmytro Tolokonov on Unsplash](/static/img/articles/introducing-gentwriter-building-a-multi-agent-content-generator-with-googles-adk/cover.webp)
+![Bearded gentleman in a top hat and waistcoat tipping his hat while leaning on a cane — Photo by Dmytro Tolokonov on Unsplash](/static/img/articles/introducing-gentwriter-building-a-multi-agent-content-generator-with-googles-adk/cover.webp)
 
-Photo by [Dmytro Tolokonov](https://unsplash.com/@dtolokonov?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Bearded gentleman in a top hat and waistcoat tipping his hat while leaning on a cane — Photo by [Dmytro Tolokonov](https://unsplash.com/@dtolokonov?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
 
 ### The Challenge: Taming the Social Content Beast 🦁
 
 Keeping multiple social media feeds updated with relevant content derived from a single source (like a blog post or article) requires significant effort. Tailoring the message, tone, and length for each platform (think X vs. SEO vs. LinkedIn) adds another layer of complexity.
 
-![Photo by Nik on Unsplash](/static/img/articles/introducing-gentwriter-building-a-multi-agent-content-generator-with-googles-adk/02.webp)
+![Smartphone home screen with Instagram, Twitter, and LinkedIn app icons — Photo by Nik on Unsplash](/static/img/articles/introducing-gentwriter-building-a-multi-agent-content-generator-with-googles-adk/02.webp)
 
-Photo by [Nik](https://unsplash.com/@helloimnik?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Smartphone home screen with Instagram, Twitter, and LinkedIn app icons — Photo by [Nik](https://unsplash.com/@helloimnik?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
 
 ### Enter GentWriter: Your AI Content Assistant 🤖
 
@@ -149,6 +149,6 @@ If you’re automating content workflows or exploring agent-based systems, defin
 - **GitHub Repository**: [https://github.com/fmind/gentwriter](https://github.com/fmind/gentwriter)
 - **ADK Documentation**: [https://google.github.io/adk-docs/](https://google.github.io/adk-docs/)
 
-![Photo by Parmanand Jagnandan on Unsplash](/static/img/articles/introducing-gentwriter-building-a-multi-agent-content-generator-with-googles-adk/06.webp)
+![LEGO Voltron robot assembled from colored lion robots in a LEGO store, like agents combined into one system — Photo by Parmanand Jagnandan on Unsplash](/static/img/articles/introducing-gentwriter-building-a-multi-agent-content-generator-with-googles-adk/06.webp)
 
-Photo by [Parmanand Jagnandan](https://unsplash.com/@parmanand?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+LEGO Voltron robot assembled from colored lion robots in a LEGO store, like agents combined into one system — Photo by [Parmanand Jagnandan](https://unsplash.com/@parmanand?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)

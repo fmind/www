@@ -139,4 +139,4 @@ Check out the final result at [fmind.dev](https://www.fmind.dev/).
 
 About me on Fmind.dev
 
-If you tried ‘vibe coding’ on your own projects yet, let me know your experience in the comments!
+If you have tried ‘vibe coding’ on your own projects yet, let me know your experience in the comments!

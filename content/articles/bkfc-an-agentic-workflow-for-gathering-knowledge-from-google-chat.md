@@ -16,7 +16,7 @@ As someone passionate about AI, Generative AI, and MLOps, I’m always looking f
 
 This led me to create [**BKFC (Build Knowledge From Chats)**](https://github.com/fmind/BKFC), a [Python notebook](https://github.com/fmind/BKFC/blob/main/BKFC_Build_a_Knowledge_base_From_Chats.ipynb) designed to act as a simple yet powerful insight-gathering agent for Google Chat. My goal wasn’t just to extract information, but also to demonstrate how quickly valuable, focused agentic workflows can be built using modern tools like [Google Colab](https://colab.google/), the [Google Chat API](https://developers.google.com/workspace/chat), and [Vertex AI’s Gemini models](https://cloud.google.com/vertex-ai/generative-ai/docs/overview).
 
-![BKFC: An Agentic Workflow for Gathering Knowledge from Google Chat](/static/img/articles/bkfc-an-agentic-workflow-for-gathering-knowledge-from-google-chat/cover.webp)
+![Five colleagues gathered around a laptop at a meeting table, discussing notes in front of a whiteboard](/static/img/articles/bkfc-an-agentic-workflow-for-gathering-knowledge-from-google-chat/cover.webp)
 
 ### The Motivation: From Chat Chaos to Actionable Insights
 
@@ -194,7 +194,7 @@ It highlights that you don’t always need complex, multi-turn conversational ag
 
 What other routine information retrieval tasks could be automated with a similar approach? Let me know in comments!
 
-- **Github Repository**: [https://github.com/fmind/BKFC](https://github.com/fmind/BKFC)
-- **Colab Notebook**: [https://github.com/fmind/BKFC](https://github.com/fmind/BKFC) [https://github.com/fmind/BKFC/blob/main/BKFC_Build_a_Knowledge_base_From_Chats.ipynb](https://github.com/fmind/BKFC/blob/main/BKFC_Build_a_Knowledge_base_From_Chats.ipynb)
+- **GitHub Repository**: [https://github.com/fmind/BKFC](https://github.com/fmind/BKFC)
+- **Colab Notebook**: [https://github.com/fmind/BKFC/blob/main/BKFC_Build_a_Knowledge_base_From_Chats.ipynb](https://github.com/fmind/BKFC/blob/main/BKFC_Build_a_Knowledge_base_From_Chats.ipynb)
 
-![BKFC: An Agentic Workflow for Gathering Knowledge from Google Chat](/static/img/articles/bkfc-an-agentic-workflow-for-gathering-knowledge-from-google-chat/02.webp)
+![Humanoid robot in a server room sorting floating chat message bubbles](/static/img/articles/bkfc-an-agentic-workflow-for-gathering-knowledge-from-google-chat/02.webp)

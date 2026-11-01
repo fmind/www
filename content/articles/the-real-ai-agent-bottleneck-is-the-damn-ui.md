@@ -14,9 +14,9 @@ The major players are all in. Whether you’re using Google Cloud’s [Vertex AI
 
 You can have the most sophisticated, multi-step reasoning agent on the planet, but if your users can’t interact with it intuitively, securely, and effectively, it’s a challenge for deploying AI agents at scale. The last mile — exposing the agent to maximize impact — is where projects go to die. In this article, we are going to explore this problem, and find the best trade-off to remove the bottlenecks and adopt AI agents full-throttle in your company!
 
-![Source: Google AI Studio](/static/img/articles/the-real-ai-agent-bottleneck-is-the-damn-ui/cover.webp)
+![Rocket labeled AI Agent Hub launching over a city skyline at dusk — Source: Google AI Studio](/static/img/articles/the-real-ai-agent-bottleneck-is-the-damn-ui/cover.webp)
 
-Source: Google AI Studio
+Rocket labeled AI Agent Hub launching over a city skyline at dusk — Source: Google AI Studio
 
 ### The Bottleneck: Why UI is the Hardest Part
 
@@ -88,9 +88,9 @@ Example of Visual Workflow on n8n. Source: [https://n8n.io/](https://n8n.io/)
 
 Building a custom, bespoke UI for every agent, often using frameworks like [Genkit](https://genkit.dev/).
 
-![Source: https://developers.googleblog.com/en/how-firebase-genkit-helped-add-ai-to-our-compass-app/](/static/img/articles/the-real-ai-agent-bottleneck-is-the-damn-ui/05.webp)
+![Three screens of the Compass travel app built with Genkit: welcome page, destination search, and activity picker — Source: https://developers.googleblog.com/en/how-firebase-genkit-helped-add-ai-to-our-compass-app/](/static/img/articles/the-real-ai-agent-bottleneck-is-the-damn-ui/05.webp)
 
-Source: [https://developers.googleblog.com/en/how-firebase-genkit-helped-add-ai-to-our-compass-app/](https://developers.googleblog.com/en/how-firebase-genkit-helped-add-ai-to-our-compass-app/)
+Three screens of the Compass travel app built with Genkit: welcome page, destination search, and activity picker — Source: [https://developers.googleblog.com/en/how-firebase-genkit-helped-add-ai-to-our-compass-app/](https://developers.googleblog.com/en/how-firebase-genkit-helped-add-ai-to-our-compass-app/)
 
 - **Pros:** The absolute best adaptation to the specific use case. Maximum control over the user experience.
 - **Cons:** Slow to develop, expensive, and completely unscalable, especially for quick agents.
@@ -120,7 +120,7 @@ Regardless of the UI paradigm we choose, one thing is clear: we need an **Agent 
 
 Where do today’s solutions fit in?
 
-- [**n8n**](https://n8n.io/) **/** [**OpenAI Agent Builder**](https://openai.com/index/introducing-agentkit/) **(Visual Workflow):** Familiar with organizations, which aids adoption. However, they are fundamentally restrictive and don’t allow for the autonomy and human-in-the-loop interaction that GenAI agents can leverage.
+- [**n8n**](https://n8n.io/) **/** [**OpenAI Agent Builder**](https://openai.com/index/introducing-agentkit/) **(Visual Workflow):** Familiar to organizations, which aids adoption. However, they are fundamentally restrictive and don’t allow for the autonomy and human-in-the-loop interaction that GenAI agents can leverage.
 - [**OpenAI Apps**](https://openai.com/index/introducing-apps-in-chatgpt/) **/** [**Gemini Extensions**](https://support.google.com/gemini/answer/13695044?hl=en&co=GENIE.Platform%3DAndroid) **(Chat-First):** The easy fix, but they lack expressiveness. If we limit agents to simple chat interfaces, we risk repeating the failures of Alexa — useful for timers, but not for complex work.
 - [**Opal**](https://blog.google/technology/google-labs/opal-expansion/) **/** [**AG-UI**](https://github.com/ag-ui-protocol/ag-ui) **(Dynamic UI):** Great for small, isolated apps and user autonomy, but not scalable for large, complex systems. They are hard to edit, maintain, and ensure consistency.
 - [**AWS QuickSuite**](https://aws.amazon.com/fr/blogs/aws/reimagine-the-way-you-work-with-ai-agents-in-amazon-quick-suite/) **(Hybrid):** A pragmatic, conservative middle ground. [QuickSuite](https://docs.aws.amazon.com/quicksuite/latest/userguide/what-is.html) offers a toolset of GenAI variants with UIs tailored for specific tasks like data analysis, deep research, or conversation. A solid choice, especially if you are using AWS services.
@@ -153,6 +153,6 @@ This is both easier to develop (no new UIs needed) and easier to adopt (users ke
 
 Until then, we need to stop treating the UI as an afterthought. It’s a critical component for unlocking the value of AI agents in the enterprise. It’s time we started engineering it with the same rigor we apply to the agents themselves.
 
-![Photo by Anton Filatov on Unsplash](/static/img/articles/the-real-ai-agent-bottleneck-is-the-damn-ui/10.webp)
+![Streaks of purple and cyan light rushing toward a central point, like a jump to hyperspace — Photo by Anton Filatov on Unsplash](/static/img/articles/the-real-ai-agent-bottleneck-is-the-damn-ui/10.webp)
 
-Photo by [Anton Filatov](https://unsplash.com/@antony123antony?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Streaks of purple and cyan light rushing toward a central point, like a jump to hyperspace — Photo by [Anton Filatov](https://unsplash.com/@antony123antony?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)

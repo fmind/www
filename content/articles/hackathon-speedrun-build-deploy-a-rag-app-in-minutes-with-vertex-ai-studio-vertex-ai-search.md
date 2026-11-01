@@ -16,10 +16,10 @@ Let’s walk through how to build a Q&A assistant for “[Agentoc: A2A and MCP](
 
 **The Stack:**
 
-- [**Google Cloud Storage (GCS)**](https://cloud.google.com/storage?hl=en) **:** To store our source documents.
-- [**Vertex AI Search (within AI Applications)**](https://cloud.google.com/generative-ai-app-builder/docs/enterprise-search-introduction) **:** To index our documents and make them searchable.
-- [**Vertex AI Studio**](https://cloud.google.com/generative-ai-studio?hl=en) **:** To create our prompt, connect it to the Vertex AI Search data store (grounding), and test.
-- [**Cloud Run**](https://cloud.google.com/run?hl=en) **:** To deploy our AI assistant as a web app with a single click.
+- [**Google Cloud Storage (GCS)**](https://cloud.google.com/storage?hl=en)**:** To store our source documents.
+- [**Vertex AI Search (within AI Applications)**](https://cloud.google.com/generative-ai-app-builder/docs/enterprise-search-introduction)**:** To index our documents and make them searchable.
+- [**Vertex AI Studio**](https://cloud.google.com/generative-ai-studio?hl=en)**:** To create our prompt, connect it to the Vertex AI Search data store (grounding), and test.
+- [**Cloud Run**](https://cloud.google.com/run?hl=en)**:** To deploy our AI assistant as a web app with a single click.
 
 ![Architecture of Agentoc: Assistant for A2A and MCP protocol](/static/img/articles/hackathon-speedrun-build-deploy-a-rag-app-in-minutes-with-vertex-ai-studio-vertex-ai-search/cover.webp)
 
@@ -185,7 +185,7 @@ Get Started with Vertex AI Studio and API Activation
 **2. Select Model & Write System Instructions:**
 
 - **Model:** I chose gemini-2.0-flash-001 for its speed and capability.
-- **System Instructions:** Give your AI a personality and purpose. Example: “You are Agentoc, an helpful assistant that provides grounded answers about the A2A and MCP protocols from the official documentation.”
+- **System Instructions:** Give your AI a personality and purpose. Example: “You are Agentoc, a helpful assistant that provides grounded answers about the A2A and MCP protocols from the official documentation.”
 
 **3. Enable Grounding:**
 
@@ -198,7 +198,7 @@ Activation of grounding with Vertex AI Search
 
 **4. Configure Grounding Source:**
 
-![Hackathon Speedrun: Build & Deploy a RAG App in Minutes with Vertex AI Studio & Vertex AI Search!](/static/img/articles/hackathon-speedrun-build-deploy-a-rag-app-in-minutes-with-vertex-ai-studio-vertex-ai-search/11.webp)
+![Vertex AI Studio Customize Grounding panel with Vertex AI Search selected and the datastore path filled in](/static/img/articles/hackathon-speedrun-build-deploy-a-rag-app-in-minutes-with-vertex-ai-studio-vertex-ai-search/11.webp)
 
 - Select “Vertex AI Search”.
 - **Vertex AI datastore path:** This is crucial! You need the full path. Go back to your Data Stores list (AI Applications -\> Data Stores), click on your data store name, and copy the “ID”. It will look something like projects/**agentoc**/locations/**global**/collections/default_collection/dataStores/**agentoc-data-sources_1746981317464**
@@ -299,6 +299,6 @@ In just a few steps, we went from raw documents to a fully deployed, interactive
 
 Now, go build something amazing for the Hackathon!
 
-- **Github Repository**: [https://github.com/fmind/agentoc](https://github.com/fmind/agentoc)
+- **GitHub Repository**: [https://github.com/fmind/agentoc](https://github.com/fmind/agentoc)
 
-![Hackathon Speedrun: Build & Deploy a RAG App in Minutes with Vertex AI Studio & Vertex AI Search!](/static/img/articles/hackathon-speedrun-build-deploy-a-rag-app-in-minutes-with-vertex-ai-studio-vertex-ai-search/22.webp)
+![Smiling hackathon participants with lanyards coding on laptops in a busy event room](/static/img/articles/hackathon-speedrun-build-deploy-a-rag-app-in-minutes-with-vertex-ai-studio-vertex-ai-search/22.webp)

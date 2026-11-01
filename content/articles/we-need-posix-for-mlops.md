@@ -30,7 +30,7 @@ In this article, I propose a solution analogous to [POSIX](https://en.wikipedia.
 
 [POSIX](https://en.wikipedia.org/wiki/POSIX) (Portable Operating System Interface) is a set of standards specified by the [IEEE](https://www.ieee.org/) for defining a level of compatibility between operating systems (e.g., Linux, MacOS, BSD, …).
 
-More concretely, [**POSIX**](https://en.wikipedia.org/wiki/POSIX) **is the foundation that allows end users to implement new applications and ensure they can communicate with each other**. This can be done with shell [commands](https://en.wikipedia.org/wiki/List_of_Unix_commands) (e.g., `ls`, `df`, `pwd`, …) and [pipelines](https://en.wikipedia.org/wiki/Pipeline_%28Unix%29) (e.g., `fd | sort | unique`), or with more complex interfaces such as [network sockets](https://en.wikipedia.org/wiki/Network_socket).
+More concretely, [**POSIX**](https://en.wikipedia.org/wiki/POSIX) **is the foundation that allows end users to implement new applications and ensure they can communicate with each other**. This can be done with shell [commands](https://en.wikipedia.org/wiki/List_of_Unix_commands) (e.g., `ls`, `df`, `pwd`, …) and [pipelines](https://en.wikipedia.org/wiki/Pipeline_%28Unix%29) (e.g., `fd | sort | uniq`), or with more complex interfaces such as [network sockets](https://en.wikipedia.org/wiki/Network_socket).
 
 POSIX is also linked with the [Unix Philosophy](https://en.wikipedia.org/wiki/Unix_philosophy), an approach that favors [composability](https://en.wikipedia.org/wiki/Composability "Composability") over [monolithic design](https://en.wikipedia.org/wiki/Monolithic_application "Monolithic application"). To quote [Doug McIlroy](https://en.wikipedia.org/wiki/Douglas_McIlroy) (1978):
 

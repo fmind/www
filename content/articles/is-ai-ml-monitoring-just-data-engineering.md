@@ -12,7 +12,7 @@ draft = false
 
 In the past few weeks, I reviewed several of these AI/ML monitoring solutions for a client. We considered vendor solutions ([Arize](https://arize.ai/), [Superwise](https://superwise.ai/), [Aporia](https://coralogix.com/blog/coralogix-acquires-aporia/)), open-source solutions ([Evidently](https://www.evidentlyai.com/), [Deepchecks](https://deepchecks.com/)), and even building our own solution. These reviews gave me a lot of food for thought about the essence of AI/ML monitoring and how it should fit into an [MLOps lifecycle](https://ml-ops.org/content/mlops-principles#:~:text=As%20machine%20learning%20and%20AI,debt%E2%80%9D%20in%20machine%20learning%20applications.).
 
-![Is AI/ML Monitoring just Data Engineering? 🤔](/static/img/articles/is-ai-ml-monitoring-just-data-engineering/cover.webp)
+![Scooby-Doo unmasking meme where an ML engineer pulls the AI/ML Monitoring mask off to reveal Data Engineering](/static/img/articles/is-ai-ml-monitoring-just-data-engineering/cover.webp)
 
 In this article, I will discuss the nature of AI/ML monitoring and how it relates to data engineering. First, I will present the similarities between AI/ML monitoring and data engineering. Second, I will enumerate additional features that AI/ML monitoring solutions can provide. Third, I will briefly touch on the topic of AI/ML observability and its relation to AI/ML monitoring. Finally, I will provide my conclusion about the field of AI/ML monitoring and how it should be considered to ensure the success of your AI/ML project.
 
@@ -63,9 +63,9 @@ However, I found a major flaw with most vendor-based solutions: **they do not al
 
 I do not blame AI/ML monitoring vendors for this. [It is challenging to create all of these integrations as there is no common protocol for MLOps systems](https://mlops.community/we-need-posix-for-mlops/). We have HTTP, SMTP, and TCP/IP as a universal bridge for the internet, but we do not have anything similar for MLOps. As a result, ML engineers are left with only two options: (1) hope that the vendors will fulfill all of their use cases now and in the future, or (2) build their own solution and focus on the interoperability of their platform. Based on your profile (i.e., end-user vs. engineer), you might choose one over the other.
 
-![Photo by Mike Erskine on Unsplash](/static/img/articles/is-ai-ml-monitoring-just-data-engineering/04.webp)
+![Wooden Dead End sign nailed to a post in a dark forest — Photo by Mike Erskine on Unsplash](/static/img/articles/is-ai-ml-monitoring-just-data-engineering/04.webp)
 
-Photo by [Mike Erskine](https://unsplash.com/@mikejerskine?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Wooden Dead End sign nailed to a post in a dark forest — Photo by [Mike Erskine](https://unsplash.com/@mikejerskine?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
 
 ### A note on AI/ML Observability
 

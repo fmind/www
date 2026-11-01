@@ -14,9 +14,9 @@ To celebrate, I decided to combine the two. I crafted a complex coding challenge
 
 The goal was simple: Could AI create a genuinely magical, interactive experience for a six-year-old?
 
-![Source: Gemini App](/static/img/articles/happy-birthday-xp-celebrating-gemini-deep-think-and-my-daughters-6th-birthday/cover.webp)
+![AI-generated scene of a young girl blowing out the candles on a unicorn birthday cake, surrounded by her smiling family — Source: Gemini App](/static/img/articles/happy-birthday-xp-celebrating-gemini-deep-think-and-my-daughters-6th-birthday/cover.webp)
 
-Source: Gemini App
+AI-generated scene of a young girl blowing out the candles on a unicorn birthday cake, surrounded by her smiling family — Source: Gemini App
 
 The results were more than just a birthday gift; they were a clear demonstration of the accelerating pace of AI. As Simon Willison recently illustrated in his talk [“2025 in LLMs so far, illustrated by Pelicans on Bicycles,”](https://www.youtube.com/watch?v=YpY83-kA7Bo) we are seeing models make sudden, incredible leaps in capability. This experiment was a perfect example of that leap in action.
 
@@ -38,9 +38,9 @@ Here is a summary of the [prompt requirements](https://sites.google.com/fmind.de
 
 This is a tough prompt. It requires understanding narrative flow, complex JavaScript interactions, CSS animation timing, and synthesizing audio.
 
-![Source: https://developers.googleblog.com/en/start-building-with-gemini-25-flash/](/static/img/articles/happy-birthday-xp-celebrating-gemini-deep-think-and-my-daughters-6th-birthday/02.webp)
+![Chart of LMArena score versus price per million tokens, with Gemini 2.5 Pro and 2.5 Flash on the price-performance Pareto frontier — Source: https://developers.googleblog.com/en/start-building-with-gemini-25-flash/](/static/img/articles/happy-birthday-xp-celebrating-gemini-deep-think-and-my-daughters-6th-birthday/02.webp)
 
-Source: [https://developers.googleblog.com/en/start-building-with-gemini-25-flash/](https://developers.googleblog.com/en/start-building-with-gemini-25-flash/)
+Chart of LMArena score versus price per million tokens, with Gemini 2.5 Pro and 2.5 Flash on the price-performance Pareto frontier — Source: [https://developers.googleblog.com/en/start-building-with-gemini-25-flash/](https://developers.googleblog.com/en/start-building-with-gemini-25-flash/)
 
 Let’s see how the models did.
 
@@ -94,17 +94,17 @@ Pro provided a better aesthetic and a closer attempt at the prompt.
 
 I showed both the Flash and Pro versions to Augustine. She clicked the button, saw the text, watched the fireworks for a moment on the Pro version, and then looked at me and asked, “Is that it?”
 
-![Source: Gemini App](/static/img/articles/happy-birthday-xp-celebrating-gemini-deep-think-and-my-daughters-6th-birthday/03.webp)
+![AI-generated scene of a girl frowning with crossed arms behind a unicorn birthday cake while her family smiles — Source: Gemini App](/static/img/articles/happy-birthday-xp-celebrating-gemini-deep-think-and-my-daughters-6th-birthday/03.webp)
 
-Source: Gemini App
+AI-generated scene of a girl frowning with crossed arms behind a unicorn birthday cake while her family smiles — Source: Gemini App
 
 Unmoved. The magic had failed to land.
 
-### Round 3: Gemini DeepThink
+### Round 3: Gemini Deep Think
 
 Enter [Deep Think](https://blog.google/products/gemini/gemini-2-5-deep-think/). This represents the cutting edge of Gemini’s capabilities, utilizing advanced reasoning and complex instruction following. The difference was immediate and profound.
 
-_Watch the DeepThink result:_ [_https://youtu.be/CA55UQ0tGrQ_](https://youtu.be/CA55UQ0tGrQ)
+_Watch the Deep Think result:_ [_https://youtu.be/CA55UQ0tGrQ_](https://youtu.be/CA55UQ0tGrQ)
 
 Deep Think didn’t just execute the instructions; it understood the _intent_ of creating a magical experience.
 
@@ -112,7 +112,7 @@ Deep Think didn’t just execute the instructions; it understood the _intent_ of
 
 - **Scene Coordination:** The flow is seamless. The initial scene is polished, with a beautiful gift box and ribbon (00:00).
 - **The Reveal:** When clicked, the box doesn’t just disappear; it bursts open with a flood of stars (00:03) before revealing the glowing birthday message (00:06).
-- **The Interactive Game:** This is where DeepThink shines. Balloons begin to float up (00:13). Not only can you pop them, but the model implemented _playful, realistic balloon physics_. They bob, they float naturally, and they even bump into the text elements (00:25). They pop with satisfying confetti bursts and synthesized “pop” sound effects (00:14 onwards).
+- **The Interactive Game:** This is where Deep Think shines. Balloons begin to float up (00:13). Not only can you pop them, but the model implemented _playful, realistic balloon physics_. They bob, they float naturally, and they even bump into the text elements (00:25). They pop with satisfying confetti bursts and synthesized “pop” sound effects (00:14 onwards).
 - **The Climax:** The balloons fade, and a stylized birthday cake with 6 lit candles glides in (01:07). The “Make a wish!” button appears (01:09).
 - **The Finale:** Clicking the button blows out the candles with a distinct “whoosh” sound effect (01:12), triggering a synthesized “Happy Birthday” melody and the final, heartwarming message: “We love you! Have the most wonderful day!” (01:14).
 
@@ -120,13 +120,13 @@ Deep Think didn’t just execute the instructions; it understood the _intent_ of
 
 ### The Ultimate Critic: A 6-Year-Old’s Review (Part 2)
 
-When I showed the DeepThink version to Augustine, her eyes lit up. She was captivated by the opening animation, and she _loved_ the balloon popping game. She giggled as they popped, delighted by the physics and the confetti.
+When I showed the Deep Think version to Augustine, her eyes lit up. She was captivated by the opening animation, and she _loved_ the balloon popping game. She giggled as they popped, delighted by the physics and the confetti.
 
 The final message, telling her she would have a wonderful day, made her smile.
 
-![Source: Gemini App](/static/img/articles/happy-birthday-xp-celebrating-gemini-deep-think-and-my-daughters-6th-birthday/04.webp)
+![AI-generated portrait of a smiling girl in a striped headband, clasping her hands with delight — Source: Gemini App](/static/img/articles/happy-birthday-xp-celebrating-gemini-deep-think-and-my-daughters-6th-birthday/04.webp)
 
-Source: Gemini App
+AI-generated portrait of a smiling girl in a striped headband, clasping her hands with delight — Source: Gemini App
 
 She immediately hit “Play Again!” and played through the entire experience four times in a row.
 
@@ -149,6 +149,6 @@ The level of leverage that a model like Gemini Deep Think provides is astonishin
 
 As we celebrate Augustine’s 6th birthday, I’m also celebrating the arrival of this incredible technology. The progress is staggering, and I’m thrilled to have such power at my fingertips. The future of AI-assisted creation isn’t just coming; it’s already here.
 
-![Source: https://blog.google/products/gemini/gemini-2-5-deep-think/](/static/img/articles/happy-birthday-xp-celebrating-gemini-deep-think-and-my-daughters-6th-birthday/05.webp)
+![Voxel pagoda gardens built from one prompt by Gemini 2.5 Flash, 2.5 Pro, and 2.5 Deep Think, with Deep Think the most detailed — Source: https://blog.google/products/gemini/gemini-2-5-deep-think/](/static/img/articles/happy-birthday-xp-celebrating-gemini-deep-think-and-my-daughters-6th-birthday/05.webp)
 
-Source: [https://blog.google/products/gemini/gemini-2-5-deep-think/](https://blog.google/products/gemini/gemini-2-5-deep-think/)
+Voxel pagoda gardens built from one prompt by Gemini 2.5 Flash, 2.5 Pro, and 2.5 Deep Think, with Deep Think the most detailed — Source: [https://blog.google/products/gemini/gemini-2-5-deep-think/](https://blog.google/products/gemini/gemini-2-5-deep-think/)

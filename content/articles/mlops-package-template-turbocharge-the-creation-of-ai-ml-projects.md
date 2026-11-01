@@ -12,9 +12,9 @@ draft = false
 
 The world of AI/ML is evolving at an electrifying pace, and MLOps has emerged as a cornerstone for translating innovative ideas into production-ready solutions. Yet, setting up a robust MLOps project can feel like navigating a labyrinth of tools, configurations, and best practices. This is where the [**Cookiecutter MLOps Package**](https://github.com/fmind/cookiecutter-mlops-package) steps in, offering a **powerful code template to jumpstart your MLOps journey**, accelerating your development process and ensuring a solid foundation for success.
 
-![Photo by Jeremy Bishop on Unsplash](/static/img/articles/mlops-package-template-turbocharge-the-creation-of-ai-ml-projects/cover.webp)
+![Lightning bolts striking the sea under a purple storm sky beside a rocky headland — Photo by Jeremy Bishop on Unsplash](/static/img/articles/mlops-package-template-turbocharge-the-creation-of-ai-ml-projects/cover.webp)
 
-Photo by [Jeremy Bishop](https://unsplash.com/@jeremybishop?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Lightning bolts striking the sea under a purple storm sky beside a rocky headland — Photo by [Jeremy Bishop](https://unsplash.com/@jeremybishop?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
 
 ### Why Code Templates Matter 💡
 
@@ -45,7 +45,7 @@ The [**Cookiecutter MLOps Package**](https://github.com/fmind/cookiecutter-mlops
 - [**MLOps Coding Course**](https://mlops-coding-course.fmind.dev/): This comprehensive course dives deep into software development best practices for AI/ML, providing the foundational knowledge to structure and manage MLOps projects effectively.
 - [**MLOps Python Package**](https://github.com/fmind/mlops-python-package): This companion repository showcases a practical implementation of the concepts and best practices discussed in the course on a Predictive ML project.
 
-### Getting Started with the Cookiecutter MLOps Package🔋
+### Getting Started with the Cookiecutter MLOps Package 🔋
 
 To get started, install [Cookiecutter](https://cookiecutter.readthedocs.io/) and generate your MLOps project:
 
@@ -79,7 +79,7 @@ git init
 
 The [**Cookiecutter MLOps Package**](https://github.com/fmind/cookiecutter-mlops-package) empowers you to automate various development tasks using [PyInvoke](https://www.pyinvoke.org/). Here are some examples:
 
-[**Install Dependencies**](https://github.com/fmind/cookiecutter-mlops-package/blob/v1.0.0/%7B%7Bcookiecutter.repository%7D%7D/tasks/installs.py) **:**
+[**Install Dependencies**](https://github.com/fmind/cookiecutter-mlops-package/blob/v1.0.0/%7B%7Bcookiecutter.repository%7D%7D/tasks/installs.py)**:**
 
 [This task](https://github.com/fmind/cookiecutter-mlops-package/blob/v1.0.0/%7B%7Bcookiecutter.repository%7D%7D/tasks/installs.py) installs all project dependencies using [Poetry](https://python-poetry.org/) and sets up [pre-commit hooks](https://pre-commit.com/).
 
@@ -87,7 +87,7 @@ The [**Cookiecutter MLOps Package**](https://github.com/fmind/cookiecutter-mlops
 invoke installs
 ```
 
-[**Format Code**](https://github.com/fmind/cookiecutter-mlops-package/blob/v1.0.0/%7B%7Bcookiecutter.repository%7D%7D/tasks/formats.py) **:**
+[**Format Code**](https://github.com/fmind/cookiecutter-mlops-package/blob/v1.0.0/%7B%7Bcookiecutter.repository%7D%7D/tasks/formats.py)**:**
 
 [This task](https://github.com/fmind/cookiecutter-mlops-package/blob/v1.0.0/%7B%7Bcookiecutter.repository%7D%7D/tasks/formats.py) automatically formats your code using [Ruff](https://docs.astral.sh/ruff/), ensuring consistent style.
 
@@ -95,7 +95,7 @@ invoke installs
 invoke formats
 ```
 
-[**Run Tests and Checks**](https://github.com/fmind/cookiecutter-mlops-package/blob/v1.0.0/%7B%7Bcookiecutter.repository%7D%7D/tasks/checks.py) **:**
+[**Run Tests and Checks**](https://github.com/fmind/cookiecutter-mlops-package/blob/v1.0.0/%7B%7Bcookiecutter.repository%7D%7D/tasks/checks.py)**:**
 
 [This task](https://github.com/fmind/cookiecutter-mlops-package/blob/v1.0.0/%7B%7Bcookiecutter.repository%7D%7D/tasks/checks.py) runs unit tests with [Pytest](https://docs.pytest.org/en/stable/), lints your code with [Ruff](https://docs.astral.sh/ruff/), performs type checks with [Mypy](https://mypy.readthedocs.io/en/stable/index.html), analyzes code security with [Bandit](https://bandit.readthedocs.io/en/latest/), and generates a code coverage report with [Coverage](https://coverage.readthedocs.io/).
 
@@ -103,7 +103,7 @@ invoke formats
 invoke checks
 ```
 
-[**Build Python Package**](https://github.com/fmind/cookiecutter-mlops-package/blob/v1.0.0/%7B%7Bcookiecutter.repository%7D%7D/tasks/packages.py) **:**
+[**Build Python Package**](https://github.com/fmind/cookiecutter-mlops-package/blob/v1.0.0/%7B%7Bcookiecutter.repository%7D%7D/tasks/packages.py)**:**
 
 [This task](https://github.com/fmind/cookiecutter-mlops-package/blob/v1.0.0/%7B%7Bcookiecutter.repository%7D%7D/tasks/packages.py) builds your Python package as a [wheel file](https://pythonwheels.com/), ready for distribution.
 
@@ -111,7 +111,7 @@ invoke checks
 invoke packages
 ```
 
-[**Run an MLflow Project**](https://github.com/fmind/cookiecutter-mlops-package/blob/v1.0.0/%7B%7Bcookiecutter.repository%7D%7D/tasks/projects.py) **:**
+[**Run an MLflow Project**](https://github.com/fmind/cookiecutter-mlops-package/blob/v1.0.0/%7B%7Bcookiecutter.repository%7D%7D/tasks/projects.py)**:**
 
 [This task](https://github.com/fmind/cookiecutter-mlops-package/blob/v1.0.0/%7B%7Bcookiecutter.repository%7D%7D/tasks/projects.py) executes your [MLflow project](https://mlflow.org/docs/latest/projects.html), as defined in your [MLproject](https://github.com/fmind/cookiecutter-mlops-package/blob/main/%7B%7Bcookiecutter.repository%7D%7D/MLproject) file.
 
@@ -119,7 +119,7 @@ invoke packages
 invoke projects
 ```
 
-[**Build and Run Docker Image**](https://github.com/fmind/cookiecutter-mlops-package/blob/v1.0.0/%7B%7Bcookiecutter.repository%7D%7D/tasks/containers.py) **:**
+[**Build and Run Docker Image**](https://github.com/fmind/cookiecutter-mlops-package/blob/v1.0.0/%7B%7Bcookiecutter.repository%7D%7D/tasks/containers.py)**:**
 
 [This task](https://github.com/fmind/cookiecutter-mlops-package/blob/v1.0.0/%7B%7Bcookiecutter.repository%7D%7D/tasks/containers.py) builds your Docker image based on your [Dockerfile](https://github.com/fmind/cookiecutter-mlops-package/blob/main/%7B%7Bcookiecutter.repository%7D%7D/Dockerfile) and runs it in a container.
 
@@ -138,6 +138,6 @@ The [**Cookiecutter MLOps Package**](https://github.com/fmind/cookiecutter-mlops
 
 Embark on your MLOps journey with the [**Cookiecutter MLOps Package**](https://github.com/fmind/cookiecutter-mlops-package) and experience the power of templates to streamline your development process and elevate your AI/ML projects to new heights.
 
-![Photo by Jan Huber on Unsplash](/static/img/articles/mlops-package-template-turbocharge-the-creation-of-ai-ml-projects/02.webp)
+![Rows of high-voltage power line towers in front of snowy mountains, in black and white — Photo by Jan Huber on Unsplash](/static/img/articles/mlops-package-template-turbocharge-the-creation-of-ai-ml-projects/02.webp)
 
-Photo by [Jan Huber](https://unsplash.com/@jan_huber?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Rows of high-voltage power line towers in front of snowy mountains, in black and white — Photo by [Jan Huber](https://unsplash.com/@jan_huber?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)

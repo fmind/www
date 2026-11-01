@@ -1,17 +1,17 @@
 +++
 title = "The MLOps Adventure Continues: An AGENTS.md Ready Stack for AI/ML"
-description = "AI coding agents amplify repository friction. Here is how we redesigned an MLOps codebase around deterministic single-command gates, SQLite isolation, and machine-readable AGENTS.md guardrails."
+description = "AI coding agents amplify repository friction. How we redesigned an MLOps codebase around deterministic single-command gates, SQLite isolation, and AGENTS.md."
 date = "2026-08-11"
 tags = ["Coding", "MLOps", "Guide"]
 slug = "mlops-adventure-continue"
 draft = false
 +++
 
-![The MLOps Adventure Continues: An AGENTS.md Ready Stack for AI/ML](/static/img/articles/mlops-adventure-continue/cover.webp)
+![A developer and a robot reading instructions together beside conveyor belts that move packages through a checked gate](/static/img/articles/mlops-adventure-continue/cover.webp)
 
 AI coding agents are the first contributors that read your entire repository and run shell commands non-interactively on day one. But agents also act as friction multipliers. Hand an agent a fragmented toolchain, duplicated CI scripts, or unverified instructions, and it will confidently burn execution loops navigating the disagreement. Hand it a single deterministic gate and machine-readable rules, and its first attempt lands close to green.
 
-Good repository tooling is no longer just developer ergonomics-it is the engineering boundary that makes autonomous AI coding safe.
+Good repository tooling is no longer just developer ergonomics — it is the engineering boundary that makes autonomous AI coding safe.
 
 Over the past two releases of the four repositories behind the [MLOps Coding Course](https://mlops-coding-course.fmind.dev), we refactored our entire developer loop specifically for AI-agent readiness. The headline result was a net deletion: over 900 lines of configuration and glue code removed while static checks doubled from four to eight and test coverage hit 100%.
 
@@ -21,7 +21,7 @@ Here are the primary architectural lessons, failure modes, and trade-offs discov
 
 The single largest source of agent confusion in legacy codebases is command duplication. When local git hooks run `pre-commit`, developers run `just test`, and CI enumerates custom shell steps in YAML, those lists inevitably drift.
 
-During our audit, we discovered that secondary CI lists had silently dropped `mise run build`, while a Cookiecutter bake test executed every generated task except `pytest`-shipping a template whose own CI had never executed its test suite.
+During our audit, we discovered that secondary CI lists had silently dropped `mise run build`, while a Cookiecutter bake test executed every generated task except `pytest` — shipping a template whose own CI had never executed its test suite.
 
 For an AI agent, this drift is fatal. An agent relies on feedback loops: if a check passes locally but fails in CI (or vice-versa), the agent enters hallucination loops attempting to reconcile two different sources of truth.
 
@@ -77,7 +77,7 @@ To maintain isolated, production-identical database state without the 10x latenc
 1. A session-scoped pytest fixture executes MLflow migrations once against a blank SQLite template database file.
 2. Individual test cases perform a fast file-level copy of the pre-migrated SQLite database into a temporary directory.
 
-This reduced test suite overhead by ~60% while ensuring every test runs against a true relational schema-verifying model registration, alias promotion to `Champion`, and artifact tracking under production conditions.
+This reduced test suite overhead by ~60% while ensuring every test runs against a true relational schema — verifying model registration, alias promotion to `Champion`, and artifact tracking under production conditions.
 
 ## Lockfile Decay & The Vulnerability Clock
 

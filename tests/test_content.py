@@ -490,7 +490,7 @@ def test_real_archive_loads_and_has_no_public_drafts() -> None:
     assert not any(item.draft for item in collection.all)
     assert sum(item.html.count("<figure>") for item in archived) == 306
     assert sum(item.html.count("<figcaption>") for item in archived) == 256
-    assert sum(item.html.count('<pre class="chroma" tabindex="0">') for item in archived) == 156
+    assert sum(item.html.count('<pre class="chroma" tabindex="0">') for item in archived) == 157
     assert not any(re.search(r"<a\b[^>]*>\s*</a>", item.html) for item in collection.all)
 
     for item in collection.all:

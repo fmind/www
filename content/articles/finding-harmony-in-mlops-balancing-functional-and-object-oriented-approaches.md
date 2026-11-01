@@ -12,9 +12,9 @@ Programmers have always been passionate about their preferences, whether they di
 
 However, when it comes to programming paradigms, the arguments tend to be more fervent. [Object-oriented languages](https://en.wikipedia.org/wiki/Object-oriented_programming) have [long dominated the programming landscape](https://www.tiobe.com/tiobe-index/), championing code reusability across various projects. In contrast, [functional programming](https://en.wikipedia.org/wiki/Functional_programming) has emerged as an alternative style in recent years, [promising code that is easier to reason with](https://www.youtube.com/watch?v=SxdOUGdseq4). When delving into machine learning projects, the question arises: **which paradigm is best suited for building an MLOps application?**
 
-![Photo by Alex Padurariu on Unsplash](/static/img/articles/finding-harmony-in-mlops-balancing-functional-and-object-oriented-approaches/cover.webp)
+![Black and white cups on opposite halves of a coffee-bean and white surface, like yin and yang — Photo by Alex Padurariu on Unsplash](/static/img/articles/finding-harmony-in-mlops-balancing-functional-and-object-oriented-approaches/cover.webp)
 
-Photo by [Alex Padurariu](https://unsplash.com/@alexpadurariu?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com/?utm_source=medium&utm_medium=referral)
+Black and white cups on opposite halves of a coffee-bean and white surface, like yin and yang — Photo by [Alex Padurariu](https://unsplash.com/@alexpadurariu?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com/?utm_source=medium&utm_medium=referral)
 
 This article aims to shed light on the benefits of both programming styles and help you determine the most suitable one for your MLOps project. We will start by introducing the two main programming styles in our industry. Subsequently, we will explore the specific requirements of MLOps projects to guide our decision-making process. Finally, I will offer my opinion on the best overall style and present a compelling trade-off known as the “hybrid style.”
 
@@ -93,7 +93,7 @@ To implement this style effectively, consider adhering to the following principl
 2. **Output-oriented methods**: Each method should return its output rather than updating attributes, enabling other objects to handle modifications to the program state.
 3. [**Idempotent method calls**](https://en.wikipedia.org/wiki/Idempotence): methods should consistently return the same output for the given inputs, akin to functional programming principles.
 4. [**Centralized imperative statements**](https://www.haskell.org/tutorial/io.html): High-level classes, like a Job class, should handle imperative statements, a concept reminiscent of [the IO monad in Haskell](https://en.wikibooks.org/wiki/Haskell/Understanding_monads/IO). This ensures clear demarcation of actions that interact with the real world, such as logging or database updates.
-5. [**Leverage object-oriented other benefits**](https://en.wikipedia.org/wiki/Object-oriented_programming): Embrace the advantages of object-oriented programming, such as subtyping polymorphism and intuitive representations when needed.
+5. [**Leverage other object-oriented benefits**](https://en.wikipedia.org/wiki/Object-oriented_programming): Embrace the advantages of object-oriented programming, such as subtyping polymorphism and intuitive representations when needed.
 
 This final diagram presents an MLOps application following the hybrid style’s guidelines. On one hand, we fall back to [subtyping polymorphism](https://en.wikipedia.org/wiki/Subtyping) and class representations to support the program's extensibility. On the other hand, we reduce the overhead of managing the program state by using and sharing read-only attributes while separating the classes that might have a side effect (i.e., jobs) from the rest of the application.
 
@@ -111,6 +111,6 @@ Alternatively, you can leverage the hybrid style to blend the benefits of functi
 
 On a personal note, I find the object-oriented style of Python somewhat lacking in elegance. However, I hold Python in high regard for its adaptability to new concepts over time, such as [gradual typing](https://docs.python.org/3/library/typing.html) or [asynchronous programming](https://docs.python.org/3/library/asyncio.html). To improve Python’s object-oriented style, I recommend using a toolkit like [Pydantic](https://docs.pydantic.dev/latest/), a remarkable library that I’ve extensively employed in designing the [MLOps Python Package](https://www.fmind.dev/articles/a-great-mlops-project-should-start-with-a-good-python-package/). It overcomes the aforementioned limitation and significantly enhances the development process.
 
-![Photo by Nathan Dumlao on Unsplash](/static/img/articles/finding-harmony-in-mlops-balancing-functional-and-object-oriented-approaches/05.webp)
+![Three hands toasting with two lattes and an iced coffee over a café table — Photo by Nathan Dumlao on Unsplash](/static/img/articles/finding-harmony-in-mlops-balancing-functional-and-object-oriented-approaches/05.webp)
 
-Photo by [Nathan Dumlao](https://unsplash.com/@nate_dumlao?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com/?utm_source=medium&utm_medium=referral)
+Three hands toasting with two lattes and an iced coffee over a café table — Photo by [Nathan Dumlao](https://unsplash.com/@nate_dumlao?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com/?utm_source=medium&utm_medium=referral)

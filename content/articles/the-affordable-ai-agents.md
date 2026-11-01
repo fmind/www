@@ -18,9 +18,9 @@ We haven’t ditched GitHub Copilot yet, but this bill shock forced our hand. We
 
 To establish a path to genuine ROI, we had to apply strict Cartesian FinOps rigor to our AI token consumption. This article is a **RETEX (Return on Experience)** on evaluating managed SaaS APIs, GCP self-hosted infrastructure, and decentralized local execution to limit the financial bleeding.
 
-![Photo by Sasun Bughdaryan on Unsplash](/static/img/articles/the-affordable-ai-agents/cover.webp)
+![White piggy bank wearing glasses looking at a calculator on a pink background — Photo by Sasun Bughdaryan on Unsplash](/static/img/articles/the-affordable-ai-agents/cover.webp)
 
-Photo by [Sasun Bughdaryan](https://unsplash.com/@sasun1990?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+White piggy bank wearing glasses looking at a calculator on a pink background — Photo by [Sasun Bughdaryan](https://unsplash.com/@sasun1990?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
 
 ### 1. The Collapse of VC-Subsidized Subscriptions
 
@@ -54,7 +54,7 @@ At 1.85 million queries, our baseline SaaS cost is **\$61,050 per month**. This 
 
 However, running this exact same workload on premium flagship models quickly triggers budget overruns:
 
-- [**Claude 4.8 Opus**](https://www.anthropic.com/news/claude-opus-4-8) (\$5.00/M in, \$25.00/M out): Inflates the bill to **\$185,000 / month.**
+- [**Claude Opus 4.8**](https://www.anthropic.com/news/claude-opus-4-8) (\$5.00/M in, \$25.00/M out): Inflates the bill to **\$185,000 / month.**
 - [**Claude Fable 5**](https://www.anthropic.com/pricing) (\$10.00/M in, \$50.00/M out): Balloons the cost to **\$370,000 / month.**
 
 At these prices, an unoptimized sub-agent looping indefinitely in the background ceases to be a developer friction and becomes a board-level issue, as highlighted by [Fortune reporting on Uber exhausting its entire 2026 AI budget in just four months](https://fortune.com/2026/05/26/uber-coo-ai-spending-tokens-claude-code/) on Claude coding tools.
@@ -65,7 +65,7 @@ Confronted with the risks of runaway API bills, our infrastructure team evaluate
 
 However, a strict FinOps analysis reveals that self-hosting is not a silver bullet: it simply replaces a variable API bill with a massive, fixed infrastructure baseline. Based on a standard **730-hour cloud month**, here are the real cluster economics:
 
-- [**Gemma 4 26B MoE**](https://ai.google.dev/gemma/docs/core) **:** Served on cost-efficient GCP [g2-standard-48](https://gcloud-compute.com/g2-standard-48.html) nodes (4x NVIDIA L4, 96GB VRAM) at **\$4.00/hr**. An autoscaling cluster averaging 4 active nodes costs 4 × 730 × \$4.00 = **\$11,680 per month**.
+- [**Gemma 4 26B MoE**](https://ai.google.dev/gemma/docs/core)**:** Served on cost-efficient GCP [g2-standard-48](https://gcloud-compute.com/g2-standard-48.html) nodes (4x NVIDIA L4, 96GB VRAM) at **\$4.00/hr**. An autoscaling cluster averaging 4 active nodes costs 4 × 730 × \$4.00 = **\$11,680 per month**.
 - [**Qwen3-Coder-Next**](https://huggingface.co/Qwen/Qwen3-Coder-Next-Base) **(80B MoE):** The 92GB FP8 runtime footprint causes immediate Out-Of-Memory (OOM) failures under concurrency on standard L4 nodes (which max out at 96GB of heavily fragmented VRAM). Because GCP does not offer “single-GPU” rentals for its flagship H100/H200 instances, hosting this requires falling back to an [a2-ultragpu-2g](https://cloud.google.com/compute/docs/gpus) instance (2x NVIDIA A100 80GB GPUs, 160GB total VRAM) at **\$10.14/hr**. Averaging 3 active nodes costs 3 × 730 × \$10.14 = **\$22,206 per month**.
 - [**GLM-5.2**](https://z.ai/blog/glm-5.2) **(744B MoE):** Its massive footprint makes it physically impossible to run on standard 40GB GPU instances. Even aggressively quantized to INT4, the weights alone consume \~372GB of VRAM. Hosting it with a usable 1M-token KV cache demands high-end [a2-ultragpu-8g](https://cloud.google.com/compute/docs/gpus) instances (8x NVIDIA A100 80GB GPUs, 640GB total VRAM) at **\~\$40.55/hr**. Averaging 3 active nodes scales the cluster bill to 3 × 730 × \$40.55 = **\$88,804 per month** — a massive premium _over_ our managed SaaS baseline.
 
@@ -102,7 +102,7 @@ Furthermore, moving AI execution to individual workstations creates a decentrali
 Based on our evaluation of GCP infrastructure versus managed APIs and local execution, we stopped treating AI hosting as a binary choice. To navigate the new token economic realities, we propose a staged, hybrid roadmap:
 
 1. **Optimize context footprint with managed APIs first:** For new use cases, we keep capital costs low by leveraging standard managed APIs. This is the easiest and most convenient way to experiment with LLMs and quickly adapt the model to the user context.
-2. **Classify workloads and route queries by task complexity:** We treat LLMs like consultants. We recommend using ultra-premium flagship models (like Claude 4.8 Opus) exclusively for complex architectural design or security audits. Conversely, standard code completions, minor edits, and debugging queries are strictly routed to fast, cost-efficient mid-tier models (like Gemini 3.5 Flash or Claude 4.6 Sonnet).
+2. **Classify workloads and route queries by task complexity:** We treat LLMs like consultants. We recommend using ultra-premium flagship models (like Claude Opus 4.8) exclusively for complex architectural design or security audits. Conversely, standard code completions, minor edits, and debugging queries are strictly routed to fast, cost-efficient mid-tier models (like Gemini 3.5 Flash or Claude Sonnet 4.6).
 3. **Leverage enterprise subscriptions cautiously with growth margins:** We haven’t migrated off Copilot yet because it still offers predictable seat-based budgeting in the short term. However, we are investing in providers willing to keep subscription-based pricing, knowing we need to have clear and long-term contracts to guarantee these costs and capacity.
 4. **Host selective open-weights models for high-frequency automation:** Our GCP evaluation proved that self-hosting makes financial sense primarily for mature and predictable use cases. We can provide capacity for tasks like AI coding or day-to-day automation using models like Gemma 4. This caps our infrastructure cost on tasks running 24/7, keeping them completely off the pay-per-use meter.
 5. **Factor in the hidden hardware, latency, and personnel TCO:** Before migrating any workload, we account for the full operational cost. Decoupling from SaaS APIs to run LLMs on local developer Macs introduces workflow-destroying latency bottlenecks, while GKE hosting requires specialized ML platform engineers. We only shift workloads when the ROI justifies the maintenance overhead.

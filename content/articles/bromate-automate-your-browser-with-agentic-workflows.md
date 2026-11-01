@@ -10,9 +10,9 @@ draft = false
 
 The AI landscape is constantly evolving, pushing the boundaries of what’s possible with technology. One of the most exciting frontiers is the rise of [**agentic workflows**](https://en.wikipedia.org/wiki/Intelligent_agent), a paradigm shift in automation that should revolutionize the way we interact with software. Imagine a world where you can simply tell your browser what you want to achieve, and it figures out the _how_ on its own, executing complex tasks with minimal human intervention. This is the power of agentic workflows, and [**Bromate**](https://github.com/fmind/bromate), an open-source Python project, is leading the charge in bringing this transformative technology to web browser automation.
 
-![Photo by Jamie Street on Unsplash](/static/img/articles/bromate-automate-your-browser-with-agentic-workflows/cover.webp)
+![Hand holding a compass in front of a forested mountain valley — Photo by Jamie Street on Unsplash](/static/img/articles/bromate-automate-your-browser-with-agentic-workflows/cover.webp)
 
-Photo by [Jamie Street](https://unsplash.com/@jamie452?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Hand holding a compass in front of a forested mountain valley — Photo by [Jamie Street](https://unsplash.com/@jamie452?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
 
 ### Decoding Agentic Workflows for Automation 💡
 
@@ -164,10 +164,10 @@ def execute(
 
 Bromate’s architecture is built on a foundation of powerful tools and libraries:
 
-- [**Google’s Generative AI Platform**](https://ai.google.dev/gemini-api) **:** Bromate leverages [Google’s Gemini models](https://deepmind.google/technologies/gemini/) for its LLM capabilities, enabling it to understand user queries and generate workflows.
-- [**Selenium**](https://selenium-python.readthedocs.io/) **:** This popular [browser automation framework](https://www.testim.io/blog/browser-test-automation/) provides the necessary tools for Bromate’s agent to interact with web browsers.
-- [**Pydantic**](https://docs.pydantic.dev/latest/) **:** This data validation library ensures that Bromate’s configurations and data structures are well-defined and consistent.
-- [**Loguru**](https://loguru.readthedocs.io/en/stable/) **:** This logging library provides detailed insights into Bromate’s execution process, facilitating debugging and monitoring.
+- [**Google’s Generative AI Platform**](https://ai.google.dev/gemini-api)**:** Bromate leverages [Google’s Gemini models](https://deepmind.google/technologies/gemini/) for its LLM capabilities, enabling it to understand user queries and generate workflows.
+- [**Selenium**](https://selenium-python.readthedocs.io/)**:** This popular [browser automation framework](https://www.testim.io/blog/browser-test-automation/) provides the necessary tools for Bromate’s agent to interact with web browsers.
+- [**Pydantic**](https://docs.pydantic.dev/latest/)**:** This data validation library ensures that Bromate’s configurations and data structures are well-defined and consistent.
+- [**Loguru**](https://loguru.readthedocs.io/en/stable/)**:** This logging library provides detailed insights into Bromate’s execution process, facilitating debugging and monitoring.
 
 ![External Systems and Modules of the Bromate project](/static/img/articles/bromate-automate-your-browser-with-agentic-workflows/02.webp)
 
@@ -216,6 +216,6 @@ Agentic workflows are transforming the way we think about automation. [**Bromate
 
 **Join the** [**Bromate community**](https://github.com/fmind/bromate) **and be part of the agentic revolution!**
 
-![Photo by Jacek Dylag on Unsplash](/static/img/articles/bromate-automate-your-browser-with-agentic-workflows/03.webp)
+![Snow-dusted rocky mountain peaks glowing pink in the sunset light — Photo by Jacek Dylag on Unsplash](/static/img/articles/bromate-automate-your-browser-with-agentic-workflows/03.webp)
 
-Photo by [Jacek Dylag](https://unsplash.com/@dylu?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Snow-dusted rocky mountain peaks glowing pink in the sunset light — Photo by [Jacek Dylag](https://unsplash.com/@dylu?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)

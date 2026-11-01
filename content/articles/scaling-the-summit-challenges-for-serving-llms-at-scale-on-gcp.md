@@ -10,9 +10,9 @@ draft = false
 
 Deploying a [Large Language Model](https://en.wikipedia.org/wiki/Large_language_model) (LLM) into a production environment can feel like transitioning from a peaceful hike to a treacherous mountain expedition. Serving LLM models at scale presents its own formidable set of challenges. It’s not just about getting a model to respond; it’s about doing so reliably, quickly, and cost-effectively under heavy user load.
 
-![Photo by ecmadao . on Unsplash](/static/img/articles/scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/cover.webp)
+![Snow-covered mountain summit rising above a sea of clouds under a clear blue sky — Photo by ecmadao . on Unsplash](/static/img/articles/scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/cover.webp)
 
-Photo by [ecmadao .](https://unsplash.com/@ecmadao?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Snow-covered mountain summit rising above a sea of clouds under a clear blue sky — Photo by [ecmadao .](https://unsplash.com/@ecmadao?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
 
 On [Google Cloud Platform](https://cloud.google.com/) (GCP), you have a spectrum of solutions at your disposal, each with its own trade-offs between simplicity and control. This article dives into the practical realities of serving LLMs on GCP, reviewing the out-of-the-box options and sharing insights from a hands-on benchmark. We’ll explore why deploying even a seemingly straightforward model like [Gemma 3 12B](https://ai.google.dev/gemma/docs/core) can get tricky and help you choose the right path for your specific needs, before you even start thinking about complex optimizations.
 
@@ -27,9 +27,9 @@ Here’s the catch: **a 12-billion parameter model in its standard** **`bfloat16
 
 An alternative path is to simplify the pipeline by using a smaller model, like [**Gemma 3 4B**](https://ai.google.dev/gemma/docs/core). It fits comfortably on a single L4 GPU, reducing complexity and cost, but at the expense of some of the model’s reasoning capability. **This trade-off between model power, hardware cost, and operational complexity is a central theme in serving LLMs.**
 
-![Photo by Piret Ilver on Unsplash](/static/img/articles/scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/02.webp)
+![Vintage balance scale in a shop window, a nod to the trade-off between model power, hardware cost, and complexity — Photo by Piret Ilver on Unsplash](/static/img/articles/scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/02.webp)
 
-Photo by [Piret Ilver](https://unsplash.com/@saltsup?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Vintage balance scale in a shop window, a nod to the trade-off between model power, hardware cost, and complexity — Photo by [Piret Ilver](https://unsplash.com/@saltsup?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
 
 ### ⚙️ The Benchmark Setup
 
@@ -106,7 +106,7 @@ Container and model deployed on Vertex AI Online Inference
 
 [**Cloud Run**](https://cloud.google.com/run?hl=en) offers a serverless approach for running custom containers, now with [GPU support](https://cloud.google.com/run/docs/configuring/services/gpu). By default, [GCP proposes to deploy Gemma 3](https://cloud.google.com/run/docs/tutorials/gpu-gemma-with-ollama) using a container running the popular [Ollama](https://ollama.com/) serving framework.
 
-![Scaling the Summit: Challenges for Serving LLMs at Scale on GCP](/static/img/articles/scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/07.webp)
+![Cloud Run monitoring dashboard for the Gemma 3 12B Ollama service: instance count, billable time, CPU, and memory use](/static/img/articles/scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/07.webp)
 
 ![Monitoring dashboard on Cloud Run](/static/img/articles/scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/08.webp)
 
@@ -154,20 +154,20 @@ No GPU for freelance developers :(
 
 The benchmark data paints a clear picture of the trade-offs between the different serving solutions. While some approaches appear to handle a high volume of requests, a closer look at the failure rates and response times reveals the true story of their performance under pressure.
 
-![Scaling the Summit: Challenges for Serving LLMs at Scale on GCP](/static/img/articles/scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/11.webp)
+![Failure Rate Over Time chart: Vertex AI MaaS and Cloud Run Ollama tests climb to nearly 100% failures, Vertex AI Endpoint stays under 25%](/static/img/articles/scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/11.webp)
 
-![Scaling the Summit: Challenges for Serving LLMs at Scale on GCP](/static/img/articles/scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/12.webp)
+![User Count vs Failures/s chart: MaaS and Cloud Run Ollama failures reach over 1,000 per second while Vertex AI Endpoint stays near zero](/static/img/articles/scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/12.webp)
 
 - **Overall Performance**: A summary of the test runs shows a stark contrast in reliability. While the **Vertex AI MaaS** and **Cloud Run Ollama** services processed a very high number of total requests (over 100,000 each), the vast majority of these were failures. For instance, `VertexAIMaaS - gemini-2.5-flash-lite-preview-06-17` had 163,993 requests but 160,879 failures. In contrast, **Vertex AI Endpoint** handled a smaller volume of total requests (1,213) but with a significantly lower failure count (311).
 - **Failure Rate and Types**: The reasons for failure are critical. The MaaS models consistently failed with `HTTPError: 429 Client Error: Too Many Requests`, indicating they were quickly overwhelmed by the load and hit their rate limits. CloudRun Ollama failed with a mix of server errors `500`, `503` and `429`s, suggesting the instances were completely saturated. The "Failure Rate Over Time" chart dramatically illustrates this. The MaaS and CloudRun solutions see their failure rates shoot to nearly 100% almost immediately as user load increases.
 - `VertexAIEndpoint`, however, shows a much more gradual and controlled increase in its failure rate, never reaching the catastrophic levels of the other services.
 
-![Scaling the Summit: Challenges for Serving LLMs at Scale on GCP](/static/img/articles/scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/13.webp)
+![Throughput vs. User Count chart: MaaS and Cloud Run Ollama peak above 1,000 requests/s, mostly failures, while Vertex AI Endpoint stays low](/static/img/articles/scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/13.webp)
 
 - **Throughput vs. Success**: The “Throughput vs. User Count” graph shows that several services achieved high peak “Requests/s”. However, this metric is misleading on its own. High throughput is meaningless if the requests are not successful. The “User Count vs Failures/s” plot confirms that this high throughput was accompanied by an equally high rate of failures for most services.
 - `VertexAIEndpoint` maintained a very low and stable failure rate throughout the test, prioritizing successful responses over raw, unsuccessful request volume.
 
-![Scaling the Summit: Challenges for Serving LLMs at Scale on GCP](/static/img/articles/scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/14.webp)
+![Response Time vs. User Count chart: Vertex AI Endpoint latency rises steadily with load while the other services fail fast](/static/img/articles/scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/14.webp)
 
 - **Response Time**: The “Response Time vs. User Count” chart provides the final piece of the puzzle.
 - The average response time for `VertexAIEndpoint` increases steadily with the user count, which is expected behavior for a system handling progressively more load. For the other services, the response time often appears low, but this is deceptive; they are not processing requests successfully but rather "failing fast" with quick error messages like a 429 response.
@@ -191,8 +191,8 @@ Serving LLMs at scale on GCP is a journey with multiple paths, none of which is 
 Deploying LLMs is a complex but navigable challenge. By understanding the landscape, benchmarking your options, and choosing a path that aligns with your resources and goals, you can successfully scale the summit and deliver powerful AI experiences to your users.
 
 - **Gemma Model**: [https://ai.google.dev/gemma/docs/core#sizes](https://ai.google.dev/gemma/docs/core#sizes)
-- **Link to Benchmark on Github**: [https://github.com/fmind/gcp-llm-serving-benchmarks](https://github.com/fmind/gcp-llm-serving-benchmarks)
+- **Link to Benchmark on GitHub**: [https://github.com/fmind/gcp-llm-serving-benchmarks](https://github.com/fmind/gcp-llm-serving-benchmarks)
 
-![Photo by Connor Moynihan on Unsplash](/static/img/articles/scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/16.webp)
+![Rock climber scaling a granite cliff above a forested valley — Photo by Connor Moynihan on Unsplash](/static/img/articles/scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/16.webp)
 
-Photo by [Connor Moynihan](https://unsplash.com/@connor_moynihan?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Rock climber scaling a granite cliff above a forested valley — Photo by [Connor Moynihan](https://unsplash.com/@connor_moynihan?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)

@@ -14,9 +14,9 @@ Since then, I’ve been on a journey to find the solution. I didn’t want just 
 
 I dedicated time to building a concrete implementation to verify my hypotheses. Here is what I found, what failed, and why I believe [**A2UI**](https://a2ui.org/) is the protocol we’ve been waiting for to solve this problem.
 
-![Source: Gemini App](/static/img/articles/finding-the-holy-grail-of-ai-agent-uis-from-ai-orchestrated-development-to-a2ui/cover.webp)
+![AI-generated man with arms spread among floating holographic interface panels, in a dark room above a night city — Source: Gemini App](/static/img/articles/finding-the-holy-grail-of-ai-agent-uis-from-ai-orchestrated-development-to-a2ui/cover.webp)
 
-Source: Gemini App
+AI-generated man with arms spread among floating holographic interface panels, in a dark room above a night city — Source: Gemini App
 
 ### The Exploration: A Graveyard of “Almost” Solutions
 
@@ -32,7 +32,7 @@ Agents need to be able to transmit their UI and adapt on the fly. Hardcoding a h
 
 ### 2. “AI-Orchestrated Development” (AI-Generated UIs)
 
-I tried what I call “**AI-Orchestrated Development**”: a more structured approach where the AI is front and center in generating application code, popularized in early 2026 by tools like [GitHub Spec Kit](https://githubnext.com/projects/copilot-workspace), [Gemini Conductor](https://developers.googleblog.com/en/conductor-introducing-context-driven-development-for-gemini-cli/), or [Antigravity](https://blog.google/innovation-and-ai/technology/developers-tools/gemini-3-developers/). This is distinct from “vibe coding” (using AI intuitively without understanding the output). AI-Orchestrated Development aims for a systematic process where AI handles implementation under developer guidance.
+I tried what I call “**AI-Orchestrated Development**”: a more structured approach where the AI is front and center in generating application code, popularized in early 2026 by tools like [GitHub Spec Kit](https://github.com/github/spec-kit), [Gemini Conductor](https://developers.googleblog.com/en/conductor-introducing-context-driven-development-for-gemini-cli/), or [Antigravity](https://blog.google/innovation-and-ai/technology/developers-tools/gemini-3-developers/). This is distinct from “vibe coding” (using AI intuitively without understanding the output). AI-Orchestrated Development aims for a systematic process where AI handles implementation under developer guidance.
 
 **The Verdict:** While promising long-term, it still generates _lots_ of code. Code that you have to maintain, test, and debug. And I’m not confident in either maintaining AI-generated codebases or letting AI be the sole responsible party for production systems.
 
@@ -82,9 +82,9 @@ I built a demo app using this protocol, and I was genuinely impressed by its ele
 
 Instead of streaming markdown tokens like a traditional LLM, the agent streams structured JSON objects representing UI components.
 
-![Source: https://a2ui.org/](/static/img/articles/finding-the-holy-grail-of-ai-agent-uis-from-ai-orchestrated-development-to-a2ui/02.webp)
+![A2UI end-to-end data flow: the server streams JSONL over SSE, the client buffers and renders native widgets, and user actions return via A2A — Source: https://a2ui.org/](/static/img/articles/finding-the-holy-grail-of-ai-agent-uis-from-ai-orchestrated-development-to-a2ui/02.webp)
 
-Source: [https://a2ui.org/](https://a2ui.org/)
+A2UI end-to-end data flow: the server streams JSONL over SSE, the client buffers and renders native widgets, and user actions return via A2A — Source: [https://a2ui.org/](https://a2ui.org/)
 
 The client can use the [Lit renderer](https://github.com/a2ui-project/a2ui/tree/main/typescript/renderers/lit), [Angular renderer](https://github.com/a2ui-project/a2ui/tree/main/typescript/renderers/angular), or [Flutter renderer](https://docs.flutter.dev/ai/genui) to render native components progressively.
 
@@ -97,7 +97,7 @@ The client can use the [Lit renderer](https://github.com/a2ui-project/a2ui/tree/
 - **Secure:** No arbitrary JavaScript execution. It’s just declarative data, mitigating injection risks. This is critical for enterprise adoption where security reviews block “dynamic code generation.”
 - **LLM-Friendly:** Flat, streaming JSON structure designed for easy generation. LLMs can build UIs incrementally without perfect JSON in one shot.
 
-> **Note:** A2UI is currently at [v0.8](https://a2ui.org/specification/v0.8-a2ui/) and still in active development. The protocol has some rough edges, and for production use. The best approach is to wait for native integration in tools like [Gemini Enterprise](https://cloud.google.com/gemini/enterprise) or the [Agent Development Kit (ADK)](https://google.github.io/adk-docs).
+> **Note:** A2UI is currently at [v0.8](https://a2ui.org/specification/v0.8-a2ui/) and still in active development. The protocol has some rough edges; for production use, the best approach is to wait for native integration in tools like [Gemini Enterprise](https://cloud.google.com/gemini/enterprise) or the [Agent Development Kit (ADK)](https://google.github.io/adk-docs).
 
 ### A2UI vs AG-UI: Two Philosophies
 
@@ -119,6 +119,6 @@ I am convinced that 2026 is the year we stop building UIs _for_ agents and start
 
 _In the next article, I will share the source code and a full demo of the application I built using A2UI. Stay tuned!_
 
-![Source: Gemini App](/static/img/articles/finding-the-holy-grail-of-ai-agent-uis-from-ai-orchestrated-development-to-a2ui/03.webp)
+![AI-generated man facing a glowing holographic humanoid across a translucent interface panel, above a night city — Source: Gemini App](/static/img/articles/finding-the-holy-grail-of-ai-agent-uis-from-ai-orchestrated-development-to-a2ui/03.webp)
 
-Source: Gemini App
+AI-generated man facing a glowing holographic humanoid across a translucent interface panel, above a night city — Source: Gemini App

@@ -36,7 +36,7 @@ Standard team bots are great, but they are generic. They lack the _specific_ con
 
 mAIdAI is designed around three core interaction types:
 
-1. **Context-Aware Chat**: A conversational flow grounded in a personal `context.md` file effective “system instructions”.
+1. **Context-Aware Chat**: A conversational flow grounded in a personal `context.md` file that acts as “system instructions”.
 2. **Quick Commands**: Instant helpers that return static values (like commonly used links or snippets) without invoking the LLM.
 3. **Slash Commands**: specialized triggers that wrap user input in a predefined prompt template (e.g., `/fix` to debug code).
 
@@ -141,6 +141,6 @@ We often accept friction because “it’s just how things are.” But as engine
 
 If you find yourself copying the same text or answering the same questions repeatedly, maybe it’s time to build your own assistant.
 
-![Source: Gemini App](/static/img/articles/maidai-building-a-personal-assistant-with-google-cloud-and-vertex-ai/05.webp)
+![Glowing AI assistant beside a person at a laptop showing Google Chat and Google Cloud, titled mAIdAI: Your Personal AI Assistant — Source: Gemini App](/static/img/articles/maidai-building-a-personal-assistant-with-google-cloud-and-vertex-ai/05.webp)
 
-Source: Gemini App
+Glowing AI assistant beside a person at a laptop showing Google Chat and Google Cloud, titled mAIdAI: Your Personal AI Assistant — Source: Gemini App

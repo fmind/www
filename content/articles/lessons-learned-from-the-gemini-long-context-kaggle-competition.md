@@ -10,19 +10,19 @@ draft = false
 
 The world of Generative AI is constantly evolving, and one of the most exciting frontiers is the expansion of model's [long context window](https://cloud.google.com/vertex-ai/generative-ai/docs/long-context). Think of a context window as an AI model’s short-term memory — how much information it can hold and process at once. For years, [this has been a major limitation](https://www.perplexity.ai/page/context-window-limitations-of-FKpx7M_ITz2rKXLFG1kNiQ). Traditional models could only juggle a few thousand “tokens” (pieces of words), making it hard for them to understand complex documents, long conversations, or intricate codebases.
 
-![Photo by Greg Rakozy on Unsplash](/static/img/articles/lessons-learned-from-the-gemini-long-context-kaggle-competition/cover.webp)
+![Silhouette of a person gazing up at the Milky Way across a vast, colorful starry sky — Photo by Greg Rakozy on Unsplash](/static/img/articles/lessons-learned-from-the-gemini-long-context-kaggle-competition/cover.webp)
 
-Photo by [Greg Rakozy](https://unsplash.com/@grakozy?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Silhouette of a person gazing up at the Milky Way across a vast, colorful starry sky — Photo by [Greg Rakozy](https://unsplash.com/@grakozy?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
 
 Then came [Google’s Gemini 1.5](https://blog.google/technology/ai/google-gemini-next-generation-model-february-2024/), boasting a game-changing context window of up to **2 million tokens**. That’s like remembering 16 average novels! 🤯 This breakthrough opens up a world of possibilities, and the recent “[Gemini Long Context](https://www.kaggle.com/competitions/gemini-long-context)” Kaggle competition was a chance to explore them. I decided to jump in, and the experience was a fascinating deep dive into the potential — and the current limitations — of this cutting-edge technology.
 
 ### The Challenge: Pushing AI’s Memory to the Limit 🏋️‍♀️
 
-The competition’s goal was simple but ambitious: create a compelling demonstration of Gemini 1.5’s long context capabilities. We were encouraged to think outside the box, showcasing use cases that would be impossible with older, smaller-context models. The Deepmind team had already provided some [impressive demos](https://blog.google/technology/ai/google-gemini-next-generation-model-february-2024/#context-window). For instance, Gemini 1.5 was able to create documentation by seeing an entire code base and was able to answer questions correctly after “watching” the movie Sherlock JR.
+The competition’s goal was simple but ambitious: create a compelling demonstration of Gemini 1.5’s long context capabilities. We were encouraged to think outside the box, showcasing use cases that would be impossible with older, smaller-context models. The DeepMind team had already provided some [impressive demos](https://blog.google/technology/ai/google-gemini-next-generation-model-february-2024/#context-window). For instance, Gemini 1.5 was able to create documentation by seeing an entire code base and was able to answer questions correctly after “watching” the movie Sherlock Jr.
 
-![https://blog.google/technology/ai/google-gemini-next-generation-model-february-2024](/static/img/articles/lessons-learned-from-the-gemini-long-context-kaggle-competition/02.webp)
+![Gemini 1.5 Pro demo: a three.js codebase of 100,633 lines fills 816,767 of its 1,000,000-token context window — Source: https://blog.google/technology/ai/google-gemini-next-generation-model-february-2024](/static/img/articles/lessons-learned-from-the-gemini-long-context-kaggle-competition/02.webp)
 
-[https://blog.google/technology/ai/google-gemini-next-generation-model-february-2024](https://blog.google/technology/ai/google-gemini-next-generation-model-february-2024)
+Gemini 1.5 Pro demo: a three.js codebase of 100,633 lines fills 816,767 of its 1,000,000-token context window — Source: [https://blog.google/technology/ai/google-gemini-next-generation-model-february-2024](https://blog.google/technology/ai/google-gemini-next-generation-model-february-2024)
 
 ### My Approach: Building an Interactive Open Textbook Experience 📚
 
@@ -96,6 +96,6 @@ While challenges remain, the potential of long context models like Gemini 1.5 an
 - [**Kaggle Competition: Competition Code**](https://www.kaggle.com/code/freaxmind/open-textbooks-with-gemini-long-context)
 - [**Kaggle Competition: Final Slides**](https://docs.google.com/presentation/d/1H7Kq8Ur3f76mknLcugR0ZaBFqtba6foLQS_i7KG_4Sc/edit#slide=id.p)
 
-![Photo by Urban Vintage on Unsplash](/static/img/articles/lessons-learned-from-the-gemini-long-context-kaggle-competition/07.webp)
+![Two trail runners climbing a rocky forest path, one using trekking poles — Photo by Urban Vintage on Unsplash](/static/img/articles/lessons-learned-from-the-gemini-long-context-kaggle-competition/07.webp)
 
-Photo by [Urban Vintage](https://unsplash.com/@urban_vintage?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Two trail runners climbing a rocky forest path, one using trekking poles — Photo by [Urban Vintage](https://unsplash.com/@urban_vintage?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)

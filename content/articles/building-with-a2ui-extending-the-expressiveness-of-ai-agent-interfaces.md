@@ -16,9 +16,9 @@ This is the promise of [**A2UI (Agent-to-User Interface)**](https://a2ui.org/): 
 
 In my [previous article](https://www.fmind.dev/articles/finding-the-holy-grail-of-ai-agent-uis-from-ai-orchestrated-development-to-a2ui/), I explored the landscape of AI UI solutions and explained why A2UI stands out. Now, I wanted to put it to the test. I built [Featest](https://github.com/fmind/featest), a feature request application designed to be “AI-First.” Here is the story of how it was built, the strengths of the protocols I used, and the architectural patterns that emerged.
 
-![Source: Gemini App](/static/img/articles/building-with-a2ui-extending-the-expressiveness-of-ai-agent-interfaces/cover.webp)
+![Digital brain streaming A2UI protocol messages and JSON components that render a feature request form beside an agent chat — Source: Gemini App](/static/img/articles/building-with-a2ui-extending-the-expressiveness-of-ai-agent-interfaces/cover.webp)
 
-Source: Gemini App
+Digital brain streaming A2UI protocol messages and JSON components that render a feature request form beside an agent chat — Source: Gemini App
 
 ### The Project: Featest
 
@@ -28,7 +28,7 @@ I could have built a standard CRUD app. But I saw this as an opportunity. A feat
 
 This was the perfect scenario to consider an **AI-First experience**. I didn’t want a static form; I wanted an agent that users could talk to, which enhances the interactions, and uses the right UI tools when needed.
 
-**Github Repository**: [Featest](https://github.com/fmind/featest)
+**GitHub Repository**: [Featest](https://github.com/fmind/featest)
 
 ![Suggest new features with AI (Source: Fmind.dev)](/static/img/articles/building-with-a2ui-extending-the-expressiveness-of-ai-agent-interfaces/02.webp)
 
@@ -234,4 +234,4 @@ However, for **chatbot-focused applications**, this solution could be highly val
 
 One thing is sure: there will be more and more agentic features, and A2UI will be a great bridge between agent power and user needs.
 
-![Building with A2UI: Extending the Expressiveness of AI Agent Interfaces](/static/img/articles/building-with-a2ui-extending-the-expressiveness-of-ai-agent-interfaces/05.webp)
+![Humanoid robot facing holographic A2UI dashboards over a rainy city, with a monitor reading A2UI integration successful](/static/img/articles/building-with-a2ui-extending-the-expressiveness-of-ai-agent-interfaces/05.webp)
