@@ -312,13 +312,15 @@ run = "uv run --locked pytest --cov --cov-fail-under=85"
 
 [tasks."test:browser"]
 description = "Exercise navigation, articles, and calculators in Chromium"
-depends = ["build"]
+# The Playwright server runs the app from source; it needs the stylesheet, not a wheel.
+depends = ["build:css"]
 # Playwright is a pinned mise CLI, keeping browser tooling outside the application.
 run = 'NODE_PATH="$(mise where npm:playwright)/node_modules" env -u NO_COLOR playwright test --config tests/playwright.config.cjs'
 
 [tasks."test:browser:cross"]
 description = "Smoke-test portfolio and contact journeys in Firefox and WebKit"
-depends = ["build"]
+# The Playwright server runs the app from source; it needs the stylesheet, not a wheel.
+depends = ["build:css"]
 run = 'NODE_PATH="$(mise where npm:playwright)/node_modules" env -u NO_COLOR playwright test --config tests/playwright.cross.config.cjs'
 
 [tasks."test:image"]
@@ -340,7 +342,8 @@ run = "node scripts/lighthouse.mjs"
 
 [tasks."test:lighthouse:local"]
 description = "Start a temporary server and run the strict portfolio Lighthouse matrix"
-depends = ["build"]
+# The Playwright server runs the app from source; it needs the stylesheet, not a wheel.
+depends = ["build:css"]
 run = 'NODE_PATH="$(mise where npm:playwright)/node_modules" env -u NO_COLOR playwright test --config tests/playwright.lighthouse.config.cjs'
 
 [tasks."test:watch"]

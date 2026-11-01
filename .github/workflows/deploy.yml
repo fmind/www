@@ -160,3 +160,11 @@ jobs:
         env:
           IMAGE_REF: ${{ env.AR_HOSTNAME }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}@${{ steps.build.outputs.digest }}
         run: mise run test:deployed
+      - name: Remove the candidate tag after a failed verification
+        # A tagged revision stays publicly reachable on its run.app tag URL; do not
+        # leave one that failed verification served there until the next deployment.
+        if: failure() && steps.candidate.outcome == 'failure'
+        run: >-
+          gcloud run services update-traffic "$SERVICE_NAME"
+          --project "$PROJECT_ID" --billing-project "$PROJECT_ID" --region "$REGION"
+          --remove-tags "$CANDIDATE_TAG" --quiet

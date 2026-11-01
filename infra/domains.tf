@@ -43,4 +43,9 @@ resource "google_cloud_run_domain_mapping" "apex" {
   spec {
     route_name = google_cloud_run_v2_service.web.name
   }
+
+  lifecycle {
+    # Destroying it drops the apex redirect and its managed certificate.
+    prevent_destroy = true
+  }
 }

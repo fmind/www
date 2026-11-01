@@ -27,12 +27,16 @@ jobs:
           install: false
           cache: true
       - name: Install security scanners
-        run: mise install --locked -y betterleaks trivy
+        run: mise install --locked -y aqua:astral-sh/uv betterleaks trivy
       - name: Scan complete Git history
         run: mise run check:leaks:full
       - name: Scan full checkout
         # Delegate to the task so the weekly scan reproduces locally and cannot drift.
         run: mise run check:scan:full
+      - name: Audit locked dependencies
+        # The full-checkout scan reads only uv.lock; this also audits the font script
+        # lock and the Lighthouse/Playwright npm locks on quiet weeks without pushes.
+        run: mise run check:vuln
   deployed-image:
     name: Scan images receiving production traffic
     if: github.ref == 'refs/heads/main'

@@ -98,10 +98,7 @@ resource "google_cloud_run_v2_service" "web" {
     ]
   }
 
-  depends_on = [
-    time_sleep.wait_for_apis,
-    google_project_iam_member.trace_agent,
-  ]
+  depends_on = [time_sleep.wait_for_apis]
 }
 
 # Public, unauthenticated access (this is a public website).

@@ -149,6 +149,13 @@ def test_ci_promotion_drops_the_candidate_tag_that_manual_rollouts_also_clear() 
     assert re.search(rf"^  CANDIDATE_TAG: {deploy.CI_TAG}$", workflow, re.MULTILINE)
     promotion = workflow.split("- name: Promote the verified revision", 1)[1].split("- name:", 1)[0]
     assert '--to-revisions "$REVISION=100" --remove-tags "$CANDIDATE_TAG"' in promotion
+    # A candidate that fails verification loses its public tag URL instead of keeping it until the next deploy.
+    cleanup = workflow.split("- name: Remove the candidate tag after a failed verification", 1)[1].split("- name:", 1)[
+        0
+    ]
+    assert "if: failure() && steps.candidate.outcome == 'failure'" in cleanup
+    assert '--remove-tags "$CANDIDATE_TAG"' in cleanup
+    assert "--to-revisions" not in cleanup
 
 
 def test_gates_reuse_the_ci_scan_and_smoke_tasks_for_the_exact_digest() -> None:

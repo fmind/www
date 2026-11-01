@@ -9,7 +9,8 @@
 .claude/*
 !.claude/skills
 .coverage
-.env
+.env*
+!.env.example
 .pytest_cache/
 .ruff_cache/
 .ty_cache/
