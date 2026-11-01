@@ -274,7 +274,7 @@ def test_calculator_rejection_never_claims_a_default_was_used() -> None:
         compare_hosting({"model": "imaginary", "requests": "0"})
 
     assert str(error.value) == (
-        "Invalid calculator parameters: model was not recognized; requests must be between 1 and 10000000"
+        "Invalid calculator parameters: Model (model) was not recognized; Calls per active day (requests) must be between 1 and 10,000,000"
     )
 
 

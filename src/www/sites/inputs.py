@@ -43,8 +43,45 @@ def _first(query: Query, key: str) -> str | None:
 
 
 def _format_bound(value: float) -> str:
-    # Plain digits, never exponent notation, so bounds read like the whole-number messages.
-    return format(Decimal(repr(value)).normalize(), "f")
+    # Grouped plain digits, never exponent notation, so bounds read like the form's numbers.
+    return format(Decimal(repr(value)).normalize(), ",f")
+
+
+# Validation messages name the visible form label first and the query key second,
+# so both website readers and MCP callers can find the field.
+_FIELD_LABELS: dict[str, str] = {
+    "api-mode": "API pricing mode",
+    "billing": "Pricing plan",
+    "cache-prefix": "Shared prefix tokens",
+    "cache-requests": "Calls per cache group",
+    "concurrency": "Target simultaneous requests",
+    "days": "Active days per month",
+    "duty": "Fleet running time (%)",
+    "input-tokens": "Input tokens per request",
+    "measured-complete": "Measured p95 completion",
+    "measured-concurrency": "Pilot simultaneous requests",
+    "measured-first": "Measured p95 first token",
+    "model": "Model",
+    "node": "GPU / TPU node",
+    "overhead": "Runtime memory reserve (%)",
+    "preset": "Workload",
+    "quant": "Checkpoint precision",
+    "replicas": "Serving replicas",
+    "requests": "Calls per active day",
+    "review-rate": "Human review cost ($/hour)",
+    "target-complete": "Target p95 completion",
+    "target-first": "Target p95 first token",
+    "tasks": "Attempted tasks per month",
+    "throughput": "Assumed output tokens/s per replica",
+    "tokens": "Output tokens per request",
+    "utilization": "Usable share of throughput (%)",
+    "window": "Usage window (hours/active day)",
+}
+
+
+def _field(key: str) -> str:
+    label = _FIELD_LABELS.get(key)
+    return f"{label} ({key})" if label else key
 
 
 def _parse_choice(
@@ -59,7 +96,7 @@ def _parse_choice(
         return fallback
     if raw in allowed:
         return raw
-    validation.append(f"{key} was not recognized; the default was used")
+    validation.append(f"{_field(key)} was not recognized; the default was used")
     return fallback
 
 
@@ -85,14 +122,14 @@ def _parse_bounded_float(
         value = float("nan")
     if not isfinite(value) or value < minimum or value > maximum:
         validation.append(
-            f"{key} must be between {_format_bound(minimum)} and {_format_bound(maximum)}; the default was used",
+            f"{_field(key)} must be between {_format_bound(minimum)} and {_format_bound(maximum)}; the default was used",
         )
         return fallback
     # Reject tiny nonzero ratios before division, including values that float()
     # underflows to zero. Literal zero remains valid for no accepted tasks.
     if value < minimum_positive and any(digit in "123456789" for digit in raw.lower().partition("e")[0]):
         validation.append(
-            f"{key} must be zero or at least {minimum_positive:.7f}; the default was used",
+            f"{_field(key)} must be zero or at least {minimum_positive:.7f}; the default was used",
         )
         return fallback
     return value
@@ -118,7 +155,7 @@ def _parse_bounded_int(
         value = minimum - 1
     if value < minimum or value > maximum:
         validation.append(
-            f"{key} must be a whole number between {minimum} and {maximum}; the default was used",
+            f"{_field(key)} must be a whole number between {minimum:,} and {maximum:,}; the default was used",
         )
         return fallback
     return value
@@ -155,7 +192,7 @@ def _apply_demand_preset(
                 input_tokens_request=preset.input_tokens,
                 output_tokens_request=preset.output_tokens,
             )
-    validation.append("preset was not recognized; the validated demand inputs were kept")
+    validation.append(f"{_field('preset')} was not recognized; the validated demand inputs were kept")
     return inputs
 
 
@@ -312,8 +349,22 @@ def parse_inputs(query: Query) -> tuple[HostingInputs, tuple[str, ...]]:
         try:
             node = automatic_node(inputs, BillingPlan(raw_plan))
         except ValueError as exc:
-            validation.append(f"{exc}; select a compatible checkpoint, GPU and billing plan")
-            node = find_node_pool(defaults.node_pool_id)
+            # A default checkpoint can be limited to hardware without this plan (Mistral Large 4
+            # NVFP4 runs only on A4, which has no on-demand rate). When the caller did not pick a
+            # precision, fall back to the model's next supported checkpoint before giving up.
+            fallback_node = None
+            if _first(query, "quant") in (None, "", "auto"):
+                for quant_id in find_model(inputs.model_id).supported_quantizations:
+                    candidate = replace(inputs, quantization_id=quant_id)
+                    try:
+                        fallback_node = automatic_node(candidate, BillingPlan(raw_plan))
+                    except ValueError:
+                        continue
+                    inputs = candidate
+                    break
+            if fallback_node is None:
+                validation.append(f"{exc}; select a compatible checkpoint, GPU and billing plan")
+            node = fallback_node or find_node_pool(defaults.node_pool_id)
         inputs = replace(inputs, node_pool_id=node.id)
     node = find_node_pool(inputs.node_pool_id)
     available_plans = frozenset(price.plan.value for price in node.prices)
@@ -498,6 +549,10 @@ def configuration_issue(inputs: HostingInputs, *, check_workload: bool = True) -
         return f"{model.name} has no verified {quantization.name} checkpoint in this catalog"
     if model.required_node_ids and node.id not in model.required_node_ids:
         return f"{model.name} requires one of the verified node families: {', '.join(model.required_node_ids)}"
+    precision_nodes = dict(model.quantization_node_ids).get(quantization.id)
+    if precision_nodes and node.id not in precision_nodes:
+        precision = quantization.name.partition(" · ")[0]
+        return f"The {model.name} {precision} checkpoint is verified only on: {', '.join(precision_nodes)}"
     if node.id == "ct6e-standard-8t" and quantization.id != "fp16":
         return (
             "Cloud TPU v6e Trillium requires a 16-bit BF16 checkpoint in this catalog; "

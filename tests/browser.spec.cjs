@@ -810,7 +810,9 @@ test("simple calculator chooses compatible native hardware and preserves commitm
   await expect(page.getByRole("link", { name: "Compare costs", exact: true })).toHaveCount(0);
   await expect(page.locator("#platform, #hosting-reading"))
     .toHaveCount(0);
-  await expect(page.locator("#model option[value=mistral-small-4]")).toHaveText("Mistral Small 4 · 119B / 6.5B active");
+  await expect(page.locator("#model option[value=nemotron-3-5-super-vl]")).toHaveText(
+    "Nemotron 3.5 Super VL · 120B / 12B active",
+  );
   await expect(page.locator("#model option[value=gemma-4-26b-a4b]")).toContainText("Gemma 4 26B A4B");
   await expect(page.locator("#model option[value=kimi-k3]")).toContainText("Kimi K3");
   await expect(page.locator("#preset option[value=small-team]")).toContainText("Small team");
@@ -833,7 +835,7 @@ test("simple calculator chooses compatible native hardware and preserves commitm
   await expect(page.locator("#recommended-fleet")).toBeVisible();
   await page.locator("#preset").selectOption("department");
   await page.locator("#window").selectOption("8");
-  await page.locator("#model").selectOption("mistral-small-4");
+  await page.locator("#model").selectOption("nemotron-3-5-super-vl");
   await page.locator("#billing").selectOption("cud-3y");
   await page.locator("#update-comparison").click();
   await expect(page.locator("[data-update-status]")).toHaveText("Comparison updated.");
@@ -860,7 +862,7 @@ test("simple calculator chooses compatible native hardware and preserves commitm
   await expect(page.locator("#requests")).toHaveValue("2000");
   await expect(page.locator("#window")).toHaveValue("8");
   await expect(page.locator("#replicas")).toHaveValue("2");
-  await page.locator("#quant").selectOption("fp8");
+  await page.locator("#quant").selectOption("fp16");
   await page.locator("#node").selectOption("auto");
   await page.locator("#update-comparison").click();
   await expect(page.locator("#node")).toHaveValue("a3-ultra");
@@ -887,7 +889,7 @@ test("simple calculator works without JavaScript", async ({ browser, baseURL }) 
     await page.goto(calculator);
     await page.locator("#preset").selectOption("scheduled-workflow");
     await page.locator("#window").selectOption("1");
-    await page.locator("#model").selectOption("mistral-small-4");
+    await page.locator("#model").selectOption("nemotron-3-5-super-vl");
     await page.locator("#billing").selectOption("cud-1y");
     await page.locator("#update-comparison").click();
     await expect(page.locator("#preset")).toHaveValue("scheduled-workflow");

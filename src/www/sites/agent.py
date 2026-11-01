@@ -66,6 +66,13 @@ def compare_hosting(parameters: dict[str, str]) -> HostingResult:
         raise ValueError("Unknown calculator parameter; use the parameters returned by an empty call or /agents.")
     if any(not value or value.strip() != value for value in parameters.values()):
         raise ValueError("Calculator parameter values must be nonempty and have no surrounding whitespace.")
+    # The web form resubmits every field with a preset button, so outside simple mode a
+    # preset replaces explicit demand. MCP callers must choose one instead of losing values.
+    demand = parameters.keys() & {"requests", "days", "input-tokens", "tokens"}
+    if "preset" in parameters and parameters.get("mode") != "simple" and demand:
+        raise ValueError(
+            "preset replaces " + ", ".join(sorted(demand)) + " in advanced mode; send the preset or explicit demand.",
+        )
     _, errors = parse_inputs(parameters)
     if errors:
         # Validation messages read "<reason>; <fallback applied by the web form>". MCP

@@ -87,9 +87,11 @@ def test_form_steps_match_server_parsing(client: AppClient) -> None:
         fractional = format(float(item["min"]) + 0.5, "g")
         result = view({name: fractional})
         if item["step"] == "1":
-            assert result.validation == (
-                f"{name} must be a whole number between {item['min']} and {item['max']}; the default was used",
-            ), name
+            (message,) = result.validation
+            bounds = f"between {int(item['min']):,} and {int(item['max']):,}; the default was used"
+            # Labelled fields read "Label (key) must be ..."; generated rows keep the bare key.
+            assert message.endswith(f"must be a whole number {bounds}"), name
+            assert f"({name}) must be" in message or message.startswith(f"{name} must be"), name
         else:
             assert item["step"] == "any", name
             assert not result.validation, name
@@ -179,7 +181,7 @@ def test_blocked_fleets_replace_break_even_capacity_verdicts(client: AppClient) 
 
 
 def test_catalog_hides_footprints_of_unsupported_checkpoints(client: AppClient) -> None:
-    html = client.get(PAGE, params={"model": "mistral-small-4", "quant": "nvfp4"}).text
+    html = client.get(PAGE, params={"model": "nemotron-3-5-super-vl", "quant": "nvfp4"}).text
     rows = re.findall(r"<tr>(.*?)</tr>", html[html.index('id="frontier-table"') :], flags=re.DOTALL)
     qwen = next(row for row in rows if ">Qwen3.5 4B</a>" in row)  # No NVFP4 checkpoint exists.
     gemma = next(row for row in rows if ">Gemma 4 26B A4B</a>" in row)
@@ -213,7 +215,9 @@ def test_assumption_copy_renders_the_inputs_and_snapshot(client: AppClient, monk
 
 
 def test_simple_mode_has_basic_choices_and_a_clean_shareable_url(client: AppClient) -> None:
-    result = build_llm_self_hosting_view({"preset": "department", "model": "mistral-small-4", "billing": "cud-3y"})
+    result = build_llm_self_hosting_view(
+        {"preset": "department", "model": "nemotron-3-5-super-vl", "billing": "cud-3y"}
+    )
     assert result.inputs.mode == "simple"
     assert result.inputs.quantization_id == "nvfp4"
     assert result.inputs.node_pool_id == "g4-standard-48"
@@ -249,7 +253,7 @@ def test_presets_and_models_are_presented_from_smallest_to_largest(client: AppCl
     assert "3,520 calls/month" in html
     # Simple mode explains sizes in the picker, including mixture-of-experts active parameters.
     assert '<option value="qwen3-5-4b">Qwen3.5 4B · 4B</option>' in html
-    assert '<option value="mistral-small-4">Mistral Small 4 · 119B / 6.5B active</option>' in html
+    assert '<option value="nemotron-3-5-super-vl">Nemotron 3.5 Super VL · 120B / 12B active</option>' in html
     assert "B = billion, T = trillion" in html
 
 
@@ -269,10 +273,12 @@ def test_hosting_page_keeps_every_section_open_with_setup_before_method(client: 
 
 
 def test_simple_outputs_explain_load_cost_and_fixed_fleet_break_even(client: AppClient) -> None:
-    result = build_llm_self_hosting_view({"preset": "scheduled-workflow", "window": "1"})
+    # Gemma 4 runs on both GPUs and Cloud TPU, so both comparison cards price a fleet.
+    scenario = {"model": "gemma-4-26b-a4b", "preset": "scheduled-workflow", "window": "1"}
+    result = build_llm_self_hosting_view(scenario)
     for row in result.apis:
         assert row.break_even_fits == (row.break_even_requests <= result.estimate.capacity_requests_month)
-    html = client.get("/sites/llm-self-hosting/", params={"preset": "scheduled-workflow", "window": "1"}).text
+    html = client.get("/sites/llm-self-hosting/", params=scenario).text
     assert "Try a scenario" not in html
     assert "Compare costs" not in html
     for text in (
@@ -300,3 +306,23 @@ def test_auto_flex_start_returns_validation_without_crashing_the_web_page(make_a
         assert "No compatible hardware" in response.text
     with pytest.raises(ValueError, match="Invalid calculator parameters"):
         compare_hosting(parameters)
+
+
+def test_simple_mode_explains_a_checkpoint_fallback(client: AppClient) -> None:
+    simple = "/sites/llm-self-hosting/"
+    html = client.get(simple, params={"model": "mistral-large-4"}).text
+    assert "runs the default NVFP4 checkpoint, so this estimate uses FP8." in html
+    committed = client.get(simple, params={"model": "mistral-large-4", "billing": "cud-1y"}).text
+    assert "No machine on this pricing plan" not in committed
+    # One whole copy covers half to twice the assumed speed, so the range collapses to one budget.
+    assert "the same setup would still cost" in html
+
+
+def test_setup_notes_come_from_the_selected_checkpoint_and_machine(client: AppClient) -> None:
+    html = client.get("/sites/llm-self-hosting/", params={"model": "nemotron-3-5-super-vl"}).text
+    assert "The economical NVFP4 checkpoint needs quality testing." in html
+    assert "The verified recipe caps this setup at 16,384 context tokens" in html
+    # No NVFP4 note or context cap for the default BF16 model on G4.
+    default = client.get("/sites/llm-self-hosting/").text
+    assert "needs quality testing" not in default
+    assert "The verified recipe caps this setup" not in default

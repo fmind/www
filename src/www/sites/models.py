@@ -47,6 +47,8 @@ class FrontierModel:
     node_minimums: tuple[tuple[str, int], ...] = ()
     checkpoint_urls: tuple[tuple[str, str], ...] = ()
     recipe_url: str = ""
+    # Per-precision hardware when a recipe validates each checkpoint on different nodes.
+    quantization_node_ids: tuple[tuple[str, tuple[str, ...]], ...] = ()
 
 
 @dataclass(frozen=True, slots=True)

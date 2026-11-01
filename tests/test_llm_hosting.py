@@ -34,7 +34,8 @@ from www.sites.formatting import (
     hosting_decision_title,
     task_cost_max,
 )
-from www.sites.inputs import hosting_url
+from www.sites.inputs import configuration_issue, hosting_url
+from www.sites.models import BillingPlan
 
 # Fleet sizing, billing plans, demand presets, and input validation.
 
@@ -72,9 +73,9 @@ def test_invalid_required_query_values_fall_back_independently() -> None:
     assert result.inputs.replicas == DEFAULT_HOSTING_INPUTS.replicas
     assert result.inputs.tokens_per_second == DEFAULT_HOSTING_INPUTS.tokens_per_second
     assert result.validation == (
-        "model was not recognized; the default was used",
-        "replicas must be a whole number between 1 and 100000; the default was used",
-        "throughput must be between 0.1 and 1000000; the default was used",
+        "Model (model) was not recognized; the default was used",
+        "Serving replicas (replicas) must be a whole number between 1 and 100,000; the default was used",
+        "Assumed output tokens/s per replica (throughput) must be between 0.1 and 1,000,000; the default was used",
     )
 
 
@@ -175,7 +176,7 @@ def test_demand_input_validation(key: str, invalid: str) -> None:
 def test_unknown_preset_keeps_validated_manual_demand() -> None:
     result = view({"preset": "missing", "requests": "7"})
 
-    assert result.validation == ("preset was not recognized; the validated demand inputs were kept",)
+    assert result.validation == ("Workload (preset) was not recognized; the validated demand inputs were kept",)
     assert result.inputs.requests_per_day == 7
 
 
@@ -185,10 +186,10 @@ def test_checkpoint_precision_changes_memory_and_whole_nodes_determine_cost() ->
     assert by_format["fp8"].weight_memory_gb == pytest.approx(30.866866928)
     assert by_format["fp16"].weight_memory_gb == pytest.approx(55.562855904)
     assert by_format["fp8"].total_monthly_usd == by_format["fp16"].total_monthly_usd
-    large = view({"model": "mistral-small-4", "node": "g4-standard-48", "quant": "fp8"})
+    large = view({"model": "nemotron-3-5-super-vl", "node": "g4-standard-48", "quant": "nvfp4"})
     by_format = {row.quantization.id: row.estimate for row in large.precisions}
-    assert by_format["nvfp4"].total_gpus < by_format["fp8"].total_gpus
-    assert by_format["nvfp4"].total_monthly_usd < by_format["fp8"].total_monthly_usd
+    assert by_format["nvfp4"].total_gpus < by_format["fp16"].total_gpus
+    assert by_format["nvfp4"].total_monthly_usd < by_format["fp16"].total_monthly_usd
 
 
 def test_view_compares_all_catalog_models_in_deterministic_order() -> None:
@@ -244,9 +245,11 @@ def test_template_quantity_and_task_scale_helpers() -> None:
 
 @pytest.mark.parametrize("node", GKE_NODE_POOLS, ids=lambda node: node.id)
 def test_every_published_billing_plan_charges_whole_nodes_and_keeps_idle_commitments(node) -> None:
+    # The default model has no TPU recipe; Gemma 4 is verified on both Cloud TPU families.
+    model = {"model": "gemma-4-26b-a4b"} if "TPU" in node.gpu else {}
     for price in node.prices:
-        full = view({"node": node.id, "billing": price.plan.value, "replicas": "2"})
-        partial = view({"node": node.id, "billing": price.plan.value, "replicas": "2", "duty": "25"})
+        full = view(model | {"node": node.id, "billing": price.plan.value, "replicas": "2"})
+        partial = view(model | {"node": node.id, "billing": price.plan.value, "replicas": "2", "duty": "25"})
         assert bool(full.validation) == (node.id == "g2-standard-12" or price.plan.value == "flex")
         assert full.selected_price == price
         assert full.estimate.compute_monthly_usd == pytest.approx(full.estimate.total_nodes * price.hourly_usd * 730)
@@ -311,7 +314,16 @@ def test_old_a4_links_preserve_their_billing_plan(legacy: str, billing: str) -> 
 def test_automatic_setup_uses_native_checkpoint_and_a_compatible_topology(model) -> None:
     result = build_llm_self_hosting_view({"model": model.id}, now=NOW)
     assert result.inputs.mode == "simple"
-    assert result.selected_quant.id == model.default_quantization
+    # The default checkpoint is kept unless no machine with an on-demand rate can serve it.
+    default_served = any(
+        not configuration_issue(
+            replace(result.inputs, quantization_id=model.default_quantization, node_pool_id=node.id)
+        )
+        for node in GKE_NODE_POOLS
+        if any(price.plan is BillingPlan.ON_DEMAND for price in node.prices)
+    )
+    assert (result.selected_quant.id == model.default_quantization) == default_served
+    assert result.selected_quant.id in model.supported_quantizations
     assert not result.validation
     assert not result.estimate.compatibility_issue
     assert result.selected_node.vram_gb * result.estimate.nodes_per_replica >= result.estimate.required_memory_gb
@@ -522,10 +534,10 @@ def test_optional_input_validation_uses_explicit_defaults() -> None:
     assert len(result.validation) == 6
     assert result.inputs == DEFAULT_HOSTING_INPUTS
     assert result.validation == (
-        "api-mode was not recognized; the default was used",
-        "cache-requests must be a whole number between 1 and 1000000; the default was used",
+        "API pricing mode (api-mode) was not recognized; the default was used",
+        "Calls per cache group (cache-requests) must be a whole number between 1 and 1,000,000; the default was used",
         "quality was not recognized; the default was used",
-        "measured-first must be between 0 and 3600; the default was used",
+        "Measured p95 first token (measured-first) must be between 0 and 3,600; the default was used",
         "quality-0-acceptance must be between 0 and 100; the default was used",
         "quality-1-calls must be between 1 and 100; the default was used",
     )
@@ -598,7 +610,7 @@ QUALIFIED_VERDICTS = {"Fleet has a cost case", "API costs less", "No API accepts
 @pytest.mark.parametrize("parameter", ["days", "tokens", "input-tokens", "cache-prefix", "tasks"])
 def test_whole_quantities_reject_fractions_for_agents(parameter: str) -> None:
     assert view({parameter: "21"}).validation == ()
-    with pytest.raises(ValueError, match=f"{parameter} must be a whole number"):
+    with pytest.raises(ValueError, match=rf"\({parameter}\) must be a whole number"):
         compare_hosting({parameter: "21.5"})
 
 
@@ -1112,12 +1124,17 @@ def test_every_simple_model_has_a_supported_checkpoint_and_billing_plan(model, b
     [
         {"model": "qwen3-8-27b", "node": "a2-ultra-1g", "quant": "fp8"},
         {"model": "qwen3-8-27b", "node": "g2-standard-12", "quant": "fp16"},
-        {"model": "mistral-small-4", "node": "a3-ultra", "quant": "nvfp4"},
-        {"model": "mistral-small-4", "node": "g4-standard-48", "quant": "fp16"},
+        {"model": "nemotron-3-5-super-vl", "node": "a3-ultra", "quant": "nvfp4"},
+        {"model": "nemotron-3-5-super-vl", "node": "g4-standard-48", "quant": "fp16"},
+        {"model": "nemotron-3-5-super-vl", "node": "a4", "quant": "nvfp4", "billing": "cud-1y"},
         {"model": "kimi-k3", "node": "g4-standard-48", "quant": "mxfp4"},
         {"model": "glm-5-3", "node": "a3-high", "quant": "fp8"},
         {"model": "glm-5-3-flash", "node": "g4-standard-48", "quant": "fp8"},
-        {"model": "deepseek-v4-pro", "node": "a3-high", "quant": "mixed-fp4"},
+        {"model": "mistral-large-4", "node": "a4", "quant": "fp8", "billing": "cud-1y"},
+        {"model": "mistral-large-4", "node": "a3-high", "quant": "fp8"},
+        {"model": "minimax-m3-1-flash", "node": "tpu7x-standard-4t", "quant": "mixed-nvfp4"},
+        {"model": "qwen3-8-27b", "node": "ct6e-standard-8t", "quant": "fp16"},
+        {"model": "qwen3-5-4b", "node": "tpu7x-standard-4t", "quant": "fp16"},
         {"model": "gemma-4-26b-a4b", "node": "ct6e-standard-8t", "quant": "fp8"},
         {"model": "gemma-4-26b-a4b", "node": "tpu7x-standard-4t", "quant": "nvfp4"},
         {"model": "muse-spark-open", "node": "a3-high", "quant": "fp16"},
@@ -1144,10 +1161,10 @@ def test_unsupported_combinations_cannot_qualify_or_be_overridden_by_a_pilot(par
 
 
 def test_native_fp4_sizes_include_mixed_precision_and_scales() -> None:
-    mistral = build_llm_self_hosting_view({"model": "mistral-small-4", "quant": "nvfp4", "node": "auto"})
-    assert mistral.inputs.node_pool_id == "g4-standard-48"
-    assert mistral.estimate.weight_memory_gb == pytest.approx(70.801904048)
-    assert not mistral.validation
+    nemotron = build_llm_self_hosting_view({"model": "nemotron-3-5-super-vl", "quant": "nvfp4", "node": "auto"})
+    assert nemotron.inputs.node_pool_id == "g4-standard-48"
+    assert nemotron.estimate.weight_memory_gb == pytest.approx(75.010189968)
+    assert not nemotron.validation
     gemma = build_llm_self_hosting_view({"model": "gemma-4-26b-a4b", "quant": "nvfp4", "node": "auto"})
     assert gemma.estimate.weight_memory_gb == pytest.approx(16.417035012)
     assert gemma.inputs.node_pool_id == "g4-standard-48"
@@ -1156,8 +1173,22 @@ def test_native_fp4_sizes_include_mixed_precision_and_scales() -> None:
     )
     assert muse.estimate.weight_memory_gb == pytest.approx(533.011023472)
     assert muse.inputs.node_pool_id == "a4"
-    deepseek = build_llm_self_hosting_view({"model": "deepseek-v4-pro"})
-    assert deepseek.estimate.weight_memory_gb == pytest.approx(892.727580904)
+    minimax = build_llm_self_hosting_view({"model": "minimax-m3-1-flash"})
+    assert minimax.estimate.weight_memory_gb == pytest.approx(250.1034112)
+    large = build_llm_self_hosting_view({"model": "mistral-large-4", "billing": "cud-1y"})
+    assert (large.inputs.node_pool_id, large.inputs.quantization_id) == ("a4", "nvfp4")
+    assert large.estimate.weight_memory_gb == pytest.approx(610.030457408)
+
+
+def test_mistral_large_4_uses_the_verified_checkpoint_for_each_machine() -> None:
+    # NVFP4 is verified only on B200, which has no on-demand rate; on-demand falls back to FP8 on 2x H200.
+    on_demand = build_llm_self_hosting_view({"model": "mistral-large-4"})
+    assert (on_demand.inputs.node_pool_id, on_demand.inputs.quantization_id) == ("a3-ultra", "fp8")
+    assert on_demand.estimate.nodes_per_replica == 2
+    assert on_demand.estimate.weight_memory_gb == pytest.approx(1060.548427328)
+    assert not on_demand.validation
+    explicit = build_llm_self_hosting_view({"mode": "advanced", "model": "mistral-large-4", "quant": "nvfp4"})
+    assert "No compatible hardware" in explicit.validation[0]
 
 
 def test_cloud_tpu_trillium_pricing_bf16_requirement_and_recipe_context_limit() -> None:
@@ -1222,20 +1253,20 @@ def test_cloud_tpu_multi_host_slices_and_gpu_vs_tpu_demand_comparison() -> None:
         assert not replayed.validation
         assert replayed.estimate == row.estimate
 
-    mistral_over_g4_context = build_llm_self_hosting_view(
+    nemotron_over_g4_context = build_llm_self_hosting_view(
         {
             "mode": "advanced",
-            "model": "mistral-small-4",
+            "model": "nemotron-3-5-super-vl",
             "quant": "fp16",
             "input-tokens": "20000",
             "tokens": "500",
         }
     )
-    gpu_mistral, tpu_mistral = mistral_over_g4_context.accelerators
-    assert (gpu_mistral.quantization.id, gpu_mistral.node.id) == ("fp8", "a3-ultra")
-    assert gpu_mistral.estimate.qualified
-    assert "requires one of the verified node families" in tpu_mistral.estimate.compatibility_issue
-    assert not tpu_mistral.estimate.qualified
+    gpu_nemotron, tpu_nemotron = nemotron_over_g4_context.accelerators
+    assert (gpu_nemotron.quantization.id, gpu_nemotron.node.id) == ("fp16", "a3-ultra")
+    assert gpu_nemotron.estimate.qualified
+    assert "requires one of the verified node families" in tpu_nemotron.estimate.compatibility_issue
+    assert not tpu_nemotron.estimate.qualified
 
     flex_batch = build_llm_self_hosting_view(
         {
@@ -1260,7 +1291,7 @@ def test_one_off_demand_cannot_borrow_a_whole_month_of_capacity() -> None:
 
 
 def test_flex_start_requires_batch_delivery() -> None:
-    parameters = {"node": "a4", "billing": "flex"}
+    parameters = {"model": "gemma-4-26b-a4b", "node": "a4", "billing": "flex"}
     assert build_llm_self_hosting_view(parameters).estimate.compatibility_issue
     # The GPU card names the Flex-start blocker, not an unrelated placeholder machine such as G2.
     gpu, tpu = view(parameters).accelerators
@@ -1273,8 +1304,8 @@ def test_flex_start_requires_batch_delivery() -> None:
 
 
 def test_model_recipe_context_limit_is_hardware_specific() -> None:
-    result = build_llm_self_hosting_view({"model": "deepseek-v4-pro", "input-tokens": "800000", "tokens": "1"})
-    assert "800,000" in result.estimate.compatibility_issue
+    result = build_llm_self_hosting_view({"model": "mistral-large-4", "input-tokens": "300000", "tokens": "1"})
+    assert "262,144" in result.estimate.compatibility_issue
     assert not result.estimate.qualified
 
 
@@ -1350,10 +1381,10 @@ def test_daily_capacity_gate_reaches_charts_break_even_and_task_workloads() -> N
 
 
 def test_invalid_advanced_auto_selection_retains_the_requested_model() -> None:
-    parameters = {"mode": "advanced", "model": "mistral-small-4", "quant": "fp16", "node": "auto"}
+    parameters = {"mode": "advanced", "model": "nemotron-3-5-super-vl", "quant": "fp8", "node": "auto"}
     result = build_llm_self_hosting_view(parameters)
-    assert result.selected_model.id == "mistral-small-4"
-    assert result.selected_quant.id == "fp16"
+    assert result.selected_model.id == "nemotron-3-5-super-vl"
+    assert result.selected_quant.id == "fp8"
     assert result.estimate.compatibility_issue
     assert not result.estimate.qualified
 
@@ -1399,14 +1430,14 @@ def test_simple_volume_override_survives_sharing_and_mode_changes() -> None:
     assert blank.inputs.requests_per_day == 2000
     invalid = build_llm_self_hosting_view({"mode": "simple", "requests": "NaN"})
     assert len(invalid.validation) == 1
-    with pytest.raises(ValueError, match="requests must be"):
+    with pytest.raises(ValueError, match=r"Calls per active day \(requests\) must be"):
         compare_hosting({"mode": "simple", "requests": "NaN"})
     overlong_float = build_llm_self_hosting_view({"mode": "simple", "requests": "9" * 129})
     assert len(overlong_float.validation) == 1
     overlong_int = build_llm_self_hosting_view({"mode": "advanced", "replicas": "9" * 129})
     assert len(overlong_int.validation) == 1
     invalid_simple_billing = build_llm_self_hosting_view({"mode": "simple", "billing": "flex"})
-    assert invalid_simple_billing.validation == ("billing was not recognized; the default was used",)
+    assert invalid_simple_billing.validation == ("Pricing plan (billing) was not recognized; the default was used",)
 
 
 def test_compact_model_supplies_a_sourced_l4_budget() -> None:
@@ -1418,12 +1449,12 @@ def test_compact_model_supplies_a_sourced_l4_budget() -> None:
     assert result.estimate.qualified
 
 
-def test_economical_mistral_checkpoint_has_a_bounded_context_and_comparable_alternative() -> None:
-    result = build_llm_self_hosting_view({"model": "mistral-small-4"})
+def test_economical_nvfp4_checkpoint_has_a_bounded_context_and_comparable_alternative() -> None:
+    result = build_llm_self_hosting_view({"model": "nemotron-3-5-super-vl"})
     assert result.inputs.quantization_id == "nvfp4"
     assert result.inputs.node_pool_id == "g4-standard-48"
     assert result.estimate.total_monthly_usd == pytest.approx(3357.9489)
-    alternative = next(row for row in result.precisions if row.quantization.id == "fp8")
+    alternative = next(row for row in result.precisions if row.quantization.id == "fp16")
     assert alternative.node.id == "a3-ultra"
     assert alternative.estimate.total_monthly_usd > result.estimate.total_monthly_usd
     shared = build_llm_self_hosting_view(parse_qs(urlsplit(alternative.url).query))
@@ -1432,10 +1463,39 @@ def test_economical_mistral_checkpoint_has_a_bounded_context_and_comparable_alte
     with pytest.raises(ValueError, match="16,384 context"):
         compare_hosting(
             {
-                "model": "mistral-small-4",
+                "model": "nemotron-3-5-super-vl",
                 "quant": "nvfp4",
                 "node": "g4-standard-48",
                 "input-tokens": "16000",
                 "tokens": "500",
             }
         )
+
+
+def test_catalog_entries_are_internally_consistent() -> None:
+    node_ids = {node.id for node in GKE_NODE_POOLS}
+    quant_ids = {quant.id for quant in QUANTIZATIONS}
+    assert len({model.id for model in FRONTIER_MODELS}) == len(FRONTIER_MODELS)
+    for model in FRONTIER_MODELS:
+        # Every model names its verified hardware; an empty list would allow every machine.
+        assert model.required_node_ids, model.id
+        assert set(model.required_node_ids) <= node_ids, model.id
+        assert model.default_quantization in model.supported_quantizations, model.id
+        assert set(model.supported_quantizations) <= quant_ids, model.id
+        # Sizes come from the official checkpoint, never parameters x bytes per parameter.
+        assert {precision for precision, _ in model.checkpoint_memory} == set(model.supported_quantizations), model.id
+        assert {precision for precision, _ in model.checkpoint_urls} <= set(model.supported_quantizations), model.id
+        for precision, nodes in model.quantization_node_ids:
+            assert precision in model.supported_quantizations, model.id
+            assert set(nodes) <= set(model.required_node_ids), model.id
+        limited = {node for node, _ in model.node_context_limits} | {node for node, _ in model.node_minimums}
+        assert limited <= set(model.required_node_ids), model.id
+        assert all(limit <= model.context_tokens for _, limit in model.node_context_limits), model.id
+
+
+def test_mcp_rejects_a_preset_that_would_replace_explicit_advanced_demand() -> None:
+    with pytest.raises(ValueError, match="preset replaces requests, tokens in advanced mode"):
+        compare_hosting({"mode": "advanced", "preset": "service", "requests": "500", "tokens": "50"})
+    # Simple mode keeps its documented call-volume override, and a preset alone is fine.
+    assert compare_hosting({"mode": "simple", "preset": "service", "requests": "500"}).inputs.requests_per_day == 500
+    assert compare_hosting({"mode": "advanced", "preset": "service"}).inputs.requests_per_day == 100_000
