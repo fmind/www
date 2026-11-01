@@ -9,7 +9,6 @@ Website: https://www.fmind.dev
 LinkedIn: https://www.linkedin.com/in/fmind-dev/
 X (Twitter): https://x.com/fmind_dev
 GitHub: https://github.com/fmind
-Kaggle: https://www.kaggle.com/freaxmind
 YouTube: https://www.youtube.com/@fmind-dev
 
 /* FONTS */

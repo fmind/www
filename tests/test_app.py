@@ -449,7 +449,6 @@ def test_public_social_profiles_match_the_selected_channels(client: AppClient) -
         "GitHub",
         "X (Twitter)",
         "YouTube",
-        "Kaggle",
     }
     html = client.get("/").text
     graph = json.loads(html.split('<script type="application/ld+json">', 1)[1].split("</script>", 1)[0])
@@ -458,6 +457,9 @@ def test_public_social_profiles_match_the_selected_channels(client: AppClient) -
     assert set(person["sameAs"]) == channels | set(SAME_AS_PROFILES)
     assert len(person["sameAs"]) == len(set(person["sameAs"]))
     assert not channels & set(SAME_AS_PROFILES)
+    # Deleted profiles must not claim the identity; retired ones that still serve history may stay.
+    dropped = ("dev.to/", "bsky.app/", "medium.com", "kaggle.com")
+    assert not [url for url in person["sameAs"] if any(name in url for name in dropped)]
     card = client.get("/connect.vcf").text.replace("\r\n ", "")
     head, _, tail = html.partition('<script type="application/ld+json">')
     visible = head + tail.partition("</script>")[2]

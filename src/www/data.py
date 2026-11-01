@@ -60,7 +60,7 @@ METADATA = Metadata(
         "Luxembourg",
     ),
     email="contact@fmind.dev",
-    calendar_url="https://calendar.google.com/calendar/u/0/appointments/schedules/AcZssZ2ye3X9589PA2xmbV73Iz5J_NbFig6nN651vn6UuYAC-Cs5vBxnQ2L5db9UnAeXmUBQSW1MOobd",
+    calendar_url="https://calendar.google.com/calendar/appointments/schedules/AcZssZ2ye3X9589PA2xmbV73Iz5J_NbFig6nN651vn6UuYAC-Cs5vBxnQ2L5db9UnAeXmUBQSW1MOobd",
     site_url="https://www.fmind.dev",
     twitter_handle="@fmind_dev",
     google_analytics_id="G-Z28QKD99V2",
@@ -68,18 +68,17 @@ METADATA = Metadata(
         SocialLink("LinkedIn", "https://www.linkedin.com/in/fmind-dev/", "linkedin"),
         SocialLink("X (Twitter)", "https://x.com/fmind_dev", "x"),
         SocialLink("GitHub", "https://github.com/fmind", "github"),
-        SocialLink("Kaggle", "https://www.kaggle.com/freaxmind", "kaggle"),
         SocialLink("YouTube", "https://www.youtube.com/@fmind-dev", "youtube"),
     ),
 )
 
 # Profiles that identify the same person for search and AI answers (schema.org sameAs) without joining the
 # visible header, footer or contact-card channels, which stay the curated `METADATA.socials` selection.
-# Add a profile only once it is live and shows this identity; ORCID joins once it lists works.
+# Add a profile only once it is live and shows this identity; ORCID joins once it lists works. Retired channels
+# that still serve his history (HackerNoon) stay; deleted or dropped ones (DEV, Bluesky, Medium, Kaggle) leave.
 SAME_AS_PROFILES = (
-    "https://bsky.app/profile/fmind-dev.bsky.social",
-    "https://dev.to/fmind",
     "https://hackernoon.com/u/fmind",
+    "https://aaif.io/author/mederic-hurier/",
     "https://news.ycombinator.com/user?id=fmind-dev",
     "https://huggingface.co/fmind",
     "https://pypi.org/user/fmind/",
@@ -323,23 +322,24 @@ OPEN_SOURCE = (
     ),
 )
 
+# Titles and blurbs follow the playlist copy that the publishing workspace syncs to YouTube.
 YOUTUBE_SERIES = (
     Playlist(
-        "Bleeding Agent",
+        "Bleeding Agent | The Anatomy of Autonomy",
         "https://www.youtube.com/playlist?list=PLPCnNL6Y2PbTckW80gDLnznFMDEz18HBS",
-        "Technical discussions on how AI agents and autonomous systems work.",
+        "A 20-minute technical podcast that takes AI agents apart: the protocols, standards, and system design under the demos.",
         "View Podcast",
     ),
     Playlist(
         "AI Agents in a Nut$SHELL",
         "https://www.youtube.com/playlist?list=PLPCnNL6Y2PbT1aKOx2fMFBpicTRzeMS6f",
-        "Short explanations of AI agent architecture and how the components fit together.",
+        "One AI agent protocol or standard explained in about five minutes from its specifications and primary sources.",
         "View Playlist",
     ),
     Playlist(
         "MLOps Coding Course",
         "https://www.youtube.com/playlist?list=PLPCnNL6Y2PbQplCczUFhtQpCznEXqDZnh",
-        "Apply software engineering practices to machine learning projects.",
+        "Hands-on lessons for taking Python AI/ML code from notebooks to production.",
         "View Course",
     ),
 )

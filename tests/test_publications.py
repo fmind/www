@@ -3,7 +3,7 @@ from xml.etree import ElementTree
 
 import pytest
 
-from www.data import METADATA
+from www.data import METADATA, YOUTUBE_SERIES
 from www.models import Article
 from www.publications import (
     ATOM_FULL_CONTENT_LIMIT,
@@ -87,6 +87,11 @@ def test_llms_and_article_markdown_surfaces_preserve_citation_metadata() -> None
     markdown = render_article_markdown(item)
 
     assert "## Machine-readable portfolio" in index
+    channels = index.split("## Channels\n", 1)[1].split("\n## ", 1)[0]
+    for social in METADATA.socials:
+        assert f"- [{social.name}]({social.url})" in channels
+    for playlist in YOUTUBE_SERIES:
+        assert f"- [{playlist.title}]({playlist.url}): {playlist.description}" in channels
     assert f"[Markdown]({item.markdown_url()})" in index
     assert "## Full articles" in full
     assert markdown in full

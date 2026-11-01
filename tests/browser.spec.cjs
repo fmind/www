@@ -495,7 +495,6 @@ test("homepage presents the headline, six skills, and responsive social links", 
     "GitHub": "https://github.com/fmind",
     "X (Twitter)": "https://x.com/fmind_dev",
     "YouTube": "https://www.youtube.com/@fmind-dev",
-    "Kaggle": "https://www.kaggle.com/freaxmind",
   };
   await expect(socials.getByRole("link")).toHaveCount(Object.keys(profiles).length);
   for (const [name, url] of Object.entries(profiles)) {
@@ -1046,7 +1045,7 @@ test("narrow screens reflow and keep navigation reachable", async ({ page }, tes
         return { x, right: x + width, center: y + height / 2 };
       })
     );
-    expect(boxes).toHaveLength(9);
+    expect(boxes).toHaveLength(8); // brand, three sections, four social profiles
     for (const box of boxes) {
       expect(box.x).toBeGreaterThanOrEqual(12);
       expect(box.right).toBeLessThanOrEqual(308);
@@ -1088,9 +1087,10 @@ test("narrow screens reflow and keep navigation reachable", async ({ page }, tes
     const linksWidth = last.x + last.width - first.x;
     expect(first.x).toBeGreaterThan(brandBounds.x + brandBounds.width);
     expect(last.x + last.width).toBeLessThan(socials.x);
+    const centered = Math.abs(first.x + linksWidth / 2 - width / 2) < 0.5;
     if (width === 480 || width === 540 || width >= 840) {
       expect(first.x + linksWidth / 2).toBeCloseTo(width / 2, 0);
-    } else {
+    } else if (!centered) {
       // When the social group prevents exact centering, use the nearest free position.
       expect(socials.x - last.x - last.width).toBeLessThanOrEqual(8);
     }
