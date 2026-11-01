@@ -44,8 +44,12 @@ def client(environment: Environment = Environment.DEVELOPMENT) -> tuple[TestClie
         nonce = request.scope["state"]["csp_nonce"]
         return Response(f'<html><script nonce="{nonce}"></script></html>', media_type="text/html")
 
+    @route("/form", http_method=[HttpMethod.POST], sync_to_thread=False)
+    def form() -> str:
+        return "posted"
+
     app = Litestar(
-        route_handlers=[home],
+        route_handlers=[home, form],
         middleware=[DefineMiddleware(SiteMiddleware, config=Config(environment=environment), logger=logger)],
         openapi_config=None,
     )
@@ -62,7 +66,7 @@ def test_security_headers_authorize_the_request_nonce() -> None:
     assert "style-src 'self';" in response.headers["content-security-policy"]
     # Google Analytics after consent: its script, beacon and pixel hosts only; frames and the default stay self.
     policy = dict(item.strip().split(" ", 1) for item in response.headers["content-security-policy"].split(";") if item)
-    assert policy["script-src"].endswith("'nonce-" + nonce + "' https://*.googletagmanager.com")
+    assert policy["script-src"].endswith("'nonce-" + nonce + "' 'strict-dynamic' https://*.googletagmanager.com")
     assert policy["connect-src"] == (
         "'self' https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com"
     )
@@ -87,6 +91,15 @@ def test_production_apex_redirect_keeps_query_and_security_headers() -> None:
     assert response.headers["strict-transport-security"].startswith("max-age=63072000")
     assert response.headers["vary"] == "Accept-Encoding"
     assert logger.records == []
+
+
+def test_production_apex_redirect_keeps_the_method_for_posts() -> None:
+    test_client, _ = client(Environment.PRODUCTION)
+    with test_client:
+        response = test_client.post("/form?step=1", content=b"{}", follow_redirects=False)
+
+    assert response.status_code == 308
+    assert response.headers["location"] == "https://www.fmind.dev/form?step=1"
 
 
 def test_head_requests_are_not_pageviews() -> None:

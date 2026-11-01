@@ -70,6 +70,8 @@ def privacy_metadata() -> PageMetadata:
         title="Privacy | Médéric Hurier (Fmind)",
         description="How this website measures visits and handles personal information.",
         canonical=f"{METADATA.site_url}/privacy",
+        # The page names the _ga cookies in <code>.
+        preload_code_font=True,
     )
 
 

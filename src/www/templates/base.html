@@ -69,6 +69,8 @@
   </head>
   <body class="min-h-screen bg-base-100 text-base-content font-body antialiased">
     <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-primary text-primary-content px-4 py-2 rounded-md z-[100]">Skip to content</a>
+    {# First in tab order so keyboard users reach the choice without crossing the page under it. #}
+    {% include "partials/consent.html" %}
     {% block header %}<header class="sticky top-0 z-40">
       {% include "partials/navigation.html" %}
     </header>{% endblock %}
@@ -77,7 +79,7 @@
       {% block content %}{% endblock %}
     </main>
     {% block footer %}{% include "partials/footer.html" %}{% endblock %}
-    {% include "partials/consent.html" %}
+    {% include "partials/consent-script.html" %}
     {% set interaction_script %}{% block page_scripts %}{% endblock %}{% endset %}
     {% if interaction_script|trim %}
       <script nonce="{{ nonce }}">

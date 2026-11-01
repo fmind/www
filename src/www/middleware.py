@@ -158,7 +158,10 @@ GA_CONNECT = "https://*.google-analytics.com https://*.analytics.google.com http
 
 
 def _security_headers(nonce: str, environment: Environment) -> dict[str, str]:
-    script_src = f"'self' 'nonce-{nonce}' {GA_SCRIPTS}"
+    # 'strict-dynamic' trusts only nonce scripts and what they insert (gtag.js after consent),
+    # so CSP3 browsers ignore the host allowlist that would let any Tag Manager container run;
+    # 'self' and the host remain the fallback for browsers without 'strict-dynamic'.
+    script_src = f"'self' 'nonce-{nonce}' 'strict-dynamic' {GA_SCRIPTS}"
     # Pages link one same-origin stylesheet; no inline <style> element is authorized.
     style_src = "'self'"
     headers = {
@@ -339,7 +342,9 @@ class SiteMiddleware:
         if query:
             location += "?" + query.decode("latin-1")
         headers = [(b"location", location.encode("latin-1")), (b"content-length", b"0")]
-        start: Message = {"type": "http.response.start", "status": 301, "headers": headers}
+        # 308 keeps the method and body, so an apex POST /mcp is not replayed as a GET.
+        status = 301 if scope.get("method", "GET") in {"GET", "HEAD"} else 308
+        start: Message = {"type": "http.response.start", "status": status, "headers": headers}
         mutable = MutableScopeHeaders(start)
         for name, value in _security_headers(nonce, self.environment).items():
             mutable[name] = value

@@ -156,7 +156,7 @@ async def test_search_tool_normalizes_caps_and_rejects_empty_query(mcp_server: M
 
     with pytest.raises(ToolError, match="query must not be empty"):
         await mcp_server.call_tool("search_articles", {"query": "  "})
-    for limit in (0, -1):
+    for limit in (0, -1, True, "3", 2.0):
         with pytest.raises(ToolError, match="limit"):
             await mcp_server.call_tool("search_articles", {"query": "the", "limit": limit})
 

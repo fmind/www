@@ -142,6 +142,11 @@ def test_renderer_fails_closed_at_markup_and_context_boundaries() -> None:
         ("<SCRIPT>alert(1)</SCRIPT>", "must not contain <script> elements"),
         ('<iframe src="/x"></iframe>', "must not contain <iframe> elements"),
         ('<link rel="stylesheet" href="/x.css">', "must not contain <link> elements"),
+        ('<svg><a><set attributeName="href" to="javascript:alert(1)"/></a></svg>', "must not contain <set> elements"),
+        (
+            '<svg><animate attributeName="href" values="javascript:alert(1)"/></svg>',
+            "must not contain <animate> elements",
+        ),
         ('<img src="/safe.png" onerror="alert(1)">', "unsafe attribute"),
         ('<a href="java&#x0a;script:alert(1)">unsafe</a>', "unsafe URL"),
         ('<img srcset="/safe.png 1x, data:text/html,unsafe 2x">', "unsafe URL"),

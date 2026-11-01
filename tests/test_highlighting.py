@@ -27,7 +27,7 @@ def test_highlighted_markup_is_class_based_and_css_is_minified() -> None:
     markup = highlight_code('def hello() -> str:\n    return "world"\n', "python")
     css = highlight_css()
 
-    assert markup.startswith('<pre class="chroma"><code>')
+    assert markup.startswith('<pre class="chroma" tabindex="0"><code>')
     assert '<span class="k">def</span>' in markup
     assert "style=" not in markup
     assert ".chroma .k" in css
@@ -38,7 +38,7 @@ def test_agentgateway_yaml_matches_frozen_chroma_markup() -> None:
     code = "authorization:\n  rules:\n    - require: 'jwt.aud == \"my-service\"'\n"
 
     assert highlight_code(code, "yaml") == (
-        '<pre class="chroma"><code>'
+        '<pre class="chroma" tabindex="0"><code>'
         '<span class="line"><span class="cl"><span class="nt">authorization</span>'
         '<span class="p">:</span><span class="w">\n</span></span></span>'
         '<span class="line"><span class="cl"><span class="w">  </span>'

@@ -118,6 +118,48 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
+test("the open consent banner never hides keyboard focus", async ({ browser, baseURL }, testInfo) => {
+  // Reduced motion makes focus scrolling instant, so each position is final when measured.
+  const context = await browser.newContext({
+    ...testInfo.project.use,
+    storageState: undefined,
+    reducedMotion: "reduce",
+    viewport: { width: 375, height: 800 },
+  });
+  try {
+    await context.route("https://www.fmind.dev/**", async (route) => {
+      const url = new URL(route.request().url());
+      await route.fulfill({ response: await route.fetch({ url: new URL(url.pathname + url.search, baseURL).href }) });
+    });
+    await context.route(/https:\/\/([^/]+\.)?google(tagmanager|-analytics)?\.com\//, (route) => route.abort());
+    const page = await context.newPage();
+    for (const path of ["/", "/articles/", contextCalculator]) {
+      await page.goto(`https://www.fmind.dev${path}`);
+      const banner = page.getByRole("region", { name: "Cookie consent" });
+      await expect(banner).toBeVisible();
+      // The banner follows the skip link, so its choices are reached first.
+      await page.keyboard.press("Tab");
+      await page.keyboard.press("Tab");
+      await expect(banner.getByRole("link", { name: "Privacy" })).toBeFocused();
+      for (let index = 0; index < 60; index += 1) {
+        await page.keyboard.press("Tab");
+        const hidden = await page.evaluate(() => {
+          const active = document.activeElement;
+          const consent = document.getElementById("consent");
+          if (!active || active === document.body || consent.contains(active)) return "";
+          const box = active.getBoundingClientRect();
+          return box.height > 0 && box.bottom > consent.getBoundingClientRect().top + 0.5
+            ? (active.textContent || active.getAttribute("aria-label") || active.tagName).trim()
+            : "";
+        });
+        expect(hidden, `${path} focus under the banner`).toBe("");
+      }
+    }
+  } finally {
+    await context.close();
+  }
+});
+
 test("readers can subscribe and follow without JavaScript", async ({ browser }, testInfo) => {
   const context = await browser.newContext({ ...testInfo.project.use, javaScriptEnabled: false });
   try {

@@ -312,7 +312,8 @@ def create_mcp_server(
         ],
         limit: Annotated[
             int,
-            Field(ge=1, description="maximum number of results to return (default 10, maximum 50)"),
+            # strict: JSON true, "3", and 2.0 are not integers and must not be coerced.
+            Field(strict=True, ge=1, description="maximum number of results to return (default 10, maximum 50)"),
         ] = DEFAULT_SEARCH_RESULTS,
         tag: Annotated[
             str | None,

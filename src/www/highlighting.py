@@ -344,7 +344,8 @@ def _escape_token(value: str) -> str:
 
 
 def _format_tokens(tokens: list[tuple[_TokenType, str]]) -> str:
-    rendered: list[str] = ['<pre class="chroma"><code>']
+    # Focusable so keyboard users can scroll long lines sideways (axe scrollable-region-focusable).
+    rendered: list[str] = ['<pre class="chroma" tabindex="0"><code>']
     for line in _split_lines(_coalesce(tokens)):
         rendered.append('<span class="line"><span class="cl">')
         for token_type, value in line:

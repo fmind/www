@@ -65,7 +65,10 @@ NAV_LINKS: Final = (
 _RESERVED_CONTEXT: Final = frozenset(
     {"current_year", "metadata", "nav_links", "nonce", "page", "stylesheet_url"},
 )
-_UNSAFE_FRAGMENT_ELEMENTS: Final = frozenset({"base", "embed", "iframe", "link", "meta", "object", "script", "style"})
+# SVG animation elements can rewrite an href to a javascript: URL through to/values/from.
+_UNSAFE_FRAGMENT_ELEMENTS: Final = frozenset(
+    {"animate", "animatemotion", "base", "embed", "iframe", "link", "meta", "object", "script", "set", "style"},
+)
 _UNSAFE_URL_PREFIXES: Final = ("data:", "javascript:", "vbscript:")
 _URL_ATTRIBUTES: Final = frozenset({"action", "formaction", "href", "poster", "src", "xlink:href"})
 _URL_IGNORED_CHARACTERS = re.compile(r"[\x00-\x20\x7f]+")
