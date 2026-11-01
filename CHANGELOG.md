@@ -2,6 +2,25 @@
 
 All notable changes to this project are documented in this file.
 
+## [2.7.0] - 2026-11-01
+
+### 🚀 Features
+
+- _(profile)_ Align public profiles and channels with pub
+- _(sites)_ Refresh the LLM hosting catalog with Mistral Large 4
+
+### 🐛 Bug Fixes
+
+- Harden the CSP and MCP inputs and keep keyboard focus visible
+
+### 📚 Documentation
+
+- _(articles)_ Fix typos, dead links, and image alt text
+
+### ⚙️ Build & CI
+
+- Clear failed candidate tags and tighten delivery and IAM
+
 ## [2.6.1] - 2026-10-31
 
 ### 🐛 Bug Fixes
