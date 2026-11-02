@@ -1,5 +1,9 @@
 const { test, expect } = require("playwright/test");
 
+// Remote production images can take longer than the 5s default to arrive on a cold
+// runner, notably in WebKit; the local server keeps the strict default.
+const imageLoadTimeout = process.env.BROWSER_BASE_URL ? 15000 : 5000;
+
 test("portfolio and contact pages render and reflow", async ({ page }) => {
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
@@ -15,7 +19,11 @@ test("portfolio and contact pages render and reflow", async ({ page }) => {
         await image.evaluate((element) => element.scrollIntoView({ block: "center" }));
         await expect(image).toBeInViewport({ timeout: 500 });
       }).toPass({ timeout: 5000 });
-      await expect.poll(() => image.evaluate((element) => element.complete && element.naturalWidth > 0)).toBe(true);
+      await expect
+        .poll(() => image.evaluate((element) => element.complete && element.naturalWidth > 0), {
+          timeout: imageLoadTimeout,
+        })
+        .toBe(true);
     }
   }
   for (const width of [320, 768, 1024, 1600]) {
