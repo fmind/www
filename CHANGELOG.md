@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file.
 
+## [2.7.1] - 2026-11-02
+
+### 🐛 Bug Fixes
+
+- _(content)_ Drop Medium syndication links and the HackerNoon profile
+
 ## [2.7.0] - 2026-11-01
 
 ### 🚀 Features
