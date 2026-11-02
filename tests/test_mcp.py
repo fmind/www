@@ -13,7 +13,7 @@ from mcp_types import INVALID_PARAMS, CallToolResult, InputRequiredResult, TextC
 from www.content import article_summaries, load_articles, visible_articles
 from www.mcp import create_mcp_server, render_mcp_server_card
 from www.publications import article_markdown_index, render_profile_json
-from www.search import SearchIndex
+from www.search import SEARCH_QUERY_LIMIT, SearchIndex
 
 
 @pytest.fixture(scope="module")
@@ -64,12 +64,14 @@ async def test_server_lists_ten_read_only_tools_and_two_prompts(mcp_server: MCPS
         assert set(article_schema["properties"]) - required_article_fields == {"canonical", "syndicated"}
     search_tool = next(tool for tool in tools if tool.name == "search_articles")
     assert search_tool.input_schema["properties"]["query"]["description"] == (
-        "words to search for across article titles, tags, descriptions, and full text"
+        "words to search for across article titles, tags, descriptions, and full text (at most 128 characters)"
     )
+    assert search_tool.input_schema["properties"]["query"]["maxLength"] == 128
     assert search_tool.input_schema["properties"]["limit"]["description"] == (
         "maximum number of results to return (default 10, maximum 50)"
     )
     assert search_tool.input_schema["properties"]["limit"]["default"] == 10
+    assert search_tool.input_schema["properties"]["limit"]["maximum"] == 50
     assert [prompt.name for prompt in prompts] == ["assess_fit", "brief_me"]
     assert [
         [argument.model_dump(by_alias=True, exclude_none=True) for argument in prompt.arguments or []]
@@ -146,17 +148,20 @@ async def test_search_tool_normalizes_caps_and_rejects_empty_query(mcp_server: M
     assert result.structured_content["total"] >= 1
 
     default = await mcp_server.call_tool("search_articles", {"query": "the"})
-    capped = await mcp_server.call_tool("search_articles", {"query": "the", "limit": 100})
+    maximum = await mcp_server.call_tool("search_articles", {"query": "the", "limit": 50})
     assert isinstance(default, CallToolResult)
     assert isinstance(default.structured_content, dict)
     assert len(default.structured_content["articles"]) == 10
-    assert isinstance(capped, CallToolResult)
-    assert isinstance(capped.structured_content, dict)
-    assert len(capped.structured_content["articles"]) == 50
+    assert isinstance(maximum, CallToolResult)
+    assert isinstance(maximum.structured_content, dict)
+    assert len(maximum.structured_content["articles"]) == 50
 
     with pytest.raises(ToolError, match="query must not be empty"):
         await mcp_server.call_tool("search_articles", {"query": "  "})
-    for limit in (0, -1, True, "3", 2.0):
+    # Out-of-range values fail instead of being silently clamped (AGENTS.md MCP invariant).
+    with pytest.raises(ToolError, match="query"):
+        await mcp_server.call_tool("search_articles", {"query": "a" * (SEARCH_QUERY_LIMIT + 1)})
+    for limit in (0, -1, 51, 500, True, "3", 2.0):
         with pytest.raises(ToolError, match="limit"):
             await mcp_server.call_tool("search_articles", {"query": "the", "limit": limit})
 

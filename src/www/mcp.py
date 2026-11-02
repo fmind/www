@@ -61,7 +61,7 @@ from www.models import (
     WorkExperience,
 )
 from www.publications import article_sections, render_profile_json
-from www.search import SearchIndex, normalize_search_query
+from www.search import SEARCH_QUERY_LIMIT, SearchIndex, normalize_search_query
 from www.sites.agent import HostingResult, compare_hosting
 from www.sites.mcp_context_cost.calculator import (
     DEFAULT_REQUESTS,
@@ -308,12 +308,20 @@ def create_mcp_server(
     def search_articles(
         query: Annotated[
             str,
-            Field(description="words to search for across article titles, tags, descriptions, and full text"),
+            Field(
+                max_length=SEARCH_QUERY_LIMIT,
+                description=f"words to search for across article titles, tags, descriptions, and full text (at most {SEARCH_QUERY_LIMIT} characters)",
+            ),
         ],
         limit: Annotated[
             int,
             # strict: JSON true, "3", and 2.0 are not integers and must not be coerced.
-            Field(strict=True, ge=1, description="maximum number of results to return (default 10, maximum 50)"),
+            Field(
+                strict=True,
+                ge=1,
+                le=MAXIMUM_SEARCH_RESULTS,
+                description=f"maximum number of results to return (default {DEFAULT_SEARCH_RESULTS}, maximum {MAXIMUM_SEARCH_RESULTS})",
+            ),
         ] = DEFAULT_SEARCH_RESULTS,
         tag: Annotated[
             str | None,
@@ -330,11 +338,10 @@ def create_mcp_server(
             wanted = next((name for name in tag_names() if name.casefold() == tag.strip().casefold()), None)
             if wanted is None:
                 raise ToolError(f"unknown tag {tag!r}; use one of: {', '.join(tag_names())}")
-        count = min(limit, MAXIMUM_SEARCH_RESULTS)
         ranked = tuple(item for item in index.search(normalized) if wanted is None or wanted in item.tags)
         return SearchArticlesResult(
             query=normalized,
-            articles=tuple(item.summary() for item in ranked[:count]),
+            articles=tuple(item.summary() for item in ranked[:limit]),
             total=len(ranked),
         )
 
