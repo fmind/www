@@ -121,7 +121,7 @@ I adopted what I call the **Agent-View-Controller (AVC) Pattern** — an evo
 
 ### 1. The Controller Agent (The Brain)
 
-This agent handles the business logic. It doesn’t care about pixels. It inputs a user request, decides which tool to use (e.g., `vote_feature`, `add_comment`), and outputs structured data.
+This agent handles the business logic. It doesn’t care about pixels. It inputs a user request, decides which tool to use (e.g., `upvote_feature`, `add_comment`), and outputs structured data.
 
 ```python
 # agent/agent.py

@@ -63,9 +63,9 @@ Combo-Banana: Workflow Definition Tab
 
 On the left, the user defines the workflow with a chatbot interface based on [Gemini 2.5 Flash](https://cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/2-5-flash). The chatbot extracts prompts into a series of steps that are stacked sequentially. In this example, we start with a “Place the item in a landscape” step, followed by an “Add Catchy Slogan” step, powered by [Nano Banana](https://ai.google.dev/gemini-api/docs/image-generation).
 
-![Combo-Banana: Workflow Definition Tab](/static/img/articles/combo-banana-building-custom-image-workflows-in-record-time/03.webp)
+![Combo-Banana: Workflow Execution Tab](/static/img/articles/combo-banana-building-custom-image-workflows-in-record-time/03.webp)
 
-Combo-Banana: Workflow Definition Tab
+Combo-Banana: Workflow Execution Tab
 
 Once the desired “combo” is configured, the user simply uploads the source image on the top left side of the second tab. The application processes the image through the defined pipeline — the output of the first step becomes the input for the next. The final result is displayed on the right, ready for download. This visual feedback loop allows designers to quickly iterate on their workflows before applying them to large batches of images.
 

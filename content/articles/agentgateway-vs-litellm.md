@@ -66,7 +66,7 @@ LiteLLM's GitHub Security page lists [twelve advisories](https://github.com/Berr
 
 agentgateway has [three published advisories](https://github.com/agentgateway/agentgateway/security/advisories). One is High: [GHSA-mvgg-jvj2-4frq](https://github.com/agentgateway/agentgateway/security/advisories/GHSA-mvgg-jvj2-4frq), stateful MCP sessions crossing routes and combining the original backend with the new route's authorization. Fixed in v1.4.0. Pin past it.
 
-A smaller advisory list is not a proof of a smaller attack surface. LiteLLM is older and ships a management API, an admin UI, a database, user-supplied guardrail code, a Skills unzip path, and an MCP stdio launcher. agentgateway's OSS proxy ships none of those six. Counts track surface. Both projects patch first and disclose after.
+A smaller advisory list is not a proof of a smaller attack surface. LiteLLM is older and ships a management API, an admin UI, a database, user-supplied guardrail code, a Skills unzip path, and an MCP stdio launcher. agentgateway's OSS proxy ships fewer of those six. Counts track surface. Both projects patch first and disclose after.
 
 The architectural point that belongs in an ADR is the shape of the failure. A Python service that accepts MCP stdio configs and talks to PostgreSQL for auth has a different failure mode than a Rust proxy with attachable CEL and JWT policies. CVE-2026-42208 and CVE-2026-42271 are examples of that shape. That is one reason the evaluation would not put LiteLLM on the default path for a multi-tenant agent platform.
 

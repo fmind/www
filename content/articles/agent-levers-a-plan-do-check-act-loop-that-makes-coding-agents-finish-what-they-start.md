@@ -45,7 +45,7 @@ Relationship between Coding Agents and Agent Levers
 
 ### Four commands, one folder
 
-The whole surface area is four slash commands, three of them user-facing and one of them an internal dispatcher you mostly forget exists.
+The whole surface area is four slash commands, all of them user-facing; one of them is a dispatcher for internal chain steps you mostly forget exist.
 
 - `/lever-init` — bootstraps the framework on a fresh repo.
 - `/lever-new <title>` — captures intent. The first turn is _chat-only_ — clarifying questions, proposed enhancements, a draft brief inline. No files land until you agree.

@@ -36,7 +36,7 @@ description = "Format, check, test, and build the project (the canonical gate)"
 run = ["mise run format", "mise run check", "mise run test", "mise run build"]
 ```
 
-Git hooks (`lefthook`), GitHub Actions CI workflows, and AI agent instructions (`AGENTS.md`) now invoke this exact task. CI asserts that the working tree remains byte-clean after execution.
+Git hooks (`lefthook`) now run its subtasks, while GitHub Actions CI workflows and AI agent instructions (`AGENTS.md`) invoke this exact task. CI asserts that the working tree remains byte-clean after execution.
 
 A list of steps can omit one. A named gate cannot.
 
@@ -83,7 +83,7 @@ This reduced test suite overhead by ~60% while ensuring every test runs against 
 
 A clean codebase with zero new commits will still rot over time due to upstream ecosystem shifts.
 
-One month after tagged release `v5.0.0`, running our static vulnerability check (`trivy` + `govulncheck`) returned red: 25 known vulnerabilities introduced across transitive dependencies of MLflow.
+One month after tagged release `v5.0.0`, running our static vulnerability check (`trivy` + `pip-audit`) returned red: 25 known vulnerabilities introduced across transitive dependencies of MLflow.
 
 The root cause was a dependency conflict: `cryptography` 50.0.0 patched security flaw `PYSEC-2026-3552`, but MLflow pinned `cryptography<50`, preventing standard resolvers from updating the package.
 
@@ -107,13 +107,13 @@ Building an agent-native, zero-warning codebase requires acknowledging explicit 
 
 - **Type Checking (`ty`)**: Astral's `ty` is pre-1.0 and does not yet fully model dynamic Pydantic/Pandera schemas. We ignore 6 rule categories globally and retain `mypy` as a baseline fallback.
 - **Dependency Resolution**: `pandas 3.0` is released, but MLflow caps `pandas<3` and `numba` caps `numpy<2.5`. We accept latest compatible resolution over naive latest version.
-- **Gate Latency**: Full gate execution (`mise run all`) takes 1.5 to 3.5 minutes due to 8 static scanners. We run fast linters on pre-commit and delegate full scans to pre-push and CI.
+- **Gate Latency**: Full gate execution (`mise run all`) takes 1.5 to 3.5 minutes due to 8 static scanners. We run formatters and static checks on pre-commit, and delegate tests to pre-push and the full gate to CI.
 
 ## Conclusion: Checklist for Agent-Native Codebases
 
 If you are preparing a complex Python/ML repository for AI coding agents:
 
-1. **Unify the Gate**: Expose exactly one entry point (`mise run all`) used identically by developers, git hooks, CI, and agents.
+1. **Unify the Gate**: Expose exactly one entry point (`mise run all`) used identically by developers, CI, and agents, with git hooks running its subtasks.
 2. **Treat `AGENTS.md` as Guidance, Not Enforcement**: Validate prose assertions against executable code via static linters and build checks.
 3. **Prove Security Overrides**: Never suppress vulnerability scanners; use explicit dependency overrides validated against unit tests.
 4. **Isolate State Deterministically**: Use template copy patterns for local databases (like SQLite) to keep test feedback fast for agents.

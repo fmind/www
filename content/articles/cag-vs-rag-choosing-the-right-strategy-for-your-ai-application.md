@@ -102,7 +102,7 @@ Price Comparison with different Models, Approaches, Databases, \# of Requests an
 Based on estimations ([see the linked Google Sheet for details](https://docs.google.com/spreadsheets/d/1WPmoqWB5UUO2tq9-z2ng2t_a6K6fqdzJTLQZxOytP4U/edit?usp=sharing)):
 
 - **RAG tends to be more cost-effective**, particularly when dealing with large underlying datasets. While it incurs costs for embedding generation and vector database hosting, the cost per LLM call is lower because far fewer tokens are processed compared to sending the entire context. For 1,000 daily requests with a 25k token context using RAG (Chroma OSS), the estimated daily cost was ~\$4.11/day.
-- **CAG (without caching)** becomes expensive quickly as context size increases. Sending a 100k token context for 1,000 daily requests was estimated at ~\$15.34/day, jumping to ~\$75.34/day for a 500k context.
+- **Base (CAG without caching)** becomes expensive quickly as context size increases. Sending a 100k token context for 1,000 daily requests was estimated at ~\$15.34/day, jumping to ~\$75.34/day for a 500k context.
 - **CAG (with caching)** significantly mitigates the cost compared to the non-cached version but adds a cache storage cost. For 1,000 daily requests, the 100k cached context cost was estimated at ~\$6.46/day, and the 500k cached context at ~\$31.06/day.
 
 ![Price / Request Comparison with different Models, Approaches, Databases, \# of Requests and \# of Tokens](/static/img/articles/cag-vs-rag-choosing-the-right-strategy-for-your-ai-application/05.webp)

@@ -64,8 +64,6 @@ The whole surface area is three slash commands, one per phase:
 - **Run** — /run-agent-evolution \<id\> plans a batch, spawns variants in parallel, ingests each `result.json`, scores, evolves, and stops on a condition.
 - **Apply** — /apply-agent-evolution \<id\> diffs the winner workspace against the live repo, confirms with you, copies it in, and optionally re-runs gates against the repo.
 
-Diff winner workspace vs the live repo → confirm → copy in → optionally re-run gates against the repo.
-
 The state machine is the one design choice I find myself most pleased with. There is no step counter, no pause flag, no “current phase” field. Phase is **derived from the presence of fields** in `evolution.yaml`:
 
 - empty `variants` → **ready** to run

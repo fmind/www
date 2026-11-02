@@ -62,9 +62,9 @@ The results were, in many cases, quite impressive. Here are some key wins:
 
 **All in all, the assistant has positive gains on 10 out of 11 cases.**
 
-![Open Textbooks with Gemini Long Context — Slide 7](/static/img/articles/lessons-learned-from-the-gemini-long-context-kaggle-competition/05.webp)
+![Open Textbooks with Gemini Long Context — Slide 6](/static/img/articles/lessons-learned-from-the-gemini-long-context-kaggle-competition/05.webp)
 
-[Open Textbooks with Gemini Long Context — Slide 7](https://docs.google.com/presentation/d/1H7Kq8Ur3f76mknLcugR0ZaBFqtba6foLQS_i7KG_4Sc/edit#slide=id.g315f80125e3_0_10)
+[Open Textbooks with Gemini Long Context — Slide 6](https://docs.google.com/presentation/d/1H7Kq8Ur3f76mknLcugR0ZaBFqtba6foLQS_i7KG_4Sc/edit#slide=id.g315f80125e3_0_10)
 
 ![Open Textbooks with Gemini Long Context — Slide 7](/static/img/articles/lessons-learned-from-the-gemini-long-context-kaggle-competition/06.webp)
 

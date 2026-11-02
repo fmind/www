@@ -112,7 +112,7 @@ async def index(request: Request) -> dict:
     return respond(await chat(user_input))
 ```
 
-This pattern allows me to have a `/links` command that returns immediately (0 latency, 0 cost), while a `/rewrite` command leverages Gemini 2.0 Flash for creative work.
+This pattern allows me to have a `/links` command that returns immediately (0 latency, 0 cost), while a `/rewrite` command leverages Gemini 3 Flash for creative work.
 
 ### 3. Asynchrony by Default
 
@@ -123,10 +123,10 @@ Using `async def` and `client.aio.models.generate_content` ensures the Cloud Run
 Simplicity was the primary constraint. I didn’t want to manage infrastructure for a personal tool.
 
 - **Runtime**: Cloud Run (fully managed, scales to zero, low-cost serving).
-- **Configuration**: Environment variables for model selection (`gemini-3-flash`) and project details.
+- **Configuration**: Environment variables for model selection (`gemini-3-flash-preview`) and project details.
 - **Security**: IAM-based authentication ensures only verified chat events reach the service.
 
-### Why Build This Locally?
+### Why Build This Yourself?
 
 You might ask, “Why not use a standard consumer AI chat?”
 

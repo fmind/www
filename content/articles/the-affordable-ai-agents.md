@@ -70,7 +70,7 @@ However, a strict FinOps analysis reveals that self-hosting is not a silver bull
 
 [Committed use contracts](https://docs.cloud.google.com/docs/cuds) can significantly reduce infrastructure bills by locking in lower compute rates. However, this demands high FinOps maturity: organizations must accurately forecast long-term AI usage and strictly commit the company to specific hardware families to avoid wasting budget on unused or obsolete GPUs.
 
-**The Hidden TCO:** Managing a GKE LLM gateway requires at least 1–2 ML Platform Engineers to debug GPU drivers, handle routing, and optimize execution. Factoring in their fully loaded salaries (\$20,000–\$40,000/month) completely erases the raw compute savings of hosting mid-tier models like Gemma.
+**The Hidden TCO:** Managing a GKE LLM gateway requires at least 1–2 ML Platform Engineers to debug GPU drivers, handle routing, and optimize execution. Factoring in their fully loaded salaries (\$20,000–\$40,000/month) erases much of the raw compute savings of hosting mid-tier models like Gemma.
 
 ### 4. The Local Execution Fallacy
 

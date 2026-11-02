@@ -68,7 +68,7 @@ class VertexAIMaaS(Benchmark, lc.HttpUser):
 
 ### 🗺️ GCP’s LLM Serving Options: A Review
 
-We evaluated four distinct approaches for serving LLMs on GCP, intentionally excluding the highly manual process of setting up from scratch on a [Compute Engine instance](https://cloud.google.com/products/compute?hl=en).
+We considered four distinct approaches for serving LLMs on GCP, intentionally excluding the highly manual process of setting up from scratch on a [Compute Engine instance](https://cloud.google.com/products/compute?hl=en).
 
 ### 1. Vertex AI MaaS (Model-as-a-Service) 🏞️
 
