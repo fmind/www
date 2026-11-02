@@ -10,13 +10,14 @@ Trivy may warn about third-party SBOM metadata or [fallback severity sources](ht
 
 ## Current advisory review
 
-**Owner:** Médéric Hurier. **Reviewed:** 2026-11-01. **Next review:** 2026-11-08, or immediately on a new fixable finding or relevant runtime change.
+**Owner:** Médéric Hurier. **Reviewed:** 2026-11-02. **Next review:** 2026-11-09, or immediately on a new fixable finding or relevant runtime change.
 
-The current candidate uses `python:3.14.10-slim@sha256:3cabfd7d7aaf394e6040e79fa1eec6ca1c52b74ed9188650472695d9a9326999`, and its runtime stage applies pending Debian security updates because they can lag the base image. The fixable vulnerability/secret gate and HTTP/MCP image smoke pass. The November 1 unfiltered scans of this candidate and the single serving/tagged revision image (`www-fmind-dev-00124-feh`, `sha256:dd1346635fef…`) each report 44 Trivy HIGH package/advisory instances across the eight CVEs below, no CRITICAL findings, and no fixes available for the installed Debian trixie packages. Upstream and Debian unstable fixes exist; their availability does not imply a compatible trixie update. Each new rollout still needs its own serving-digest evidence.
+The current candidate uses `python:3.14.10-slim@sha256:3cabfd7d7aaf394e6040e79fa1eec6ca1c52b74ed9188650472695d9a9326999`, and its runtime stage applies pending Debian security updates because they can lag the base image. The fixable vulnerability/secret gate and HTTP/MCP image smoke pass. The November 2 unfiltered scan of the single serving/tagged revision image (`www-fmind-dev-00126-tov`, `sha256:c1f74d82ed47…`, built from this candidate's commit) reports 45 Trivy HIGH package/advisory instances across the nine CVEs below, no CRITICAL findings, and no fixes available for the installed Debian trixie packages. Upstream and Debian unstable fixes exist; their availability does not imply a compatible trixie update. Each new rollout still needs its own serving-digest evidence.
 
 | Residual advisories                                                        | Application exposure assessment                                                                           |
 | -------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
 | Perl: CVE-2026-9538                                                        | No request path executes Perl or caller-controlled Perl data.                                             |
+| SQLite: CVE-2026-119373                                                    | The application never loads SQLite and creates no FTS5 tables; no request path reaches the FTS5 merge.    |
 | ncurses: CVE-2025-69720                                                    | No request path invokes infocmp or processes caller-supplied terminfo.                                    |
 | systemd: CVE-2026-16742                                                    | Granian runs directly; the service does not run systemd-homed.                                            |
 | libacl: CVE-2026-54369                                                     | No ACL manipulation of caller-owned trees; runtime assets are root-owned and the process is unprivileged. |

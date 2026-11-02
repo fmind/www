@@ -25,7 +25,7 @@ Python 3.14, Litestar, strict Jinja, Tailwind/DaisyUI, and Granian. No client fr
 - `agent_discovery.py`, `agent_skills/`: API catalog, representation negotiation, packaged visitor skill/index; separate from `.agents/` maintenance skills.
 - `connect.py`: public vCard; `/connect` is discoverable, `/scan` is a noindex QR utility.
 - `pages.py`, `rendering.py`, `highlighting.py`, `templates/`: metadata, sole Jinja/trusted-markup boundary, code highlighting, inherited page layouts and macros.
-- `config.py`, `middleware.py`, `markdown.py`, `log.py`, `telemetry.py`: startup configuration, HTTP policy, Markdown responses, privacy-safe analytics, logs, optional tracing.
+- `config.py`, `middleware.py`, `markdown.py`, `log.py`, `telemetry.py`: startup configuration, HTTP policy, Markdown link rewriting, privacy-safe analytics, logs, optional tracing.
 - `static.py`, `ranges.py`: inventory-bound static and conditional/range delivery.
 - `sites/`: hosting input/URL parsing, formulas, charts, formatting, sources, and views; `sites/mcp_context_cost/` owns the MCP calculator and its dated measurements. Import from the owning module.
 - `scripts/`: manual operations and asset generators, excluded from the runtime image. `infra/`: service, identities, registry, monitoring, analytics.
@@ -38,8 +38,7 @@ Python 3.14, Litestar, strict Jinja, Tailwind/DaisyUI, and Granian. No client fr
 - **Serve one content-addressed stylesheet**: Tailwind classes belong in `src/www/templates/**/*.html`. Authored build inputs go in `assets/`; final public artifacts go in `static/`. Pages link `/styles.css?v=<hash>` (Tailwind output plus syntax colors, served from memory); CSP allows no inline `<style>`.
 - **Publish only validated articles**: the validated article collection is the only publication source; drafts never enter production discovery. Current Markdown is the authoritative article body.
 - **Register tools explicitly**: register tools in `data.py:SITE_PAGES` and wire routes/templates/views explicitly. Formulas remain server-owned. MCP tools reject invalid values and unknown argument keys instead of silently applying defaults.
-- **Keep tags and media reviewed**: tags require a `tags.py` entry, matching CSS rule, and article use. Generate reviewed image derivatives and provenance lock after media changes; `check:images` never writes.
-- **Keep figures readable without panning**: keep `content.py:FIGURE_SIZES` aligned with article CSS. Captions require repeated alt text. Diagram labels must remain about 12px or larger at 1280px and height at most about 1300px.
+- **Keep articles reviewed**: tags, image derivatives, captions, and figure sizes follow the [article skill](.agents/skills/article/SKILL.md); keep `content.py:FIGURE_SIZES` aligned with article CSS, and `check:images` never writes.
 - **Build fonts only with the generator**: use `scripts/build_fonts.py`; keep required assets, CSS faces, and template preloads synchronized. Preserve subset-specific face names.
 - **Keep portrait masters private**: keep them outside `static/`; export with `build:portrait`.
 - **Keep analytics cookieless or consented**: first-party analytics remain cookieless and aggregate, with 180-day expiry and empty `country` until a trusted geography boundary exists. Google Analytics 4 (`google_analytics_id`) loads only on www.fmind.dev after an explicit Accept in `partials/consent.html`, with rejection as easy as acceptance and no advertising features or Google signals; never load it before consent, and keep `/privacy` and the CSP's Google hosts in step with it.
