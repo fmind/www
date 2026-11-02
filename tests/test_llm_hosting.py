@@ -926,8 +926,30 @@ def test_stale_confirmation_cannot_rebind_old_measurements_to_new_hardware() -> 
             "measured-concurrency": "8",
         }
     )
+    # The measurements stay for a fresh confirmation but never bind to the new hardware.
     assert not result.inputs.pilot_config
-    assert result.inputs.measured_first_token == 0
+    assert result.inputs.measured_first_token == 1
+    assert "confirm" in result.latency_title.lower()
+    assert any("check recorded latency again" in item for item in result.validation)
+
+
+def test_measurements_entered_with_a_concurrency_change_survive_until_confirmed() -> None:
+    query = {
+        "mode": "advanced",
+        "concurrency": "16",
+        "measured-concurrency": "16",
+        "measured-first": "1",
+        "measured-complete": "10",
+        "confirm-pilot": view().current_pilot_config,
+    }
+    pending = view(query)
+    assert (pending.inputs.measured_concurrency, pending.inputs.measured_first_token) == (16, 1)
+    assert pending.inputs.measured_completion == 10
+    assert not pending.inputs.pilot_config
+
+    confirmed = view({**query, "confirm-pilot": pending.current_pilot_config})
+    assert confirmed.inputs.pilot_config == pending.current_pilot_config
+    assert not confirmed.validation
 
 
 def test_invalid_pilot_reference_is_not_reflected_into_the_page() -> None:

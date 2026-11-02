@@ -658,7 +658,16 @@ def _bind_pilot_measurements(
         return replace(inputs, pilot_config="")
     if saved == current or confirmation == current:
         return replace(inputs, pilot_config=current)
-    if saved or confirmation:
+    if confirmation and not saved:
+        # The button carries the configuration rendered before this submit, so a runtime
+        # setting changed alongside newly typed measurements. Keep them unbound (they
+        # still prove nothing) so the visitor can confirm them without retyping.
+        validation.append(
+            "The serving configuration changed in the same update as the pilot measurements; "
+            "check recorded latency again to confirm them"
+        )
+        return replace(inputs, pilot_config="")
+    if saved:
         validation.append("The pilot measurements belong to a different serving configuration; they were cleared")
         return replace(
             inputs,
