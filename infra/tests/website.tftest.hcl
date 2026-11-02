@@ -17,8 +17,15 @@ mock_provider "google" {
     }
   }
 }
+mock_provider "google" {
+  alias = "quota"
+}
 mock_provider "google-beta" {}
 mock_provider "time" {}
+
+variables {
+  billing_account = "000000-AAAAAA-000000"
+}
 
 run "website_cost_and_recovery_contract" {
   command = plan
@@ -122,9 +129,10 @@ run "keyless_ci_identity_contract" {
       "assertion.repository_id == '1261133438'",
       "assertion.repository_owner_id == '3929438'",
       "assertion.ref == 'refs/heads/main'",
+      "assertion.runner_environment == 'github-hosted'",
       "(assertion.workflow_ref == 'fmind/www/.github/workflows/deploy.yml@refs/heads/main' || assertion.workflow_ref == 'fmind/www/.github/workflows/security.yml@refs/heads/main')",
     ])
-    error_message = "Federation must require main, numeric repository/owner IDs, and one of the two federating workflows."
+    error_message = "Federation must require main, numeric repository/owner IDs, GitHub-hosted runners, and one of the two federating workflows."
   }
 
   assert {
@@ -195,5 +203,22 @@ run "custom_domain_contract" {
       google_cloud_run_domain_mapping.www.spec[0].route_name == google_cloud_run_v2_service.web.name
     )
     error_message = "Both the apex and www hosts must route to the website service, which redirects the apex to www."
+  }
+}
+
+run "budget_alert_contract" {
+  command = plan
+
+  assert {
+    condition = (
+      google_billing_budget.website.billing_account == "000000-AAAAAA-000000" &&
+      google_billing_budget.website.budget_filter[0].calendar_period == "MONTH" &&
+      google_billing_budget.website.budget_filter[0].credit_types_treatment == "EXCLUDE_ALL_CREDITS" &&
+      google_billing_budget.website.amount[0].specified_amount[0].currency_code == "EUR" &&
+      google_billing_budget.website.amount[0].specified_amount[0].units == "10" &&
+      [for rule in google_billing_budget.website.threshold_rules : rule.threshold_percent] == [0.5, 0.9, 1.0, 1.0] &&
+      google_billing_budget.website.threshold_rules[3].spend_basis == "FORECASTED_SPEND"
+    )
+    error_message = "The project needs a monthly gross-cost budget with 50/90/100% actual and 100% forecast alerts."
   }
 }

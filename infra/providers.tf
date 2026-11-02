@@ -31,6 +31,15 @@ provider "google" {
   region  = var.region
 }
 
+# The Budget API rejects user credentials without a quota project.
+provider "google" {
+  alias                 = "quota"
+  project               = var.project_id
+  region                = var.region
+  billing_project       = var.project_id
+  user_project_override = true
+}
+
 provider "google-beta" {
   project = var.project_id
   region  = var.region

@@ -28,12 +28,6 @@ resource "google_project_service" "cloudbilling" {
   disable_on_destroy = false
 }
 
-resource "google_project_service" "cloudtrace" {
-  project            = var.project_id
-  service            = "cloudtrace.googleapis.com"
-  disable_on_destroy = false
-}
-
 resource "google_project_service" "iam" {
   project            = var.project_id
   service            = "iam.googleapis.com"
@@ -71,7 +65,6 @@ resource "time_sleep" "wait_for_apis" {
   depends_on = [
     google_project_service.artifactregistry,
     google_project_service.bigquery,
-    google_project_service.cloudtrace,
     google_project_service.iam,
     google_project_service.iamcredentials,
     google_project_service.logging,

@@ -192,10 +192,14 @@ run = "uv run --locked ruff check"
 description = "Scan Dockerfile and infrastructure for misconfigurations (trivy config)"
 # Unset the owner's global policy, then state the complete repository policy so
 # local and CI scans cannot diverge through inherited configuration.
+# A syntactically valid placeholder lets Trivy evaluate the budget resource; plans use the real account.
+env.TF_VAR_billing_account = "000000-AAAAAA-000000"
 run = "env -u TRIVY_CONFIG trivy config --exit-code=1 --severity LOW,MEDIUM,HIGH,CRITICAL --ignorefile .trivyignore --skip-dirs tmp --skip-dirs .venv --skip-dirs dist ."
 
 [tasks."check:scan:full"]
 description = "Scan the full checkout for vulnerabilities, secrets, and misconfigurations (weekly security workflow)"
+# A syntactically valid placeholder lets Trivy evaluate the budget resource; plans use the real account.
+env.TF_VAR_billing_account = "000000-AAAAAA-000000"
 run = "env -u TRIVY_CONFIG trivy fs --exit-code=1 --severity HIGH,CRITICAL --scanners vuln,secret,misconfig --skip-dirs tmp --skip-dirs .venv --skip-dirs dist ."
 
 [tasks."check:tofu"]

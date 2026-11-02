@@ -33,3 +33,52 @@ resource "google_bigquery_dataset" "billing" {
 
   depends_on = [google_project_service.bigquery]
 }
+
+data "google_project" "current" {}
+
+# The 5-instance cap bounds compute, not logging or BigQuery ingestion under
+# abusive traffic. Alert on gross cost so expiring credits cannot hide growth.
+# Budgets notify only; they never stop the service.
+resource "google_billing_budget" "website" {
+  provider        = google.quota
+  billing_account = var.billing_account
+  display_name    = "${var.project_id} gross (EUR${var.monthly_budget_eur})"
+
+  budget_filter {
+    projects               = ["projects/${data.google_project.current.number}"]
+    calendar_period        = "MONTH"
+    credit_types_treatment = "EXCLUDE_ALL_CREDITS"
+  }
+
+  amount {
+    specified_amount {
+      currency_code = "EUR"
+      units         = tostring(var.monthly_budget_eur)
+      nanos         = 0
+    }
+  }
+
+  threshold_rules {
+    threshold_percent = 0.5
+  }
+  threshold_rules {
+    threshold_percent = 0.9
+  }
+  threshold_rules {
+    threshold_percent = 1.0
+  }
+  threshold_rules {
+    threshold_percent = 1.0
+    spend_basis       = "FORECASTED_SPEND"
+  }
+
+  # Billing administrators keep the default email; the alert channel adds the owner.
+  all_updates_rule {
+    monitoring_notification_channels = [google_monitoring_notification_channel.email.id]
+  }
+
+  depends_on = [
+    google_project_service.billingbudgets,
+    google_project_service.cloudbilling,
+  ]
+}

@@ -12,6 +12,16 @@ variable "apex_domain" {
   default     = "fmind.dev"
 }
 
+variable "billing_account" {
+  description = "Cloud Billing account ID that pays for the project (supplied at plan/apply via TF_VAR_billing_account, never committed)"
+  type        = string
+
+  validation {
+    condition     = can(regex("^[A-Z0-9]{6}-[A-Z0-9]{6}-[A-Z0-9]{6}$", var.billing_account))
+    error_message = "billing_account must look like XXXXXX-XXXXXX-XXXXXX."
+  }
+}
+
 variable "github_repository" {
   description = "The GitHub repository in the format owner/repo"
   type        = string
@@ -34,6 +44,17 @@ variable "image_uri" {
   description = "The Docker image URI to deploy. Defaults to a hello-world image for the initial create; the live image is managed out-of-band by CI (see cloud_run.tf lifecycle.ignore_changes)."
   type        = string
   default     = "us-docker.pkg.dev/cloudrun/container/hello"
+}
+
+variable "monthly_budget_eur" {
+  description = "Monthly gross-cost alert for this project in EUR, about twice the highest month so far (EUR 4.27, October 2026)"
+  type        = number
+  default     = 10
+
+  validation {
+    condition     = var.monthly_budget_eur > 0 && floor(var.monthly_budget_eur) == var.monthly_budget_eur
+    error_message = "monthly_budget_eur must be a positive whole number."
+  }
 }
 
 variable "notification_email" {

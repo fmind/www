@@ -88,7 +88,7 @@ Use the [website-analytics skill](.agents/skills/website-analytics/SKILL.md) or 
 
 Tracing is opt-in through standard `OTEL_EXPORTER_OTLP_*` variables. Operational logs correlate trace/span IDs; analytics omit them.
 
-Use [finops-analytics](.agents/skills/finops-analytics/SKILL.md) for cloud cost, budget, and optimization reviews. OpenTofu manages the billing APIs and private EU dataset `billing_export`. Activate **Standard usage cost** in Cloud Console → Billing → Billing export, selecting project `www-fmind-dev` and this dataset; leave other export types disabled. The account-wide export needs project-filtered, on-demand queries with dry runs and a 100 MiB scan cap. Verify activation and table arrival before claiming costs are available; initial backfill can take five days.
+Use [finops-analytics](.agents/skills/finops-analytics/SKILL.md) for cloud cost, budget, and optimization reviews. OpenTofu manages the billing APIs, a monthly gross-cost project budget (`monthly_budget_eur`, alerts at 50/90/100% actual and 100% forecast; budgets alert but never cap spend), and the private EU dataset `billing_export`. Plans need `TF_VAR_billing_account`; never commit the account ID. Activate **Standard usage cost** in Cloud Console → Billing → Billing export, selecting project `www-fmind-dev` and this dataset; leave other export types disabled. The account-wide export needs project-filtered, on-demand queries with dry runs and a 100 MiB scan cap. Verify activation and table arrival before claiming costs are available; initial backfill can take five days.
 
 ## Agent access
 

@@ -83,12 +83,14 @@ resource "google_iam_workload_identity_pool_provider" "github_provider" {
 
   # Numeric IDs prevent a reused repository or owner name inheriting cloud
   # access; every binding below therefore inherits them. Only the two workflow
-  # files that federate may exchange a token at all.
+  # files that federate may exchange a token at all, and only on GitHub-hosted
+  # runners: a self-hosted runner added later must not inherit cloud access.
   attribute_condition = join(" && ", [
     "assertion.repository == '${var.github_repository}'",
     "assertion.repository_id == '${var.github_repository_numeric_id}'",
     "assertion.repository_owner_id == '${var.github_owner_numeric_id}'",
     "assertion.ref == 'refs/heads/main'",
+    "assertion.runner_environment == 'github-hosted'",
     "(${join(" || ", [for ref in values(local.github_workflow_refs) : "assertion.workflow_ref == '${ref}'"])})",
   ])
 
