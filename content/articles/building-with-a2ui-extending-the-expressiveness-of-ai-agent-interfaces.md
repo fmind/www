@@ -4,7 +4,6 @@ description = "Building AI-First apps with A2UI: from the Agent-View-Controller 
 date = "2026-01-28"
 tags = ["Agent", "LLM"]
 slug = "building-with-a2ui-extending-the-expressiveness-of-ai-agent-interfaces"
-syndicated = "https://medium.com/@fmind/building-with-a2ui-extending-the-expressiveness-of-ai-agent-interfaces-d380ceac2040"
 draft = false
 +++
 

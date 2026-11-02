@@ -4,7 +4,6 @@ description = "Build a cost-effective, private AI Agent solution on Google Cloud
 date = "2026-02-06"
 tags = ["Agent", "Cloud", "Project"]
 slug = "chaigent-an-affordable-alternative-to-gemini-enterprise-on-google-cloud"
-syndicated = "https://medium.com/@fmind/chaigent-an-affordable-alternative-to-gemini-enterprise-on-google-cloud-292c8de08478"
 draft = false
 +++
 

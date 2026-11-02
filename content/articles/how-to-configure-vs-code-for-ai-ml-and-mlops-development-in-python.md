@@ -4,7 +4,6 @@ description = "In this article, I will outline the steps for configuring VS Code
 date = "2023-11-23"
 tags = ["Python", "Guide"]
 slug = "how-to-configure-vs-code-for-ai-ml-and-mlops-development-in-python"
-syndicated = "https://medium.com/@fmind/how-to-configure-vs-code-for-ai-ml-and-mlops-development-in-python-%EF%B8%8F%EF%B8%8F-8582d8c6ea54"
 draft = false
 +++
 

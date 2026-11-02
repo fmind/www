@@ -4,7 +4,6 @@ description = "We are building the most advanced AI systems in history, yet the 
 date = "2026-03-14"
 tags = ["Agent", "LLM"]
 slug = "ai-agents-as-an-operating-system-rediscovering-the-linux-philosophy"
-syndicated = "https://medium.com/@fmind/ai-agents-as-an-operating-system-rediscovering-the-linux-philosophy-f0e76f29ebdb"
 draft = false
 +++
 

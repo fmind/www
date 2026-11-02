@@ -4,7 +4,6 @@ description = "The MLOps ecosystem is evolving into a sophisticated symphony, co
 date = "2024-01-30"
 tags = ["MLOps", "Python"]
 slug = "become-the-maestro-of-your-mlops-abstractions"
-syndicated = "https://medium.com/@fmind/become-the-maestro-of-your-mlops-abstractions-ca6e814f13f8"
 draft = false
 +++
 

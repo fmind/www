@@ -4,7 +4,6 @@ description = "Tame your Python chaos! Learn how pyenv simplifies managing Pytho
 date = "2024-10-08"
 tags = ["Python", "Guide"]
 slug = "taming-python-installation-with-pyenv-for-ai-ml-and-mlops-projects"
-syndicated = "https://medium.com/@fmind/taming-python-installation-with-pyenv-for-ai-ml-and-mlops-projects-00cb0bec09b4"
 draft = false
 +++
 

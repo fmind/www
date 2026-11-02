@@ -4,7 +4,6 @@ description = "Explored Gemini’s long context in a Kaggle competition. Key les
 date = "2025-02-07"
 tags = ["LLM", "Demo"]
 slug = "lessons-learned-from-the-gemini-long-context-kaggle-competition"
-syndicated = "https://medium.com/@fmind/lessons-learned-from-the-gemini-long-context-kaggle-competition-95381d38f303"
 draft = false
 +++
 

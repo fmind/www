@@ -4,7 +4,6 @@ description = "It is a classic tale of corporate life. A colleague of mine at De
 date = "2025-07-29"
 tags = ["LLM", "Demo"]
 slug = "slides-to-translate-when-it-says-no-build-a-0-04-solution-on-your-lunch-break"
-syndicated = "https://medium.com/@fmind/slides-to-translate-when-it-says-no-build-a-0-04-solution-on-your-lunch-break-3afa8bd9f6bb"
 draft = false
 +++
 

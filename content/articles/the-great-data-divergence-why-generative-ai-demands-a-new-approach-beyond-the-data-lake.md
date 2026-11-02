@@ -4,7 +4,6 @@ description = "Explore the shift from slow data pipelines to real-time API manag
 date = "2025-06-23"
 tags = ["LLM", "Cloud"]
 slug = "the-great-data-divergence-why-generative-ai-demands-a-new-approach-beyond-the-data-lake"
-syndicated = "https://medium.com/@fmind/the-great-data-divergence-why-generative-ai-demands-a-new-approach-beyond-the-data-lake-2c6de568f1d3"
 draft = false
 +++
 

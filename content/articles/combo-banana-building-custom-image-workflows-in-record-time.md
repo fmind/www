@@ -4,7 +4,6 @@ description = "Build custom AI image workflows fast with Combo-Banana. Empower d
 date = "2025-09-08"
 tags = ["LLM", "Project"]
 slug = "combo-banana-building-custom-image-workflows-in-record-time"
-syndicated = "https://medium.com/@fmind/combo-banana-building-custom-image-workflows-in-record-time-966f3ba71787"
 draft = false
 +++
 

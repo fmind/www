@@ -4,7 +4,6 @@ description = "For decades, the story of data platforms has been one of centrali
 date = "2025-09-27"
 tags = ["Agent", "Cloud"]
 slug = "da2a-the-future-of-data-platforms-is-agentic-distributed-and-collaborative"
-syndicated = "https://medium.com/@fmind/da2a-the-future-of-data-platforms-is-agentic-distributed-and-collaborative-741d5aa96fc4"
 draft = false
 +++
 

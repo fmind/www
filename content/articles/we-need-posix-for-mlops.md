@@ -4,7 +4,6 @@ description = "There is an ever-growing landscape of tools and solutions for MLO
 date = "2023-04-17"
 tags = ["MLOps"]
 slug = "we-need-posix-for-mlops"
-syndicated = "https://medium.com/@fmind/we-need-posix-for-mlops-e7bea8d8ec29"
 draft = false
 +++
 

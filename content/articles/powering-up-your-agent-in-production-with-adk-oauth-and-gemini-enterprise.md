@@ -4,7 +4,6 @@ description = "Power up your AI agent in production. Learn to deploy a secure â€
 date = "2025-11-01"
 tags = ["Agent", "Cloud"]
 slug = "powering-up-your-agent-in-production-with-adk-oauth-and-gemini-enterprise"
-syndicated = "https://medium.com/@fmind/powering-up-your-agent-in-production-with-adk-oauth-and-gemini-enterprise-a52b0716fcba"
 draft = false
 +++
 

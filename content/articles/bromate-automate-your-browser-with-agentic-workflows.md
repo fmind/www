@@ -4,7 +4,6 @@ description = "The AI landscape is constantly evolving, pushing the boundaries o
 date = "2024-09-14"
 tags = ["Agent", "Project"]
 slug = "bromate-automate-your-browser-with-agentic-workflows"
-syndicated = "https://medium.com/@fmind/bromate-automate-your-browser-with-agentic-workflows-a3917850192c"
 draft = false
 +++
 

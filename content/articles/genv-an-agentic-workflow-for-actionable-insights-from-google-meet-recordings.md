@@ -4,7 +4,6 @@ description = "Video meetings on platforms like Google Meet are essential for co
 date = "2025-04-11"
 tags = ["Agent", "Project"]
 slug = "genv-an-agentic-workflow-for-actionable-insights-from-google-meet-recordings"
-syndicated = "https://medium.com/@fmind/genv-an-agentic-workflow-for-actionable-insights-from-google-meet-recordings-746d465fb827"
 draft = false
 +++
 

@@ -4,7 +4,6 @@ description = "Agentic Cloud: Disrupting cloud giants with AI. Learn how intelli
 date = "2025-07-18"
 tags = ["Agent", "Cloud"]
 slug = "the-agentic-cloud-forging-the-next-era-of-infrastructure"
-syndicated = "https://medium.com/@fmind/the-agentic-cloud-forging-the-next-era-of-infrastructure-afc053658f24"
 draft = false
 +++
 

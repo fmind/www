@@ -4,7 +4,6 @@ description = "Navigate the challenges of scaling LLMs on GCP and get benchmark 
 date = "2025-07-17"
 tags = ["LLM", "Cloud"]
 slug = "scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp"
-syndicated = "https://medium.com/@fmind/scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp-e0211efcdbbf"
 draft = false
 +++
 

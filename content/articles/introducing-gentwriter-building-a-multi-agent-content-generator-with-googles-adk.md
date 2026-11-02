@@ -4,7 +4,6 @@ description = "In the fast-paced world of content creation, efficiency is key."
 date = "2025-04-28"
 tags = ["Agent", "Python", "Project"]
 slug = "introducing-gentwriter-building-a-multi-agent-content-generator-with-googles-adk"
-syndicated = "https://medium.com/@fmind/introducing-gentwriter-building-a-multi-agent-content-generator-with-googles-adk-a216558692de"
 draft = false
 +++
 

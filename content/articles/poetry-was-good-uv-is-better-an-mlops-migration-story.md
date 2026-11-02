@@ -4,7 +4,6 @@ description = "Poetry to Uv: A faster, simpler way to manage dependencies for ML
 date = "2025-01-27"
 tags = ["MLOps", "Python"]
 slug = "poetry-was-good-uv-is-better-an-mlops-migration-story"
-syndicated = "https://medium.com/@fmind/poetry-was-good-uv-is-better-an-mlops-migration-story-f52bf0c6c703"
 draft = false
 +++
 

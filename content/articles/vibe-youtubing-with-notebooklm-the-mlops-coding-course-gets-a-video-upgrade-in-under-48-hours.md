@@ -4,7 +4,6 @@ description = "I launched the first video series of my MLOps Coding Course, cove
 date = "2025-08-26"
 tags = ["LLM", "Demo"]
 slug = "vibe-youtubing-with-notebooklm-the-mlops-coding-course-gets-a-video-upgrade-in-under-48-hours"
-syndicated = "https://medium.com/@fmind/vibe-youtubing-with-notebooklm-the-mlops-coding-course-gets-a-video-upgrade-in-under-48-hours-d34efd306207"
 draft = false
 +++
 

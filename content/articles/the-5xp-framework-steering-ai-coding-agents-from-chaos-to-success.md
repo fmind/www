@@ -4,7 +4,6 @@ description = "AI Coding — or Spec-Driven Development — is a recent trend th
 date = "2026-02-28"
 tags = ["Coding", "Guide"]
 slug = "the-5xp-framework-steering-ai-coding-agents-from-chaos-to-success"
-syndicated = "https://medium.com/@fmind/the-5xp-framework-steering-ai-coding-agents-from-chaos-to-success-83fbdb318b2b"
 draft = false
 +++
 

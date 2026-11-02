@@ -4,7 +4,6 @@ description = "Build \u0026 deploy a RAG app in minutes! Use Vertex AI Studio \u
 date = "2025-05-11"
 tags = ["RAG", "Cloud", "Demo"]
 slug = "hackathon-speedrun-build-deploy-a-rag-app-in-minutes-with-vertex-ai-studio-vertex-ai-search"
-syndicated = "https://medium.com/@fmind/hackathon-speedrun-build-deploy-a-rag-app-in-minutes-with-vertex-ai-studio-vertex-ai-search-f1687be7e6b4"
 draft = false
 +++
 

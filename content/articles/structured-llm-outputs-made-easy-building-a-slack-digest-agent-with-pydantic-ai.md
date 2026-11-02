@@ -4,7 +4,6 @@ description = "As developers and AI practitioners, many of us belong to vibrant 
 date = "2025-04-15"
 tags = ["Agent", "LLM", "Python"]
 slug = "structured-llm-outputs-made-easy-building-a-slack-digest-agent-with-pydantic-ai"
-syndicated = "https://medium.com/@fmind/structured-llm-outputs-made-easy-building-a-slack-digest-agent-with-pydantic-ai-d61df262e63d"
 draft = false
 +++
 

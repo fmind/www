@@ -4,7 +4,6 @@ description = "MLOps pipelines are often too rigid. We propose using reusable ar
 date = "2025-01-30"
 tags = ["MLOps", "Python"]
 slug = "stop-building-rigid-ai-ml-pipelines-embrace-reusable-components-for-flexible-mlops"
-syndicated = "https://medium.com/@fmind/stop-building-rigid-ai-ml-pipelines-embrace-reusable-components-for-flexible-mlops-6e165d837110"
 draft = false
 +++
 

@@ -4,7 +4,6 @@ description = "I see many friends and acquaintances generating amazing applicati
 date = "2026-02-19"
 tags = ["Coding", "Demo"]
 slug = "how-i-revamped-my-portfolio-website-in-5-nights-using-ai-agents"
-syndicated = "https://medium.com/@fmind/how-i-revamped-my-portfolio-website-in-5-nights-using-ai-agents-961579130c8a"
 draft = false
 +++
 

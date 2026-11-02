@@ -4,7 +4,6 @@ description = "A coding agent is only as useful as the spec you give it. That se
 date = "2026-05-25"
 tags = ["Coding", "Guide"]
 slug = "agent-levers-a-plan-do-check-act-loop-that-makes-coding-agents-finish-what-they-start"
-syndicated = "https://medium.com/@fmind/agent-levers-a-plan-do-check-act-loop-that-makes-coding-agents-finish-what-they-start-8885e4618f38"
 draft = false
 +++
 

@@ -4,7 +4,6 @@ description = "Learn to deploy AI agents in the enterprise using ADK \u0026 Goog
 date = "2025-08-10"
 tags = ["Agent", "Cloud"]
 slug = "deploying-ai-agents-in-the-enterprise-using-adk-and-google-cloud"
-syndicated = "https://medium.com/@fmind/deploying-ai-agents-in-the-enterprise-using-adk-and-google-cloud-b49e7eda3b41"
 draft = false
 +++
 

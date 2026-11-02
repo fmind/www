@@ -457,8 +457,8 @@ def test_public_social_profiles_match_the_selected_channels(client: AppClient) -
     assert set(person["sameAs"]) == channels | set(SAME_AS_PROFILES)
     assert len(person["sameAs"]) == len(set(person["sameAs"]))
     assert not channels & set(SAME_AS_PROFILES)
-    # Deleted profiles must not claim the identity; retired ones that still serve history may stay.
-    dropped = ("dev.to/", "bsky.app/", "medium.com", "kaggle.com")
+    # Deleted or dropped profiles must not claim the identity.
+    dropped = ("dev.to/", "bsky.app/", "medium.com", "hackernoon.com", "kaggle.com")
     assert not [url for url in person["sameAs"] if any(name in url for name in dropped)]
     card = client.get("/connect.vcf").text.replace("\r\n ", "")
     head, _, tail = html.partition('<script type="application/ld+json">')

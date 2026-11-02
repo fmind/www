@@ -4,7 +4,6 @@ description = "The MLOps Coding Course is an open-source resource specifically d
 date = "2024-05-28"
 tags = ["MLOps", "Guide"]
 slug = "mlops-coding-course-bridging-the-gap-between-data-scientists-and-machine-learning-engineers"
-syndicated = "https://medium.com/@fmind/mlops-coding-course-bridging-the-gap-between-data-scientists-and-machine-learning-engineers-eeeba3c95403"
 draft = false
 +++
 

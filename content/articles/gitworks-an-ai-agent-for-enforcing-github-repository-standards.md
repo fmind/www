@@ -4,7 +4,6 @@ description = "A Python notebook agent that reviews GitHub repositories against 
 date = "2025-04-14"
 tags = ["Coding", "Project"]
 slug = "gitworks-an-ai-agent-for-enforcing-github-repository-standards"
-syndicated = "https://medium.com/@fmind/gitworks-an-ai-agent-for-enforcing-github-repository-standards-e0193f60981d"
 draft = false
 +++
 

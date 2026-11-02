@@ -4,7 +4,6 @@ description = "Pair-program with a coding agent for an afternoon and you start n
 date = "2026-05-14"
 tags = ["Coding", "Project"]
 slug = "agent-docs-answer-locally-before-the-web-a-shared-reference-for-every-coding-agent"
-syndicated = "https://medium.com/@fmind/agent-docs-answer-locally-before-the-web-a-shared-reference-for-every-coding-agent-c91e16a8c330"
 draft = false
 +++
 

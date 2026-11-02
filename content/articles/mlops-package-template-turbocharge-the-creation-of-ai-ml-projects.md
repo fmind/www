@@ -4,7 +4,6 @@ description = "The Cookiecutter MLOps Package offers a powerful code template to
 date = "2024-08-05"
 tags = ["MLOps", "Python", "Project"]
 slug = "mlops-package-template-turbocharge-the-creation-of-ai-ml-projects"
-syndicated = "https://medium.com/@fmind/mlops-package-template-turbocharge-the-creation-of-ai-ml-projects-587dd2ef43e7"
 draft = false
 +++
 

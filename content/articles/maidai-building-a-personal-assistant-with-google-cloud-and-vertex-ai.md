@@ -4,7 +4,6 @@ description = "Build a personal AI assistant using Google Cloud Run, Vertex AI, 
 date = "2026-02-05"
 tags = ["Agent", "Cloud", "Project"]
 slug = "maidai-building-a-personal-assistant-with-google-cloud-and-vertex-ai"
-syndicated = "https://medium.com/@fmind/maidai-building-a-personal-assistant-with-google-cloud-and-vertex-ai-a136aa73656b"
 draft = false
 +++
 

@@ -5,7 +5,6 @@ date = "2023-05-08"
 updated = "2026-10-31"
 tags = ["LLM", "MLOps", "Demo"]
 slug = "fixing-the-mlops-survey-on-llms-with-chatgpt-api-lessons-learned"
-syndicated = "https://medium.com/@fmind/fixing-the-mlops-survey-on-llms-with-chatgpt-api-lessons-learned-62d90e721331"
 draft = false
 +++
 

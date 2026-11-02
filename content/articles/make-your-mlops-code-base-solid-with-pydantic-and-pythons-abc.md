@@ -4,7 +4,6 @@ description = "MLOps projects are straightforward to initiate, but challenging t
 date = "2024-03-13"
 tags = ["MLOps", "Python"]
 slug = "make-your-mlops-code-base-solid-with-pydantic-and-pythons-abc"
-syndicated = "https://medium.com/@fmind/make-your-mlops-code-base-solid-with-pydantic-and-pythons-abc-aeedfe9c3e65"
 draft = false
 +++
 

@@ -4,7 +4,6 @@ description = "Team collaboration often lives and breathes within chat applicati
 date = "2025-04-08"
 tags = ["Agent", "Project"]
 slug = "bkfc-an-agentic-workflow-for-gathering-knowledge-from-google-chat"
-syndicated = "https://medium.com/@fmind/bkfc-an-agentic-workflow-for-gathering-knowledge-from-google-chat-b521cba535d7"
 draft = false
 +++
 

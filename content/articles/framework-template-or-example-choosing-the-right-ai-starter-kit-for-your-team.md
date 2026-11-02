@@ -4,7 +4,6 @@ description = "Building AI applications is incredibly exciting. But let’s be h
 date = "2025-03-29"
 tags = ["MLOps", "Guide"]
 slug = "framework-template-or-example-choosing-the-right-ai-starter-kit-for-your-team"
-syndicated = "https://medium.com/@fmind/framework-template-or-example-choosing-the-right-ai-starter-kit-for-your-team-c16fd2e9b6b8"
 draft = false
 +++
 

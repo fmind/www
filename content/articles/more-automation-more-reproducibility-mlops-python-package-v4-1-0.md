@@ -4,7 +4,6 @@ description = "The MLOps Python Package is your go-to solution for building robu
 date = "2025-03-06"
 tags = ["MLOps", "Python", "Project"]
 slug = "more-automation-more-reproducibility-mlops-python-package-v4-1-0"
-syndicated = "https://medium.com/@fmind/more-automation-more-reproducibility-mlops-python-package-v4-1-0-ba62ac1897f4"
 draft = false
 +++
 

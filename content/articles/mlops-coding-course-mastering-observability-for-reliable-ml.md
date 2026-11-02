@@ -4,7 +4,6 @@ description = "This article dives deep into the essential tools and practices fo
 date = "2024-07-28"
 tags = ["MLOps", "Guide"]
 slug = "mlops-coding-course-mastering-observability-for-reliable-ml"
-syndicated = "https://medium.com/@fmind/mlops-coding-course-mastering-observability-for-reliable-ml-f36eb7802865"
 draft = false
 +++
 

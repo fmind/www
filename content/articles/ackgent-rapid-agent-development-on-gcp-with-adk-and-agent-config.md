@@ -4,7 +4,6 @@ description = "Speed up AI agent development on GCP with Ackgent. Build, deploy,
 date = "2025-09-14"
 tags = ["Agent", "Cloud", "Project"]
 slug = "ackgent-rapid-agent-development-on-gcp-with-adk-and-agent-config"
-syndicated = "https://medium.com/@fmind/ackgent-rapid-agent-development-on-gcp-with-adk-and-agent-config-3712dd1cd9dd"
 draft = false
 +++
 

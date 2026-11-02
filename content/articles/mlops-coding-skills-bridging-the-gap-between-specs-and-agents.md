@@ -4,7 +4,6 @@ description = "Bridge the gap between engineering specs and AI agents using Agen
 date = "2026-01-28"
 tags = ["Coding", "MLOps", "Guide"]
 slug = "mlops-coding-skills-bridging-the-gap-between-specs-and-agents"
-syndicated = "https://medium.com/@fmind/mlops-coding-skills-bridging-the-gap-between-specs-and-agents-4c8170570eba"
 draft = false
 +++
 

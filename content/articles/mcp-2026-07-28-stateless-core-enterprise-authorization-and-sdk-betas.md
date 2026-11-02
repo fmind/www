@@ -4,7 +4,6 @@ description = "Running a remote Model Context Protocol (MCP) server behind multi
 date = "2026-07-08"
 tags = ["Agent", "Guide"]
 slug = "mcp-2026-07-28-stateless-core-enterprise-authorization-and-sdk-betas"
-syndicated = "https://medium.com/@fmind/mcp-2026-07-28-stateless-core-enterprise-authorization-and-sdk-betas-2646a980d594"
 draft = false
 +++
 

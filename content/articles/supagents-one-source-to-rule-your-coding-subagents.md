@@ -4,7 +4,6 @@ description = "Supagents compiles one Markdown persona per subagent into the nat
 date = "2026-05-10"
 tags = ["Coding", "Project"]
 slug = "supagents-one-source-to-rule-your-coding-subagents"
-syndicated = "https://medium.com/@fmind/supagents-one-source-to-rule-your-coding-subagents-1395502b7c5f"
 draft = false
 +++
 

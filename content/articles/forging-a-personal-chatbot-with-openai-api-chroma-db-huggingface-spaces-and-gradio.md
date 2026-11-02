@@ -4,7 +4,6 @@ description = "If you have checked the Internet in 2023, you’re likely familia
 date = "2023-10-24"
 tags = ["LLM", "RAG", "Demo"]
 slug = "forging-a-personal-chatbot-with-openai-api-chroma-db-huggingface-spaces-and-gradio"
-syndicated = "https://medium.com/@fmind/forging-a-personal-chatbot-with-openai-api-chroma-db-huggingface-spaces-and-gradio-bc50e7a93071"
 draft = false
 +++
 

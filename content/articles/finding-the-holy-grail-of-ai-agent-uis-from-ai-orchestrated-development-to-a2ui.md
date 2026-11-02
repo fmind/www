@@ -4,7 +4,6 @@ description = "Discover how A2UI solves the AI Agent UI bottleneck. A deep dive 
 date = "2026-01-24"
 tags = ["Agent", "LLM"]
 slug = "finding-the-holy-grail-of-ai-agent-uis-from-ai-orchestrated-development-to-a2ui"
-syndicated = "https://medium.com/@fmind/finding-the-holy-grail-of-ai-agent-uis-from-ai-orchestrated-development-to-a2ui-8fa8303d5381"
 draft = false
 +++
 

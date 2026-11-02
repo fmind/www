@@ -74,10 +74,9 @@ METADATA = Metadata(
 
 # Profiles that identify the same person for search and AI answers (schema.org sameAs) without joining the
 # visible header, footer or contact-card channels, which stay the curated `METADATA.socials` selection.
-# Add a profile only once it is live and shows this identity; ORCID joins once it lists works. Retired channels
-# that still serve his history (HackerNoon) stay; deleted or dropped ones (DEV, Bluesky, Medium, Kaggle) leave.
+# Add a profile only once it is live and shows this identity; ORCID joins once it lists works. Deleted or dropped
+# profiles (DEV, Bluesky, Medium, HackerNoon, Kaggle) leave: fmind.dev is the only home of the articles.
 SAME_AS_PROFILES = (
-    "https://hackernoon.com/u/fmind",
     "https://aaif.io/author/mederic-hurier/",
     "https://news.ycombinator.com/user?id=fmind-dev",
     "https://huggingface.co/fmind",

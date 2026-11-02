@@ -4,7 +4,6 @@ description = "Engineering organizations are waking up to a sobering financial r
 date = "2026-06-25"
 tags = ["Agent", "LLM"]
 slug = "the-affordable-ai-agents"
-syndicated = "https://medium.com/@fmind/the-affordable-ai-agents-26d1d071d00b"
 draft = false
 +++
 

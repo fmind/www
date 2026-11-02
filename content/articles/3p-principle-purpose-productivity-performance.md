@@ -4,7 +4,6 @@ description = "A fundamental trade-off that affects the design of programming la
 date = "2019-08-15"
 tags = ["Guide"]
 slug = "3p-principle-purpose-productivity-performance"
-syndicated = "https://medium.com/@fmind/3p-principle-purpose-productivity-performance-630bed7623fc"
 draft = false
 +++
 

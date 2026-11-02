@@ -4,7 +4,6 @@ description = "CAG vs RAG for Generative AI: Compare latency, cost \u0026 comple
 date = "2025-04-23"
 tags = ["LLM", "RAG"]
 slug = "cag-vs-rag-choosing-the-right-strategy-for-your-ai-application"
-syndicated = "https://medium.com/@fmind/cag-vs-rag-choosing-the-right-strategy-for-your-ai-application-68dcae85d028"
 draft = false
 +++
 

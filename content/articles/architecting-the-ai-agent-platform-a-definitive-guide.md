@@ -4,7 +4,6 @@ description = "Build a production-grade AI Agent Platform. A guide to the 7-laye
 date = "2025-12-10"
 tags = ["Agent", "Cloud", "Guide"]
 slug = "architecting-the-ai-agent-platform-a-definitive-guide"
-syndicated = "https://medium.com/@fmind/architecting-the-ai-agent-platform-a-definitive-guide-405750a3de44"
 draft = false
 +++
 

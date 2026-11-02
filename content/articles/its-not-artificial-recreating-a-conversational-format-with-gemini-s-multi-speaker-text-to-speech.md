@@ -4,7 +4,6 @@ description = "A guide to creating conversational AI with Gemini. Generate custo
 date = "2025-07-20"
 tags = ["LLM", "Demo"]
 slug = "its-not-artificial-recreating-a-conversational-format-with-gemini-s-multi-speaker-text-to-speech"
-syndicated = "https://medium.com/@fmind/its-not-artificial-recreating-a-conversational-format-with-gemini-s-multi-speaker-text-to-speech-5e836feadab7"
 draft = false
 +++
 

@@ -4,7 +4,6 @@ description = "Most coding-agent tasks have one right answer hiding behind a wor
 date = "2026-06-01"
 tags = ["Coding", "Project"]
 slug = "agent-evolutions-stop-guessing-the-design-evolve-it"
-syndicated = "https://medium.com/@fmind/agent-evolutions-stop-guessing-the-design-evolve-it-5074a41b99d3"
 draft = false
 +++
 
