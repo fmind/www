@@ -121,7 +121,7 @@ def article_metadata(article: Article, structured_data: str) -> PageMetadata:
         article=article,
         title=f"{article.title} | Fmind",
         description=article.description,
-        canonical=article.canonical_url(),
+        canonical=article.url,
         image_url=article.image_url,
         image_alt=article.image_alt,
         kind="article",

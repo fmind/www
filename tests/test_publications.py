@@ -25,8 +25,6 @@ def article(
     day: int,
     *tags: str,
     updated: datetime | None = None,
-    canonical: str = "",
-    syndicated: str = "",
 ) -> Article:
     return Article(
         slug=slug,
@@ -39,19 +37,17 @@ def article(
         markdown="Body with [root](/articles/).",
         html='<p><a href="/articles/">Body</a><img src="/static/x.webp"></p>',
         reading_minutes=3,
-        canonical=canonical,
-        syndicated=syndicated,
     )
 
 
-def test_sitemap_excludes_external_canonicals_and_uses_updated_date() -> None:
+def test_sitemap_lists_every_article_with_its_updated_date() -> None:
     native = article("native", 2, updated=datetime(2026, 2, 3, tzinfo=UTC))
-    syndicated = article("syndicated", 1, canonical="https://medium.example/syndicated")
-    body = render_sitemap((native, syndicated))
+    other = article("other", 1)
+    body = render_sitemap((native, other))
 
     assert native.url in body
+    assert other.url in body
     assert "<lastmod>2026-02-03</lastmod>" in body
-    assert syndicated.url not in body
     ElementTree.fromstring(body)  # noqa: S314 - parses trusted local serializer output
 
 
@@ -79,8 +75,6 @@ def test_llms_and_article_markdown_surfaces_preserve_citation_metadata() -> None
         1,
         "Agent",
         updated=datetime(2026, 2, 1, tzinfo=UTC),
-        canonical="https://example.net/original",
-        syndicated="https://medium.example/example",
     )
     index = render_llms_txt((item,))
     full = render_llms_full(index, (item,), article_markdown_index((item,)))
@@ -97,7 +91,7 @@ def test_llms_and_article_markdown_surfaces_preserve_citation_metadata() -> None
     assert markdown in full
     assert "- Author: [Médéric Hurier (Fmind)](https://www.fmind.dev/)" in markdown
     assert "- Updated: 2026-02-01" in markdown
-    assert "- Canonical: https://example.net/original" in markdown
+    assert f"- URL: {item.url}" in markdown
     assert f"]({METADATA.site_url}/articles/)" in markdown
     assert article_markdown_index((item,))[item.slug] == markdown
 

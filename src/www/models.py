@@ -133,8 +133,6 @@ class Article:
     description: str = ""
     title: str = ""
     slug: str = ""
-    canonical: Annotated[str, Field(exclude_if=lambda value: value == "")] = ""
-    syndicated: Annotated[str, Field(exclude_if=lambda value: value == "")] = ""
     html: str = ""
     sections: tuple[ArticleSection, ...] = ()
     url: str = ""
@@ -152,8 +150,6 @@ class Article:
             title=self.title,
             description=self.description,
             slug=self.slug,
-            canonical=self.canonical,
-            syndicated=self.syndicated,
             url=self.url,
             image_url=self.image_url,
             image_alt=self.image_alt,
@@ -174,9 +170,6 @@ class Article:
 
         return METADATA.site_url + self.markdown_path()
 
-    def canonical_url(self) -> str:
-        return self.canonical or self.url
-
     def modified_date(self) -> datetime:
         return self.updated or self.date
 
@@ -188,8 +181,6 @@ class ArticleSummary:
     title: str
     description: str
     slug: str
-    canonical: Annotated[str, Field(exclude_if=lambda value: value == "")] = ""
-    syndicated: Annotated[str, Field(exclude_if=lambda value: value == "")] = ""
     url: str
     image_url: str
     image_alt: str

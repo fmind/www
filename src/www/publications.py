@@ -115,8 +115,6 @@ def render_sitemap(articles: Sequence[Article]) -> str:
         url = _sub(root, "url")
         _sub(url, "loc", location)
     for article in articles:
-        if article.canonical:
-            continue
         url = _sub(root, "url")
         _sub(url, "loc", article.url)
         _sub(url, "lastmod", article.modified_date().date().isoformat())
@@ -254,10 +252,6 @@ def render_article_markdown(article: Article) -> str:
             f"- URL: {article.url}",
         )
     )
-    if article.canonical:
-        lines.append(f"- Canonical: {article.canonical}")
-    if article.syndicated:
-        lines.append(f"- Also published at: {article.syndicated}")
     lines.extend(("", absolute_markdown_links(article.markdown)))
     return "\n".join(lines) + "\n"
 

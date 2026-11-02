@@ -223,7 +223,7 @@ def create_mcp_server(
     article_results = {
         article.slug: ArticleResult(
             article=article.summary(),
-            canonical_url=article.canonical_url(),
+            canonical_url=article.url,
             markdown=markdown_by_slug[article.slug],
             sections=article_sections(article),
         )

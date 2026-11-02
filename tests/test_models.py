@@ -14,8 +14,6 @@ def article() -> Article:
         title="Example",
         description="Description",
         slug="example",
-        canonical="https://medium.example/example",
-        syndicated="https://medium.example/example",
         url=f"{METADATA.site_url}/articles/example/",
         image_url=f"{METADATA.site_url}/static/img/articles/example/cover.webp",
         card_image_url=f"{METADATA.site_url}/static/img/articles/example/cover-800.webp",
@@ -36,7 +34,6 @@ def test_article_summary_and_paths_preserve_discovery_contract() -> None:
     assert item.card_image_path() == "/static/img/articles/example/cover-800.webp"
     assert item.markdown_path() == "/articles/example.md"
     assert item.markdown_url() == f"{METADATA.site_url}/articles/example.md"
-    assert item.canonical_url() == item.canonical
     assert item.modified_date() == item.updated
 
 
@@ -49,7 +46,6 @@ def test_article_fallbacks_and_foreign_images() -> None:
     )
 
     assert item.modified_date() == item.date
-    assert item.canonical_url() == item.url
     assert item.card_image_path() == item.card_image_url
 
 
@@ -117,5 +113,5 @@ def test_template_helpers_keep_safe_markdown_filters_and_json_ld() -> None:
     assert article_filter_url("Agent", "model serving") == "/articles/?tag=Agent&q=model+serving"
 
     structured = get_structured_data(article())
-    assert '"mainEntityOfPage":"https://medium.example/example"' in structured
+    assert f'"mainEntityOfPage":"{METADATA.site_url}/articles/example/"' in structured
     assert '"dateModified":"2026-02-02"' in structured

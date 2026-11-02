@@ -520,10 +520,6 @@ def test_profile_json_matches_the_go_omission_and_time_contract(
             "tags": list(article.tags),
             "reading_minutes": article.reading_minutes,
         }
-        if article.canonical:
-            expected["canonical"] = article.canonical
-        if article.syndicated:
-            expected["syndicated"] = article.syndicated
         assert encoded == expected
 
     assert payload["site_pages"] == [

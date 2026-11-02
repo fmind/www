@@ -5,14 +5,12 @@ from __future__ import annotations
 import html
 import os
 import re
-import string
 import tomllib
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from pathlib import Path, PurePosixPath
 from types import MappingProxyType
-from urllib.parse import urlsplit
 
 from markdown_it import MarkdownIt
 from markdown_it.renderer import RendererHTML
@@ -53,17 +51,13 @@ _TEMPLATE_IDS = frozenset(
     }
 )
 _HTML_TAG = re.compile(r"<[^>]*>")
-_INVALID_URL_ESCAPE = re.compile(r"%(?![0-9A-Fa-f]{2})")
 _THREE_BACKSLASH_BREAK = re.compile(r"(?<!\\)\\{3}(?=\r?\n|$)")
-_URL_HOST_ASCII = frozenset(string.ascii_letters + string.digits + "-._~!$&'()*+,;=:%")
 _KNOWN_FRONTMATTER = {
     "title",
     "description",
     "date",
     "updated",
     "slug",
-    "canonical",
-    "syndicated",
     "tags",
     "draft",
 }
@@ -172,37 +166,6 @@ def _string(metadata: Mapping[str, object], field: str, *, required: bool = Fals
     if required and not value:
         raise ArticleError("title, description, date, and slug are required")
     return value
-
-
-def _validate_url(name: str, field: str, value: str) -> None:
-    if not value:
-        return
-    invalid = (
-        any(character.isspace() or ord(character) < 0x20 or ord(character) == 0x7F for character in value)
-        or _INVALID_URL_ESCAPE.search(value) is not None
-    )
-    try:
-        parsed = urlsplit(value)
-        hostname = parsed.hostname
-        # Accessing port performs urllib's numeric and range validation.
-        _port = parsed.port
-    except ValueError:
-        invalid = True
-        parsed = urlsplit("")
-        hostname = None
-    if hostname is not None and any(
-        ord(character) < 128 and character not in _URL_HOST_ASCII for character in hostname
-    ):
-        invalid = True
-    if invalid or parsed.scheme != "https" or not parsed.netloc or not hostname:
-        raise ArticleError(f'parse "{name}": {field} must be an absolute HTTPS URL')
-    site_hostname = urlsplit(METADATA.site_url).hostname
-    if (
-        field == "canonical"
-        and site_hostname is not None
-        and hostname.casefold().rstrip(".") == site_hostname.casefold().rstrip(".")
-    ):
-        raise ArticleError(f'parse "{name}": canonical must not point at this site (omit it instead)')
 
 
 def _parse_date(name: str, field: str, value: str) -> datetime:
@@ -545,8 +508,6 @@ def parse_article(name: str, data: bytes, static_dir: Path = Path("static")) -> 
         description = _string(metadata, "description", required=True)
         date_value = _string(metadata, "date", required=True)
         slug = _string(metadata, "slug", required=True)
-        canonical = _string(metadata, "canonical")
-        syndicated = _string(metadata, "syndicated")
         if not _SLUG.fullmatch(slug):
             raise ArticleError(f'parse "{name}": invalid slug {slug!r}')
         # Search snippets, feeds, and link previews reuse the description verbatim.
@@ -554,8 +515,6 @@ def parse_article(name: str, data: bytes, static_dir: Path = Path("static")) -> 
             raise ArticleError(f'parse "{name}": description must end with a complete sentence, not an ellipsis')
         if Path(name).stem != slug:
             raise ArticleError(f'parse "{name}": filename must match slug {slug!r}')
-        _validate_url(name, "canonical", canonical)
-        _validate_url(name, "syndicated", syndicated)
 
         raw_tags = metadata.get("tags", [])
         if not isinstance(raw_tags, list) or any(not isinstance(tag, str) for tag in raw_tags):
@@ -593,8 +552,6 @@ def parse_article(name: str, data: bytes, static_dir: Path = Path("static")) -> 
             updated=updated,
             tags=tags,
             slug=slug,
-            canonical=canonical,
-            syndicated=syndicated,
             draft=raw_draft,
             url=article_url,
             image_url=METADATA.site_url + image_path,

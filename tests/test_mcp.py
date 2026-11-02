@@ -61,7 +61,7 @@ async def test_server_lists_ten_read_only_tools_and_two_prompts(mcp_server: MCPS
         assert article_tool.output_schema is not None
         article_schema = article_tool.output_schema["$defs"]["ArticleSummary"]
         assert set(article_schema["required"]) == required_article_fields
-        assert set(article_schema["properties"]) - required_article_fields == {"canonical", "syndicated"}
+        assert set(article_schema["properties"]) == required_article_fields
     search_tool = next(tool for tool in tools if tool.name == "search_articles")
     assert search_tool.input_schema["properties"]["query"]["description"] == (
         "words to search for across article titles, tags, descriptions, and full text (at most 128 characters)"

@@ -569,7 +569,7 @@ def get_structured_data(article: Article | None = None) -> str:
             }
         )
     else:
-        canonical = article.canonical_url()
+        canonical = article.url
         graph.append(
             {
                 "@id": f"{canonical}#article",

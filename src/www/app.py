@@ -480,7 +480,7 @@ def create_app(
                     cors=True,
                     extra_headers={
                         "vary": "Accept",
-                        "link": f'<{article.canonical_url()}>; rel="canonical"',
+                        "link": f'<{article.url}>; rel="canonical"',
                     },
                 )
             related_sites = tuple(page for page in SITE_PAGES if page.relates_to(article.slug))
@@ -510,7 +510,7 @@ def create_app(
                 "text/markdown; charset=utf-8",
                 _HOUR_CACHE,
                 cors=True,
-                extra_headers={"link": f'<{article.canonical_url()}>; rel="canonical"'},
+                extra_headers={"link": f'<{article.url}>; rel="canonical"'},
             )
         query = _raw_query(request)
         target = f"/articles/{quote(slug, safe='')}/"

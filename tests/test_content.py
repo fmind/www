@@ -90,8 +90,9 @@ def test_parse_article_rejects_unknown_frontmatter_with_source_line(tmp_path: Pa
     [
         ({"slug": '"Bad Slug"'}, "invalid slug"),
         ({"tags": '["Data Science"]'}, "unknown tag"),
-        ({"canonical": '"http://example.com/x"'}, "absolute HTTPS"),
-        ({"canonical": '"https://www.fmind.dev/articles/example/"'}, "must not point at this site"),
+        # Articles are always published here first; cross-post metadata is not accepted.
+        ({"canonical": '"https://example.com/x"'}, "unknown key 'canonical'"),
+        ({"syndicated": '"https://example.com/x"'}, "unknown key 'syndicated'"),
         ({"updated": '"2026-07-01"'}, "must not precede"),
         ({"description": '"A teaser cut off by an import…"'}, "complete sentence"),
         ({"description": '"A teaser cut off by an import..."'}, "complete sentence"),
@@ -107,55 +108,6 @@ def test_parse_article_rejects_invalid_metadata(tmp_path: Path, metadata: dict[s
 def test_parse_article_rejects_noncanonical_dates(tmp_path: Path, value: str) -> None:
     with pytest.raises(ArticleError, match="expected YYYY-MM-DD"):
         parse_article("content/articles/example.md", source(date=value), assets(tmp_path))
-
-
-@pytest.mark.parametrize(
-    "value",
-    [
-        '"https://example.com/a b"',
-        '"https://exa mple.com/path"',
-        '"https://example.com:invalid/path"',
-        '"https://example.com:70000/path"',
-        '"https://[127.0.0.1]/path"',
-        '"https://example.com\\\\path"',
-        '"https://example.com/%invalid"',
-        '"https://example.com/\\npath"',
-    ],
-)
-def test_parse_article_rejects_malformed_absolute_urls(tmp_path: Path, value: str) -> None:
-    with pytest.raises(ArticleError, match="absolute HTTPS"):
-        parse_article(
-            "content/articles/example.md",
-            source(syndicated=value),
-            assets(tmp_path),
-        )
-
-
-@pytest.mark.parametrize(
-    "value",
-    [
-        '"https://www.fmind.dev/articles/example/"',
-        '"https://WWW.FMIND.DEV/articles/example/"',
-        '"https://www.fmind.dev./articles/example/"',
-    ],
-)
-def test_parse_article_rejects_every_self_canonical_host(tmp_path: Path, value: str) -> None:
-    with pytest.raises(ArticleError, match="must not point at this site"):
-        parse_article(
-            "content/articles/example.md",
-            source(canonical=value),
-            assets(tmp_path),
-        )
-
-
-def test_parse_article_allows_a_host_that_only_prefixes_the_site_name(tmp_path: Path) -> None:
-    item = parse_article(
-        "content/articles/example.md",
-        source(canonical='"https://www.fmind.dev.example/original"'),
-        assets(tmp_path),
-    )
-
-    assert item.canonical == "https://www.fmind.dev.example/original"
 
 
 @pytest.mark.parametrize("name", ["cover.jpeg", "cover.JPG", "cover.gif"])
