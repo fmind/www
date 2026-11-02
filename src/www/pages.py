@@ -89,7 +89,7 @@ def scan_metadata() -> PageMetadata:
 _ARTICLE_INDEX_DESCRIPTION = (
     "Articles on AI agents, MLOps, cloud architecture, security, and pragmatic engineering systems."
 )
-_ARTICLE_INDEX_STRUCTURED_DATA = get_page_structured_data(
+ARTICLE_INDEX_STRUCTURED_DATA = get_page_structured_data(
     "CollectionPage", f"{METADATA.site_url}/articles/", "Articles | Médéric Hurier (Fmind)", _ARTICLE_INDEX_DESCRIPTION
 )
 
@@ -110,7 +110,7 @@ def article_index_metadata(view: ArticleIndexView) -> PageMetadata:
         image_url=f"{METADATA.site_url}/static/img/og-image.jpg",
         image_alt="Fmind.dev — AI, Agents, Security",
         kind="website",
-        structured_data=_ARTICLE_INDEX_STRUCTURED_DATA,
+        structured_data=ARTICLE_INDEX_STRUCTURED_DATA,
         preload_image=preload,
         no_index=view.searching(),
     )

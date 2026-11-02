@@ -45,6 +45,7 @@ from www.mcp import create_mcp_http_app, create_mcp_server, render_mcp_server_ca
 from www.middleware import Logger, SiteMiddleware, etag_matches, trace_fields
 from www.models import PageMetadata
 from www.pages import (
+    ARTICLE_INDEX_STRUCTURED_DATA,
     agents_metadata,
     article_index_metadata,
     article_metadata,
@@ -83,7 +84,8 @@ _NO_CACHE = "no-cache"
 # Static ETags and byte ranges describe the on-disk representation. Compressing
 # it afterward invalidates both contracts. The page stylesheet is served from
 # memory at /styles.css with a weak ETag, so it still benefits from Brotli.
-_COMPRESSION_EXCLUDE = r"^/(?:(?:mcp|static)(?:/|$)|(?:(?:logo|banner)\.png|portrait\.jpg)$)"
+# The MCP mount streams its own responses; its server card is a weak-ETag snapshot.
+_COMPRESSION_EXCLUDE = r"^/(?:mcp(?:$|/(?!server-card$))|static/|(?:(?:logo|banner)\.png|portrait\.jpg)$)"
 _READ_METHODS = (HttpMethod.GET, HttpMethod.HEAD)
 
 # A plain alias, not a `type` statement: Litestar 2.25+ must resolve handler
@@ -239,6 +241,7 @@ def create_app(
         biography_html=biography_html,
         structured_data=(
             home_structured_data,
+            ARTICLE_INDEX_STRUCTURED_DATA,
             site_index_page.structured_data,
             connect_page.structured_data,
             scan_page.structured_data,

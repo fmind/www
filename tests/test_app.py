@@ -1301,3 +1301,29 @@ def test_mcp_serves_no_subscription_streams(client: AppClient) -> None:
     listen = post("subscriptions/listen", {"notifications": {"toolsListChanged": True}})
     assert listen.headers["content-type"].startswith("application/json")
     assert listen.json()["error"]["code"] == -32601
+
+
+@pytest.mark.parametrize("path", ["/mcp/server-card", "/.well-known/mcp/server-card.json"])
+def test_mcp_server_cards_compress_like_other_snapshots(client: AppClient, path: str) -> None:
+    response = client.get(path, headers={"accept-encoding": "gzip"})
+
+    assert response.status_code == 200
+    assert response.headers["content-encoding"] == "gzip"
+    assert response.headers["etag"].startswith('W/"')
+
+
+def test_warm_pages_reuse_startup_validated_json_ld(client: AppClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    # Every indexable page graph is validated once at startup; requests must not parse it again.
+    decoded: list[str] = []
+    real_loads = json.loads
+
+    def spy(value: str | bytes, *args: Any, **kwargs: Any) -> Any:
+        decoded.append(value if isinstance(value, str) else value.decode())
+        return real_loads(value, *args, **kwargs)
+
+    monkeypatch.setattr(json, "loads", spy)
+    article = visible_articles(load_articles().all)[0]
+    for path in ("/", "/articles/", f"/articles/{article.slug}/", "/sites/", "/connect", "/agents", "/privacy"):
+        assert client.get(path).status_code == 200, path
+
+    assert not [value for value in decoded if '"@context"' in value]
