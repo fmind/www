@@ -4,9 +4,32 @@ All notable changes to this project are documented in this file.
 
 ## [2.7.1] - 2026-11-02
 
+### 🚀 Features
+
+- _(infra)_ Add a project budget and require GitHub-hosted runners
+
 ### 🐛 Bug Fixes
 
 - _(content)_ Drop Medium syndication links and the HackerNoon profile
+- _(mcp)_ Reject out-of-range search limits and over-long queries
+- _(sites)_ Keep pilot measurements entered with a configuration change
+
+### ⚡ Performance
+
+- Validate the article index JSON-LD once and compress the MCP server card
+
+### ♻️ Refactor
+
+- _(content)_ Retire canonical and syndicated article frontmatter
+
+### 📚 Documentation
+
+- _(articles)_ Correct facts in eleven articles
+- Renew the advisory review, trim duplicated instructions, and pin git-cliff
+
+### ⚙️ Build & CI
+
+- Clear cancelled candidates and keep weekly scans independent
 
 ## [2.7.0] - 2026-11-01
 
