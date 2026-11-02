@@ -130,6 +130,7 @@ jobs:
           IMAGE_REF: ${{ env.AR_HOSTNAME }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}@${{ steps.build.outputs.digest }}
         run: mise run test:image "$IMAGE_REF"
       - name: Deploy candidate revision without traffic
+        id: deploy
         uses: google-github-actions/deploy-cloudrun@2028e2d7d30a78c6910e0632e48dd561b064884d # v3.0.1
         with:
           gcloud_version: 591.0.0 # pinned Cloud SDK; the action defaults to latest
@@ -146,6 +147,7 @@ jobs:
           IMAGE_REF: ${{ env.AR_HOSTNAME }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}@${{ steps.build.outputs.digest }}
         run: mise run test:candidate
       - name: Promote the verified revision
+        id: promote
         # Route traffic to the exact verified revision, not to "latest", so a
         # revision created after verification can never receive it. Drop the
         # candidate tag too: a tagged revision stays publicly reachable, so a
@@ -160,10 +162,11 @@ jobs:
         env:
           IMAGE_REF: ${{ env.AR_HOSTNAME }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}@${{ steps.build.outputs.digest }}
         run: mise run test:deployed
-      - name: Remove the candidate tag after a failed verification
+      - name: Remove the candidate tag after a failed or cancelled rollout
         # A tagged revision stays publicly reachable on its run.app tag URL; do not
-        # leave one that failed verification served there until the next deployment.
-        if: failure() && steps.candidate.outcome == 'failure'
+        # leave an unpromoted one served there until the next deployment. Promotion
+        # already drops the tag, and nothing is tagged before the deploy step runs.
+        if: (failure() || cancelled()) && steps.deploy.outcome != 'skipped' && steps.promote.outcome != 'success'
         run: >-
           gcloud run services update-traffic "$SERVICE_NAME"
           --project "$PROJECT_ID" --billing-project "$PROJECT_ID" --region "$REGION"

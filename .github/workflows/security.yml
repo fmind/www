@@ -31,9 +31,13 @@ jobs:
       - name: Scan complete Git history
         run: mise run check:leaks:full
       - name: Scan full checkout
+        # Each scan is independent: a failed one (such as a Trivy database mirror
+        # outage) must not skip the others.
+        if: ${{ !cancelled() }}
         # Delegate to the task so the weekly scan reproduces locally and cannot drift.
         run: mise run check:scan:full
       - name: Audit locked dependencies
+        if: ${{ !cancelled() }}
         # The full-checkout scan reads only uv.lock; this also audits the font script
         # lock and the Lighthouse/Playwright npm locks on quiet weeks without pushes.
         run: mise run check:vuln
