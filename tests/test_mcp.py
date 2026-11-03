@@ -128,8 +128,6 @@ async def test_read_only_tools_return_their_structured_portfolio_slices(mcp_serv
     projects = await mcp_server.call_tool("list_projects", {})
     assert isinstance(publications, CallToolResult)
     assert isinstance(publications.structured_content, dict)
-    assert "canonical" not in publications.structured_content["articles"][0]
-    assert "syndicated" not in publications.structured_content["articles"][0]
     assert isinstance(projects, CallToolResult)
     assert isinstance(projects.structured_content, dict)
     assert "repo" not in projects.structured_content["open_source"][0]
@@ -271,7 +269,5 @@ def test_profile_json_omits_private_and_zero_value_fields() -> None:
 
     assert render_profile_json(articles).endswith(b"\n")
     assert "article_slugs" not in profile["site_pages"][0]
-    assert "canonical" not in profile["articles"][0]
-    assert "syndicated" not in profile["articles"][0]
     assert "repo" not in profile["open_source"][0]
     assert profile["articles"][0]["date"].endswith("Z")

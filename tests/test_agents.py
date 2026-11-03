@@ -185,7 +185,7 @@ def test_mcp_search_read_cite_workflow_over_http(client: TestClient[Any]) -> Non
     assert body["markdown"] == raw.text
     assert metadata["date"]
     assert metadata["updated"]
-    assert body["canonical_url"] == metadata.get("canonical", metadata["url"])
+    assert body["canonical_url"] == metadata["url"]
     assert body["sections"]
     html = client.get(urlsplit(metadata["url"]).path).text
     for section in body["sections"]:

@@ -245,7 +245,6 @@ def scan_deployed_revisions(
 
 
 def main(
-    arguments: Sequence[str] | None = None,
     *,
     target: DeploymentTarget | None = None,
     runner: Runner | None = None,
@@ -253,7 +252,6 @@ def main(
     environment: Mapping[str, str] = os.environ,
 ) -> int:
     """Resolve targets and run deployed image security qualification."""
-    del arguments
     try:
         deployment_target = target or resolve_target(environment)
     except DeploymentUsageError as error:

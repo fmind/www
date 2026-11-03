@@ -211,7 +211,7 @@ class PageMetadata:
     article: Article | None = None
     title: str = ""
     description: str = ""
-    canonical: Annotated[str, Field(exclude_if=lambda value: value == "")] = ""
+    canonical: str = ""
     image_url: str = ""
     image_alt: str = ""
     kind: str = ""

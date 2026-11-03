@@ -32,7 +32,6 @@ exclude_all_private = true
 exclude_path = [
   "Dockerfile",
   "\\.git/",
-  "\\.ini$",
   "\\.json$",
   "\\.toml$",
   "\\.yml$",

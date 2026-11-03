@@ -342,7 +342,7 @@ def main(argv: list[str] | None = None) -> int:
         message = (
             str(exc)
             if isinstance(exc, AnalyticsError)
-            else "Invalid analytics schema, date, or timezone; no report produced."
+            else f"Invalid analytics schema, date, or timezone ({type(exc).__name__}); no report produced."
         )
         sys.stderr.write(f"website-analytics: {message}\n")
         return 1

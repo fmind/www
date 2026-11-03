@@ -8,7 +8,7 @@ metadata:
 
 # Website Analytics
 
-Report from the cookieless BigQuery export, which counts every visitor, using [scripts/website_analytics.py](../../../scripts/website_analytics.py), from the repository root.
+Report from the cookieless BigQuery export, which records HTML GET responses from every visitor regardless of consent, using [scripts/website_analytics.py](../../../scripts/website_analytics.py), from the repository root.
 
 ```bash
 uv run --locked python -m scripts.website_analytics

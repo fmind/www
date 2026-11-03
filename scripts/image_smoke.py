@@ -43,7 +43,7 @@ OTEL_ENDPOINT_NAMES = {
     "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT",
 }
 HOMEPAGE_TITLE_PREFIX = "<title>Médéric Hurier (Fmind)".encode()
-_IMAGE_ID = re.compile(r"sha256:[0-9a-f]{64}\Z")
+# Image IDs and repository digests share the same SHA-256 form.
 _IMAGE_DIGEST = re.compile(r"sha256:[0-9a-f]{64}\Z")
 _IMAGE_REFERENCE_CHARS = re.compile(r"[A-Za-z0-9_./:@-]+\Z")
 _CONTAINER_ID = re.compile(r"[0-9a-f]{12,64}\Z")
@@ -214,7 +214,7 @@ def resolve_image_id(runner: Runner, target: str | Path | None = None) -> str:
 def parse_image_id(output: str) -> str:
     """Require one immutable Docker image ID."""
     image_id = output.strip()
-    if not _IMAGE_ID.fullmatch(image_id):
+    if not _IMAGE_DIGEST.fullmatch(image_id):
         raise SmokeError("docker image inspect did not return a valid image ID")
     return image_id
 
