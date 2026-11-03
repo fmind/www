@@ -170,7 +170,7 @@ Text with ~~old~~ syntax and a footnote.[^1]
     assert item.reading_minutes >= 1
 
 
-def test_heading_ids_preserve_the_published_goldmark_byte_contract(tmp_path: Path) -> None:
+def test_heading_ids_preserve_the_published_anchor_contract(tmp_path: Path) -> None:
     body = """## Lockfile Decay & The Vulnerability Clock
 
 ## Moving\N{NO-BREAK SPACE}Forward
@@ -193,7 +193,7 @@ def test_heading_ids_preserve_the_published_goldmark_byte_contract(tmp_path: Pat
     assert 'id="duplicate-1"' in item.html
 
 
-def test_image_alt_keeps_escapes_and_goldmark_typography(tmp_path: Path) -> None:
+def test_image_alt_keeps_escapes_and_article_typography(tmp_path: Path) -> None:
     item = parse_article(
         "content/articles/example.md",
         source(r"![Throughput from Lin Sun's C\# file\_name](/static/img/articles/example/figure.png)"),
@@ -201,22 +201,6 @@ def test_image_alt_keeps_escapes_and_goldmark_typography(tmp_path: Path) -> None
     )
 
     assert 'alt="Throughput from Lin Sun\N{RIGHT SINGLE QUOTATION MARK}s C# file_name"' in item.html
-
-
-def test_goldmark_three_backslashes_keep_two_without_a_hard_break(tmp_path: Path) -> None:
-    body = """> gh api --method POST -H \"Accept: application/vnd.github+json\" \\\\\\
-> \N{NO-BREAK SPACE}\"/repos/$owner/$repo/rulesets\" --input=\".github/rulesets/main.json\" \\|\\| echo \"Failed to install rul
-"""
-    item = parse_article("content/articles/example.md", source(body), assets(tmp_path))
-
-    assert "<br>" not in item.html
-    assert (
-        "gh api \N{EN DASH}method POST -H \N{LEFT DOUBLE QUOTATION MARK}Accept: "
-        "application/vnd.github+json\N{RIGHT DOUBLE QUOTATION MARK} \\\\\n"
-        "\N{NO-BREAK SPACE}\N{LEFT DOUBLE QUOTATION MARK}/repos/$owner/$repo/rulesets"
-        "\N{RIGHT DOUBLE QUOTATION MARK} \N{EN DASH}input=&quot;.github/rulesets/main.json&quot; || "
-        "echo \N{LEFT DOUBLE QUOTATION MARK}Failed to install rul"
-    ) in item.html
 
 
 def test_images_get_figures_dimensions_responsive_ladder_and_loading(tmp_path: Path) -> None:
@@ -443,7 +427,7 @@ def test_real_archive_loads_and_has_no_public_drafts() -> None:
     assert not any(item.draft for item in collection.all)
     assert sum(item.html.count("<figure>") for item in archived) == 306
     assert sum(item.html.count("<figcaption>") for item in archived) == 256
-    assert sum(item.html.count('<pre class="chroma" tabindex="0">') for item in archived) == 157
+    assert sum(item.html.count('<pre class="chroma" tabindex="0">') for item in archived) == 158
     assert not any(re.search(r"<a\b[^>]*>\s*</a>", item.html) for item in collection.all)
 
     slugs = {item.slug for item in collection.all}

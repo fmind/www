@@ -48,7 +48,6 @@ _TEMPLATE_IDS = frozenset(
     }
 )
 _HTML_TAG = re.compile(r"<[^>]*>")
-_THREE_BACKSLASH_BREAK = re.compile(r"(?<!\\)\\{3}(?=\r?\n|$)")
 _KNOWN_FRONTMATTER = {
     "title",
     "description",
@@ -101,8 +100,8 @@ def _image_rule(
 ) -> str:
     token = tokens[index]
     # Reparse the raw label because markdown-it-py omits escaped punctuation
-    # tokens from image children. This also applies the article typographer, as
-    # Goldmark does when it derives accessible text from an image label.
+    # tokens from image children. This also applies the article typographer, so
+    # the accessible text matches the label as readers see it in prose.
     inline = _ARTICLE_MARKDOWN.parseInline(token.content, env)[0]
     token.attrSet("alt", renderer.renderInlineAsText(inline.children, options, env))
     return renderer.renderToken(tokens, index, options, env)
@@ -198,7 +197,7 @@ def _card_cover(static_dir: Path, slug: str) -> str:
 
 
 def _heading_slug(text: str) -> str:
-    # Preserve Goldmark's published anchor contract byte-for-byte: only ASCII
+    # Heading ids are published URLs that external links depend on: only ASCII
     # letters and digits survive, while each ASCII space, hyphen, or underscore
     # becomes one hyphen. Non-ASCII bytes (including NBSP and accents) vanish.
     # Collapsing separators or transliterating Unicode would break old links.
@@ -294,47 +293,9 @@ def _normalize_headings(tokens: Sequence[Token]) -> tuple[ArticleSection, ...]:
     return tuple(sections)
 
 
-def _normalize_goldmark_three_backslashes(tokens: Sequence[Token]) -> None:
-    """Preserve the one archive construct Goldmark parses unlike CommonMark."""
-    for token in tokens:
-        if token.type != "inline" or not token.children:
-            continue
-        break_count = len(_THREE_BACKSLASH_BREAK.findall(token.content))
-        if break_count == 0:
-            continue
-
-        for index, child in enumerate(token.children):
-            if child.type == "text":
-                # Goldmark substitutes dashes without markdown-it's word-boundary
-                # restriction and leaves attribute-style quotes straight.
-                child.content = child.content.replace("---", "\N{EM DASH}").replace("--", "\N{EN DASH}")
-                child.content = re.sub(
-                    r"=\N{LEFT DOUBLE QUOTATION MARK}([^\N{RIGHT DOUBLE QUOTATION MARK}\n]*)"
-                    r"\N{RIGHT DOUBLE QUOTATION MARK}",
-                    "=\N{QUOTATION MARK}\\1\N{QUOTATION MARK}",
-                    child.content,
-                )
-                child.content = re.sub(
-                    r"(^|\s)\"(?=\S)",
-                    "\\1\N{LEFT DOUBLE QUOTATION MARK}",
-                    child.content,
-                )
-            elif (
-                child.type == "hardbreak"
-                and break_count > 0
-                and index > 0
-                and token.children[index - 1].type == "text"
-                and token.children[index - 1].content.endswith("\\")
-            ):
-                token.children[index - 1].content += "\\"
-                child.type = "softbreak"
-                break_count -= 1
-
-
 def _render_markdown(markdown: str) -> tuple[str, tuple[ArticleSection, ...], tuple[tuple[str, str], ...]]:
     environment: EnvType = {}
     tokens = _ARTICLE_MARKDOWN.parse(markdown, environment)
-    _normalize_goldmark_three_backslashes(tokens)
     sections = _normalize_headings(tokens)
     rendered = _ARTICLE_MARKDOWN.renderer.render(tokens, _ARTICLE_MARKDOWN.options, environment)
     # Read sources and alt text from the Markdown tokens after `_image_rule` set the
@@ -346,7 +307,7 @@ def _render_markdown(markdown: str) -> tuple[str, tuple[ArticleSection, ...], tu
         for child in token.children or ()
         if child.type == "image"
     )
-    # Goldmark uses the semantic HTML5 element for GFM strikethrough.
+    # Strikethrough uses the semantic HTML5 element that published pages carry.
     return rendered.replace("<s>", "<del>").replace("</s>", "</del>"), sections, media
 
 

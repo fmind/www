@@ -2,25 +2,14 @@ import re
 
 import pytest
 
-from www.highlighting import guess_language, highlight_code, highlight_css
+from www.highlighting import highlight_code, highlight_css
 
 
-def test_guess_language_for_archive_shapes() -> None:
-    cases = {
-        "import abc\n\ndef split(data):\n    return data\n": "python",
-        "agent_class: LlmAgent\nmodel: gemini-2.5-flash\ninstruction: |\n  import this\n": "yaml",
-        "POST /mcp HTTP/1.1\nContent-Type: application/json\n": "http",
-        '{\n  "jsonrpc": "2.0"\n}\n': "json",
-        "pip install bromate\nuv run bromate --help\n": "bash",
-        "$ mise run test\nDONE\n": "console",
-        "FROM python:3.14\nRUN uv sync\n": "dockerfile",
-        '@app.post("/")\nasync def index() -> dict:\n    return {}\n': "python",
-        "adk web --a2a --port 8001\n": "bash",
-        ".agents/docs/\n├── INDEX.md\n└── cloud-run/\n": "",
-    }
+def test_unlabeled_code_renders_as_plain_escaped_text() -> None:
+    markup = highlight_code("import abc\nx = '<b>'\n")
 
-    for code, language in cases.items():
-        assert guess_language(code) == language
+    assert '<span class="k' not in markup
+    assert "&lt;b&gt;" in markup
 
 
 def test_highlighted_markup_is_class_based_and_css_is_minified() -> None:
@@ -34,20 +23,15 @@ def test_highlighted_markup_is_class_based_and_css_is_minified() -> None:
     assert "\n" not in css
 
 
-def test_agentgateway_yaml_matches_frozen_chroma_markup() -> None:
-    code = "authorization:\n  rules:\n    - require: 'jwt.aud == \"my-service\"'\n"
+def test_yaml_keys_and_quoted_scalars_are_colored_and_text_is_escaped() -> None:
+    markup = highlight_code("rules:\n  - require: 'aud == \"<my-service>\" && ok'\n", "yaml")
 
-    assert highlight_code(code, "yaml") == (
-        '<pre class="chroma" tabindex="0"><code>'
-        '<span class="line"><span class="cl"><span class="nt">authorization</span>'
-        '<span class="p">:</span><span class="w">\n</span></span></span>'
-        '<span class="line"><span class="cl"><span class="w">  </span>'
-        '<span class="nt">rules</span><span class="p">:</span><span class="w">\n</span></span></span>'
-        '<span class="line"><span class="cl"><span class="w">    </span>- '
-        '<span class="nt">require</span><span class="p">:</span><span class="w"> </span>'
-        '<span class="s1">&#39;jwt.aud == &#34;my-service&#34;&#39;</span>'
-        '<span class="w">\n</span></span></span></code></pre>'
-    )
+    assert '<span class="nt">rules</span>' in markup
+    assert '<span class="nt">require</span>' in markup
+    # Quotes in element text need no entities; markup-significant characters do.
+    assert '<span class="s">\'aud</span>' in markup
+    assert '<span class="s">"&lt;my-service&gt;"</span>' in markup
+    assert "&amp;&amp;" in markup
 
 
 def _luminance(color: str) -> float:

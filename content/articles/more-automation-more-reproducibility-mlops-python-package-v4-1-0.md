@@ -122,8 +122,10 @@ Here is an example of [a Gemini Code Assist review on GitHub](https://github.com
 
 > Consider adding error handling to the `gh api` command to ensure that deployment failures are detected and reported. This can be done by checking the exit code of the command and logging an error message if it is non-zero.
 
-> gh api --method POST -H "Accept: application/vnd.github+json" \\\
->  "/repos/\$owner/\$repo/rulesets" --input=".github/rulesets/main.json" \|\| echo "Failed to install rul
+> ```bash
+> gh api --method POST -H "Accept: application/vnd.github+json" \
+>   "/repos/$owner/$repo/rulesets" --input=".github/rulesets/main.json" || echo "Failed to install rul
+> ```
 
 #### 3. Automatic GitHub Rulesets Push
 
