@@ -19,8 +19,7 @@ from PIL import Image, UnidentifiedImageError
 
 from www.data import METADATA
 from www.highlighting import highlight_code
-from www.images import SOURCE_EXTENSIONS
-from www.models import DERIVATIVE_WIDTHS, Article, ArticleSection, ArticleSummary
+from www.models import DERIVATIVE_WIDTHS, SOURCE_EXTENSIONS, Article, ArticleSection, ArticleSummary
 from www.tags import is_tag, tag_names
 
 WORDS_PER_MINUTE = 200
@@ -178,7 +177,7 @@ def _parse_date(name: str, field: str, value: str) -> datetime:
 
 def _cover(static_dir: Path, slug: str) -> str:
     directory = static_dir / "img" / "articles" / slug
-    # Accept every source format that `images.py` derives from, case-insensitively
+    # Accept every source format that `build_images.py` derives from, case-insensitively
     # as it does, and pick by its fixed preference order when several exist.
     covers = sorted(path for path in directory.glob("cover.*") if path.stem == "cover" and path.is_file())
     for extension in SOURCE_EXTENSIONS:

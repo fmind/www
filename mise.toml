@@ -82,7 +82,7 @@ run = 'mkdir -p tmp && docker buildx build --platform linux/amd64 --target runne
 
 [tasks."build:images"]
 description = "Generate changed or missing article image derivatives"
-run = "uv run --locked python -m www.images"
+run = "uv run --locked python -m scripts.build_images"
 
 [tasks."build:portrait"]
 description = "Export a public portrait without personal metadata from a private JPEG master"
@@ -156,7 +156,7 @@ run = "env -u TRIVY_CONFIG trivy image --platform linux/amd64 --exit-code=1 --se
 
 [tasks."check:images"]
 description = "Validate article image derivatives without changing files"
-run = "uv run --locked python -m www.images --check"
+run = "uv run --locked python -m scripts.build_images --check"
 
 [tasks."check:leaks"]
 alias = "cs"

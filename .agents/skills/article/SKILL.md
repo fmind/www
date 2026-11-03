@@ -10,7 +10,7 @@ metadata:
 
 The current `content/articles/<slug>.md` is the authoritative body. Revise or retire published content only within owner authorization; publication is separate from local editing.
 
-New articles arrive from the private `fmind/pub` workspace: `pub publish` exports the body, cover, and figures, runs `build:images`, then opens and merges the pull request. pub's pre-push hook and `pub publish` check that export against `../www`; after changing `content.py` or `images.py`, run `SITE_REPOSITORY=$PWD mise -C ~/fmind/pub run check:site-contract` (read-only) or update pub in step.
+New articles arrive from the private `fmind/pub` workspace: `pub publish` exports the body, cover, and figures, runs `build:images`, then opens and merges the pull request. pub's pre-push hook and `pub publish` check that export against `../www`; after changing `content.py` or `scripts/build_images.py`, run `SITE_REPOSITORY=$PWD mise -C ~/fmind/pub run check:site-contract` (read-only) or update pub in step.
 
 1. Validate strict TOML frontmatter: matching filename/slug, required fields, typed dates and `draft`. Unknown keys, including the retired `canonical` and `syndicated`, fail validation: every article is published here first.
 1. Use unique tags from `src/www/tags.py`. A new tag needs a matching CSS rule and at least one article use. Fence code with a language.

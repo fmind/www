@@ -20,7 +20,7 @@ Python 3.14, Litestar, strict Jinja, Tailwind/DaisyUI, and Granian. No client fr
 - `data.py`, `models.py`, `tags.py`: immutable portfolio, shared types, site registry, closed tag vocabulary.
 - `app.py`: startup snapshot, routes, middleware composition, MCP lifespan, teardown.
 - `mcp.py`: read-only tools, finite HTTP transport, capabilities, and discovery. Every non-POST method returns 405 with `Allow: POST`, so GET/HEAD never open idle notification streams; retain SDK host/origin validation.
-- `content.py`, `images.py`, `assets.py`, `search.py`: validated publications, media derivatives, static inventory/hashes, BM25 article search.
+- `content.py`, `assets.py`, `search.py`: validated publications, static inventory/hashes, BM25 article search.
 - `publications.py`: canonical profile JSON/schema, feeds, sitemap, LLM text; shared by HTTP and MCP.
 - `agent_discovery.py`, `agent_skills/`: API catalog, representation negotiation, packaged visitor skill/index; separate from `.agents/` maintenance skills.
 - `connect.py`: public vCard; `/connect` is discoverable, `/scan` is a noindex QR utility.
@@ -28,7 +28,7 @@ Python 3.14, Litestar, strict Jinja, Tailwind/DaisyUI, and Granian. No client fr
 - `config.py`, `middleware.py`, `markdown.py`, `log.py`, `telemetry.py`: startup configuration, HTTP policy, Markdown link rewriting, privacy-safe analytics, logs, optional tracing.
 - `static.py`, `ranges.py`: inventory-bound static and conditional/range delivery.
 - `sites/`: hosting input/URL parsing, formulas, charts, formatting, sources, and views; `sites/mcp_context_cost/` owns the MCP calculator and its dated measurements. Import from the owning module.
-- `scripts/`: manual operations and asset generators, excluded from the runtime image. `infra/`: service, identities, registry, monitoring, analytics.
+- `scripts/`: manual operations and asset generators (`build_images.py` owns article-image derivatives), excluded from the runtime image. `infra/`: service, identities, registry, monitoring, analytics.
 
 ## Invariants
 

@@ -1,7 +1,5 @@
 """Generate deterministic WebP derivatives for article images."""
 
-from __future__ import annotations
-
 import json
 import os
 import stat
@@ -19,7 +17,7 @@ import PIL
 from PIL import ExifTags, Image, features
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, field_validator
 
-from www.models import CARD_COVER_WIDTH, DERIVATIVE_WIDTHS
+from www.models import CARD_COVER_WIDTH, DERIVATIVE_WIDTHS, SOURCE_EXTENSIONS
 
 ARTICLE_IMAGE_ROOT = Path("static/img/articles")
 DERIVATIVE_LOCK_PATH = Path("assets/image-derivatives.json")
@@ -31,8 +29,6 @@ _COVER_STEM = "cover"
 # the library versions below bind the native codec implementation as well.
 _ENCODER_ALGORITHM = "pillow-webp-bicubic-no-upscale-v1"
 _LOCK_VERSION = 2
-# Lowercase source extensions, in the order `content.py` prefers an article cover.
-SOURCE_EXTENSIONS = (".webp", ".gif", ".png", ".jpg", ".jpeg")
 # Article Markdown deliberately promotes local MP4 image syntax into video markup.
 _ARTICLE_MEDIA_EXTENSIONS = (*SOURCE_EXTENSIONS, ".mp4")
 
@@ -392,7 +388,7 @@ def _locked_target_names(lock: _DerivativeLock) -> set[str]:
     return {target for entry in lock.sources.values() for target in entry.targets}
 
 
-def _scan_image_tree(root: Path, *, allowed_root_file: Path | None = None) -> list[Path]:
+def _scan_image_tree(root: Path) -> list[Path]:
     _reject_symlink_components(root, label="image root")
     try:
         root_metadata = root.lstat()
@@ -414,10 +410,6 @@ def _scan_image_tree(root: Path, *, allowed_root_file: Path | None = None) -> li
         if stat.S_ISLNK(directory_metadata.st_mode):
             raise ImageDerivativeError(f'article image path "{directory}" must be a real directory')
         if stat.S_ISREG(directory_metadata.st_mode):
-            # Tests and library callers may colocate the explicitly supplied lock
-            # with the image root; every other root entry would escape membership.
-            if allowed_root_file is not None and directory.absolute() == allowed_root_file.absolute():
-                continue
             raise ImageDerivativeError(f'unexpected article image root entry "{directory}"')
         if not stat.S_ISDIR(directory_metadata.st_mode):
             raise ImageDerivativeError(f'article image path "{directory}" must be a real directory')
@@ -449,12 +441,10 @@ def _reject_shared_stems(sources: Iterable[Path]) -> None:
             )
 
 
-def _discover_sources(root: Path, lock: _DerivativeLock, lock_path: Path) -> list[Path]:
+def _discover_sources(root: Path, lock: _DerivativeLock) -> list[Path]:
     known_targets = _locked_target_names(lock)
     return [
-        path
-        for path in _scan_image_tree(root, allowed_root_file=lock_path)
-        if _relative_name(root, path) not in known_targets and is_source(path)
+        path for path in _scan_image_tree(root) if _relative_name(root, path) not in known_targets and is_source(path)
     ]
 
 
@@ -559,7 +549,7 @@ def check_derivatives(root: Path, *, lock_path: Path, output: TextIO | None = No
             "run `mise run build:images`"
         )
 
-    files = _scan_image_tree(root, allowed_root_file=lock_path)
+    files = _scan_image_tree(root)
     if unexpected_media := next(
         (path for path in files if path.suffix.lower() not in _ARTICLE_MEDIA_EXTENSIONS),
         None,
@@ -644,7 +634,7 @@ def generate_derivatives(
     A missing lock starts an empty one unless `require_lock` is set, as it is for the repository.
     """
     old_lock = _load_lock(lock_path, required=require_lock)
-    sources = _discover_sources(root, old_lock, lock_path)
+    sources = _discover_sources(root, old_lock)
     if not sources:
         raise ImageDerivativeError(f'list article images: no source images under "{root}"')
     _reject_shared_stems(sources)

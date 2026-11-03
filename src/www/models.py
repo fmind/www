@@ -8,6 +8,8 @@ from pydantic import Field
 
 CARD_COVER_WIDTH = 800
 DERIVATIVE_WIDTHS = (CARD_COVER_WIDTH, 1280)
+# Lowercase article-image source extensions, in the order an article cover is preferred.
+SOURCE_EXTENSIONS = (".webp", ".gif", ".png", ".jpg", ".jpeg")
 _ZERO_DATE = datetime.min.replace(tzinfo=UTC)
 
 

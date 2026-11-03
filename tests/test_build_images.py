@@ -1,7 +1,5 @@
 """Contract tests for deterministic article-image derivatives."""
 
-from __future__ import annotations
-
 import json
 import os
 import stat
@@ -14,7 +12,7 @@ import PIL
 import pytest
 from PIL import ExifTags, Image, features
 
-from www import images
+import scripts.build_images as images
 
 
 def _lock(root: Path) -> Path:
@@ -111,7 +109,7 @@ def test_generation_validates_existing_target_before_skipping(tmp_path: Path) ->
 
 def test_generation_replaces_newer_derivative_after_source_bytes_change(tmp_path: Path) -> None:
     source = tmp_path / "example" / "cover.png"
-    lock_path = tmp_path / "image-derivatives.json"
+    lock_path = _lock(tmp_path)
     _write_image(source, 1000, 10)
     images.generate_derivatives(tmp_path, output=StringIO(), lock_path=lock_path)
     target = source.with_name("cover-800.webp")
@@ -132,7 +130,7 @@ def test_generation_replaces_newer_derivative_after_source_bytes_change(tmp_path
 
 def test_locked_generation_repairs_only_a_tampered_target(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     source = tmp_path / "example" / "cover.png"
-    lock_path = tmp_path / "image-derivatives.json"
+    lock_path = _lock(tmp_path)
     _write_image(source, 2048, 16)
     images.generate_derivatives(tmp_path, output=StringIO(), lock_path=lock_path)
     first_target = source.with_name("cover-800.webp")
@@ -162,7 +160,7 @@ def test_locked_generation_repairs_only_a_tampered_target(tmp_path: Path, monkey
 
 def test_locked_generation_reconciles_ladder_changes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     source = tmp_path / "example" / "cover.png"
-    lock_path = tmp_path / "image-derivatives.json"
+    lock_path = _lock(tmp_path)
     _write_image(source, 2048, 16)
     images.generate_derivatives(tmp_path, output=StringIO(), lock_path=lock_path)
     original = {width: source.with_name(f"cover-{width}.webp").read_bytes() for width in images.DERIVATIVE_WIDTHS}
@@ -186,7 +184,7 @@ def test_locked_generation_reconciles_ladder_changes(tmp_path: Path, monkeypatch
 
 def test_locked_generation_reconciles_encoder_recipe_changes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     source = tmp_path / "example" / "figure.png"
-    lock_path = tmp_path / "image-derivatives.json"
+    lock_path = _lock(tmp_path)
     _write_image(source, 1000, 10)
     images.generate_derivatives(tmp_path, output=StringIO(), lock_path=lock_path)
     target = source.with_name("figure-800.webp")
@@ -209,7 +207,7 @@ def test_locked_generation_reconciles_encoder_recipe_changes(tmp_path: Path, mon
 
 def test_lock_binds_the_complete_encoder_recipe(tmp_path: Path) -> None:
     source = tmp_path / "example" / "figure.png"
-    lock_path = tmp_path / "image-derivatives.json"
+    lock_path = _lock(tmp_path)
     _write_image(source, 1000, 10)
 
     images.generate_derivatives(tmp_path, output=StringIO(), lock_path=lock_path)
@@ -225,7 +223,7 @@ def test_lock_binds_the_complete_encoder_recipe(tmp_path: Path) -> None:
 
 def test_check_rejects_missing_non_card_target_without_repairing(tmp_path: Path) -> None:
     source = tmp_path / "example" / "figure.png"
-    lock_path = tmp_path / "image-derivatives.json"
+    lock_path = _lock(tmp_path)
     _write_image(source, 2048, 16)
     images.generate_derivatives(tmp_path, output=StringIO(), lock_path=lock_path)
     target = source.with_name("figure-1280.webp")
@@ -239,7 +237,7 @@ def test_check_rejects_missing_non_card_target_without_repairing(tmp_path: Path)
 
 def test_check_is_read_only_for_a_valid_complete_archive(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     source = tmp_path / "example" / "figure.png"
-    lock_path = tmp_path / "image-derivatives.json"
+    lock_path = _lock(tmp_path)
     _write_image(source, 2048, 16)
     images.generate_derivatives(tmp_path, output=StringIO(), lock_path=lock_path)
     paths = [source, source.with_name("figure-800.webp"), source.with_name("figure-1280.webp"), lock_path]
@@ -258,7 +256,7 @@ def test_check_is_read_only_for_a_valid_complete_archive(tmp_path: Path, monkeyp
 
 def test_check_rejects_stale_source_without_repairing_targets(tmp_path: Path) -> None:
     source = tmp_path / "example" / "figure.png"
-    lock_path = tmp_path / "image-derivatives.json"
+    lock_path = _lock(tmp_path)
     _write_image(source, 2048, 16)
     images.generate_derivatives(tmp_path, output=StringIO(), lock_path=lock_path)
     target = source.with_name("figure-1280.webp")
@@ -273,7 +271,7 @@ def test_check_rejects_stale_source_without_repairing_targets(tmp_path: Path) ->
 
 def test_check_rejects_recipe_drift_without_reencoding(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     source = tmp_path / "example" / "figure.png"
-    lock_path = tmp_path / "image-derivatives.json"
+    lock_path = _lock(tmp_path)
     _write_image(source, 1000, 10)
     images.generate_derivatives(tmp_path, output=StringIO(), lock_path=lock_path)
     target = source.with_name("figure-800.webp")
@@ -288,7 +286,7 @@ def test_check_rejects_recipe_drift_without_reencoding(tmp_path: Path, monkeypat
 
 def test_check_rejects_unexpected_source_and_target_files(tmp_path: Path) -> None:
     source = tmp_path / "example" / "figure.png"
-    lock_path = tmp_path / "image-derivatives.json"
+    lock_path = _lock(tmp_path)
     _write_image(source, 1000, 10)
     images.generate_derivatives(tmp_path, output=StringIO(), lock_path=lock_path)
     unexpected_source = tmp_path / "example" / "extra.png"
@@ -306,7 +304,7 @@ def test_check_rejects_unexpected_source_and_target_files(tmp_path: Path) -> Non
 
 def test_check_rejects_unexpected_non_media_sidecars(tmp_path: Path) -> None:
     source = tmp_path / "example" / "figure.png"
-    lock_path = tmp_path / "image-derivatives.json"
+    lock_path = _lock(tmp_path)
     _write_image(source, 1000, 10)
     images.generate_derivatives(tmp_path, output=StringIO(), lock_path=lock_path)
     sidecar = tmp_path / "example" / "figure.webp.tmp"
@@ -319,7 +317,7 @@ def test_check_rejects_unexpected_non_media_sidecars(tmp_path: Path) -> None:
 def test_check_rejects_a_regular_file_at_the_image_root(tmp_path: Path) -> None:
     root = tmp_path / "images"
     source = root / "example" / "figure.png"
-    lock_path = tmp_path / "image-derivatives.json"
+    lock_path = _lock(tmp_path)
     _write_image(source, 1000, 10)
     images.generate_derivatives(root, output=StringIO(), lock_path=lock_path)
     unexpected = root / "orphan.webp"
@@ -332,7 +330,7 @@ def test_check_rejects_a_regular_file_at_the_image_root(tmp_path: Path) -> None:
 def test_check_rejects_a_nested_article_image_directory(tmp_path: Path) -> None:
     root = tmp_path / "images"
     source = root / "example" / "figure.png"
-    lock_path = tmp_path / "image-derivatives.json"
+    lock_path = _lock(tmp_path)
     _write_image(source, 1000, 10)
     images.generate_derivatives(root, output=StringIO(), lock_path=lock_path)
     nested = source.parent / "nested"
@@ -344,7 +342,7 @@ def test_check_rejects_a_nested_article_image_directory(tmp_path: Path) -> None:
 
 def test_check_validates_target_dimensions_after_its_digest(tmp_path: Path) -> None:
     source = tmp_path / "example" / "figure.png"
-    lock_path = tmp_path / "image-derivatives.json"
+    lock_path = _lock(tmp_path)
     _write_image(source, 1000, 10)
     images.generate_derivatives(tmp_path, output=StringIO(), lock_path=lock_path)
     target = source.with_name("figure-800.webp")
@@ -361,7 +359,7 @@ def test_check_validates_target_dimensions_after_its_digest(tmp_path: Path) -> N
 
 def test_check_rejects_non_portable_modes_and_symlinks(tmp_path: Path) -> None:
     source = tmp_path / "example" / "figure.png"
-    lock_path = tmp_path / "image-derivatives.json"
+    lock_path = _lock(tmp_path)
     _write_image(source, 1000, 10)
     images.generate_derivatives(tmp_path, output=StringIO(), lock_path=lock_path)
     target = source.with_name("figure-800.webp")
@@ -388,7 +386,7 @@ def test_check_rejects_non_portable_modes_and_symlinks(tmp_path: Path) -> None:
 
 def test_check_rejects_a_symlinked_lock(tmp_path: Path) -> None:
     source = tmp_path / "example" / "figure.png"
-    lock_path = tmp_path / "image-derivatives.json"
+    lock_path = _lock(tmp_path)
     _write_image(source, 1000, 10)
     images.generate_derivatives(tmp_path, output=StringIO(), lock_path=lock_path)
     external = tmp_path / "external-lock.json"
@@ -402,7 +400,7 @@ def test_check_rejects_a_symlinked_lock(tmp_path: Path) -> None:
 def test_check_rejects_a_symlinked_image_root(tmp_path: Path) -> None:
     root = tmp_path / "images"
     source = root / "example" / "figure.png"
-    lock_path = tmp_path / "image-derivatives.json"
+    lock_path = _lock(tmp_path)
     _write_image(source, 1000, 10)
     images.generate_derivatives(root, output=StringIO(), lock_path=lock_path)
     linked_root = tmp_path / "linked-images"
@@ -415,7 +413,7 @@ def test_check_rejects_a_symlinked_image_root(tmp_path: Path) -> None:
 @pytest.mark.parametrize("contents", [None, "not JSON", '{"version": 1, "widths": [], "sources": []}'])
 def test_required_lock_fails_closed_before_writing_outputs(tmp_path: Path, contents: str | None) -> None:
     source = tmp_path / "example" / "cover.png"
-    lock_path = tmp_path / "image-derivatives.json"
+    lock_path = _lock(tmp_path)
     _write_image(source, 1000, 10)
     if contents is not None:
         lock_path.write_text(contents)
@@ -433,7 +431,7 @@ def test_required_lock_fails_closed_before_writing_outputs(tmp_path: Path, conte
 
 def test_generated_derivative_and_lock_modes_are_world_readable(tmp_path: Path) -> None:
     source = tmp_path / "example" / "cover.png"
-    lock_path = tmp_path / "image-derivatives.json"
+    lock_path = _lock(tmp_path)
     _write_image(source, 1000, 10)
 
     images.generate_derivatives(tmp_path, output=StringIO(), lock_path=lock_path)
@@ -513,7 +511,7 @@ def test_failed_atomic_lock_replace_preserves_lock_and_retry_converges(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     source = tmp_path / "example" / "cover.png"
-    lock_path = tmp_path / "image-derivatives.json"
+    lock_path = _lock(tmp_path)
     _write_image(source, 1000, 10)
     images.generate_derivatives(tmp_path, output=StringIO(), lock_path=lock_path)
     original_lock = lock_path.read_bytes()
@@ -662,7 +660,7 @@ def test_main_requires_lock_repairs_targets_and_reports_failures(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     source = tmp_path / "example" / "cover.png"
-    lock_path = tmp_path / "image-derivatives.json"
+    lock_path = _lock(tmp_path)
     _write_image(source, 1000, 10)
     images.generate_derivatives(tmp_path, output=StringIO(), lock_path=lock_path)
     source.with_name("cover-800.webp").unlink()
@@ -700,7 +698,7 @@ def test_main_check_mode_is_read_only(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     source = tmp_path / "example" / "figure.png"
-    lock_path = tmp_path / "image-derivatives.json"
+    lock_path = _lock(tmp_path)
     _write_image(source, 1000, 10)
     images.generate_derivatives(tmp_path, output=StringIO(), lock_path=lock_path)
     target = source.with_name("figure-800.webp")
@@ -737,13 +735,13 @@ def test_main_check_mode_is_read_only(
 def test_malformed_lock_rejected_before_archive_mutation(tmp_path: Path, section: str, key: str, value: object) -> None:
     source = tmp_path / "example/figure.png"
     _write_image(source, 16, 16)
-    lock_path = tmp_path / "lock.json"
+    lock_path = _lock(tmp_path)
     images.generate_derivatives(tmp_path, output=StringIO(), lock_path=lock_path)
     document = json.loads(lock_path.read_text())
     target = document["sources"]["example/figure.png"] if section == "source" else document.get(section, document)
     target[key] = value
     lock_path.write_text(json.dumps(document))
-    before = {path: path.read_bytes() for path in tmp_path.rglob("*") if path.is_file()}
+    before = {path: path.read_bytes() for path in (*tmp_path.rglob("*"), lock_path) if path.is_file()}
     with pytest.raises(images.ImageDerivativeError, match="read derivative lock"):
         images.generate_derivatives(tmp_path, output=StringIO(), lock_path=lock_path, require_lock=True)
     assert {path: path.read_bytes() for path in before} == before
