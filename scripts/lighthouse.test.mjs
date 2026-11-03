@@ -44,48 +44,30 @@ function perfectReport(audit) {
   return {
     categories: Object.fromEntries(CATEGORIES.map((category) => [category, { score: 1 }])),
     finalDisplayedUrl: audit.url,
-    lighthouseVersion: "13.5.0",
+    lighthouseVersion: harness.LIGHTHOUSE_VERSION,
     requestedUrl: audit.url,
   };
 }
 
 test("parseArguments accepts only the documented CLI contract", () => {
-  assert.deepEqual(
-    harness.parseArguments(
-      [
-        "--base-url=https://candidate.example",
-        "--mode",
-        "smoke",
-        "--output-dir=tmp/custom-lighthouse",
-        "--plan",
-      ],
-      {},
-    ),
-    {
-      baseUrl: "https://candidate.example",
-      help: false,
-      mode: "smoke",
-      outputDir: "tmp/custom-lighthouse",
-      plan: true,
-    },
-  );
-  assert.equal(
-    harness.parseArguments([], { LIGHTHOUSE_BASE_URL: "http://127.0.0.1:8000" }).baseUrl,
-    "http://127.0.0.1:8000",
-  );
-  assert.equal(harness.parseArguments(["--help"], {}).help, true);
+  assert.deepEqual(harness.parseArguments(["--base-url=https://candidate.example"]), {
+    baseUrl: "https://candidate.example",
+    help: false,
+  });
+  assert.equal(harness.parseArguments(["--base-url", "http://127.0.0.1:8000"]).baseUrl, "http://127.0.0.1:8000");
+  assert.equal(harness.parseArguments(["--help"]).help, true);
 
-  assert.throws(() => harness.parseArguments([], {}), /base-url.*required/u);
-  assert.throws(() => harness.parseArguments(["--wat"], {}), /unknown argument/u);
+  assert.throws(() => harness.parseArguments([]), /base-url is required/u);
+  assert.throws(() => harness.parseArguments(["--wat"]), /unknown argument/u);
   assert.throws(
-    () => harness.parseArguments(["--base-url", "https://candidate.example", "--base-url=https://other.example"], {}),
+    () => harness.parseArguments(["--base-url=https://candidate.example", "--mode=portfolio"]),
+    /unknown argument: --mode/u,
+  );
+  assert.throws(
+    () => harness.parseArguments(["--base-url", "https://candidate.example", "--base-url=https://other.example"]),
     /only be specified once/u,
   );
-  assert.throws(() => harness.parseArguments(["--base-url", "--plan"], {}), /--base-url requires a value/u);
-  assert.throws(
-    () => harness.parseArguments(["--base-url=https://candidate.example", "--mode=quick"], {}),
-    /full, smoke, or portfolio/u,
-  );
+  assert.throws(() => harness.parseArguments(["--base-url", "--help"]), /--base-url requires a value/u);
 });
 
 test("normalizeBaseUrl accepts an origin and rejects URL authority or path expansion", () => {
@@ -141,10 +123,9 @@ test(
   },
 );
 
-test("resolveOutputDirectory contains artifacts below the repository tmp directory", () => {
-  assert.equal(harness.resolveOutputDirectory("tmp/lighthouse"), join(REPOSITORY_TMP, "lighthouse"));
-  assert.throws(() => harness.resolveOutputDirectory("tmp/../reports"), /inside.*tmp/u);
-  assert.throws(() => harness.resolveOutputDirectory(join(tmpdir(), "reports")), /inside.*tmp/u);
+test("prepareArtifactDirectories keeps artifacts below the repository tmp directory", async () => {
+  await assert.rejects(harness.prepareArtifactDirectories("tmp/../reports"), /inside.*tmp/u);
+  await assert.rejects(harness.prepareArtifactDirectories(join(tmpdir(), "reports")), /inside.*tmp/u);
 });
 
 test("prepareArtifactDirectories rejects a symlink before creating through it", async (context) => {
@@ -173,7 +154,7 @@ test("prepareArtifactDirectories clears reports left by an earlier run", async (
     await rm(fixture, { force: true, recursive: true });
   });
   await mkdir(join(fixture, "reports"));
-  const stale = join(fixture, "reports", "003-sitemap-agents-desktop.json");
+  const stale = join(fixture, "reports", "003-connect-desktop.json");
   await writeFile(stale, "{}", "utf8");
 
   const { reportsDirectory } = await harness.prepareArtifactDirectories(fixture);
@@ -300,20 +281,7 @@ test("fetchSitemap rejects an invalid XML media type", async () => {
   await assert.rejects(harness.fetchSitemap(BASE_URL, async () => response), /unexpected content type/u);
 });
 
-test("buildAuditPlan produces the exact smoke and full audit counts", () => {
-  const paths = Array.from({ length: 64 }, (_, index) => `/page-${index}/`);
-  const full = harness.buildAuditPlan(paths, "full", BASE_URL);
-  assert.equal(full.length, 176);
-  assert.equal(full.filter((audit) => audit.phase === "sitemap").length, 128);
-  assert.equal(full.filter((audit) => audit.phase === "stress").length, 48);
-  assert.equal(new Set(full.map((audit) => audit.artifact)).size, 176);
-
-  const smoke = harness.buildAuditPlan(paths, "smoke", BASE_URL);
-  assert.equal(smoke.length, 4);
-  assert.deepEqual(new Set(smoke.map((audit) => audit.formFactor)), new Set(["desktop", "mobile"]));
-});
-
-test("full qualification grows with the sitemap while portfolio mode includes both calculators", () => {
+test("the portfolio plan audits every page and both calculators on desktop and mobile", () => {
   const paths = [
     "/",
     "/connect",
@@ -325,19 +293,23 @@ test("full qualification grows with the sitemap while portfolio mode includes bo
     "/articles/new/",
     "/sites/tool/",
   ];
-  const full = harness.buildAuditPlan(paths, "full", BASE_URL);
-  assert.equal(full.filter((audit) => audit.phase === "sitemap").length, paths.length * 2);
-  const portfolio = harness.buildAuditPlan(paths, "portfolio", BASE_URL);
+  const portfolio = harness.buildAuditPlan(BASE_URL);
   assert.equal(portfolio.length, 14);
   assert.deepEqual([...new Set(portfolio.map((audit) => audit.path))], paths.slice(0, 7));
-  harness.validateSitemapScope(paths, "portfolio");
+  assert.deepEqual(new Set(portfolio.map((audit) => audit.formFactor)), new Set(["desktop", "mobile"]));
+  assert.equal(new Set(portfolio.map((audit) => audit.artifact)).size, 14);
+  assert.deepEqual(portfolio[0], {
+    artifact: "reports/001-home-desktop.json",
+    formFactor: "desktop",
+    index: 1,
+    path: "/",
+    url: "https://candidate.example/",
+  });
+  assert.ok(portfolio.every((audit) => new URL(audit.url).origin === BASE_URL.origin));
+  harness.validateSitemapScope(paths);
   assert.throws(
-    () => harness.validateSitemapScope(paths.filter((path) => path !== "/sites/llm-self-hosting/"), "portfolio"),
+    () => harness.validateSitemapScope(paths.filter((path) => path !== "/sites/llm-self-hosting/")),
     /required path/u,
-  );
-  assert.equal(
-    harness.parseArguments(["--base-url=https://candidate.example", "--mode=portfolio"], {}).mode,
-    "portfolio",
   );
 });
 
@@ -395,12 +367,10 @@ test("runAudit retries once on NO_NAVSTART and does not retry other score failur
 
   const artifactDirectories = await harness.prepareArtifactDirectories(fixture);
   const audit = {
-    artifact: "reports/001-sitemap-home-desktop.json",
+    artifact: "reports/001-home-desktop.json",
     formFactor: "desktop",
     index: 1,
     path: "/",
-    phase: "sitemap",
-    repeat: 1,
     url: "https://candidate.example/",
   };
   const toolchain = { chromiumPath: "/usr/bin/chromium" };
@@ -464,12 +434,10 @@ test("runAudit keeps only the tail of a failed Lighthouse debug stream", async (
   });
   const artifactDirectories = await harness.prepareArtifactDirectories(fixture);
   const audit = {
-    artifact: "reports/001-sitemap-home-mobile.json",
+    artifact: "reports/001-home-mobile.json",
     formFactor: "mobile",
     index: 1,
     path: "/",
-    phase: "sitemap",
-    repeat: 1,
     url: "https://candidate.example/",
   };
   const debugStream = `${"LH:status Loading page\n".repeat(1000)}Error: PROTOCOL_TIMEOUT\n    at Driver.sendCommand`;
@@ -489,17 +457,15 @@ test("runAudit keeps only the tail of a failed Lighthouse debug stream", async (
   assert.ok(executionError.length < 2200, `failure detail is ${executionError.length} characters`);
   assert.equal(
     harness.describeFailure({ ...audit, errors: ["performance score 0.99", "agentic-browsing\nscore 0.5"] }),
-    "1: mobile / run 1 — performance score 0.99; agentic-browsing score 0.5",
+    "1: mobile / — performance score 0.99; agentic-browsing score 0.5",
   );
 });
 
 const MEDIAN_AUDIT = {
-  artifact: "reports/002-sitemap-articles-mobile.json",
+  artifact: "reports/002-articles-mobile.json",
   formFactor: "mobile",
   index: 2,
   path: "/articles/",
-  phase: "sitemap",
-  repeat: 1,
   url: "https://candidate.example/articles/",
 };
 
@@ -557,19 +523,19 @@ test("runAudit judges a performance-only miss by the median of three kept runs",
   assert.equal(result.performanceMedian, 1);
   assert.equal(result.artifact, MEDIAN_AUDIT.artifact);
   assert.deepEqual(result.performanceRuns, [
-    { artifact: "reports/002-sitemap-articles-mobile.json", score: 0.97 },
-    { artifact: "reports/002-sitemap-articles-mobile-performance-run-2.json", score: 1 },
-    { artifact: "reports/002-sitemap-articles-mobile-performance-run-3.json", score: 1 },
+    { artifact: "reports/002-articles-mobile.json", score: 0.97 },
+    { artifact: "reports/002-articles-mobile-performance-run-2.json", score: 1 },
+    { artifact: "reports/002-articles-mobile-performance-run-3.json", score: 1 },
   ]);
   for (const run of result.performanceRuns) await access(join(artifactDirectories.outputDirectory, run.artifact));
 
-  const manifest = { audits: [MEDIAN_AUDIT], baseUrl: BASE_URL.href, mode: "portfolio" };
+  const manifest = { audits: [MEDIAN_AUDIT], baseUrl: BASE_URL.href };
   const summary = harness.summarize(manifest, [result], "passed");
   assert.equal(summary.passedAudits, 1);
   assert.deepEqual(summary.performanceReruns.map((audit) => audit.performanceRuns), [result.performanceRuns]);
   assert.match(
     harness.renderSummary(summary),
-    /## Performance medians[\s\S]*- 2: mobile \/articles\/ run 1 — performance runs 0\.97, 1, 1; median 1; passed\n/u,
+    /## Performance medians[\s\S]*- 2: mobile \/articles\/ — performance runs 0\.97, 1, 1; median 1; passed\n/u,
   );
 });
 
@@ -595,7 +561,7 @@ test("runAudit fails a performance miss whose median stays below 1", async (cont
   assert.equal(result.scores.performance, 0.98);
   assert.deepEqual(result.errors, ["performance median is 0.98 over runs 0.97, 1, 0.98, expected 1"]);
   const summary = harness.summarize(
-    { audits: [MEDIAN_AUDIT], baseUrl: BASE_URL.href, mode: "portfolio" },
+    { audits: [MEDIAN_AUDIT], baseUrl: BASE_URL.href },
     [result],
     "failed",
   );

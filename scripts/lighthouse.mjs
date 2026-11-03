@@ -21,18 +21,8 @@ const CATEGORIES = ["performance", "accessibility", "best-practices", "seo", "ag
 const FORM_FACTORS = ["desktop", "mobile"];
 const REPOSITORY_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const TMP_ROOT = join(REPOSITORY_ROOT, "tmp");
+const OUTPUT_DIRECTORY = join(TMP_ROOT, "lighthouse");
 
-// These are the retained six-page release matrix plus the largest and most image-heavy articles.
-const STRESS_PATHS = [
-  "/",
-  "/articles/",
-  "/sites/",
-  "/sites/llm-self-hosting/",
-  "/articles/agentgateway-vs-litellm/",
-  "/articles/cag-vs-rag-choosing-the-right-strategy-for-your-ai-application/",
-  "/articles/how-to-configure-vs-code-for-ai-ml-and-mlops-development-in-python/",
-  "/articles/hackathon-speedrun-build-deploy-a-rag-app-in-minutes-with-vertex-ai-studio-vertex-ai-search/",
-];
 const PORTFOLIO_PATHS = [
   "/",
   "/connect",
@@ -42,23 +32,19 @@ const PORTFOLIO_PATHS = [
   "/sites/llm-self-hosting/",
   "/sites/mcp-context-cost/",
 ];
-const SMOKE_PATHS = ["/", "/articles/cag-vs-rag-choosing-the-right-strategy-for-your-ai-application/"];
 
 function usage() {
-  return `Usage: node scripts/lighthouse.mjs --base-url <origin> [options]
+  return `Usage: node scripts/lighthouse.mjs --base-url <origin>
 
-Run the strict Lighthouse 13.5.0 qualification matrix with the Chromium pinned by Playwright.
+Run the strict Lighthouse ${LIGHTHOUSE_VERSION} portfolio matrix with the Chromium pinned by Playwright.
 
 Options:
-  --base-url <origin>   Candidate origin to audit; LIGHTHOUSE_BASE_URL is the fallback.
-  --mode <full|smoke|portfolio>  Audit all pages, 4 smoke cases, or 14 portfolio cases (default: full).
-  --output-dir <path>  Artifact directory below tmp/ (default: tmp/lighthouse).
-  --plan               Validate arguments and tool pins, then print counts without network or audits.
+  --base-url <origin>  Candidate origin to audit.
   -h, --help           Show this help.
 
-Full mode audits every unique sitemap path once in desktop and mobile,
-then runs the eight representative/stress paths three more consecutive times in both modes.
-Portfolio mode covers the homepage, contact and privacy pages, archive indexes, and both calculators.
+Audits the homepage, contact and privacy pages, archive indexes, and both calculators
+in desktop and mobile (14 audits); each page must be listed in the origin's sitemap.
+Reports go to tmp/lighthouse/.
 Every returned category score must be exactly 1; missing expected categories also fail.
 When only performance misses, the audit runs ${PERFORMANCE_RUNS - 1} more times and passes only if the median
 performance of the ${PERFORMANCE_RUNS} runs is 1 and every run keeps the other categories at 1; each run keeps its report.
@@ -73,15 +59,8 @@ function optionValue(argument, name, argv, index) {
   return { value: argv[index + 1], nextIndex: index + 1 };
 }
 
-function parseArguments(argv, environment = process.env) {
-  const options = {
-    baseUrl: environment.LIGHTHOUSE_BASE_URL ?? "",
-    mode: "full",
-    outputDir: "tmp/lighthouse",
-    plan: false,
-    help: false,
-  };
-  const seen = new Set();
+function parseArguments(argv) {
+  const options = { baseUrl: undefined, help: false };
 
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
@@ -89,47 +68,18 @@ function parseArguments(argv, environment = process.env) {
       options.help = true;
       continue;
     }
-    if (argument === "--plan") {
-      if (seen.has("plan")) throw new Error("--plan may only be specified once");
-      seen.add("plan");
-      options.plan = true;
-      continue;
-    }
 
-    let parsed = optionValue(argument, "--base-url", argv, index);
+    const parsed = optionValue(argument, "--base-url", argv, index);
     if (parsed) {
-      if (seen.has("baseUrl")) throw new Error("--base-url may only be specified once");
-      seen.add("baseUrl");
+      if (options.baseUrl !== undefined) throw new Error("--base-url may only be specified once");
       options.baseUrl = parsed.value;
-      index = parsed.nextIndex;
-      continue;
-    }
-    parsed = optionValue(argument, "--mode", argv, index);
-    if (parsed) {
-      if (seen.has("mode")) throw new Error("--mode may only be specified once");
-      seen.add("mode");
-      options.mode = parsed.value;
-      index = parsed.nextIndex;
-      continue;
-    }
-    parsed = optionValue(argument, "--output-dir", argv, index);
-    if (parsed) {
-      if (seen.has("outputDir")) throw new Error("--output-dir may only be specified once");
-      seen.add("outputDir");
-      options.outputDir = parsed.value;
       index = parsed.nextIndex;
       continue;
     }
     throw new Error(`unknown argument: ${argument}`);
   }
 
-  if (options.help) return options;
-  if (!options.baseUrl) throw new Error("--base-url or LIGHTHOUSE_BASE_URL is required");
-  if (!["full", "smoke", "portfolio"].includes(options.mode)) {
-    throw new Error(`--mode must be full, smoke, or portfolio, got ${JSON.stringify(options.mode)}`);
-  }
-  if (!options.outputDir) throw new Error("--output-dir must not be empty");
-
+  if (!options.help && !options.baseUrl) throw new Error("--base-url is required");
   return options;
 }
 
@@ -158,14 +108,6 @@ function isWithin(parent, candidate) {
   );
 }
 
-function resolveOutputDirectory(value) {
-  const outputDirectory = resolve(REPOSITORY_ROOT, value);
-  if (!isWithin(TMP_ROOT, outputDirectory)) {
-    throw new Error("--output-dir must resolve inside this repository's ignored tmp/ directory");
-  }
-  return outputDirectory;
-}
-
 async function optionalLstat(path) {
   try {
     return await lstat(path);
@@ -176,7 +118,10 @@ async function optionalLstat(path) {
 }
 
 async function validateArtifactDirectoryPath(outputDirectory) {
-  const resolvedOutput = resolveOutputDirectory(outputDirectory);
+  const resolvedOutput = resolve(REPOSITORY_ROOT, outputDirectory);
+  if (!isWithin(TMP_ROOT, resolvedOutput)) {
+    throw new Error("artifact directory must resolve inside this repository's ignored tmp/ directory");
+  }
   const realRepository = await realpath(REPOSITORY_ROOT);
   let tmpStat = await optionalLstat(TMP_ROOT);
   if (!tmpStat) {
@@ -524,49 +469,26 @@ function pathKey(pathname) {
   return pathname.replace(/^\/+|\/+$/gu, "").replace(/[^a-zA-Z0-9]+/gu, "-").toLowerCase();
 }
 
-function buildAuditPlan(paths, mode, baseUrl) {
-  const publicPaths = mode === "full" ? paths : mode === "portfolio" ? PORTFOLIO_PATHS : SMOKE_PATHS;
+function buildAuditPlan(baseUrl) {
   const audits = [];
-
-  function addAudit(phase, pathname, formFactor, repeat) {
-    const index = audits.length + 1;
-    const repeatSuffix = phase === "stress" ? `-run-${repeat}` : "";
-    audits.push({
-      index,
-      phase,
-      path: pathname,
-      url: new URL(pathname, baseUrl).href,
-      formFactor,
-      repeat,
-      artifact: `reports/${String(index).padStart(3, "0")}-${phase}-${
-        pathKey(pathname)
-      }-${formFactor}${repeatSuffix}.json`,
-    });
-  }
-
-  for (const pathname of publicPaths) {
-    for (const formFactor of FORM_FACTORS) addAudit("sitemap", pathname, formFactor, 1);
-  }
-  if (mode === "full") {
-    for (const pathname of STRESS_PATHS) {
-      for (const formFactor of FORM_FACTORS) {
-        for (let repeat = 1; repeat <= 3; repeat += 1) addAudit("stress", pathname, formFactor, repeat);
-      }
+  for (const pathname of PORTFOLIO_PATHS) {
+    for (const formFactor of FORM_FACTORS) {
+      const index = audits.length + 1;
+      audits.push({
+        index,
+        path: pathname,
+        url: new URL(pathname, baseUrl).href,
+        formFactor,
+        artifact: `reports/${String(index).padStart(3, "0")}-${pathKey(pathname)}-${formFactor}.json`,
+      });
     }
-  }
-
-  const expected = publicPaths.length * FORM_FACTORS.length
-    + (mode === "full" ? STRESS_PATHS.length * FORM_FACTORS.length * 3 : 0);
-  if (audits.length !== expected) {
-    throw new Error(`internal audit-plan mismatch: expected ${expected}, built ${audits.length}`);
   }
   return audits;
 }
 
-function validateSitemapScope(paths, mode) {
+function validateSitemapScope(paths) {
   const available = new Set(paths);
-  const required = mode === "portfolio" ? PORTFOLIO_PATHS : STRESS_PATHS;
-  for (const pathname of required) {
+  for (const pathname of PORTFOLIO_PATHS) {
     if (!available.has(pathname)) throw new Error(`required path is missing from sitemap: ${pathname}`);
   }
 }
@@ -575,7 +497,7 @@ async function prepareArtifactDirectories(outputDirectory) {
   const validated = await validateArtifactDirectoryPath(outputDirectory);
   await mkdir(validated.outputDirectory, { recursive: true });
   const reportsDirectory = join(validated.outputDirectory, "reports");
-  // Report names come from the plan index, so reports of an earlier mode or sitemap would
+  // Report names come from the plan index, so reports of an earlier plan would
   // otherwise sit beside current ones. The path above holds no symbolic link.
   await rm(reportsDirectory, { recursive: true, force: true });
   await mkdir(reportsDirectory, { recursive: true });
@@ -799,10 +721,8 @@ function summarize(manifest, results, status) {
     .filter((result) => !result.passed)
     .map((result) => ({
       index: result.index,
-      phase: result.phase,
       path: result.path,
       formFactor: result.formFactor,
-      repeat: result.repeat,
       artifact: result.artifact,
       errors: result.errors,
       performanceRuns: result.performanceRuns,
@@ -811,10 +731,8 @@ function summarize(manifest, results, status) {
     .filter((result) => result.performanceRuns)
     .map((result) => ({
       index: result.index,
-      phase: result.phase,
       path: result.path,
       formFactor: result.formFactor,
-      repeat: result.repeat,
       passed: result.passed,
       performanceMedian: result.performanceMedian,
       performanceRuns: result.performanceRuns,
@@ -823,7 +741,6 @@ function summarize(manifest, results, status) {
   return {
     schemaVersion: 1,
     status,
-    mode: manifest.mode,
     baseUrl: manifest.baseUrl,
     lighthouseVersion: manifest.lighthouseVersion,
     playwrightVersion: manifest.playwrightVersion,
@@ -841,13 +758,13 @@ function summarize(manifest, results, status) {
 
 function describeFailure(failure) {
   const reason = failure.errors.join("; ").replaceAll("\n", " ");
-  return `${failure.index}: ${failure.formFactor} ${failure.path} run ${failure.repeat} — ${reason}`;
+  return `${failure.index}: ${failure.formFactor} ${failure.path} — ${reason}`;
 }
 
 function describePerformanceRuns(audit) {
   const scores = formatScores(audit.performanceRuns.map((run) => run.score));
   const verdict = audit.passed ? "passed" : "failed";
-  return `${audit.index}: ${audit.formFactor} ${audit.path} run ${audit.repeat} — performance runs ${scores}; median ${
+  return `${audit.index}: ${audit.formFactor} ${audit.path} — performance runs ${scores}; median ${
     audit.performanceMedian ?? "n/a"
   }; ${verdict}`;
 }
@@ -857,7 +774,6 @@ function renderSummary(summary) {
     "# Lighthouse qualification summary",
     "",
     `- Status: **${summary.status}**`,
-    `- Mode: ${summary.mode}`,
     `- Base URL: ${summary.baseUrl}`,
     `- Completed: ${summary.completedAudits}/${summary.plannedAudits}`,
     `- Passed: ${summary.passedAudits}`,
@@ -897,26 +813,6 @@ async function writeSummary(outputDirectory, manifest, results, status) {
   return summary;
 }
 
-function planOnlyOutput(options, baseUrl, outputDirectory, toolchain) {
-  const selectedPaths = options.mode === "portfolio" ? PORTFOLIO_PATHS : SMOKE_PATHS;
-  const sitemapAudits = options.mode === "full" ? null : selectedPaths.length * FORM_FACTORS.length;
-  const stressAudits = options.mode === "full" ? STRESS_PATHS.length * FORM_FACTORS.length * 3 : 0;
-  return {
-    mode: options.mode,
-    baseUrl: baseUrl.href,
-    outputDirectory: relative(REPOSITORY_ROOT, outputDirectory),
-    networkOrAuditsStarted: false,
-    sitemapAudits,
-    stressAudits,
-    totalAudits: sitemapAudits === null ? null : sitemapAudits + stressAudits,
-    categories: CATEGORIES,
-    stressPaths: STRESS_PATHS,
-    smokePaths: SMOKE_PATHS,
-    portfolioPaths: PORTFOLIO_PATHS,
-    ...toolchain,
-  };
-}
-
 async function run() {
   const options = parseArguments(process.argv.slice(2));
   if (options.help) {
@@ -925,20 +821,13 @@ async function run() {
   }
 
   const baseUrl = normalizeBaseUrl(options.baseUrl);
-  const outputDirectory = resolveOutputDirectory(options.outputDir);
   const toolchain = await discoverToolchain();
-  if (options.plan) {
-    process.stdout.write(`${JSON.stringify(planOnlyOutput(options, baseUrl, outputDirectory, toolchain), null, 2)}\n`);
-    return;
-  }
-
   const sitemap = await fetchSitemap(baseUrl);
-  validateSitemapScope(sitemap.paths, options.mode);
-  const audits = buildAuditPlan(sitemap.paths, options.mode, baseUrl);
-  const artifactDirectories = await prepareArtifactDirectories(outputDirectory);
+  validateSitemapScope(sitemap.paths);
+  const audits = buildAuditPlan(baseUrl);
+  const artifactDirectories = await prepareArtifactDirectories(OUTPUT_DIRECTORY);
   const manifest = {
     schemaVersion: 1,
-    mode: options.mode,
     baseUrl: baseUrl.href,
     sitemapUrl: new URL("/sitemap.xml", baseUrl).href,
     sitemapOrigin: sitemap.sitemapOrigin,
@@ -946,9 +835,7 @@ async function run() {
     playwrightVersion: toolchain.playwrightVersion,
     chromiumPath: toolchain.chromiumPath,
     categories: CATEGORIES,
-    publicPaths: sitemap.paths,
-    stressPaths: STRESS_PATHS,
-    smokePaths: SMOKE_PATHS,
+    sitemapPaths: sitemap.paths,
     portfolioPaths: PORTFOLIO_PATHS,
     audits,
   };
@@ -958,7 +845,7 @@ async function run() {
   await writeSummary(artifactDirectories.outputDirectory, manifest, results, "running");
   for (const audit of audits) {
     process.stdout.write(
-      `[${audit.index}/${audits.length}] ${audit.phase} ${audit.formFactor} run ${audit.repeat}: ${audit.path}\n`,
+      `[${audit.index}/${audits.length}] ${audit.formFactor}: ${audit.path}\n`,
     );
     const result = await runAudit(audit, baseUrl, artifactDirectories, toolchain);
     if (result.performanceRuns) process.stdout.write(`  ${describePerformanceRuns(result)}\n`);
@@ -998,12 +885,12 @@ export {
   describeFailure,
   fetchSitemap,
   inspectReport,
+  LIGHTHOUSE_VERSION,
   normalizeBaseUrl,
   parseArguments,
   parseSitemapPaths,
   prepareArtifactDirectories,
   renderSummary,
-  resolveOutputDirectory,
   runAudit,
   runProcess,
   summarize,

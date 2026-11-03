@@ -9,7 +9,7 @@ test("all portfolio pages meet the strict Lighthouse contract", async ({ baseURL
   try {
     ({ stdout } = await promisify(execFile)(
       process.execPath,
-      ["scripts/lighthouse.mjs", "--base-url", baseURL, "--mode", "portfolio"],
+      ["scripts/lighthouse.mjs", "--base-url", baseURL],
       { timeout: 24 * 60 * 1000, maxBuffer: 1024 * 1024 },
     ));
   } catch (error) {
