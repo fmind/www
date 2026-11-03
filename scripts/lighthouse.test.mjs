@@ -287,6 +287,7 @@ test("the portfolio plan audits every page and both calculators on desktop and m
     "/connect",
     "/privacy",
     "/articles/",
+    "/news/",
     "/sites/",
     "/sites/llm-self-hosting/",
     "/sites/mcp-context-cost/",
@@ -294,10 +295,10 @@ test("the portfolio plan audits every page and both calculators on desktop and m
     "/sites/tool/",
   ];
   const portfolio = harness.buildAuditPlan(BASE_URL);
-  assert.equal(portfolio.length, 14);
-  assert.deepEqual([...new Set(portfolio.map((audit) => audit.path))], paths.slice(0, 7));
+  assert.equal(portfolio.length, 16);
+  assert.deepEqual([...new Set(portfolio.map((audit) => audit.path))], paths.slice(0, 8));
   assert.deepEqual(new Set(portfolio.map((audit) => audit.formFactor)), new Set(["desktop", "mobile"]));
-  assert.equal(new Set(portfolio.map((audit) => audit.artifact)).size, 14);
+  assert.equal(new Set(portfolio.map((audit) => audit.artifact)).size, 16);
   assert.deepEqual(portfolio[0], {
     artifact: "reports/001-home-desktop.json",
     formFactor: "desktop",
