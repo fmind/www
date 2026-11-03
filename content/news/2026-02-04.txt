@@ -1,0 +1,3 @@
+- xAI joins SpaceX to accelerate humanity’s future: https://www.spacex.com/updates#xai-joins-spacex - SpaceX has acquired xAI to build vertically-integrated orbital data centers that will scale AI compute using solar power in space.
+- AI will not save developer productivity: https://www.infoworld.com/article/4125409/ai-will-not-save-developer-productivity.html - Matt Asay argues that while AI accelerates coding, true productivity gains require "golden paths" and platform constraints to ensure code is maintainable and compliant.
+- The Moltbook Experiment Failed: https://www.youtube.com/watch?v=6OXE65fjjsU&si=sAmL5MVS5w7DlbrT - A detailed look at the failure of the viral "Moltbook" AI social network experiment.
