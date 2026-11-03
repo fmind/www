@@ -7,8 +7,6 @@ slug = "bkfc-an-agentic-workflow-for-gathering-knowledge-from-google-chat"
 draft = false
 +++
 
-### BKFC: **An Agentic Workflow for** Gathering **Knowledge from Google Chat**
-
 Team collaboration often lives and breathes within chat applications like [Google Chat](https://chat.google.com/) or [Slack](https://slack.com/). It’s where questions are asked, decisions are made, project updates are shared, and solutions are brainstormed. But let’s be honest: extracting specific information from weeks or months of chat history can feel like searching for a needle in a haystack. Important context gets buried, action items are forgotten, and valuable knowledge becomes siloed.
 
 As someone passionate about AI, Generative AI, and MLOps, I’m always looking for practical ways to leverage these technologies to solve real-world problems. The challenge of unlocking the latent knowledge within Google Chat seemed like a perfect opportunity. How could we quickly surface key insights without manual scrolling and searching?

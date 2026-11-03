@@ -1,6 +1,6 @@
 +++
 title = "Make your MLOps code base SOLID with Pydantic and Python’s ABC"
-description = "MLOps projects are straightforward to initiate, but challenging to perfect."
+description = "A method to build robust yet flexible MLOps code bases with Python's ABC and Pydantic, grounded in design patterns and the SOLID principles."
 date = "2024-03-13"
 tags = ["MLOps", "Python"]
 slug = "make-your-mlops-code-base-solid-with-pydantic-and-pythons-abc"

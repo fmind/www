@@ -7,8 +7,6 @@ slug = "3p-principle-purpose-productivity-performance"
 draft = false
 +++
 
-### The Programming Trade-Off: Purpose, Productivity, Performance
-
 ![Components of the programming trade-off](/static/img/articles/3p-principle-purpose-productivity-performance/cover.webp)
 
 Components of the programming trade-off

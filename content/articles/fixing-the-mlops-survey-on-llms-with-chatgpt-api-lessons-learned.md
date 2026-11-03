@@ -1,6 +1,6 @@
 +++
 title = "Fixing the MLOps Survey on LLMs with ChatGPT API: Lessons Learned"
-description = "Large Language Model (LLM) is such an exciting topic."
+description = "How I used the ChatGPT API to standardize the open-ended answers of the MLOps Community survey on LLMs in production, and the lessons I learned."
 date = "2023-05-08"
 updated = "2026-10-31"
 tags = ["LLM", "MLOps", "Demo"]

@@ -1,6 +1,6 @@
 +++
 title = "How I Revamped My Portfolio Website in 5 Nights Using AI Agents"
-description = "I see many friends and acquaintances generating amazing applications in mere weeks."
+description = "How I revamped my portfolio website, fmind.dev, in five nights using AI agents: preparing the agent, steering it, the result, and my key takeaways."
 date = "2026-02-19"
 tags = ["Coding", "Demo"]
 slug = "how-i-revamped-my-portfolio-website-in-5-nights-using-ai-agents"

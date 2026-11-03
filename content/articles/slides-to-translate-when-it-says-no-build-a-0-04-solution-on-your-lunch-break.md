@@ -7,8 +7,6 @@ slug = "slides-to-translate-when-it-says-no-build-a-0-04-solution-on-your-lunch-
 draft = false
 +++
 
-### **Slides-To-Translate:** When IT Says No, Build a \$0.04 Solution on Your Lunch Break
-
 It is a classic tale of corporate life. A colleague of mine at Decathlon had a mammoth task: **translate a 155-slide presentation into several languages**. In a global company, this is a daily reality. The content was ready, the deadline was looming, but the path forward was blocked.
 
 The usual suspects — approved [Chrome](https://chromewebstore.google.com/category/extensions) and [Workspace](https://workspace.google.com/marketplace/) extensions that could automate this — were unfortunately blocked by our organization’s IT policy. Have you ever tried requesting a new tool in a large company? It often feels like sending a message in a bottle into the cosmic ocean. My colleague’s request had, predictably, vanished into a bureaucratic black hole.

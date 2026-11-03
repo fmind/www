@@ -1,6 +1,6 @@
 +++
 title = "Agent Evolutions: Stop Guessing the Design — Evolve It"
-description = "Most coding-agent tasks have one right answer hiding behind a workflow."
+description = "Agent-evolutions is a set of Agent Skills that turns a coding agent into a budgeted genetic search over a design space, with verifiable scoring at every step."
 date = "2026-06-01"
 tags = ["Coding", "Project"]
 slug = "agent-evolutions-stop-guessing-the-design-evolve-it"

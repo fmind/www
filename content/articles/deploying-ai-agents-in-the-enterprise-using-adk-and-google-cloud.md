@@ -7,8 +7,6 @@ slug = "deploying-ai-agents-in-the-enterprise-using-adk-and-google-cloud"
 draft = false
 +++
 
-### Deploying AI Agents in the Enterprise without Losing your Humanity using ADK and Google Cloud
-
 The excitement around AI agents is palpable. From automating complex workflows to providing personalized experiences, the potential is enormous. But as Data Scientists and developers rush to build proof-of-concepts, a significant hurdle emerges when it’s time to deploy these agents within a real-world organization.
 
 I’ve recently been tackling these exact challenges with my customers. The goal is clear: find solutions that are simple, powerful, and accessible for the whole team. But moving from a local demo to a production-ready agent involves navigating the labyrinth of enterprise IT.
