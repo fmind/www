@@ -13,7 +13,7 @@ Building AI applications is incredibly exciting. But let’s be honest: getting 
 
 ![Black-and-white silhouettes of workers climbing the stairs of a tall steel scaffolding — Photo by John Salvino on Unsplash](/static/img/articles/framework-template-or-example-choosing-the-right-ai-starter-kit-for-your-team/cover.webp)
 
-Black-and-white silhouettes of workers climbing the stairs of a tall steel scaffolding — Photo by [John Salvino](https://unsplash.com/@jsalvino?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Black-and-white silhouettes of workers climbing the stairs of a tall steel scaffolding — Photo by [John Salvino](https://unsplash.com/@jsalvino) on [Unsplash](https://unsplash.com)
 
 Let’s dive in and unpack each one:
 
@@ -148,4 +148,4 @@ By thoughtfully weighing the pros and cons of frameworks, templates, and example
 
 ![Pack of road cyclists racing closely together on a country road — Photo by Markus Spiske on Unsplash](/static/img/articles/framework-template-or-example-choosing-the-right-ai-starter-kit-for-your-team/05.webp)
 
-Pack of road cyclists racing closely together on a country road — Photo by [Markus Spiske](https://unsplash.com/@markusspiske?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Pack of road cyclists racing closely together on a country road — Photo by [Markus Spiske](https://unsplash.com/@markusspiske) on [Unsplash](https://unsplash.com)

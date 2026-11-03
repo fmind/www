@@ -12,7 +12,7 @@ draft = false
 
 ![Wooden letter tiles spelling CHOOSE YOUR WORDS on a white background — Photo by Brett Jordan on Unsplash](/static/img/articles/fixing-the-mlops-survey-on-llms-with-chatgpt-api-lessons-learned/cover.webp)
 
-Wooden letter tiles spelling CHOOSE YOUR WORDS on a white background — Photo by [Brett Jordan](https://unsplash.com/@brett_jordan?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Wooden letter tiles spelling CHOOSE YOUR WORDS on a white background — Photo by [Brett Jordan](https://unsplash.com/@brett_jordan) on [Unsplash](https://unsplash.com)
 
 In March 2023, the [MLOps Community](https://mlops.community/) issued [a survey about LLMs in production](https://docs.google.com/forms/d/e/1FAIpQLSerEryK4xHEZTq0hSu-sVmBHilOzaT71BfCQgXe_uIRgIah-g/viewform) to picture the state of adoption. [The survey is full of interesting insights](https://podcasters.spotify.com/pod/show/mlops/episodes/EXCLUSIVE-EPISODE--LLM-Key-Results-e229lbi), but there is a catch: **80% of the questions are** [**open-ended**](https://en.wikipedia.org/wiki/Open-ended_question) **, which means respondents answered the survey freely from a few keywords to full sentences**. I volunteered to clean up the answers with the help of ChatGPT and let the community get a grasp of the survey experiences.
 

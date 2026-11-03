@@ -251,4 +251,4 @@ In the coming days, we will also update the [**MLOps Coding Course**](https://gi
 
 ![Robotic arms working on a car body on an automated factory assembly line — Photo by Lenny Kuhne on Unsplash](/static/img/articles/more-automation-more-reproducibility-mlops-python-package-v4-1-0/02.webp)
 
-Robotic arms working on a car body on an automated factory assembly line — Photo by [Lenny Kuhne](https://unsplash.com/@lennykuhne?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Robotic arms working on a car body on an automated factory assembly line — Photo by [Lenny Kuhne](https://unsplash.com/@lennykuhne) on [Unsplash](https://unsplash.com)

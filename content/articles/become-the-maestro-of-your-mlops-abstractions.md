@@ -13,7 +13,7 @@ To manage this complexity, it became essential to develop and own [**abstraction
 
 ![Violinist playing in an orchestra, bow raised in front of sheet music on a stand — Photo by Julio Rionaldo on Unsplash](/static/img/articles/become-the-maestro-of-your-mlops-abstractions/cover.webp)
 
-Violinist playing in an orchestra, bow raised in front of sheet music on a stand — Photo by [Julio Rionaldo](https://unsplash.com/@juliorionaldo?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Violinist playing in an orchestra, bow raised in front of sheet music on a stand — Photo by [Julio Rionaldo](https://unsplash.com/@juliorionaldo) on [Unsplash](https://unsplash.com)
 
 In this article, I aim to delineate a roadmap for constructing robust MLOps platforms and projects. Initially, I will underscore the importance of devising and mastering your own MLOps abstractions. Following this, I will outline key design patterns essential for forging simple yet potent abstractions for your projects. Lastly, I will delve into real-world case studies, illustrating the critical role of abstractions in the success of various projects.
 
@@ -37,11 +37,11 @@ Direct integration of each component in a project poses several risks. On one ha
 
 ### Why should I own my MLOps abstractions?
 
-Creating your own abstractions in MLOps is essential due to [the absence of a universal standard](https://mlops.community/we-need-posix-for-mlops/) like [POSIX for UNIX systems](https://en.wikipedia.org/wiki/POSIX) in our industry. Diverse model libraries such as Scikit-learn, XGBoost, PyTorch, Lightning, TensorFlow, and JAX present different interfaces for managing AI/ML models. Similarly, platforms like GCP, Azure, and Databricks offer varied toolkits for training and serving models. Relying solely on a single toolkit or platform can stifle innovation and confine you to solutions with limited control.
+Creating your own abstractions in MLOps is essential due to [the absence of a universal standard](https://www.fmind.dev/articles/we-need-posix-for-mlops/) like [POSIX for UNIX systems](https://en.wikipedia.org/wiki/POSIX) in our industry. Diverse model libraries such as Scikit-learn, XGBoost, PyTorch, Lightning, TensorFlow, and JAX present different interfaces for managing AI/ML models. Similarly, platforms like GCP, Azure, and Databricks offer varied toolkits for training and serving models. Relying solely on a single toolkit or platform can stifle innovation and confine you to solutions with limited control.
 
 ![Tangle of cables, circuit boards, and old electronics wired together in a cramped workshop — Photo by Martijn Baudoin on Unsplash](/static/img/articles/become-the-maestro-of-your-mlops-abstractions/03.webp)
 
-Tangle of cables, circuit boards, and old electronics wired together in a cramped workshop — Photo by [Martijn Baudoin](https://unsplash.com/@martijnbaudoin?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Tangle of cables, circuit boards, and old electronics wired together in a cramped workshop — Photo by [Martijn Baudoin](https://unsplash.com/@martijnbaudoin) on [Unsplash](https://unsplash.com)
 
 By developing your own abstractions, you gain the flexibility to adopt solutions at your pace, conceal unnecessary complexities, and achieve interoperability by integrating multiple systems as needed. The investment in creating your own abstractions, if executed effectively, is manageable. Consider the universality of USB-C for computer I/O or Docker for application portability as analogous examples.
 

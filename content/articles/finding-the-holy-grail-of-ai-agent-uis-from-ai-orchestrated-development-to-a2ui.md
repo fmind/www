@@ -116,7 +116,7 @@ We are moving towards a schism in frontend technology, and it’s happening fast
 
 I am convinced that 2026 is the year we stop building UIs _for_ agents and start letting agents _project_ their UIs to us. We shouldn’t spend too much time on UI. Let it be personalized by the agent so we can focus on what truly matters: integration and instruction.
 
-_In the next article, I will share the source code and a full demo of the application I built using A2UI. Stay tuned!_
+_The follow-up, [Building with A2UI](https://www.fmind.dev/articles/building-with-a2ui-extending-the-expressiveness-of-ai-agent-interfaces/), shares the source code and a full demo of the application I built using A2UI._
 
 ![AI-generated man facing a glowing holographic humanoid across a translucent interface panel, above a night city — Source: Gemini App](/static/img/articles/finding-the-holy-grail-of-ai-agent-uis-from-ai-orchestrated-development-to-a2ui/03.webp)
 

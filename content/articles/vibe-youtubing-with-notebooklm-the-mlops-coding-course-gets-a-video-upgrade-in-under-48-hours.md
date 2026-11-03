@@ -51,10 +51,10 @@ I see immense potential for this technology in both professional and personal pr
 
 ### What’s Next?
 
-This is just the beginning! I’ll be releasing more video overviews for the MLOps Coding Course in the coming months. Stay tuned for updates. In the meantime, I’d love to hear from you. Have you tried NotebookLM’s video overview feature? What are your experiences with AI-assisted content creation? Let’s discuss in the comments below!
+This is just the beginning! I’ll be releasing more video overviews for the MLOps Coding Course in the coming months. Stay tuned for updates. In the meantime, I’d love to hear from you. Have you tried NotebookLM’s video overview feature? What are your experiences with AI-assisted content creation? Let’s discuss on [LinkedIn](https://www.linkedin.com/in/fmind-dev/)!
 
 - **MLOps Coding Course**: [https://mlops-coding-course.fmind.dev/](https://mlops-coding-course.fmind.dev/)
-- **GitHub ([CC-BY-4.0 license](https://github.com/fmind/mlops-coding-course#))**: [https://github.com/fmind/mlops-coding-course](https://github.com/fmind/mlops-coding-course)
+- **GitHub ([CC-BY-4.0 license](https://github.com/fmind/mlops-coding-course/blob/main/LICENSE.txt))**: [https://github.com/fmind/mlops-coding-course](https://github.com/fmind/mlops-coding-course)
 - **Playlist for the 1st Chapter on Initialization**: [https://www.youtube.com/playlist?list=PLPCnNL6Y2PbTxRS24rkQ7mATQXjbR0PU7](https://www.youtube.com/playlist?list=PLPCnNL6Y2PbTxRS24rkQ7mATQXjbR0PU7)
 
 ![Cartoon of people and friendly robots in a cinema watching a space adventure on a screen titled Our Creation!](/static/img/articles/vibe-youtubing-with-notebooklm-the-mlops-coding-course-gets-a-video-upgrade-in-under-48-hours/05.webp)

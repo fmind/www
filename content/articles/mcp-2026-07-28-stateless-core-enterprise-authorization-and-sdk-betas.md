@@ -15,7 +15,7 @@ Together, these changes address three core production challenges: stateless scal
 
 ![Silhouetted visitors in a dark room filled with hanging strands of glowing lights — Photo by Robynne O on Unsplash](/static/img/articles/mcp-2026-07-28-stateless-core-enterprise-authorization-and-sdk-betas/cover.webp)
 
-Silhouetted visitors in a dark room filled with hanging strands of glowing lights — Photo by [Robynne O](https://unsplash.com/@roborobs?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Silhouetted visitors in a dark room filled with hanging strands of glowing lights — Photo by [Robynne O](https://unsplash.com/@roborobs) on [Unsplash](https://unsplash.com)
 
 ### Stateless core: scaling without handshakes
 
@@ -94,4 +94,4 @@ With the 2026-07-28 specification locking at the end of July and SDK betas avail
 
 1. **Identify session dependencies.** If your setup relies on sticky routing or shared session tables, migrating to the stateless core will allow you to transition to standard round-robin load balancing and simplify your infrastructure.
 2. **Evaluate your onboarding flow.** If your servers currently require individual user consent redirects, verify if your IdP and client support the new enterprise token-exchange extension to enable role-based authorization.
-3. **Plan your version migrations.** If your systems are pinned to the original 2025-11-25 specification, utilize the 12-month deprecation window to map out updates to your tool and resource signatures.
+3. **Plan your version migrations.** If your systems are pinned to the previous 2025-11-25 specification, utilize the 12-month deprecation window to map out updates to your tool and resource signatures.

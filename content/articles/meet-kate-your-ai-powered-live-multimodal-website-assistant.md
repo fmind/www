@@ -62,4 +62,4 @@ Just a couple of years ago, building a live assistant like Kate seemed like a di
 
 ![Young girl holding hands with a Pepper humanoid robot decorated with pink flowers in a shopping arcade — Photo by Andy Kelly on Unsplash](/static/img/articles/meet-kate-your-ai-powered-live-multimodal-website-assistant/03.webp)
 
-Young girl holding hands with a Pepper humanoid robot decorated with pink flowers in a shopping arcade — Photo by [Andy Kelly](https://unsplash.com/@askkell?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Young girl holding hands with a Pepper humanoid robot decorated with pink flowers in a shopping arcade — Photo by [Andy Kelly](https://unsplash.com/@askkell) on [Unsplash](https://unsplash.com)

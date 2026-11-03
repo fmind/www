@@ -2,6 +2,7 @@ import re
 from datetime import UTC, datetime
 from io import BytesIO
 from pathlib import Path
+from urllib.parse import urlsplit
 
 import pytest
 from PIL import Image
@@ -445,6 +446,7 @@ def test_real_archive_loads_and_has_no_public_drafts() -> None:
     assert sum(item.html.count('<pre class="chroma" tabindex="0">') for item in archived) == 157
     assert not any(re.search(r"<a\b[^>]*>\s*</a>", item.html) for item in collection.all)
 
+    slugs = {item.slug for item in collection.all}
     for item in collection.all:
         prose = re.sub(r"<pre\b.*?</pre>|<code>.*?</code>", "", item.html, flags=re.DOTALL)
         # Unbalanced or space-flanked emphasis from imports renders as literal markers.
@@ -453,6 +455,15 @@ def test_real_archive_loads_and_has_no_public_drafts() -> None:
         hrefs = re.findall(r'href="([^"]+)"', item.html)
         assert not [href for href in hrefs if re.match(r"https://www\.google\.com/(search|url)\b", href)], item.slug
         assert not [href for href in hrefs if "authuser=" in href], item.slug
+        # fmind.dev is the only home of the articles: no off-site copies or Medium import residue.
+        assert not [href for href in hrefs if re.search(r"utm_source=medium|medium\.com/u/", href)], item.slug
+        copies = [
+            href
+            for href in hrefs
+            if urlsplit(href).hostname not in {None, "www.fmind.dev"}
+            and re.sub(r"-[0-9a-f]{10,12}$", "", urlsplit(href).path.rstrip("/").rpartition("/")[2]) in slugs
+        ]
+        assert not copies, item.slug
         # Heading ids, their text-span ids and footnote ids must stay unique per page.
         identifiers = re.findall(r'\bid="([^"]+)"', item.html)
         assert len(identifiers) == len(set(identifiers)), item.slug

@@ -15,7 +15,7 @@ We built sophisticated ETL/ELT pipelines, meticulously organizing raw data into 
 
 ![Wooden dock on a calm lake that mirrors a pine forest under a clear blue sky — Photo by Aaron Burden on Unsplash](/static/img/articles/the-great-data-divergence-why-generative-ai-demands-a-new-approach-beyond-the-data-lake/cover.webp)
 
-Wooden dock on a calm lake that mirrors a pine forest under a clear blue sky — Photo by [Aaron Burden](https://unsplash.com/@aaronburden?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Wooden dock on a calm lake that mirrors a pine forest under a clear blue sky — Photo by [Aaron Burden](https://unsplash.com/@aaronburden) on [Unsplash](https://unsplash.com)
 
 ### The New Rules of the Game: Freshness, Context, and Low Latency
 

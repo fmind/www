@@ -154,4 +154,4 @@ Until then, we need to stop treating the UI as an afterthought. It’s a critica
 
 ![Streaks of purple and cyan light rushing toward a central point, like a jump to hyperspace — Photo by Anton Filatov on Unsplash](/static/img/articles/the-real-ai-agent-bottleneck-is-the-damn-ui/10.webp)
 
-Streaks of purple and cyan light rushing toward a central point, like a jump to hyperspace — Photo by [Anton Filatov](https://unsplash.com/@antony123antony?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Streaks of purple and cyan light rushing toward a central point, like a jump to hyperspace — Photo by [Anton Filatov](https://unsplash.com/@antony123antony) on [Unsplash](https://unsplash.com)

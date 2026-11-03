@@ -17,7 +17,7 @@ However, a paradigm shift is here, driven by Generative AI. This isn’t just an
 
 ![Medieval stone castle on a wooded hilltop above a village, like the hyperscalers' fortress — Photo by Paul Melki on Unsplash](/static/img/articles/the-agentic-cloud-forging-the-next-era-of-infrastructure/02.webp)
 
-Medieval stone castle on a wooded hilltop above a village, like the hyperscalers' fortress — Photo by [Paul Melki](https://unsplash.com/@paulmelki?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Medieval stone castle on a wooded hilltop above a village, like the hyperscalers' fortress — Photo by [Paul Melki](https://unsplash.com/@paulmelki) on [Unsplash](https://unsplash.com)
 
 ### The Fortress 🏰: What Makes the Cloud Giants Dominate?
 

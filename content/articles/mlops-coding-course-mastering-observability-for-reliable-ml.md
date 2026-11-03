@@ -7,13 +7,13 @@ slug = "mlops-coding-course-mastering-observability-for-reliable-ml"
 draft = false
 +++
 
-In [the last blog article](https://home.mlops.community/public/blogs/mlops-coding-course-bridging-the-gap-between-data-scientists-and-machine-learning-engineers), we constructed [a robust and production-ready MLOps codebase](https://github.com/fmind/mlops-python-package). But the journey doesn’t end with deployment. The real test begins when your model encounters the dynamic and often unpredictable world of production. That’s where [**Observability**](https://mlops-coding-course.fmind.dev/7.%20Observability/index.html), the focus of [Chapter 7](https://mlops-coding-course.fmind.dev/7.%20Observability/index.html) in the [MLOps Coding Course](https://mlops-coding-course.fmind.dev/), takes center stage.
+In [the last blog article](https://www.fmind.dev/articles/mlops-coding-course-bridging-the-gap-between-data-scientists-and-machine-learning-engineers/), we constructed [a robust and production-ready MLOps codebase](https://github.com/fmind/mlops-python-package). But the journey doesn’t end with deployment. The real test begins when your model encounters the dynamic and often unpredictable world of production. That’s where [**Observability**](https://mlops-coding-course.fmind.dev/7.%20Observability/index.html), the focus of [Chapter 7](https://mlops-coding-course.fmind.dev/7.%20Observability/index.html) in the [MLOps Coding Course](https://mlops-coding-course.fmind.dev/), takes center stage.
 
 This article dives deep into the essential tools and practices for achieving comprehensive observability in your ML projects. We’ll unravel key concepts, showcase practical code examples from the accompanying [MLOps Python Package](https://github.com/fmind/mlops-python-package), and explore the benefits of integrating industry-leading solutions like [MLflow](https://mlflow.org/).
 
 ![Coin-operated telescope overlooking a coastal city and its harbor — Photo by Elisa Schmidt on Unsplash](/static/img/articles/mlops-coding-course-mastering-observability-for-reliable-ml/cover.webp)
 
-Coin-operated telescope overlooking a coastal city and its harbor — Photo by [Elisa Schmidt](https://unsplash.com/@elisasch?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Coin-operated telescope overlooking a coastal city and its harbor — Photo by [Elisa Schmidt](https://unsplash.com/@elisasch) on [Unsplash](https://unsplash.com)
 
 _Note: The course is also available on the_ [_MLOps Community Learning Platform_](https://learn.mlops.community/courses/languages/mlops-coding-course/)
 
@@ -184,4 +184,4 @@ Embrace the principles and practices outlined in the course, integrate powerful 
 
 ![Lighthouse at the end of a stone walkway on a rocky coast at dusk — Photo by Luca Bravo on Unsplash](/static/img/articles/mlops-coding-course-mastering-observability-for-reliable-ml/07.webp)
 
-Lighthouse at the end of a stone walkway on a rocky coast at dusk — Photo by [Luca Bravo](https://unsplash.com/@lucabravo?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Lighthouse at the end of a stone walkway on a rocky coast at dusk — Photo by [Luca Bravo](https://unsplash.com/@lucabravo) on [Unsplash](https://unsplash.com)

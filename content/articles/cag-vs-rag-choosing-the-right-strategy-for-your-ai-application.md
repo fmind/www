@@ -13,7 +13,7 @@ As AI Engineers, we constantly seek the most effective ways to provide Large Lan
 
 ![Black-and-white portrait of a man in a deerstalker hat peering through a magnifying glass — Photo by Andres Siimon on Unsplash](/static/img/articles/cag-vs-rag-choosing-the-right-strategy-for-your-ai-application/cover.webp)
 
-Black-and-white portrait of a man in a deerstalker hat peering through a magnifying glass — Photo by [Andres Siimon](https://unsplash.com/@johnmcclane?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Black-and-white portrait of a man in a deerstalker hat peering through a magnifying glass — Photo by [Andres Siimon](https://unsplash.com/@johnmcclane) on [Unsplash](https://unsplash.com)
 
 ### 🥊The Contenders: CAG and RAG Explained
 
@@ -152,4 +152,4 @@ For a deeper dive into the analysis mentioned, check out these resources:
 
 ![Observatory domes on a mountaintop under a night sky full of stars and the Milky Way — Photo by Conner Baker on Unsplash](/static/img/articles/cag-vs-rag-choosing-the-right-strategy-for-your-ai-application/06.webp)
 
-Observatory domes on a mountaintop under a night sky full of stars and the Milky Way — Photo by [Conner Baker](https://unsplash.com/@connerbaker?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Observatory domes on a mountaintop under a night sky full of stars and the Milky Way — Photo by [Conner Baker](https://unsplash.com/@connerbaker) on [Unsplash](https://unsplash.com)

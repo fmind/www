@@ -15,7 +15,7 @@ To understand why this approach works, we need to look at where agent protocols 
 
 ![Silhouette of a person facing large monitors filled with code and terminal windows in a dark room — Photo by Kevin Horvat on Unsplash](/static/img/articles/ai-agents-as-an-operating-system-rediscovering-the-linux-philosophy/cover.webp)
 
-Silhouette of a person facing large monitors filled with code and terminal windows in a dark room — Photo by [Kevin Horvat](https://unsplash.com/@hidd3n?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Silhouette of a person facing large monitors filled with code and terminal windows in a dark room — Photo by [Kevin Horvat](https://unsplash.com/@hidd3n) on [Unsplash](https://unsplash.com)
 
 ### The Problem with MCP (Model Context Protocol)
 
@@ -115,4 +115,4 @@ The history of software is wonderfully cyclical. We spent the last few years try
 
 ![Rows of glowing blue 3D cubes stamped with the Kubernetes helm logo — Photo by Growtika on Unsplash](/static/img/articles/ai-agents-as-an-operating-system-rediscovering-the-linux-philosophy/03.webp)
 
-Rows of glowing blue 3D cubes stamped with the Kubernetes helm logo — Photo by [Growtika](https://unsplash.com/@growtika?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Rows of glowing blue 3D cubes stamped with the Kubernetes helm logo — Photo by [Growtika](https://unsplash.com/@growtika) on [Unsplash](https://unsplash.com)

@@ -13,7 +13,7 @@ In this article, I’ll walk you through how I built GentWriter, showcasing the 
 
 ![Bearded gentleman in a top hat and waistcoat tipping his hat while leaning on a cane — Photo by Dmytro Tolokonov on Unsplash](/static/img/articles/introducing-gentwriter-building-a-multi-agent-content-generator-with-googles-adk/cover.webp)
 
-Bearded gentleman in a top hat and waistcoat tipping his hat while leaning on a cane — Photo by [Dmytro Tolokonov](https://unsplash.com/@dtolokonov?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Bearded gentleman in a top hat and waistcoat tipping his hat while leaning on a cane — Photo by [Dmytro Tolokonov](https://unsplash.com/@dtolokonov) on [Unsplash](https://unsplash.com)
 
 ### The Challenge: Taming the Social Content Beast 🦁
 
@@ -21,7 +21,7 @@ Keeping multiple social media feeds updated with relevant content derived from a
 
 ![Smartphone home screen with Instagram, Twitter, and LinkedIn app icons — Photo by Nik on Unsplash](/static/img/articles/introducing-gentwriter-building-a-multi-agent-content-generator-with-googles-adk/02.webp)
 
-Smartphone home screen with Instagram, Twitter, and LinkedIn app icons — Photo by [Nik](https://unsplash.com/@helloimnik?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Smartphone home screen with Instagram, Twitter, and LinkedIn app icons — Photo by [Nik](https://unsplash.com/@helloimnik) on [Unsplash](https://unsplash.com)
 
 ### Enter GentWriter: Your AI Content Assistant 🤖
 
@@ -31,7 +31,7 @@ GentWriter tackles this challenge. Its core mission is to take a URL of an artic
 - A concise and engaging Twitter (X) post 🐦
 - A professional LinkedIn post 👔
 
-Example with my latest article: [https://fmind.medium.com/cag-vs-rag-choosing-the-right-strategy-for-your-ai-application-68dcae85d028](https://fmind.medium.com/cag-vs-rag-choosing-the-right-strategy-for-your-ai-application-68dcae85d028)
+Example with my latest article: [https://www.fmind.dev/articles/cag-vs-rag-choosing-the-right-strategy-for-your-ai-application/](https://www.fmind.dev/articles/cag-vs-rag-choosing-the-right-strategy-for-your-ai-application/)
 
 **SEO Description**
 
@@ -39,7 +39,7 @@ Example with my latest article: [https://fmind.medium.com/cag-vs-rag-choosing-th
 
 **X Post**
 
-> CAG vs RAG: Which is the best strategy for your \#GenAI app? 🤔 I break down the latency, price, & complexity trade-offs in my latest article! RAG wins for large scale & low latency, but CAG is great for quick prototypes. Check it out! 👇 \#AI \#MLOps [https://fmind.medium.com/cag-vs-rag-choosing-the-right-strategy-for-your-ai-application-68dcae85d028](https://fmind.medium.com/cag-vs-rag-choosing-the-right-strategy-for-your-ai-application-68dcae85d028)
+> CAG vs RAG: Which is the best strategy for your \#GenAI app? 🤔 I break down the latency, price, & complexity trade-offs in my latest article! RAG wins for large scale & low latency, but CAG is great for quick prototypes. Check it out! 👇 \#AI \#MLOps [https://www.fmind.dev/articles/cag-vs-rag-choosing-the-right-strategy-for-your-ai-application/](https://www.fmind.dev/articles/cag-vs-rag-choosing-the-right-strategy-for-your-ai-application/)
 
 **LinkedIn Post**
 
@@ -47,7 +47,7 @@ Example with my latest article: [https://fmind.medium.com/cag-vs-rag-choosing-th
 
 > The article highlights that RAG generally offers lower latency and cost, especially for large-scale applications with substantial knowledge bases. However, CAG, particularly with caching, can be a simpler and more efficient starting point for prototypes or when dealing with smaller context sizes. It emphasizes the importance of evaluating your specific needs and constraints before deciding which approach to use. A key takeaway for me was the reminder to estimate latency and cost for your specific use case before committing to a solution.
 
-> Check out the full article for a deeper dive into the analysis and practical recommendations: [https://fmind.medium.com/cag-vs-rag-choosing-the-right-strategy-for-your-ai-application-68dcae85d028](https://fmind.medium.com/cag-vs-rag-choosing-the-right-strategy-for-your-ai-application-68dcae85d028)
+> Check out the full article for a deeper dive into the analysis and practical recommendations: [https://www.fmind.dev/articles/cag-vs-rag-choosing-the-right-strategy-for-your-ai-application/](https://www.fmind.dev/articles/cag-vs-rag-choosing-the-right-strategy-for-your-ai-application/)
 
 > What are your experiences with CAG and RAG? I’m curious to hear your thoughts! \#ArtificialIntelligence \#RAG \#CAG \#GenerativeAI \#LLM \#MLOps
 
@@ -150,4 +150,4 @@ If you’re automating content workflows or exploring agent-based systems, defin
 
 ![LEGO Voltron robot assembled from colored lion robots in a LEGO store, like agents combined into one system — Photo by Parmanand Jagnandan on Unsplash](/static/img/articles/introducing-gentwriter-building-a-multi-agent-content-generator-with-googles-adk/06.webp)
 
-LEGO Voltron robot assembled from colored lion robots in a LEGO store, like agents combined into one system — Photo by [Parmanand Jagnandan](https://unsplash.com/@parmanand?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+LEGO Voltron robot assembled from colored lion robots in a LEGO store, like agents combined into one system — Photo by [Parmanand Jagnandan](https://unsplash.com/@parmanand) on [Unsplash](https://unsplash.com)

@@ -19,7 +19,7 @@ To establish a path to genuine ROI, we had to apply strict Cartesian FinOps rigo
 
 ![White piggy bank wearing glasses looking at a calculator on a pink background — Photo by Sasun Bughdaryan on Unsplash](/static/img/articles/the-affordable-ai-agents/cover.webp)
 
-White piggy bank wearing glasses looking at a calculator on a pink background — Photo by [Sasun Bughdaryan](https://unsplash.com/@sasun1990?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+White piggy bank wearing glasses looking at a calculator on a pink background — Photo by [Sasun Bughdaryan](https://unsplash.com/@sasun1990) on [Unsplash](https://unsplash.com)
 
 ### 1. The Collapse of VC-Subsidized Subscriptions
 
@@ -108,4 +108,4 @@ Based on our evaluation of GCP infrastructure versus managed APIs and local exec
 
 The era of all-you-can-eat AI and [token maxxing](https://en.wikipedia.org/wiki/Token_maxxing) is over. As open-weights models close the performance gap with proprietary APIs, designing a hybrid infrastructure is the only path to long-term model independence and predictable costs.
 
-_How is your engineering team handling the shift to usage-based AI billing? Are you sticking with GitHub Copilot, evaluating GCP self-hosting, or testing local models? Let me know in the comments below or reach out to me directly here._
+_How is your engineering team handling the shift to usage-based AI billing? Are you sticking with GitHub Copilot, evaluating GCP self-hosting, or testing local models? Let me know on [LinkedIn](https://www.linkedin.com/in/fmind-dev/)._

@@ -11,7 +11,7 @@ Deploying a [Large Language Model](https://en.wikipedia.org/wiki/Large_language_
 
 ![Snow-covered mountain summit rising above a sea of clouds under a clear blue sky — Photo by ecmadao . on Unsplash](/static/img/articles/scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/cover.webp)
 
-Snow-covered mountain summit rising above a sea of clouds under a clear blue sky — Photo by [ecmadao .](https://unsplash.com/@ecmadao?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Snow-covered mountain summit rising above a sea of clouds under a clear blue sky — Photo by [ecmadao .](https://unsplash.com/@ecmadao) on [Unsplash](https://unsplash.com)
 
 On [Google Cloud Platform](https://cloud.google.com/) (GCP), you have a spectrum of solutions at your disposal, each with its own trade-offs between simplicity and control. This article dives into the practical realities of serving LLMs on GCP, reviewing the out-of-the-box options and sharing insights from a hands-on benchmark. We’ll explore why deploying even a seemingly straightforward model like [Gemma 3 12B](https://ai.google.dev/gemma/docs/core) can get tricky and help you choose the right path for your specific needs, before you even start thinking about complex optimizations.
 
@@ -28,7 +28,7 @@ An alternative path is to simplify the pipeline by using a smaller model, like [
 
 ![Vintage balance scale in a shop window, a nod to the trade-off between model power, hardware cost, and complexity — Photo by Piret Ilver on Unsplash](/static/img/articles/scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/02.webp)
 
-Vintage balance scale in a shop window, a nod to the trade-off between model power, hardware cost, and complexity — Photo by [Piret Ilver](https://unsplash.com/@saltsup?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Vintage balance scale in a shop window, a nod to the trade-off between model power, hardware cost, and complexity — Photo by [Piret Ilver](https://unsplash.com/@saltsup) on [Unsplash](https://unsplash.com)
 
 ### ⚙️ The Benchmark Setup
 
@@ -194,4 +194,4 @@ Deploying LLMs is a complex but navigable challenge. By understanding the landsc
 
 ![Rock climber scaling a granite cliff above a forested valley — Photo by Connor Moynihan on Unsplash](/static/img/articles/scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp/16.webp)
 
-Rock climber scaling a granite cliff above a forested valley — Photo by [Connor Moynihan](https://unsplash.com/@connor_moynihan?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Rock climber scaling a granite cliff above a forested valley — Photo by [Connor Moynihan](https://unsplash.com/@connor_moynihan) on [Unsplash](https://unsplash.com)

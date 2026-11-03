@@ -11,7 +11,7 @@ The world of AI/ML is evolving at an electrifying pace, and MLOps has emerged as
 
 ![Lightning bolts striking the sea under a purple storm sky beside a rocky headland — Photo by Jeremy Bishop on Unsplash](/static/img/articles/mlops-package-template-turbocharge-the-creation-of-ai-ml-projects/cover.webp)
 
-Lightning bolts striking the sea under a purple storm sky beside a rocky headland — Photo by [Jeremy Bishop](https://unsplash.com/@jeremybishop?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Lightning bolts striking the sea under a purple storm sky beside a rocky headland — Photo by [Jeremy Bishop](https://unsplash.com/@jeremybishop) on [Unsplash](https://unsplash.com)
 
 ### Why Code Templates Matter 💡
 
@@ -137,4 +137,4 @@ Embark on your MLOps journey with the [**Cookiecutter MLOps Package**](https://g
 
 ![Rows of high-voltage power line towers in front of snowy mountains, in black and white — Photo by Jan Huber on Unsplash](/static/img/articles/mlops-package-template-turbocharge-the-creation-of-ai-ml-projects/02.webp)
 
-Rows of high-voltage power line towers in front of snowy mountains, in black and white — Photo by [Jan Huber](https://unsplash.com/@jan_huber?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Rows of high-voltage power line towers in front of snowy mountains, in black and white — Photo by [Jan Huber](https://unsplash.com/@jan_huber) on [Unsplash](https://unsplash.com)

@@ -13,7 +13,7 @@ But possessing a good tool is only the beginning. **Just as a skilled craftsman 
 
 ![Woodworker in a face shield turning wood on a lathe as shavings fly — Photo by Andrew Ruiz on Unsplash](/static/img/articles/how-to-configure-vs-code-for-ai-ml-and-mlops-development-in-python/cover.webp)
 
-Woodworker in a face shield turning wood on a lathe as shavings fly — Photo by [Andrew Ruiz](https://unsplash.com/@andrewruiz?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Woodworker in a face shield turning wood on a lathe as shavings fly — Photo by [Andrew Ruiz](https://unsplash.com/@andrewruiz) on [Unsplash](https://unsplash.com)
 
 ### Extensions 🔌
 
@@ -289,4 +289,4 @@ Farewell, skilled developer, may your code be efficient and your professional pa
 
 ![Rider in a cowboy hat on a white horse in a meadow at sunset — Photo by Taylor Brandon on Unsplash](/static/img/articles/how-to-configure-vs-code-for-ai-ml-and-mlops-development-in-python/17.webp)
 
-Rider in a cowboy hat on a white horse in a meadow at sunset — Photo by [Taylor Brandon](https://unsplash.com/@house_42?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Rider in a cowboy hat on a white horse in a meadow at sunset — Photo by [Taylor Brandon](https://unsplash.com/@house_42) on [Unsplash](https://unsplash.com)

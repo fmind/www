@@ -11,7 +11,7 @@ The AI landscape is constantly evolving, pushing the boundaries of what’s poss
 
 ![Hand holding a compass in front of a forested mountain valley — Photo by Jamie Street on Unsplash](/static/img/articles/bromate-automate-your-browser-with-agentic-workflows/cover.webp)
 
-Hand holding a compass in front of a forested mountain valley — Photo by [Jamie Street](https://unsplash.com/@jamie452?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Hand holding a compass in front of a forested mountain valley — Photo by [Jamie Street](https://unsplash.com/@jamie452) on [Unsplash](https://unsplash.com)
 
 ### Decoding Agentic Workflows for Automation 💡
 
@@ -217,4 +217,4 @@ Agentic workflows are transforming the way we think about automation. [**Bromate
 
 ![Snow-dusted rocky mountain peaks glowing pink in the sunset light — Photo by Jacek Dylag on Unsplash](/static/img/articles/bromate-automate-your-browser-with-agentic-workflows/03.webp)
 
-Snow-dusted rocky mountain peaks glowing pink in the sunset light — Photo by [Jacek Dylag](https://unsplash.com/@dylu?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Snow-dusted rocky mountain peaks glowing pink in the sunset light — Photo by [Jacek Dylag](https://unsplash.com/@dylu) on [Unsplash](https://unsplash.com)

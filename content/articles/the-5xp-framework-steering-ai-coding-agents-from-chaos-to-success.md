@@ -17,7 +17,7 @@ In this follow-up article, I present the exact structure I use for my AI-assiste
 
 ![Construction workers in hard hats climbing a yellow scaffolding frame against a blue sky — Photo by ZHIDA LI on Unsplash](/static/img/articles/the-5xp-framework-steering-ai-coding-agents-from-chaos-to-success/cover.webp)
 
-Construction workers in hard hats climbing a yellow scaffolding frame against a blue sky — Photo by [ZHIDA LI](https://unsplash.com/@adam_l_ee?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Construction workers in hard hats climbing a yellow scaffolding frame against a blue sky — Photo by [ZHIDA LI](https://unsplash.com/@adam_l_ee) on [Unsplash](https://unsplash.com)
 
 > _**Note:**_ _To make it easier to adopt, I’ve created the_ [_AI Coding 5xP Template_](https://github.com/fmind/ai-coding-5xp-template) _repository. This repository acts as the single source of truth for the framework, providing a ready-to-use directory structure you can use for your own projects._
 
@@ -116,6 +116,6 @@ It does not take long to set up, but it forces you to think clearly about your p
 
 ![Developer seen from behind, wearing a Don’t Be Bored shirt, writing code on a large monitor and a laptop — Photo by Van Tay Media on Unsplash](/static/img/articles/the-5xp-framework-steering-ai-coding-agents-from-chaos-to-success/02.webp)
 
-Developer seen from behind, wearing a Don’t Be Bored shirt, writing code on a large monitor and a laptop — Photo by [Van Tay Media](https://unsplash.com/@vantaymedia?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Developer seen from behind, wearing a Don’t Be Bored shirt, writing code on a large monitor and a laptop — Photo by [Van Tay Media](https://unsplash.com/@vantaymedia) on [Unsplash](https://unsplash.com)
 
 Ready to start? Grab the [AI Coding 5xP Template](https://github.com/fmind/ai-coding-5xp-template) on GitHub to get up and running instantly.

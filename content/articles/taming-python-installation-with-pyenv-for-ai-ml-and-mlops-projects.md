@@ -124,4 +124,4 @@ _To learn more about best practices for MLOps Coding, check this course:_ [_http
 
 ![Take care of your Python environment. Photo by Karsten Würth on Unsplash](/static/img/articles/taming-python-installation-with-pyenv-for-ai-ml-and-mlops-projects/02.webp)
 
-Take care of your Python environment. Photo by [Karsten Würth](https://unsplash.com/@karsten_wuerth?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Take care of your Python environment. Photo by [Karsten Würth](https://unsplash.com/@karsten_wuerth) on [Unsplash](https://unsplash.com)

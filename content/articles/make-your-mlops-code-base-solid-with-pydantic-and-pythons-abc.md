@@ -104,7 +104,7 @@ def train_model(data):
 train_model("sample_data")
 ```
 
-I wrote [an article that delves into the design patterns I find most pertinent to AI/ML code bases](https://mlops.community/become-the-maestro-of-your-mlops-abstractions/), such as the Factory, Strategy, and Adapter patterns. Although it’s impractical to explore every pattern, a wealth of literature exists on the subject. [Numerous books](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html) and [articles](https://wiki.c2.com/) offer detailed guidance on understanding and choosing the most suitable design patterns for specific scenarios.
+I wrote [an article that delves into the design patterns I find most pertinent to AI/ML code bases](https://www.fmind.dev/articles/become-the-maestro-of-your-mlops-abstractions/), such as the Factory, Strategy, and Adapter patterns. Although it’s impractical to explore every pattern, a wealth of literature exists on the subject. [Numerous books](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html) and [articles](https://wiki.c2.com/) offer detailed guidance on understanding and choosing the most suitable design patterns for specific scenarios.
 
 #### SOLID Principles
 

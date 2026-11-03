@@ -13,7 +13,7 @@ The problem? Traditional, monolithic MLOps pipelines are inherently **rigid**. T
 
 ![Welder in a trench joining sections of a large steel pipeline — Photo by SELİM ARDA ERYILMAZ on Unsplash](/static/img/articles/stop-building-rigid-ai-ml-pipelines-embrace-reusable-components-for-flexible-mlops/cover.webp)
 
-Welder in a trench joining sections of a large steel pipeline — Photo by [SELİM ARDA ERYILMAZ](https://unsplash.com/@selimarda6006?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Welder in a trench joining sections of a large steel pipeline — Photo by [SELİM ARDA ERYILMAZ](https://unsplash.com/@selimarda6006) on [Unsplash](https://unsplash.com)
 
 **The Solution: Reusable Artifacts and DAGs**
 
@@ -78,4 +78,4 @@ So, the next time you start an [MLOps project](https://github.com/fmind/cookiecu
 
 ![Spoons of colorful spices with chili peppers and fresh herbs laid out on a marble counter — Photo by Calum Lewis on Unsplash](/static/img/articles/stop-building-rigid-ai-ml-pipelines-embrace-reusable-components-for-flexible-mlops/07.webp)
 
-Spoons of colorful spices with chili peppers and fresh herbs laid out on a marble counter — Photo by [Calum Lewis](https://unsplash.com/@calumlewis?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Spoons of colorful spices with chili peppers and fresh herbs laid out on a marble counter — Photo by [Calum Lewis](https://unsplash.com/@calumlewis) on [Unsplash](https://unsplash.com)

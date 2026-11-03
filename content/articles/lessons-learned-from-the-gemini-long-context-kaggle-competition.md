@@ -11,7 +11,7 @@ The world of Generative AI is constantly evolving, and one of the most exciting 
 
 ![Silhouette of a person gazing up at the Milky Way across a vast, colorful starry sky — Photo by Greg Rakozy on Unsplash](/static/img/articles/lessons-learned-from-the-gemini-long-context-kaggle-competition/cover.webp)
 
-Silhouette of a person gazing up at the Milky Way across a vast, colorful starry sky — Photo by [Greg Rakozy](https://unsplash.com/@grakozy?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Silhouette of a person gazing up at the Milky Way across a vast, colorful starry sky — Photo by [Greg Rakozy](https://unsplash.com/@grakozy) on [Unsplash](https://unsplash.com)
 
 Then came [Google’s Gemini 1.5](https://blog.google/technology/ai/google-gemini-next-generation-model-february-2024/), boasting a game-changing context window of up to **2 million tokens**. That’s like remembering 16 average novels! 🤯 This breakthrough opens up a world of possibilities, and the recent “[Gemini Long Context](https://www.kaggle.com/competitions/gemini-long-context)” Kaggle competition was a chance to explore them. I decided to jump in, and the experience was a fascinating deep dive into the potential — and the current limitations — of this cutting-edge technology.
 
@@ -97,4 +97,4 @@ While challenges remain, the potential of long context models like Gemini 1.5 an
 
 ![Two trail runners climbing a rocky forest path, one using trekking poles — Photo by Urban Vintage on Unsplash](/static/img/articles/lessons-learned-from-the-gemini-long-context-kaggle-competition/07.webp)
 
-Two trail runners climbing a rocky forest path, one using trekking poles — Photo by [Urban Vintage](https://unsplash.com/@urban_vintage?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Two trail runners climbing a rocky forest path, one using trekking poles — Photo by [Urban Vintage](https://unsplash.com/@urban_vintage) on [Unsplash](https://unsplash.com)

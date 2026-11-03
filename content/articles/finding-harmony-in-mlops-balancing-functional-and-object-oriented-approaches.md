@@ -13,7 +13,7 @@ However, when it comes to programming paradigms, the arguments tend to be more f
 
 ![Black and white cups on opposite halves of a coffee-bean and white surface, like yin and yang — Photo by Alex Padurariu on Unsplash](/static/img/articles/finding-harmony-in-mlops-balancing-functional-and-object-oriented-approaches/cover.webp)
 
-Black and white cups on opposite halves of a coffee-bean and white surface, like yin and yang — Photo by [Alex Padurariu](https://unsplash.com/@alexpadurariu?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com/?utm_source=medium&utm_medium=referral)
+Black and white cups on opposite halves of a coffee-bean and white surface, like yin and yang — Photo by [Alex Padurariu](https://unsplash.com/@alexpadurariu) on [Unsplash](https://unsplash.com/)
 
 This article aims to shed light on the benefits of both programming styles and help you determine the most suitable one for your MLOps project. We will start by introducing the two main programming styles in our industry. Subsequently, we will explore the specific requirements of MLOps projects to guide our decision-making process. Finally, I will offer my opinion on the best overall style and present a compelling trade-off known as the “hybrid style.”
 
@@ -112,4 +112,4 @@ On a personal note, I find the object-oriented style of Python somewhat lacking 
 
 ![Three hands toasting with two lattes and an iced coffee over a café table — Photo by Nathan Dumlao on Unsplash](/static/img/articles/finding-harmony-in-mlops-balancing-functional-and-object-oriented-approaches/05.webp)
 
-Three hands toasting with two lattes and an iced coffee over a café table — Photo by [Nathan Dumlao](https://unsplash.com/@nate_dumlao?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com/?utm_source=medium&utm_medium=referral)
+Three hands toasting with two lattes and an iced coffee over a café table — Photo by [Nathan Dumlao](https://unsplash.com/@nate_dumlao) on [Unsplash](https://unsplash.com/)

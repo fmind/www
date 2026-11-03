@@ -189,7 +189,7 @@ The [BKFC notebook](https://github.com/fmind/BKFC/blob/main/BKFC_Build_a_Knowled
 
 It highlights that you don’t always need complex, multi-turn conversational agents to benefit from AI. Focused, task-specific agents like this can automate tedious processes and unlock information trapped in our daily communication streams. As AI and MLOps practitioners, building these kinds of targeted solutions is becoming increasingly straightforward, enabling us to enhance productivity and knowledge sharing within our teams.
 
-What other routine information retrieval tasks could be automated with a similar approach? Let me know in comments!
+What other routine information retrieval tasks could be automated with a similar approach? Let me know on [LinkedIn](https://www.linkedin.com/in/fmind-dev/)!
 
 - **GitHub Repository**: [https://github.com/fmind/BKFC](https://github.com/fmind/BKFC)
 - **Colab Notebook**: [https://github.com/fmind/BKFC/blob/main/BKFC_Build_a_Knowledge_base_From_Chats.ipynb](https://github.com/fmind/BKFC/blob/main/BKFC_Build_a_Knowledge_base_From_Chats.ipynb)

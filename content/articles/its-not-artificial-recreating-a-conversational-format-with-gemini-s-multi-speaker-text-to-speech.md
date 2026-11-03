@@ -13,7 +13,7 @@ This project was inspired by a desire to replicate that engaging, conversational
 
 ![Glowing blue light trails forming overlapping sound waves on a black background — Photo by Pawel Czerwinski on Unsplash](/static/img/articles/its-not-artificial-recreating-a-conversational-format-with-gemini-s-multi-speaker-text-to-speech/cover.webp)
 
-Glowing blue light trails forming overlapping sound waves on a black background — Photo by [Pawel Czerwinski](https://unsplash.com/@pawel_czerwinski?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Glowing blue light trails forming overlapping sound waves on a black background — Photo by [Pawel Czerwinski](https://unsplash.com/@pawel_czerwinski) on [Unsplash](https://unsplash.com)
 
 ### The Concept: A Dynamic Duo Powered by AI 💡
 
@@ -140,4 +140,4 @@ The success of formats like “C’est pas sorcier” demonstrates the education
 
 ![Hooded wizard with green eyes holding a glowing orb of light in his palm — Photo by Sander Sammy on Unsplash](/static/img/articles/its-not-artificial-recreating-a-conversational-format-with-gemini-s-multi-speaker-text-to-speech/02.webp)
 
-Hooded wizard with green eyes holding a glowing orb of light in his palm — Photo by [Sander Sammy](https://unsplash.com/@sammywilliams?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)
+Hooded wizard with green eyes holding a glowing orb of light in his palm — Photo by [Sander Sammy](https://unsplash.com/@sammywilliams) on [Unsplash](https://unsplash.com)
