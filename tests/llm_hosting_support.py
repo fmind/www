@@ -1,7 +1,5 @@
 """Shared helper for the LLM self-hosting calculator tests."""
 
-from __future__ import annotations
-
 from datetime import UTC, datetime
 
 from www.sites.calculator import build_llm_self_hosting_view

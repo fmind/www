@@ -1,7 +1,5 @@
 """Collect bounded website analytics using gcloud and free BigQuery table reads."""
 
-from __future__ import annotations
-
 import argparse
 import http.client
 import json

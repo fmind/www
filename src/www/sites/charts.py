@@ -1,7 +1,5 @@
 """Self-hosting calculator charts."""
 
-from __future__ import annotations
-
 from dataclasses import replace
 from math import ceil, floor, log10
 

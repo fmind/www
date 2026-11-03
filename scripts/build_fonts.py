@@ -15,8 +15,6 @@ Google's own brand use; the output is verified to contain none.
 Run it after bumping a release tag, then commit the regenerated WOFF2 files.
 """
 
-from __future__ import annotations
-
 import hashlib
 import io
 import sys

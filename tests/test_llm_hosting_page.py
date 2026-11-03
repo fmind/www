@@ -1,7 +1,5 @@
 """LLM self-hosting calculator page: rendered forms, sections, and HTML semantics over HTTP."""
 
-from __future__ import annotations
-
 import re
 from collections.abc import Callable, Iterator
 from dataclasses import replace

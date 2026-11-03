@@ -1,7 +1,5 @@
 """Self-hosting calculator formatting."""
 
-from __future__ import annotations
-
 from collections.abc import Sequence
 from math import floor
 

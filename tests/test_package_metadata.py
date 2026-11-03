@@ -1,7 +1,5 @@
 """Release metadata stays synchronized across every published surface."""
 
-from __future__ import annotations
-
 import json
 import re
 import tomllib

@@ -1,7 +1,5 @@
 """Smoke-test the already-built production image archive through Docker."""
 
-from __future__ import annotations
-
 import asyncio
 import http.client
 import json

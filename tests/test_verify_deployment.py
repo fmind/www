@@ -1,7 +1,5 @@
 """Release acceptance rejects stale, partial, and unexpectedly costly rollouts."""
 
-from __future__ import annotations
-
 import json
 import subprocess
 from pathlib import Path

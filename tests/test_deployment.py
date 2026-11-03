@@ -1,7 +1,5 @@
 """Contract tests for the manual Cloud Run deployment boundary."""
 
-from __future__ import annotations
-
 import os
 import re
 import subprocess

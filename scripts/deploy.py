@@ -1,7 +1,5 @@
 """Fail-closed argument boundary for manual Cloud Run rollouts."""
 
-from __future__ import annotations
-
 import os
 import re
 import secrets

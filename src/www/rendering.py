@@ -1,7 +1,5 @@
 """Strict package-local Jinja rendering for the site's HTML page types."""
 
-from __future__ import annotations
-
 import json
 import re
 from collections.abc import Callable, Mapping, MutableMapping, Sequence

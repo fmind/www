@@ -1,7 +1,5 @@
 """Self-hosting calculator economics."""
 
-from __future__ import annotations
-
 from dataclasses import replace
 from datetime import UTC, datetime
 from math import ceil, floor

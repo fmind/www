@@ -1,7 +1,5 @@
 """Bounded asynchronous byte-range responses for regular static files."""
 
-from __future__ import annotations
-
 import asyncio
 import os
 import stat

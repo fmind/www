@@ -1,7 +1,5 @@
 """Resolve and scan every serving Cloud Run revision with Trivy."""
 
-from __future__ import annotations
-
 import json
 import os
 import re

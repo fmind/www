@@ -1,7 +1,5 @@
 """Conference contact details derived from the public portfolio."""
 
-from __future__ import annotations
-
 from base64 import b64encode
 from io import BytesIO
 from pathlib import Path

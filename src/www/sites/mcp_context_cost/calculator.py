@@ -6,8 +6,6 @@ For each managed API: context share = 100 * T / input limit, and cost = tokens *
 input price / 1e6. Caching, output, tool results and the rest of the prompt are excluded.
 """
 
-from __future__ import annotations
-
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime

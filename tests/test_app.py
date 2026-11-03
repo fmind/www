@@ -1,7 +1,5 @@
 """Application routing, delivery, and lifecycle integration tests."""
 
-from __future__ import annotations
-
 import asyncio
 import json
 import logging

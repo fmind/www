@@ -1,7 +1,5 @@
 """Read-only Model Context Protocol portfolio server and discovery card."""
 
-from __future__ import annotations
-
 import json
 from collections.abc import Mapping
 from importlib.metadata import version

@@ -50,7 +50,6 @@ build-backend = "uv_build"
 
 [tool.ruff]
 line-length = 120
-target-version = "py314"
 extend-exclude = ["*.md"]
 
 [tool.ruff.format]
@@ -68,7 +67,6 @@ select = [
   "E", # pycodestyle errors: style guide errors
   "ERA", # eradicate: detect and remove commented-out code
   "F", # pyflakes: logical errors and unused imports/variables
-  "FA", # flake8-future-annotations: future annotation imports
   "FURB", # refurb: modernizing language idioms and constructs
   "I", # isort: clean and sorted imports
   "ISC", # flake8-implicit-str-concat: implicit string concatenation
@@ -103,9 +101,6 @@ ignore = [
   "T201", # diagnostic output is useful in test helpers.
 ]
 
-[tool.ty.environment]
-python-version = "3.14"
-
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = ["-ra", "--strict-config", "--strict-markers"]
@@ -116,7 +111,6 @@ xfail_strict = true
 [tool.coverage.run]
 branch = true
 source = ["src", "scripts"]
-omit = ["tests/*"]
 
 [tool.coverage.report]
 show_missing = true

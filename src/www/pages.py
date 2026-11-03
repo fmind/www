@@ -1,7 +1,5 @@
 """Pure page metadata builders shared by routes and tests."""
 
-from __future__ import annotations
-
 from www.connect import CONNECT_URL
 from www.data import METADATA, get_application_structured_data, get_page_structured_data
 from www.models import Article, ArticleIndexView, PageMetadata, SitePage

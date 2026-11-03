@@ -1,7 +1,5 @@
 """Tracing stays explicitly opt-in and bounded during shutdown."""
 
-from __future__ import annotations
-
 import logging
 from threading import Event
 

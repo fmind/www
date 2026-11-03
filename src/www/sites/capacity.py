@@ -1,7 +1,5 @@
 """Shared serving assumptions for automatic sizing and fixed-fleet estimates."""
 
-from __future__ import annotations
-
 from dataclasses import replace
 from math import ceil
 

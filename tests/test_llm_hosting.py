@@ -1,7 +1,5 @@
 """LLM self-hosting calculator: input parsing, formulas, view models, and formatting, tested without HTTP."""
 
-from __future__ import annotations
-
 from dataclasses import replace
 from datetime import UTC, datetime
 from math import isclose, isfinite, isnan

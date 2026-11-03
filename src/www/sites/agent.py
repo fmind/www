@@ -1,7 +1,5 @@
 """Bounded agent access to the same calculator used by the website."""
 
-from __future__ import annotations
-
 from dataclasses import replace
 from datetime import UTC, datetime
 

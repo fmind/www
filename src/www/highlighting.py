@@ -1,7 +1,5 @@
 """Server-side, class-based syntax highlighting with the Fmind light palette."""
 
-from __future__ import annotations
-
 import re
 from html import escape
 from typing import Final

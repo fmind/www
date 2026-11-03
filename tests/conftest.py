@@ -1,7 +1,5 @@
 """Session fixtures shared by the application tests."""
 
-from __future__ import annotations
-
 from collections.abc import Callable
 from functools import partial
 

@@ -1,7 +1,5 @@
 """Self-hosting calculator inputs."""
 
-from __future__ import annotations
-
 from collections.abc import Mapping, Sequence
 from dataclasses import replace
 from decimal import Decimal

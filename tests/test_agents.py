@@ -1,7 +1,5 @@
 """Agent discovery, representation negotiation, and end-to-end tool contracts."""
 
-from __future__ import annotations
-
 import re
 from collections.abc import Callable, Iterator
 from dataclasses import replace

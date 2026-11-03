@@ -1,7 +1,5 @@
 """Typed environment configuration parsed once at process startup."""
 
-from __future__ import annotations
-
 import os
 from collections.abc import Mapping
 from dataclasses import dataclass

@@ -1,7 +1,5 @@
 """Immutable view and publication models shared by every delivery surface."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Annotated

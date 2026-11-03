@@ -1,7 +1,5 @@
 """MCP context arithmetic, boundary validation and shared HTTP/MCP discovery."""
 
-from __future__ import annotations
-
 import json
 from collections.abc import Callable, Iterator
 from datetime import UTC, datetime

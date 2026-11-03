@@ -1,7 +1,5 @@
 """Fail-closed loading and hashing for deploy-static site assets."""
 
-from __future__ import annotations
-
 from collections.abc import Mapping
 from dataclasses import dataclass
 from hashlib import file_digest, sha256

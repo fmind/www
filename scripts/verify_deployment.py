@@ -6,8 +6,6 @@ tagged URL. The default mode runs after promotion against the public origin and
 also completes one MCP initialize there, because /mcp accepts only the public host.
 """
 
-from __future__ import annotations
-
 import json
 import os
 import re

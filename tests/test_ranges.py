@@ -1,7 +1,5 @@
 """Static file byte-range response tests."""
 
-from __future__ import annotations
-
 import asyncio
 from pathlib import Path
 from typing import Any, cast

@@ -1,7 +1,5 @@
 """Docker-free contract tests for the production image smoke harness."""
 
-from __future__ import annotations
-
 import json
 import signal
 import traceback

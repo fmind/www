@@ -1,7 +1,5 @@
 """Development reload scope excludes generated test and build output."""
 
-from __future__ import annotations
-
 import shlex
 import tomllib
 from contextlib import closing

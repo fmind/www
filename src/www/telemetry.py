@@ -1,7 +1,5 @@
 """Optional OTLP tracing configured only when a collector is present."""
 
-from __future__ import annotations
-
 import logging
 import os
 from threading import Event, Thread

@@ -1,7 +1,5 @@
 """Litestar application assembly for every human and machine surface."""
 
-from __future__ import annotations
-
 import hashlib
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
