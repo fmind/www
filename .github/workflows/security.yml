@@ -21,9 +21,9 @@ jobs:
           fetch-depth: 0
           persist-credentials: false # scanners only read the checkout
       - name: Set up mise tools
-        uses: jdx/mise-action@6be3c7ed4c21d4f76b208d351d95aac273ebb76d # v5.2.4
+        uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
         with:
-          version: 2026.10.21 # pinned mise; bump deliberately with mise.lock tooling
+          version: 2026.10.25 # pinned mise; bump deliberately with mise.lock tooling
           install: false
           cache: true
       - name: Install security scanners
@@ -58,9 +58,9 @@ jobs:
         with:
           persist-credentials: false
       - name: Set up mise
-        uses: jdx/mise-action@6be3c7ed4c21d4f76b208d351d95aac273ebb76d # v5.2.4
+        uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
         with:
-          version: 2026.10.21 # pinned mise; bump deliberately with mise.lock tooling
+          version: 2026.10.25 # pinned mise; bump deliberately with mise.lock tooling
           install: false
           cache: false # this job holds id-token; never read shared caches
       - name: Install scanner and runtime

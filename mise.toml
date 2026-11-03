@@ -32,12 +32,12 @@ python = "3.14.10"
 shellcheck = "0.11.0"
 tflint = "0.65.0"
 trivy = "0.76.1"
-typos = "1.51.1"
+typos = "1.52.0"
 
 # MCP Registry publisher for the release skill. The release also ships registry server
 # assets, so select the publisher archive per platform (signature side files excluded).
 [tools."github:modelcontextprotocol/registry"]
-version = "1.8.6"
+version = "1.8.7"
 
 [tools."github:modelcontextprotocol/registry".platforms]
 linux-x64 = { asset_pattern = "mcp-publisher_linux_amd64.tar.gz" }

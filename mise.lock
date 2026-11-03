@@ -86,32 +86,32 @@ url = "https://github.com/dobicinaitis/tailwind-cli-extra/releases/download/v2.1
 url_api = "https://api.github.com/repos/dobicinaitis/tailwind-cli-extra/releases/assets/637225637"
 
 [[tools."github:modelcontextprotocol/registry"]]
-version = "1.8.6"
+version = "1.8.7"
 backend = "github:modelcontextprotocol/registry"
-specifiers = ["1.8.6"]
+specifiers = ["1.8.7"]
 
 [tools."github:modelcontextprotocol/registry".options]
 asset_pattern = "mcp-publisher_linux_amd64.tar.gz"
 
 [tools."github:modelcontextprotocol/registry"."platforms.linux-x64"]
-checksum = "sha256:1fbe93fc0783c2394d8012c8d6e50a59e98cb2cc2d216264cc69f405d0e21340"
+checksum = "sha256:00b21004149a4ce66f0782508ae4a2bce67d1bea395a8da0bd8028159fb59579"
 checksum_source = "mise-versions"
-url = "https://github.com/modelcontextprotocol/registry/releases/download/v1.8.6/mcp-publisher_linux_amd64.tar.gz"
-url_api = "https://api.github.com/repos/modelcontextprotocol/registry/releases/assets/681890445"
+url = "https://github.com/modelcontextprotocol/registry/releases/download/v1.8.7/mcp-publisher_linux_amd64.tar.gz"
+url_api = "https://api.github.com/repos/modelcontextprotocol/registry/releases/assets/691911080"
 
 [[tools."github:modelcontextprotocol/registry"]]
-version = "1.8.6"
+version = "1.8.7"
 backend = "github:modelcontextprotocol/registry"
-specifiers = ["1.8.6"]
+specifiers = ["1.8.7"]
 
 [tools."github:modelcontextprotocol/registry".options]
 asset_pattern = "mcp-publisher_darwin_arm64.tar.gz"
 
 [tools."github:modelcontextprotocol/registry"."platforms.macos-arm64"]
-checksum = "sha256:49511461d9906ade963c77f6a8f147fc225d0bcad2a0d2571f75cef5db4161aa"
+checksum = "sha256:b63dc083beb27e1a44c07c252ac147ff2c34af2f7822f705a17f8d0e1b44d592"
 checksum_source = "mise-versions"
-url = "https://github.com/modelcontextprotocol/registry/releases/download/v1.8.6/mcp-publisher_darwin_arm64.tar.gz"
-url_api = "https://api.github.com/repos/modelcontextprotocol/registry/releases/assets/681890491"
+url = "https://github.com/modelcontextprotocol/registry/releases/download/v1.8.7/mcp-publisher_darwin_arm64.tar.gz"
+url_api = "https://api.github.com/repos/modelcontextprotocol/registry/releases/assets/691911104"
 
 [[tools.hadolint]]
 version = "2.15.1"
@@ -280,16 +280,18 @@ url = "https://github.com/aquasecurity/trivy/releases/download/v0.76.1/trivy_0.7
 url_api = "https://api.github.com/repos/aquasecurity/trivy/releases/assets/662254764"
 
 [[tools.typos]]
-version = "1.51.1"
+version = "1.52.0"
 backend = "aqua:crate-ci/typos"
-specifiers = ["1.51.1"]
+specifiers = ["1.52.0"]
 
 [tools.typos."platforms.linux-x64"]
-checksum = "sha256:93c301fd4120ff076e2cc2a6d6a61cab4a4bdb81899287c0938b452e56d1f454"
-url = "https://github.com/crate-ci/typos/releases/download/v1.51.1/typos-v1.51.1-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/crate-ci/typos/releases/assets/616653682"
+checksum = "sha256:6155d4114f9a0f5b8f6d4fda96266c9d5f6add71df80da7f684ee5e72eb14588"
+checksum_source = "mise-versions"
+url = "https://github.com/crate-ci/typos/releases/download/v1.52.0/typos-v1.52.0-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/crate-ci/typos/releases/assets/703158772"
 
 [tools.typos."platforms.macos-arm64"]
-checksum = "sha256:316d50a32c3726a80ab39c6d12141b70080498973c5e8a9b068b12cde78b10c1"
-url = "https://github.com/crate-ci/typos/releases/download/v1.51.1/typos-v1.51.1-aarch64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/crate-ci/typos/releases/assets/616656668"
+checksum = "sha256:90724dd2905cb1ce033343c71ed60e52fe898674f882803e3110cd228e09e1c5"
+checksum_source = "mise-versions"
+url = "https://github.com/crate-ci/typos/releases/download/v1.52.0/typos-v1.52.0-aarch64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/crate-ci/typos/releases/assets/703166489"

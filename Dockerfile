@@ -1,5 +1,5 @@
 # Docs: https://docs.docker.com/reference/dockerfile/
-FROM python:3.14.10-slim@sha256:3cabfd7d7aaf394e6040e79fa1eec6ca1c52b74ed9188650472695d9a9326999 AS build
+FROM python:3.14.10-slim@sha256:930e1abba7c4e8f96ed93e8012c35d174d7732752731bbd5e8e757d7ec6f3966 AS build
 ARG TARGETARCH
 ENV UV_COMPILE_BYTECODE=1
 ENV UV_LINK_MODE=copy
@@ -24,7 +24,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     -i assets/css/input.css -o static/dist/styles.css --minify \
   && chmod -R u=rwX,go=rX /app/.venv /app/content /app/static
 
-FROM python:3.14.10-slim@sha256:3cabfd7d7aaf394e6040e79fa1eec6ca1c52b74ed9188650472695d9a9326999 AS runner
+FROM python:3.14.10-slim@sha256:930e1abba7c4e8f96ed93e8012c35d174d7732752731bbd5e8e757d7ec6f3966 AS runner
 ENV ENVIRONMENT=production
 ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONDONTWRITEBYTECODE=1
