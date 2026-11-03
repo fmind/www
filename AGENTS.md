@@ -21,6 +21,7 @@ Python 3.14, Litestar, strict Jinja, Tailwind/DaisyUI, and Granian. No client fr
 - `app.py`: startup snapshot, routes, middleware composition, MCP lifespan, teardown.
 - `mcp.py`: read-only tools, finite HTTP transport, capabilities, and discovery. Every non-POST method returns 405 with `Allow: POST`, so GET/HEAD never open idle notification streams; retain SDK host/origin validation.
 - `content.py`, `assets.py`, `search.py`: validated publications, static inventory/hashes, BM25 article search.
+- `news.py`: daily news editions in `content/news/` (strict line format, duplicate-link rejection) and their Atom feed and Markdown exports; `scripts/news.py` prepares pasted links for an edition.
 - `publications.py`: canonical profile JSON/schema, feeds, sitemap, LLM text; shared by HTTP and MCP.
 - `agent_discovery.py`, `agent_skills/`: API catalog, representation negotiation, packaged visitor skill/index; separate from `.agents/` maintenance skills.
 - `connect.py`: public vCard; `/connect` is discoverable, `/scan` is a noindex QR utility.
@@ -45,4 +46,4 @@ Python 3.14, Litestar, strict Jinja, Tailwind/DaisyUI, and Granian. No client fr
 - **Keep the scheduled image scanner read-only**: maintain advisory triage in `SECURITY.md`.
 - **Keep the CLI contract**: the PyPI `fmind` CLI (github.com/fmind/cli) consumes the `/api/profile` keys in its `PROFILE_SHAPE`, `/articles/<slug>.md`, and the `/mcp` transport; release a CLI update before removing or renaming any of them.
 
-Task procedures live in `.agents/skills/`: `article`, `site`, `infra`, `release`, `website-analytics`, and `finops-analytics`. Keep instructions concise and avoid repeating the README or task definitions.
+Task procedures live in `.agents/skills/`: `article`, `news`, `site`, `infra`, `release`, `website-analytics`, and `finops-analytics`. Keep instructions concise and avoid repeating the README or task definitions.

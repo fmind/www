@@ -1,8 +1,11 @@
 """Pure page metadata builders shared by routes and tests."""
 
+from dataclasses import replace
+
 from www.connect import CONNECT_URL
 from www.data import METADATA, get_application_structured_data, get_page_structured_data
 from www.models import Article, ArticleIndexView, PageMetadata, SitePage
+from www.news import NEWS_FEED_PATH, NEWS_TOPICS, NewsEdition
 
 
 def home_metadata(structured_data: str) -> PageMetadata:
@@ -127,6 +130,29 @@ def article_metadata(article: Article, structured_data: str) -> PageMetadata:
         preload_code_font="<code" in article.html,
         no_index=article.draft,
     )
+
+
+_NEWS_INDEX_DESCRIPTION = f"Daily curated links on {NEWS_TOPICS}, with one sentence on what changed."
+
+
+def news_index_metadata() -> PageMetadata:
+    page = _web_page(
+        "CollectionPage",
+        title=f"News | {METADATA.name} ({METADATA.alternate_name})",
+        description=_NEWS_INDEX_DESCRIPTION,
+        canonical=f"{METADATA.site_url}/news/",
+    )
+    return replace(page, feed_path=NEWS_FEED_PATH, feed_title="Fmind news")
+
+
+def news_edition_metadata(edition: NewsEdition) -> PageMetadata:
+    page = _web_page(
+        "CollectionPage",
+        title=f"News: {edition.title} | Fmind",
+        description=edition.description,
+        canonical=edition.url,
+    )
+    return replace(page, feed_path=NEWS_FEED_PATH, feed_title="Fmind news", markdown_path=edition.markdown_path())
 
 
 def site_structured_data(page: SitePage) -> str:

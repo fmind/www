@@ -4,7 +4,7 @@
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
     <title>{{ page.title }}</title>
-    <link rel="alternate" type="application/atom+xml" href="{{ metadata.site_url }}/articles/feed.xml" title="Fmind articles"/>
+    <link rel="alternate" type="application/atom+xml" href="{{ metadata.site_url }}{{ page.feed_path }}" title="{{ page.feed_title }}"/>
     {% if not page.no_index %}
       <link rel="canonical" href="{{ page.canonical }}"/>
       <link rel="alternate" type="application/json" href="/api/profile" title="Machine-readable portfolio"/>
@@ -13,6 +13,8 @@
       <link rel="alternate" type="application/mcp-server-card+json" href="/mcp/server-card" title="Model Context Protocol server card"/>
       {% if page.article %}
         <link rel="alternate" type="text/markdown" href="/articles/{{ page.article.slug }}.md" title="Article source (Markdown)"/>
+      {% elif page.markdown_path %}
+        <link rel="alternate" type="text/markdown" href="{{ page.markdown_path }}" title="Page source (Markdown)"/>
       {% endif %}
     {% endif %}
     <meta name="theme-color" content="#174ea6"/>

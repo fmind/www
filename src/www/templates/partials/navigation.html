@@ -1,6 +1,6 @@
 {% from "macros/icons.html" import icon %}
 <nav class="bg-base-100 border-b border-base-200" aria-label="Primary navigation">
-  <div class="relative max-w-screen-2xl mx-auto grid grid-cols-[minmax(50px,1fr)_auto_minmax(max-content,1fr)] sm:grid-cols-[minmax(92px,1fr)_auto_minmax(max-content,1fr)] h-16 items-center gap-0.5 min-[380px]:gap-1 sm:gap-2 px-3 sm:px-6">
+  <div class="relative max-w-screen-2xl mx-auto grid grid-cols-[minmax(40px,1fr)_auto_minmax(max-content,1fr)] sm:grid-cols-[minmax(92px,1fr)_auto_minmax(max-content,1fr)] h-16 items-center gap-0.5 min-[380px]:gap-1 sm:gap-2 px-3 sm:px-6">
     <div class="@container/nav-brand flex min-w-0 items-center gap-0.5 min-[380px]:gap-1 sm:gap-2">
       <a class="inline-flex shrink-0 items-center gap-1.5 sm:gap-3 font-heading text-base sm:text-xl font-bold text-primary" href="/" aria-label="Fmind.dev home">
         <img class="w-6 h-6 sm:w-10 sm:h-10 rounded-full object-cover" src="{{ static_url('static/img/logo.webp') }}" alt="Fmind.dev logo" width="40" height="40" decoding="async"/>
@@ -9,7 +9,7 @@
     </div>
     <div class="flex shrink-0 items-center">
       <ul class="flex flex-1 items-center justify-center gap-0.5 sm:gap-2 text-[11px] min-[360px]:text-xs sm:text-base font-medium">
-        {% for label, href, current in [("Portfolio", "/", page.is_home), ("Articles", "/articles/", page.canonical.startswith(metadata.site_url ~ "/articles/")), ("Sites", "/sites/", page.canonical.startswith(metadata.site_url ~ "/sites/"))] %}
+        {% for label, href, current in [("Portfolio", "/", page.is_home), ("Articles", "/articles/", page.canonical.startswith(metadata.site_url ~ "/articles/")), ("News", "/news/", page.canonical.startswith(metadata.site_url ~ "/news/")), ("Sites", "/sites/", page.canonical.startswith(metadata.site_url ~ "/sites/"))] %}
           <li><a class="inline-flex min-h-11 items-center rounded-lg px-0 min-[360px]:px-0.5 min-[380px]:px-1 sm:px-2 md:px-3 border transition-colors hover:bg-selection {% if current %}bg-selection border-primary/20 text-primary{% else %}bg-primary/5 border-transparent text-primary{% endif %}" href="{{ href }}"{% if current %} aria-current="{{ 'page' if page.is_home or page.canonical == metadata.site_url ~ href else 'true' }}"{% endif %}>{{ label }}</a></li>
         {% endfor %}
       </ul>

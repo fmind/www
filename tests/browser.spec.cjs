@@ -19,6 +19,8 @@ test("portfolio navigation remains usable without JavaScript", async ({ browser 
     await expect(page).toHaveURL(/#services$/);
     await navigation.getByRole("link", { name: "Articles", exact: true }).click();
     await expect(page).toHaveURL(/\/articles\/$/);
+    await navigation.getByRole("link", { name: "News", exact: true }).click();
+    await expect(page).toHaveURL(/\/news\/$/);
     await navigation.getByRole("link", { name: "Sites", exact: true }).click();
     await expect(page).toHaveURL(/\/sites\/$/);
   } finally {
@@ -212,20 +214,27 @@ test("published pages render without overflow, missing images, or external asset
   // navigation and image assertion remains independently bounded below.
   test.setTimeout(360000);
   const profile = await (await request.get("/api/profile")).json();
+  const sitemapResponse = await request.get("/sitemap.xml");
+  expect(sitemapResponse.status()).toBe(200);
+  const sitemapPaths = [...(await sitemapResponse.text()).matchAll(/<loc>([^<]+)<\/loc>/g)]
+    .map(([, location]) => new URL(location).pathname);
+  // The profile does not list news editions, so take them from the sitemap but require their slug shape.
+  const newsEditions = sitemapPaths.filter((path) =>
+    /^\/news\/\d{4}-\d{2}-\d{2}(?:-[a-z0-9]+(?:-[a-z0-9]+)*)?\/$/.test(path)
+  );
+  expect(newsEditions.length).toBeGreaterThan(0);
   const paths = [
     "/",
     "/connect",
     "/privacy",
     "/agents",
     "/articles/",
+    "/news/",
     "/sites/",
     ...profile.site_pages.map((site) => new URL(site.url).pathname),
     ...profile.articles.map((article) => new URL(article.url).pathname),
+    ...newsEditions,
   ];
-  const sitemapResponse = await request.get("/sitemap.xml");
-  expect(sitemapResponse.status()).toBe(200);
-  const sitemapPaths = [...(await sitemapResponse.text()).matchAll(/<loc>([^<]+)<\/loc>/g)]
-    .map(([, location]) => new URL(location).pathname);
   // Discovery must stay closed over the indexable pages.
   expect([...new Set(sitemapPaths)].sort()).toEqual([...new Set(paths)].sort());
   expect(sitemapPaths).toHaveLength(paths.length);
@@ -240,7 +249,8 @@ test("published pages render without overflow, missing images, or external asset
     await expect(page.locator("h1")).toHaveCount(1);
     const feed = page.locator("head link[rel=\"alternate\"][type=\"application/atom+xml\"]");
     await expect(feed).toHaveCount(1);
-    await expect(feed).toHaveAttribute("href", "https://www.fmind.dev/articles/feed.xml");
+    const feedPath = path.startsWith("/news/") ? "/news/feed.xml" : "/articles/feed.xml";
+    await expect(feed).toHaveAttribute("href", `https://www.fmind.dev${feedPath}`);
     const subscribe = page.locator("a[href=\"/articles/feed.xml\"]").first();
     if (path === "/connect" || path === "/scan") {
       await expect(subscribe).toHaveCount(0);
@@ -1075,11 +1085,11 @@ test("narrow screens reflow and keep navigation reachable", async ({ page }, tes
   await page.setViewportSize({ width: 320, height: 740 });
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
-  for (const path of ["/", "/articles/", "/sites/", "/sites/llm-self-hosting/"]) {
+  for (const path of ["/", "/articles/", "/news/", "/sites/", "/sites/llm-self-hosting/"]) {
     await page.goto(path);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     const navigation = page.getByRole("navigation", { name: "Primary navigation" });
-    for (const name of ["Portfolio", "Articles", "Sites"]) {
+    for (const name of ["Portfolio", "Articles", "News", "Sites"]) {
       await expect(navigation.getByRole("link", { name, exact: true })).toBeInViewport();
     }
     const headerLinks = navigation.locator("a").filter({ visible: true });
@@ -1089,7 +1099,7 @@ test("narrow screens reflow and keep navigation reachable", async ({ page }, tes
         return { x, right: x + width, center: y + height / 2 };
       })
     );
-    expect(boxes).toHaveLength(8); // brand, three sections, four social profiles
+    expect(boxes).toHaveLength(9); // brand, four sections, four social profiles
     for (const box of boxes) {
       expect(box.x).toBeGreaterThanOrEqual(12);
       expect(box.right).toBeLessThanOrEqual(308);

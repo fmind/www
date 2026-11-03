@@ -42,6 +42,7 @@ from www.log import configure_logging
 from www.mcp import create_mcp_http_app, create_mcp_server, render_mcp_server_card
 from www.middleware import Logger, SiteMiddleware, etag_matches, trace_fields
 from www.models import PageMetadata
+from www.news import NEWS_FEED_PATH, NewsEdition, adjacent_editions, load_news, render_news_feed, render_news_markdown
 from www.pages import (
     ARTICLE_INDEX_STRUCTURED_DATA,
     agents_metadata,
@@ -49,6 +50,8 @@ from www.pages import (
     article_metadata,
     connect_metadata,
     home_metadata,
+    news_edition_metadata,
+    news_index_metadata,
     not_found_metadata,
     privacy_metadata,
     scan_metadata,
@@ -190,6 +193,8 @@ def create_app(
     assets: ApplicationAssets | None = None,
     collection: ArticleCollection | None = None,
     content_dir: Path = Path("content/articles"),
+    news: tuple[NewsEdition, ...] | None = None,
+    news_dir: Path = Path("content/news"),
     static_dir: Path = Path("static"),
     logger: Logger | None = None,
 ) -> Litestar:
@@ -198,6 +203,7 @@ def create_app(
     application_assets = assets or load_application_assets(static_dir)
     article_collection = collection or load_articles(content_dir, static_dir)
     site_logger = logger or configure_logging(runtime_config)
+    editions = load_news(news_dir) if news is None else news
 
     public_articles = visible_articles(article_collection.all)
     page_articles = visible_articles(
@@ -226,6 +232,23 @@ def create_app(
     site_metadata_by_slug = {
         slug: site_page_metadata(page, site_structured_data(page)) for slug, page in site_pages_by_slug.items()
     }
+    news_page = news_index_metadata()
+    editions_by_slug = {edition.slug: edition for edition in editions}
+    edition_metadata_by_slug = {edition.slug: news_edition_metadata(edition) for edition in editions}
+    edition_neighbours = adjacent_editions(editions)
+    news_markdown = {edition.slug: _Snapshot.of(render_news_markdown(edition).encode()) for edition in editions}
+    news_feed = _Snapshot.of(render_news_feed(editions).encode())
+    news_archive: list[tuple[str, list[NewsEdition]]] = []
+    for edition in editions[1:]:
+        month = f"{edition.date:%B %Y}"
+        if not news_archive or news_archive[-1][0] != month:
+            news_archive.append((month, []))
+        news_archive[-1][1].append(edition)
+    news_context: dict[str, object] = {
+        "latest": editions[0] if editions else None,
+        "archive": tuple((month, tuple(group)) for month, group in news_archive),
+        "news_feed_path": NEWS_FEED_PATH,
+    }
     article_metadata_by_slug = {
         slug: article_metadata(article, get_structured_data(article))
         for slug, article in article_collection.by_slug.items()
@@ -245,6 +268,8 @@ def create_app(
             scan_page.structured_data,
             agents_page.structured_data,
             privacy_page.structured_data,
+            news_page.structured_data,
+            *(page.structured_data for page in edition_metadata_by_slug.values()),
             *(page.structured_data for page in site_metadata_by_slug.values()),
             *(page.structured_data for page in article_metadata_by_slug.values()),
         ),
@@ -264,7 +289,7 @@ def create_app(
     profile = _Snapshot.of(render_profile_json(summaries))
     profile_schema = _Snapshot.of(render_profile_schema())
     feed = _Snapshot.of(render_atom_feed(public_articles).encode())
-    sitemap = _Snapshot.of(render_sitemap(public_articles).encode())
+    sitemap = _Snapshot.of(render_sitemap(public_articles, editions).encode())
     llms = render_llms_txt(public_articles)
     llms_full = _Snapshot.of(render_llms_full(llms, public_articles, markdown_by_slug).encode())
     llms_index_snapshot = _Snapshot.of(llms.encode())
@@ -385,6 +410,55 @@ def create_app(
     @route("/articles/feed.xml", http_method=_READ_METHODS, sync_to_thread=False)
     def atom_feed(request: AppRequest) -> Response[bytes]:
         return _snapshot_response(request, feed, "application/atom+xml; charset=utf-8", _HOUR_CACHE)
+
+    @route(NEWS_FEED_PATH, http_method=_READ_METHODS, sync_to_thread=False)
+    def news_atom_feed(request: AppRequest) -> Response[bytes]:
+        return _snapshot_response(request, news_feed, "application/atom+xml; charset=utf-8", _HOUR_CACHE)
+
+    @route("/news", http_method=_READ_METHODS, sync_to_thread=True)
+    def news_index(request: AppRequest) -> Redirect | Response[str]:
+        if not _request_path(request).endswith("/"):
+            return _redirect("/news/")
+        return render_page(request, PageTemplate.NEWS, news_page, news_context)
+
+    @route("/news/{slug:str}", http_method=_READ_METHODS, sync_to_thread=True)
+    def news_edition(slug: FromPath[str], request: AppRequest) -> Redirect | Response[bytes] | Response[str]:
+        if _request_path(request).endswith("/"):
+            edition = editions_by_slug.get(slug)
+            if edition is None:
+                return render_not_found(request)
+            if prefers_markdown(request.headers.get("accept", "")):
+                return _snapshot_response(
+                    request,
+                    news_markdown[slug],
+                    "text/markdown; charset=utf-8",
+                    _HOUR_CACHE,
+                    cors=True,
+                    extra_headers={"vary": "Accept", "link": f'<{edition.url}>; rel="canonical"'},
+                )
+            older, newer = edition_neighbours[slug]
+            response = render_page(
+                request,
+                PageTemplate.NEWS_EDITION,
+                edition_metadata_by_slug[slug],
+                {"edition": edition, "older": older, "newer": newer, "news_feed_path": NEWS_FEED_PATH},
+            )
+            response.headers["vary"] = "Accept"
+            response.headers["link"] = f'<{edition.markdown_path()}>; rel="alternate"; type="text/markdown"'
+            return response
+        if slug.endswith(".md"):
+            edition = editions_by_slug.get(slug.removesuffix(".md"))
+            if edition is None:
+                return render_not_found(request)
+            return _snapshot_response(
+                request,
+                news_markdown[edition.slug],
+                "text/markdown; charset=utf-8",
+                _HOUR_CACHE,
+                cors=True,
+                extra_headers={"link": f'<{edition.url}>; rel="canonical"'},
+            )
+        return _redirect(f"/news/{quote(slug, safe='')}/")
 
     @route("/agents", http_method=_READ_METHODS, sync_to_thread=True)
     def agents(request: AppRequest) -> Redirect | Response[str]:
@@ -567,7 +641,12 @@ def create_app(
     # on the event loop and skip route compression. The router does not backtrack
     # from /articles/{slug} to /{path}, so nested content paths need their own entry.
     @route(
-        ["/{path:path}", "/articles/{slug:str}/{nested_path:path}", "/sites/{slug:str}/{nested_path:path}"],
+        [
+            "/{path:path}",
+            "/articles/{slug:str}/{nested_path:path}",
+            "/news/{slug:str}/{nested_path:path}",
+            "/sites/{slug:str}/{nested_path:path}",
+        ],
         http_method=_READ_METHODS,
     )
     async def not_found(request: AppRequest) -> Response[str]:
@@ -650,6 +729,9 @@ def create_app(
             llms_full_index,
             sitemap_index,
             atom_feed,
+            news_atom_feed,
+            news_index,
+            news_edition,
             connect,
             privacy,
             agents,

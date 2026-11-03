@@ -222,6 +222,11 @@ class PageMetadata:
     no_index: bool = False
     is_home: bool = False
     instant_scroll: bool = False
+    # The one Atom feed advertised in <head>; news pages advertise the news feed instead of articles.
+    feed_path: str = "/articles/feed.xml"
+    feed_title: str = "Fmind articles"
+    # Raw Markdown alternate for pages other than articles, which derive theirs from `article`.
+    markdown_path: str = ""
 
 
 @dataclass(frozen=True, slots=True)

@@ -26,6 +26,7 @@ from www.data import (
 )
 from www.markdown import rewrite_markdown_links
 from www.models import Article, ArticleIndexView, ArticleSummary, ArticleYear, Portfolio
+from www.news import NEWS_FEED_PATH, NewsEdition
 from www.search import SearchIndex, normalize_search_query
 from www.tags import TAGS, sort_tags
 
@@ -98,11 +99,12 @@ def render_atom_feed(articles: Sequence[Article]) -> str:
     return _xml(feed)
 
 
-def render_sitemap(articles: Sequence[Article]) -> str:
+def render_sitemap(articles: Sequence[Article], editions: Sequence[NewsEdition] = ()) -> str:
     root = ElementTree.Element("urlset", xmlns=_SITEMAP)
     locations = (
         f"{METADATA.site_url}/",
         f"{METADATA.site_url}/articles/",
+        f"{METADATA.site_url}/news/",
         f"{METADATA.site_url}/connect",
         f"{METADATA.site_url}/privacy",
         f"{METADATA.site_url}/agents",
@@ -116,6 +118,10 @@ def render_sitemap(articles: Sequence[Article]) -> str:
         url = _sub(root, "url")
         _sub(url, "loc", article.url)
         _sub(url, "lastmod", article.modified_date().date().isoformat())
+    for edition in editions:
+        url = _sub(root, "url")
+        _sub(url, "loc", edition.url)
+        _sub(url, "lastmod", edition.date.isoformat())
     return _xml(root)
 
 
@@ -158,6 +164,8 @@ def render_llms_txt(articles: Sequence[Article]) -> str:
         f"- Article source: append `.md` to any article slug ({METADATA.site_url}/articles/<slug>.md) for its raw Markdown.",
         "- If your reader rejects `text/markdown`, read the regular article URL as HTML; the full article requires no JavaScript.",
         f"- [Atom feed]({METADATA.site_url}/articles/feed.xml): Reverse-chronological publication feed.",
+        f"- [News]({METADATA.site_url}/news/): Daily curated links, one page per day; append `.md` to an edition (`{METADATA.site_url}/news/<YYYY-MM-DD>.md`) for its Markdown.",
+        f"- [News feed]({METADATA.site_url}{NEWS_FEED_PATH}): Atom feed with one entry per daily edition.",
         f"- [Sitemap]({METADATA.site_url}/sitemap.xml): Canonical hosted pages.",
         "",
         "## Expertise",

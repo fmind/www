@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% from "macros/feeds.html" import feed_hint, feed_link %}
+{% from "macros/news.html" import edition_card, news_items %}
+{% block content %}
+  <section class="bg-base-200 min-h-screen px-4 py-14 md:py-20">
+    <div class="container mx-auto max-w-6xl">
+      <header class="text-center max-w-3xl mx-auto mb-10 md:mb-14">
+        <p class="text-sm uppercase tracking-[0.2em] text-primary font-semibold mb-3">Curated daily</p>
+        <h1 class="text-4xl md:text-6xl font-heading font-bold text-balance">News</h1>
+        <p class="text-lg text-base-content/70 leading-relaxed mt-5">{{ page.description }}</p>
+        {{ feed_hint("each daily edition") }}
+        <div class="mt-3">{{ feed_link("btn btn-outline btn-primary rounded-full font-semibold", href=news_feed_path, subject="each daily edition") }}</div>
+      </header>
+      {% if latest %}
+        <section class="max-w-4xl mx-auto mb-16" aria-labelledby="latest-edition">
+          <h2 id="latest-edition" class="text-3xl font-heading font-bold mb-6 border-b border-base-300 pb-3">Latest: <a class="hover:text-primary transition-colors" href="{{ latest.path }}">{{ latest.title }}</a></h2>
+          {{ news_items(latest) }}
+        </section>
+      {% else %}
+        <div class="alert max-w-2xl mx-auto"><span>No news yet.</span></div>
+      {% endif %}
+      <div class="space-y-16">
+        {% for month, editions in archive %}
+          <section aria-labelledby="month-{{ loop.index }}">
+            <h2 id="month-{{ loop.index }}" class="text-3xl font-heading font-bold mb-6 border-b border-base-300 pb-3">{{ month }}</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {% for edition in editions %}{{ edition_card(edition) }}{% endfor %}
+            </div>
+          </section>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+{% endblock %}

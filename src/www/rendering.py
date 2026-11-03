@@ -39,6 +39,8 @@ class PageTemplate(StrEnum):
     PRIVACY = "pages/privacy.html"
     ARTICLES = "pages/articles.html"
     ARTICLE = "pages/article.html"
+    NEWS = "pages/news.html"
+    NEWS_EDITION = "pages/news-edition.html"
     SITES = "pages/sites.html"
     LLM_SELF_HOSTING = "pages/llm-self-hosting.html"
     MCP_CONTEXT_COST = "pages/mcp-context-cost.html"

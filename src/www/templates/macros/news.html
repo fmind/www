@@ -1,0 +1,25 @@
+{% macro news_items(edition) -%}
+  <ol class="space-y-4" aria-label="Links of {{ edition.title }}">
+    {% for item in edition.items %}
+      <li class="card bg-base-100 border border-base-300 shadow-sm">
+        <div class="card-body p-5 sm:p-6 gap-2">
+          <h3 class="font-heading text-lg sm:text-xl font-bold leading-snug wrap-anywhere"><a class="link link-hover text-primary" href="{{ item.url }}">{{ item.title }}</a></h3>
+          <p class="text-sm text-base-content/65">{{ item.domain }}</p>
+          <p class="text-base-content/80 leading-relaxed">{{ item.description }}</p>
+        </div>
+      </li>
+    {% endfor %}
+  </ol>
+{%- endmacro %}
+
+{% macro edition_card(edition) -%}
+  <article class="card bg-base-100 border border-base-300 shadow-lg hover:shadow-xl transition-shadow h-full">
+    <div class="card-body p-5 sm:p-6">
+      <p class="text-sm text-base-content/65"><time datetime="{{ edition.date.isoformat() }}">{{ edition.date.strftime('%A') }}</time> · {{ edition.items|length }} link{% if edition.items|length != 1 %}s{% endif %}</p>
+      <h3 class="card-title font-heading text-xl leading-snug mt-1"><a class="hover:text-primary transition-colors" href="{{ edition.path }}">{{ edition.title }}</a></h3>
+      <ul class="list-disc pl-5 mt-2 space-y-1 text-base-content/75">
+        {% for item in edition.items[:3] %}<li class="wrap-anywhere">{{ item.title }}</li>{% endfor %}
+      </ul>
+    </div>
+  </article>
+{%- endmacro %}
