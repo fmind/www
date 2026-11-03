@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import StrEnum
 
 
@@ -38,7 +38,8 @@ class FrontierModel:
     license_class: str
     weights_url: str
     default_quantization: str = "fp16"
-    supported_quantizations: tuple[str, ...] = ("fp4", "fp8", "fp16")
+    # Required: a default list would claim checkpoints that a model never released.
+    supported_quantizations: tuple[str, ...] = field(kw_only=True)
     required_node_ids: tuple[str, ...] = ()
     node_context_limits: tuple[tuple[str, int], ...] = ()
     checkpoint_memory: tuple[tuple[str, float], ...] = ()
@@ -90,6 +91,17 @@ class DemandPreset:
 
 
 @dataclass(frozen=True, slots=True)
+class APIRates:
+    """USD token rates that replace a baseline's standard rates for a whole request."""
+
+    input_per_million: float
+    output_per_million: float
+    cache_read_per_million: float
+    cache_write_per_million: float
+    cache_storage_per_million_hour: float = 0
+
+
+@dataclass(frozen=True, slots=True)
 class APIBaseline:
     name: str
     input_per_million: float
@@ -107,6 +119,32 @@ class APIBaseline:
     input_token_limit: int
     output_token_limit: int
     context_token_limit: int = 0
+    # How long a cached prefix lives, as the cache notes name it.
+    cache_retention: str = field(default="", kw_only=True)
+    # Requests with more input tokens than the threshold pay long_prompt_rates in full.
+    long_prompt_threshold: int = field(default=0, kw_only=True)
+    long_prompt_rates: APIRates | None = field(default=None, kw_only=True)
+    # Announced rates and note that apply after valid_through.
+    post_validity_rates: APIRates | None = field(default=None, kw_only=True)
+    post_validity_note: str = field(default="", kw_only=True)
+
+    def __post_init__(self) -> None:
+        """Fail at import when a pricing rule is only half described."""
+        if not self.cache_retention:
+            msg = f"{self.name}: cache_retention is required"
+            raise ValueError(msg)
+        if (self.long_prompt_threshold > 0) != (self.long_prompt_rates is not None):
+            msg = f"{self.name}: long_prompt_threshold and long_prompt_rates must be set together"
+            raise ValueError(msg)
+        if bool(self.valid_through) != (self.post_validity_rates is not None) or bool(self.valid_through) != bool(
+            self.post_validity_note
+        ):
+            msg = f"{self.name}: valid_through, post_validity_rates, and post_validity_note must be set together"
+            raise ValueError(msg)
+        if self.long_prompt_rates is not None and self.post_validity_rates is not None:
+            # A single rate table cannot say which tier survives the date change.
+            msg = f"{self.name}: long-prompt tiers after valid_through are not modeled; add a fresh snapshot"
+            raise ValueError(msg)
 
 
 @dataclass(frozen=True, slots=True)
@@ -212,6 +250,9 @@ class AcceleratorComparison:
 @dataclass(frozen=True, slots=True)
 class ModelComparison:
     model: FrontierModel
+    # Each catalog model is sized on its own automatic checkpoint and machine.
+    quantization: Quantization
+    node: GKENodePool
     estimate: HostingEstimate
     decision: str
 

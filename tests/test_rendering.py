@@ -66,7 +66,8 @@ def test_environment_is_package_local_strict_and_autoescaped() -> None:
         "article_filter_url",
         "format_count",
         "format_decimal",
-        "format_go_float",
+        "format_input",
+        "format_ungrouped",
         "format_number",
         "format_usd",
         "format_usd2",
@@ -77,8 +78,15 @@ def test_environment_is_package_local_strict_and_autoescaped() -> None:
     } <= environment.globals.keys()
 
 
+def test_input_echo_keeps_visitor_decimals() -> None:
+    formatter = cast(Callable[[float], str], create_environment({}).globals["format_input"])
+
+    # Assumption copy repeats what the visitor typed; whole-number rounding turned 0.1 into 0.
+    assert [formatter(value) for value in (12.5, 0.1, 80.0, 1500.0, 33.333)] == ["12.5", "0.1", "80", "1,500", "33.33"]
+
+
 def test_ungrouped_formatting_rounds_like_format_decimal() -> None:
-    formatter = cast(Callable[[float, int], str], create_environment({}).globals["format_go_float"])
+    formatter = cast(Callable[[float, int], str], create_environment({}).globals["format_ungrouped"])
 
     # One metric must read the same in every card, so both helpers round half away from zero.
     for value, digits in ((12.25, 1), (2242.5, 0), (34.5, 0), (31.049999999999997, 1), (0.125, 2)):

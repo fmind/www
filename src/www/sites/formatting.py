@@ -52,6 +52,11 @@ def format_budget(value: float) -> str:
     return "$" + format_decimal(value / scale, 1) + suffix
 
 
+def format_input(value: float) -> str:
+    """Echo a visitor's input without hiding its decimals: 12.5 stays 12.5, not 13."""
+    return format_decimal(value, 2).rstrip("0").rstrip(".")
+
+
 def format_number(value: float) -> str:
     """Abbreviate a quantity, rounding half away from zero like `format_decimal`."""
     # Choose the unit after rounding so 999.6 becomes 1.0k rather than 1000.

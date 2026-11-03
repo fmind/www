@@ -19,6 +19,7 @@ from www.sites.formatting import (
     format_budget,
     format_count,
     format_decimal,
+    format_input,
     format_number,
     format_usd,
     format_usd2,
@@ -103,7 +104,8 @@ def create_environment(asset_hashes: Mapping[str, str]) -> Environment:
             "article_filter_url": article_filter_url,
             "format_count": format_count,
             "format_decimal": format_decimal,
-            "format_go_float": _format_go_float,
+            "format_input": format_input,
+            "format_ungrouped": _format_ungrouped,
             "format_number": format_number,
             "format_budget": format_budget,
             "format_usd": format_usd,
@@ -117,7 +119,7 @@ def create_environment(asset_hashes: Mapping[str, str]) -> Environment:
     return environment
 
 
-def _format_go_float(value: float, digits: int) -> str:
+def _format_ungrouped(value: float, digits: int) -> str:
     """Format like ``format_decimal`` (half away from zero) without grouping, for SVG attributes."""
     return format_decimal(value, digits).replace(",", "")
 

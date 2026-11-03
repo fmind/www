@@ -32,8 +32,8 @@ from www.sites.formatting import (
     hosting_decision_title,
     task_cost_max,
 )
-from www.sites.inputs import configuration_issue, hosting_url
-from www.sites.models import BillingPlan
+from www.sites.inputs import configuration_issue, find_node_pool, find_quantization, hosting_url
+from www.sites.models import APIRates, BillingPlan, FrontierModel
 
 # Fleet sizing, billing plans, demand presets, and input validation.
 
@@ -199,7 +199,7 @@ def test_view_compares_all_catalog_models_in_deterministic_order() -> None:
     assert isclose(result.estimate.weight_memory_gb, 55.562855904)
 
 
-def test_query_mapping_uses_first_repeated_value_like_go_url_values() -> None:
+def test_query_mapping_uses_first_repeated_value() -> None:
     result = build_llm_self_hosting_view({"replicas": ["2", "8"]}, now=NOW)
 
     assert result.inputs.replicas == 2
@@ -269,7 +269,9 @@ def test_every_published_billing_plan_charges_whole_nodes_and_keeps_idle_commitm
 )
 def test_small_gpu_prices_use_resource_cuds_and_gpu_memory(node, hourly, one_year, three_year, vram) -> None:
     for plan, rate in (("on-demand", hourly), ("cud-1y", one_year), ("cud-3y", three_year)):
-        result = view({"node": node, "billing": plan, "quant": "fp4"})
+        # Qwen3.5 4B has a verified 16-bit checkpoint that fits one L4 or RTX PRO 6000.
+        result = view({"model": "qwen3-5-4b", "node": node, "billing": plan, "quant": "fp16"})
+        assert not result.validation
         assert result.selected_node.vram_gb == vram
         assert result.estimate.compute_monthly_usd == pytest.approx(rate * 730 * result.estimate.total_nodes)
 
@@ -542,7 +544,7 @@ def test_optional_input_validation_uses_explicit_defaults() -> None:
 
 
 @pytest.mark.parametrize("invalid", [" 2", "2 ", "1_0", "2.0", "\u0662"])
-def test_integer_syntax_matches_go_boundary(invalid: str) -> None:
+def test_integer_syntax_boundary(invalid: str) -> None:
     result = view({"replicas": invalid})
 
     assert result.inputs.replicas == DEFAULT_HOSTING_INPUTS.replicas
@@ -748,7 +750,8 @@ def test_l4_memory_spanning_hosts_requires_a_configuration_pilot() -> None:
     assert not confirmed.estimate.topology_confirmed
     assert not confirmed.estimate.qualified
     assert confirmed.estimate.compatibility_issue
-    assert not view({"node": "g2-standard-12", "quant": "fp4"}).estimate.qualified
+    # NVFP4 would fit one L4 by nominal size, but this model released no such checkpoint.
+    assert not view({"node": "g2-standard-12", "quant": "nvfp4"}).estimate.qualified
 
 
 def test_partial_multi_host_pilot_cannot_qualify_the_configuration() -> None:
@@ -867,7 +870,7 @@ def test_precision_alternative_clears_pilot_when_automatic_hardware_changes() ->
     [
         {"model": "kimi-k3"},
         {"node": "a2-ultra-1g"},
-        {"quant": "fp4"},
+        {"quant": "fp8"},
         {"input-tokens": "4000"},
         {"tokens": "1000"},
         {"replicas": "2"},
@@ -1285,7 +1288,7 @@ def test_cloud_tpu_multi_host_slices_and_gpu_vs_tpu_demand_comparison() -> None:
     gpu_nemotron, tpu_nemotron = nemotron_over_g4_context.accelerators
     assert (gpu_nemotron.quantization.id, gpu_nemotron.node.id) == ("fp16", "a3-ultra")
     assert gpu_nemotron.estimate.qualified
-    assert "requires one of the verified node families" in tpu_nemotron.estimate.compatibility_issue
+    assert "requires one of the verified machines: G4 · " in tpu_nemotron.estimate.compatibility_issue
     assert not tpu_nemotron.estimate.qualified
 
     flex_batch = build_llm_self_hosting_view(
@@ -1519,3 +1522,119 @@ def test_mcp_rejects_a_preset_that_would_replace_explicit_advanced_demand() -> N
     # Simple mode keeps its documented call-volume override, and a preset alone is fine.
     assert compare_hosting({"mode": "simple", "preset": "service", "requests": "500"}).inputs.requests_per_day == 500
     assert compare_hosting({"mode": "advanced", "preset": "service"}).inputs.requests_per_day == 100_000
+
+
+def test_configuration_issues_name_machines_as_the_page_shows_them() -> None:
+    result = build_llm_self_hosting_view({"model": "mistral-large-4"}, now=NOW)
+    issue = configuration_issue(replace(result.inputs, quantization_id="nvfp4", node_pool_id="a3-ultra"))
+    # Visitors see machine names, never internal ids such as `a4`.
+    assert issue == f"The Mistral Large 4 NVFP4 checkpoint is verified only on: {find_node_pool('a4').name}"
+
+
+def test_catalog_sizes_each_model_on_its_own_automatic_machine() -> None:
+    result = view()
+    # The visitor's G4 and 16-bit selection no longer blocks models that need other machines.
+    assert not any(row.estimate.compatibility_issue for row in result.comparison)
+    for row in result.comparison:
+        simple = build_llm_self_hosting_view({"model": row.model.id}, now=NOW)
+        assert (row.node.id, row.quantization.id) == (simple.selected_node.id, simple.selected_quant.id), row.model.id
+    # Mistral Large 4 NVFP4 runs only on A4, which has no on-demand rate: fall back like simple mode.
+    mistral = next(row for row in result.comparison if row.model.id == "mistral-large-4")
+    assert (mistral.node.id, mistral.quantization.id) == ("a3-ultra", "fp8")
+    committed = next(row for row in view({"billing": "cud-1y"}).comparison if row.model.id == "mistral-large-4")
+    assert (committed.node.id, committed.quantization.id) == ("a4", "nvfp4")
+    # Workload and fleet inputs still apply to every row.
+    replicated = view({"replicas": "3"})
+    assert all(row.estimate.total_nodes == 3 * row.estimate.nodes_per_replica for row in replicated.comparison)
+    # Nemotron NVFP4 on G4 stops at 16,384 tokens, so a longer request uses the BF16 checkpoint on Hopper.
+    medium_context = view({"input-tokens": "20000", "tokens": "1000"})
+    nemotron = next(row for row in medium_context.comparison if row.model.id == "nemotron-3-5-super-vl")
+    assert nemotron.quantization.id == "fp16"
+    assert nemotron.node.id in ("a3-high", "a3-ultra")
+    assert not nemotron.estimate.compatibility_issue
+    # When no checkpoint accepts the request, the row reports the default checkpoint's limit.
+    long_context = view({"input-tokens": "250000", "tokens": "1000"})
+    nemotron = next(row for row in long_context.comparison if row.model.id == "nemotron-3-5-super-vl")
+    assert nemotron.decision == "Unsupported configuration"
+    assert "limited to 16,384 context tokens" in nemotron.estimate.compatibility_issue
+    # When no checkpoint has a machine on the plan, the row says so instead of borrowing one.
+    flex = view({"node": "a4", "billing": "flex", "api-mode": "batch"})
+    assert not flex.validation
+    blocked = next(row for row in flex.comparison if row.model.id == "nemotron-3-5-super-vl")
+    assert blocked.decision == "Unsupported configuration"
+    assert blocked.estimate.compatibility_issue == "No compatible hardware for Nemotron 3.5 Super VL under flex"
+    assert not blocked.estimate.qualified
+
+
+def test_automatic_machine_switches_checkpoint_only_when_the_precision_is_unpinned() -> None:
+    query = {"model": "nemotron-3-5-super-vl", "node": "auto", "input-tokens": "20000", "tokens": "1000"}
+    automatic = view(query)
+    assert not automatic.validation
+    assert automatic.selected_quant.id == "fp16"
+    assert automatic.selected_node.id in ("a3-high", "a3-ultra")
+    # A chosen precision is kept, and its recipe's context limit is reported.
+    pinned = view({**query, "quant": "nvfp4"})
+    assert pinned.selected_quant.id == "nvfp4"
+    assert pinned.selected_node.id == "g4-standard-48"
+    assert any("limited to 16,384 context tokens" in issue for issue in pinned.validation)
+
+
+def test_api_pricing_rules_live_on_the_baseline_data(monkeypatch: pytest.MonkeyPatch) -> None:
+    astra = next(row for row in API_BASELINES if row.name == "GPT-6 Astra")
+    # Renaming a baseline keeps its long-prompt tier; name matching would silently drop it.
+    monkeypatch.setattr(economics, "API_BASELINES", (replace(astra, name="Renamed Astra"),))
+    long_prompt = replace(DEFAULT_HOSTING_INPUTS, input_tokens_request=272_001)
+    (renamed,) = current_api_baselines(NOW, long_prompt)
+    assert (renamed.input_per_million, renamed.output_per_million) == (20, 75)
+    assert (renamed.cache_read_per_million, renamed.cache_write_per_million) == (2, 25)
+    (standard,) = current_api_baselines(NOW, replace(long_prompt, input_tokens_request=272_000))
+    assert standard.input_per_million == 10
+    gemini = next(row for row in API_BASELINES if row.valid_through)
+    monkeypatch.setattr(economics, "API_BASELINES", (replace(gemini, name="Renamed Gemini"),))
+    (expired,) = current_api_baselines(datetime(2027, 1, 1, tzinfo=UTC), DEFAULT_HOSTING_INPUTS)
+    assert expired.note == gemini.post_validity_note
+    assert expired.cache_storage_per_million_hour == 2 * gemini.cache_storage_per_million_hour
+    assert expired.cache_write_per_million == gemini.cache_write_per_million
+
+
+@pytest.mark.parametrize(
+    ("change", "message"),
+    [
+        ({"valid_through": "2026-12-31"}, "valid_through, post_validity_rates, and post_validity_note"),
+        ({"long_prompt_threshold": 100_000}, "long_prompt_threshold and long_prompt_rates"),
+        ({"long_prompt_rates": APIRates(1, 2, 0.1, 1.25)}, "long_prompt_threshold and long_prompt_rates"),
+        ({"cache_retention": ""}, "cache_retention is required"),
+    ],
+)
+def test_half_described_api_pricing_rules_fail_at_construction(change: dict[str, object], message: str) -> None:
+    sonnet = next(row for row in API_BASELINES if row.name == "Claude Sonnet 5.5")
+    with pytest.raises(ValueError, match=message):
+        replace(sonnet, **change)
+    gemini = next(row for row in API_BASELINES if row.valid_through)
+    with pytest.raises(ValueError, match="long-prompt tiers after valid_through are not modeled"):
+        replace(gemini, long_prompt_threshold=200_000, long_prompt_rates=APIRates(1, 2, 0.1, 0))
+
+
+def test_cache_notes_name_each_baseline_retention_from_data() -> None:
+    result = view({"api-mode": "cached", "cache-prefix": "4096", "input-tokens": "8000"})
+    for row in result.apis:
+        assert row.baseline.cache_retention in row.mode_note, row.baseline.name
+    astra = next(row for row in result.apis if row.baseline.name == "GPT-6 Astra")
+    assert astra.mode_note.endswith("while it stays cached (30-minute minimum retention).")
+    # Claude rows no longer borrow Astra's retention sentence.
+    assert all("Astra" not in row.mode_note for row in result.apis if row.baseline.name != "GPT-6 Astra")
+
+
+def test_removed_int4_precision_is_rejected_visibly() -> None:
+    assert "fp4" not in {quant.id for quant in QUANTIZATIONS}
+    shared = view({"quant": "fp4"})
+    assert shared.validation == ("Checkpoint precision (quant) was not recognized; the default was used",)
+    assert shared.inputs.quantization_id == DEFAULT_HOSTING_INPUTS.quantization_id
+    with pytest.raises(ValueError, match=r"Checkpoint precision \(quant\) was not recognized"):
+        compare_hosting({"quant": "fp4"})
+    # Code paths that skip parsing fail instead of silently sizing another precision.
+    with pytest.raises(LookupError, match="Unknown checkpoint precision 'fp4'"):
+        find_quantization("fp4")
+    # Models must list released checkpoints; no default list can claim formats they lack.
+    with pytest.raises(TypeError, match="supported_quantizations"):
+        FrontierModel("example", "Example", "Example", 1, 1, 1, "MIT", "Permissive", "https://example.com")  # ty: ignore[missing-argument]

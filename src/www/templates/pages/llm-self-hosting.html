@@ -44,7 +44,7 @@
         <div class="max-w-4xl">
           <p class="text-sm uppercase tracking-[0.18em] text-primary font-semibold">Frontier comparison</p>
           <h2 id="frontier-table" class="text-3xl md:text-4xl font-heading font-bold mt-2">Open-weight model catalog</h2>
-          <p class="text-base-content/75 leading-relaxed mt-3">Released checkpoint formats and published serving recipes. Costs reuse your fleet settings; unsupported combinations have no usable estimate.</p>
+          <p class="text-base-content/75 leading-relaxed mt-3">Released checkpoint formats and published serving recipes. Each model is sized on its own lowest-cost compatible machine for your pricing plan, preferring one host, with your workload and fleet settings; models without a compatible machine have no usable estimate.</p>
         </div>
         <div class="overflow-x-auto rounded-2xl border border-base-300 bg-base-100 shadow-sm focus-visible:outline-2 focus-visible:outline-primary" role="region" aria-label="Open-weight model comparison, scroll horizontally on small screens" tabindex="0">
           <table class="table table-zebra w-full">
@@ -56,8 +56,8 @@
                   <th scope="row"><a class="link link-primary font-semibold" href="{{ row.model.weights_url }}" target="_blank" rel="noopener noreferrer">{{ row.model.name }}</a><span class="block text-xs font-normal text-base-content/70 mt-1">{{ row.model.creator }} · {{ model_size(row.model) }} parameters</span></th>
                   <td><a class="link" href="{{ row.model.weights_url }}" target="_blank" rel="noopener noreferrer">{{ row.model.license }}</a><span class="block text-xs text-base-content/70">{{ row.model.license_class }}</span></td>
                   {# Unsupported rows have no real checkpoint or topology to size. #}
-                  {% if row.estimate.compatibility_issue %}<td>—</td><td>—</td>{% else %}<td>{{ format_go_float(row.estimate.required_memory_gb, 0) }} GB</td>
-                  <td>{{ format_count(row.estimate.total_nodes, "node") }} / {{ format_count(row.estimate.total_gpus, "TPU" if "TPU" in view.selected_node.gpu else "GPU") }}</td>{% endif %}
+                  {% if row.estimate.compatibility_issue %}<td>—</td><td>—</td>{% else %}<td>{{ format_decimal(row.estimate.required_memory_gb, 0) }} GB</td>
+                  <td>{{ format_count(row.estimate.total_nodes, "node") }} / {{ format_count(row.estimate.total_gpus, "TPU" if "TPU" in row.node.gpu else "GPU") }}<span class="block text-xs text-base-content/70">{{ row.node.name }} · {{ row.quantization.name.split(" · ")[0] }}</span></td>{% endif %}
                   <td>{% if row.estimate.compatibility_issue %}Unavailable{% else %}{{ format_usd(row.estimate.total_monthly_usd) }}{% endif %}</td>
                   <td>{{ row.decision }}</td>
                 </tr>
@@ -73,7 +73,7 @@
         <h2 id="hosting-method-title" class="font-heading text-lg font-bold">Method and limitations</h2>
         <ul class="list-disc ml-5 mt-4 space-y-3 text-sm text-base-content/75 max-w-4xl">
           <li>Infrastructure only: whole GPU or TPU nodes and a $0.10/hour GKE cluster fee. Disks, network, load balancers, licenses, taxes, and operations are extra. US reference pricing; regional availability and prices vary.</li>
-          <li>Model weights plus {{ format_number(view.inputs.memory_overhead_pct) }}% reserve select a compatible checkpoint and machine. Capacity assumes {{ format_number(view.inputs.tokens_per_second) }} output tokens/s per model copy, with {{ format_number(view.inputs.target_utilization) }}% usable, regardless of GPU. This is an illustrative input, not a benchmark. Measure prompt processing, reasoning, KV cache, concurrency, and latency before sizing production.</li>
+          <li>Model weights plus {{ format_input(view.inputs.memory_overhead_pct) }}% reserve select a compatible checkpoint and machine. Capacity assumes {{ format_input(view.inputs.tokens_per_second) }} output tokens/s per model copy, with {{ format_input(view.inputs.target_utilization) }}% usable, regardless of GPU. This is an illustrative input, not a benchmark. Measure prompt processing, reasoning, KV cache, concurrency, and latency before sizing production.</li>
           <li>Monthly running hours and each active-day window constrain capacity separately. Simple mode sizes complete model copies; advanced mode keeps your chosen setup fixed. Scheduled examples assume nodes run only during active windows. Commitments bill 730 hours/month, including idle time, and require GPU or TPU reservations.</li>
           <li>API prices include input and output, including reasoning. The same token budget does not establish equal quality or actual usage. Break-even holds the setup fixed; more replicas and operating costs change it.</li>
         </ul>

@@ -1,6 +1,6 @@
 """Self-hosting calculator economics."""
 
-from dataclasses import replace
+from dataclasses import asdict, replace
 from datetime import UTC, datetime
 from math import ceil, floor
 
@@ -125,35 +125,16 @@ def current_api_baselines(
     now: datetime,
     inputs: HostingInputs,
 ) -> tuple[APIBaseline, ...]:
+    """Apply each baseline's own dated and long-prompt rate rules to this request."""
     current_date = utc_date(now)
     rows: list[APIBaseline] = []
     for baseline in API_BASELINES:
         row = baseline
-        if row.valid_through and current_date > row.valid_through:
-            row = replace(
-                row,
-                input_per_million=row.input_per_million * 2,
-                output_per_million=row.output_per_million * 2,
-                cache_read_per_million=row.cache_read_per_million * 2,
-                cache_storage_per_million_hour=row.cache_storage_per_million_hour * 2,
-                note="The announced January 2027 rates are applied. This snapshot needs a fresh source check.",
-            )
-        if row.name == "GPT-6 Astra" and inputs.input_tokens_request > 272_000:
-            row = replace(
-                row,
-                input_per_million=20,
-                output_per_million=75,
-                cache_read_per_million=2,
-                cache_write_per_million=25,
-            )
-        if row.name == "Claude Haiku 5.5" and inputs.input_tokens_request > 100_000:
-            row = replace(
-                row,
-                input_per_million=0.5,
-                output_per_million=2.5,
-                cache_read_per_million=0.05,
-                cache_write_per_million=0.625,
-            )
+        # APIBaseline rejects a baseline that carries both rules, so at most one applies.
+        if row.post_validity_rates is not None and current_date > row.valid_through:
+            row = replace(row, **asdict(row.post_validity_rates), note=row.post_validity_note)
+        if row.long_prompt_rates is not None and inputs.input_tokens_request > row.long_prompt_threshold:
+            row = replace(row, **asdict(row.long_prompt_rates))
         rows.append(row)
     return tuple(rows)
 

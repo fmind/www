@@ -1,6 +1,7 @@
 from .models import (
     APIBaseline,
     APIMode,
+    APIRates,
     BillingPlan,
     DemandPreset,
     FrontierModel,
@@ -365,12 +366,6 @@ GKE_NODE_POOLS = (
 
 QUANTIZATIONS = (
     Quantization(
-        "fp4",
-        "INT4 · AWQ/GPTQ conversion experiment",
-        0.5,
-        "AWQ/GPTQ weight-only INT4, not native floating-point FP4. Requires a compatible converted checkpoint; test quality and kernels.",
-    ),
-    Quantization(
         "fp8",
         "FP8 · native W8A8 kernels",
         1,
@@ -494,6 +489,9 @@ API_BASELINES = (
         1_048_576,
         65_536,
         0,
+        cache_retention="five-minute explicit GenerateContent storage",
+        post_validity_rates=APIRates(1.5, 7.5, 0.15, 0, 1),
+        post_validity_note="The announced January 2027 rates are applied. This snapshot needs a fresh source check.",
     ),
     APIBaseline(
         "Claude Sonnet 5.5",
@@ -512,6 +510,7 @@ API_BASELINES = (
         1_000_000,
         128_000,
         1_000_000,
+        cache_retention="five-minute writes",
     ),
     APIBaseline(
         "GPT-6 Astra",
@@ -530,6 +529,9 @@ API_BASELINES = (
         922_000,
         128_000,
         1_050_000,
+        cache_retention="30-minute minimum retention",
+        long_prompt_threshold=272_000,
+        long_prompt_rates=APIRates(20, 75, 2, 25),
     ),
     APIBaseline(
         "Claude Haiku 5.5",
@@ -548,6 +550,9 @@ API_BASELINES = (
         1_000_000,
         128_000,
         1_000_000,
+        cache_retention="five-minute writes",
+        long_prompt_threshold=100_000,
+        long_prompt_rates=APIRates(0.5, 2.5, 0.05, 0.625),
     ),
     APIBaseline(
         "Claude Opus 5.5",
@@ -566,6 +571,7 @@ API_BASELINES = (
         1_000_000,
         128_000,
         1_000_000,
+        cache_retention="five-minute writes",
     ),
 )
 

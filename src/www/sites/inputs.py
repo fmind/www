@@ -145,7 +145,7 @@ def _parse_bounded_int(
     if raw is None or raw == "":
         return fallback
     try:
-        # strconv.Atoi accepts only integer syntax, never decimal-valued floats.
+        # Accept only integer syntax, never decimal-valued floats such as 2.0.
         if len(raw) > 128 or fullmatch(r"[+-]?[0-9]+", raw) is None:
             raise ValueError
         value = int(raw, 10)
@@ -345,24 +345,12 @@ def parse_inputs(query: Query) -> tuple[HostingInputs, tuple[str, ...]]:
             allowed_plans |= {"flex"}
         raw_plan = _parse_choice(query, "billing", "on-demand", allowed_plans, validation)
         try:
-            node = automatic_node(inputs, BillingPlan(raw_plan))
+            inputs, node = automatic_setup(
+                inputs, BillingPlan(raw_plan), keep_checkpoint=_first(query, "quant") not in (None, "", "auto")
+            )
         except ValueError as exc:
-            # A default checkpoint can be limited to hardware without this plan (Mistral Large 4
-            # NVFP4 runs only on A4, which has no on-demand rate). When the caller did not pick a
-            # precision, fall back to the model's next supported checkpoint before giving up.
-            fallback_node = None
-            if _first(query, "quant") in (None, "", "auto"):
-                for quant_id in find_model(inputs.model_id).supported_quantizations:
-                    candidate = replace(inputs, quantization_id=quant_id)
-                    try:
-                        fallback_node = automatic_node(candidate, BillingPlan(raw_plan))
-                    except ValueError:
-                        continue
-                    inputs = candidate
-                    break
-            if fallback_node is None:
-                validation.append(f"{exc}; select a compatible checkpoint, GPU and billing plan")
-            node = fallback_node or find_node_pool(defaults.node_pool_id)
+            validation.append(f"{exc}; select a compatible checkpoint, GPU and billing plan")
+            node = find_node_pool(defaults.node_pool_id)
         inputs = replace(inputs, node_pool_id=node.id)
     node = find_node_pool(inputs.node_pool_id)
     available_plans = frozenset(price.plan.value for price in node.prices)
@@ -532,10 +520,13 @@ def find_node_pool(node_id: str) -> GKENodePool:
 
 
 def find_quantization(quantization_id: str) -> Quantization:
-    return next(
-        (item for item in QUANTIZATIONS if item.id == quantization_id),
-        QUANTIZATIONS[0],
-    )
+    """Return a catalog precision; parsing validates ids, so an unknown one is a bug."""
+    for item in QUANTIZATIONS:
+        if item.id == quantization_id:
+            return item
+    # LookupError, not ValueError: automatic selection treats ValueError as "no machine fits".
+    msg = f"Unknown checkpoint precision {quantization_id!r}; parse it with parse_inputs first"
+    raise LookupError(msg)
 
 
 def configuration_issue(inputs: HostingInputs, *, check_workload: bool = True) -> str:
@@ -546,11 +537,13 @@ def configuration_issue(inputs: HostingInputs, *, check_workload: bool = True) -
     if quantization.id not in model.supported_quantizations:
         return f"{model.name} has no verified {quantization.name} checkpoint in this catalog"
     if model.required_node_ids and node.id not in model.required_node_ids:
-        return f"{model.name} requires one of the verified node families: {', '.join(model.required_node_ids)}"
+        names = "; ".join(find_node_pool(node_id).name for node_id in model.required_node_ids)
+        return f"{model.name} requires one of the verified machines: {names}"
     precision_nodes = dict(model.quantization_node_ids).get(quantization.id)
     if precision_nodes and node.id not in precision_nodes:
         precision = quantization.name.partition(" · ")[0]
-        return f"The {model.name} {precision} checkpoint is verified only on: {', '.join(precision_nodes)}"
+        names = "; ".join(find_node_pool(node_id).name for node_id in precision_nodes)
+        return f"The {model.name} {precision} checkpoint is verified only on: {names}"
     if node.id == "ct6e-standard-8t" and quantization.id != "fp16":
         return (
             "Cloud TPU v6e Trillium requires a 16-bit BF16 checkpoint in this catalog; "
@@ -584,14 +577,51 @@ def configuration_issue(inputs: HostingInputs, *, check_workload: bool = True) -
     return ""
 
 
-def automatic_node(inputs: HostingInputs, plan: BillingPlan) -> GKENodePool:
+def automatic_setup(
+    inputs: HostingInputs,
+    plan: BillingPlan,
+    *,
+    keep_checkpoint: bool = False,
+) -> tuple[HostingInputs, GKENodePool]:
+    """Pick the lowest-cost machine for the checkpoint, else for the model's next supported one.
+
+    A checkpoint can lack hardware with this plan (Mistral Large 4 NVFP4 runs only on A4, which
+    has no on-demand rate) or reject the workload (Nemotron NVFP4 on G4 stops at 16,384 context
+    tokens). Unless the caller chose the precision, prefer the first supported checkpoint whose
+    machine accepts the workload; otherwise keep the first compatible one, so the caller reports
+    its limit.
+    """
+    model = find_model(inputs.model_id)
+    others = () if keep_checkpoint else model.supported_quantizations
+    candidates = [inputs, *(replace(inputs, quantization_id=q) for q in others if q != inputs.quantization_id)]
+    compatible: tuple[HostingInputs, GKENodePool] | None = None
+    first_error: ValueError | None = None
+    for candidate in candidates:
+        try:
+            node = automatic_node(candidate, plan)
+        except ValueError as exc:
+            first_error = first_error or exc
+            continue
+        if not configuration_issue(replace(candidate, node_pool_id=node.id, billing_plan=plan)):
+            return candidate, node
+        compatible = compatible or (candidate, node)
+    if compatible:
+        return compatible
+    raise first_error or ValueError(f"No compatible hardware for {model.name} under {plan}")
+
+
+def automatic_node(
+    inputs: HostingInputs,
+    plan: BillingPlan,
+    pools: Sequence[GKENodePool] = GKE_NODE_POOLS,
+) -> GKENodePool:
     """Minimize published compute cost under the shared throughput assumption."""
     quant = find_quantization(inputs.quantization_id)
     model = find_model(inputs.model_id)
     required = weight_memory_gb(model, quant) * (1 + inputs.memory_overhead_pct / 100)
     candidates = [
         node
-        for node in GKE_NODE_POOLS
+        for node in pools
         if any(price.plan is plan for price in node.prices)
         and not configuration_issue(replace(inputs, node_pool_id=node.id, billing_plan=plan), check_workload=False)
     ]
@@ -613,7 +643,11 @@ def automatic_node(inputs: HostingInputs, plan: BillingPlan) -> GKENodePool:
 
 
 def weight_memory_gb(model: FrontierModel, quantization: Quantization) -> float:
-    """Published tensor bytes include mixed precision and quantization scales."""
+    """Published tensor bytes include mixed precision and quantization scales.
+
+    Every supported checkpoint lists its size (tests enforce it); the nominal fallback only
+    sizes a precision the model lacks, which configuration_issue reports as unsupported.
+    """
     return next(
         (size for precision, size in model.checkpoint_memory if precision == quantization.id),
         model.parameters_b * quantization.bytes_per_param,
@@ -680,8 +714,8 @@ def _bind_pilot_measurements(
 def _float_for_url(value: float) -> str:
     if value.is_integer():
         return str(int(value))
-    # repr is the shortest round-tripping form; Decimal expands its exponent
-    # because Go's strconv.FormatFloat with the `f` verb never emits one.
+    # repr is the shortest round-tripping form; Decimal expands its exponent so
+    # shared URLs never carry scientific notation such as 1e-05.
     return format(Decimal(repr(value)), "f")
 
 

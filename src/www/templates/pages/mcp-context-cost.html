@@ -61,7 +61,7 @@
           {% for share in view.selected %}
             <li>
               <p class="flex flex-wrap justify-between gap-x-4 text-sm"><span class="font-semibold">{{ share.server.name }}</span><span>{{ format_decimal(share.server.tokens, 0) }} tokens · {{ share.server.tools }} tools · {{ format_decimal(share.server.tokens / share.server.tools, 0) }} per tool</span></p>
-              <svg viewBox="0 0 100 4" preserveAspectRatio="none" aria-hidden="true" class="w-full h-2 mt-2"><rect width="100" height="4" rx="2" class="fill-base-200"></rect><rect width="{{ format_go_float(share.percent, 2) }}" height="4" rx="2" class="fill-primary"></rect></svg>
+              <svg viewBox="0 0 100 4" preserveAspectRatio="none" aria-hidden="true" class="w-full h-2 mt-2"><rect width="100" height="4" rx="2" class="fill-base-200"></rect><rect width="{{ format_ungrouped(share.percent, 2) }}" height="4" rx="2" class="fill-primary"></rect></svg>
             </li>
           {% endfor %}
         </ul>

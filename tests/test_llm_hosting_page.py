@@ -17,7 +17,7 @@ from tests.llm_hosting_support import view
 from www.sites.agent import compare_hosting
 from www.sites.calculator import build_llm_self_hosting_view
 from www.sites.data import API_BASELINES, DEFAULT_HOSTING_INPUTS, DEMAND_PRESETS, FRONTIER_MODELS
-from www.sites.inputs import hosting_url, scenario_parameters
+from www.sites.inputs import find_node_pool, hosting_url, scenario_parameters
 
 PAGE = "/sites/llm-self-hosting/?mode=advanced"
 
@@ -179,14 +179,25 @@ def test_blocked_fleets_replace_break_even_capacity_verdicts(client: AppClient) 
 
 
 def test_catalog_hides_footprints_of_unsupported_checkpoints(client: AppClient) -> None:
-    html = client.get(PAGE, params={"model": "nemotron-3-5-super-vl", "quant": "nvfp4"}).text
+    # Each row is sized on its own machine, so only a recipe limit can block one here.
+    html = client.get(PAGE, params={"input-tokens": "250000", "tokens": "1000"}).text
     rows = re.findall(r"<tr>(.*?)</tr>", html[html.index('id="frontier-table"') :], flags=re.DOTALL)
-    qwen = next(row for row in rows if ">Qwen3.5 4B</a>" in row)  # No NVFP4 checkpoint exists.
-    gemma = next(row for row in rows if ">Gemma 4 26B A4B</a>" in row)
-    assert qwen.count("<td>—</td>") == 2
-    assert " GB</td>" not in qwen
-    assert " GB</td>" in gemma
-    assert "<td>—</td>" not in gemma
+    nemotron = next(row for row in rows if ">Nemotron 3.5 Super VL</a>" in row)  # Recipes stop at 114,688 tokens.
+    qwen = next(row for row in rows if ">Qwen3.5 4B</a>" in row)
+    assert nemotron.count("<td>—</td>") == 2
+    assert " GB</td>" not in nemotron
+    assert " GB</td>" in qwen
+    assert "<td>—</td>" not in qwen
+    # The fleet cell names the row's own machine and precision, not the visitor's selection.
+    assert "1 node / 1 GPU" in qwen
+    assert f"{find_node_pool('g2-standard-12').name} · 16-bit</span>" in qwen
+
+
+def test_removed_precision_in_a_shared_url_shows_validation(client: AppClient) -> None:
+    response = client.get(PAGE, params={"quant": "fp4"})
+    assert response.status_code == 200
+    assert "Checkpoint precision (quant) was not recognized; the default was used" in response.text
+    assert 'value="fp4"' not in response.text
 
 
 def test_assumption_copy_renders_the_inputs_and_snapshot(client: AppClient, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -194,6 +205,11 @@ def test_assumption_copy_renders_the_inputs_and_snapshot(client: AppClient, monk
     assert (
         "Minimum: 512 for Claude Sonnet 5.5, Claude Haiku 5.5, Claude Opus 5.5; 1,024 for GPT-6 Astra; "
         "4,096 for Gemini 3.8 Flash. Ineligible requests use standard rates."
+    ) in cached
+    assert (
+        "Assumes no misses within each group: 30-minute minimum retention for GPT-6 Astra; "
+        "five-minute explicit GenerateContent storage for Gemini 3.8 Flash; "
+        "five-minute writes for Claude Sonnet 5.5, Claude Haiku 5.5, Claude Opus 5.5."
     ) in cached
     monkeypatch.setattr(
         economics,

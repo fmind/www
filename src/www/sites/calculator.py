@@ -26,17 +26,16 @@ from .formatting import format_decimal, format_usd2
 from .inputs import (
     Query,
     automatic_node,
+    automatic_setup,
     configuration_issue,
     demand_preset,
     find_model,
     find_node_pool,
     find_quantization,
     hosting_url,
-    nodes_for_model,
     parse_inputs,
     pilot_configuration_id,
     scenario_parameters,
-    weight_memory_gb,
 )
 from .models import (
     AcceleratorComparison,
@@ -75,16 +74,15 @@ def _api_mode_note(inputs: HostingInputs, baseline: APIBaseline) -> str:
             )
         if baseline.cache_storage_per_million_hour > 0:
             return (
-                f"Explicit Gemini cache: {format_usd2(baseline.cache_read_per_million)}/M "
+                f"Explicit cache: {format_usd2(baseline.cache_read_per_million)}/M "
                 f"cached input + {format_usd2(baseline.cache_storage_per_million_hour)}/M "
-                "token-hours stored; five-minute storage charged for every group. Use "
-                "GenerateContent, not the Interactions-only implicit cache."
+                f"token-hours stored; {baseline.cache_retention} is charged for every group. "
+                "Implicit cache hits are not assumed."
             )
         return (
             f"Cache: {format_usd2(baseline.cache_write_per_million)}/M prefix tokens "
             f"on the first call, {format_usd2(baseline.cache_read_per_million)}/M on "
-            "reuse. Calls must share an exact prefix within five minutes; Astra retains "
-            "it for at least 30 minutes."
+            f"reuse. Calls must share an exact prefix while it stays cached ({baseline.cache_retention})."
         )
     return "Standard uncached text rates. Immediate requests; no batch or cache discount assumed."
 
@@ -184,6 +182,31 @@ def _hosting_decision(
     if estimate.required_memory_gb < node.vram_gb * 0.25:
         return "Right-size the node pool"
     return "Pilot on this topology"
+
+
+def _catalog_comparison(inputs: HostingInputs, model: FrontierModel) -> ModelComparison:
+    """Size a catalog model on its own lowest-cost machine, keeping the visitor's plan and workload."""
+    scenario = replace(inputs, model_id=model.id, quantization_id=model.default_quantization)
+    issue = ""
+    try:
+        scenario, node = automatic_setup(scenario, inputs.billing_plan)
+    except ValueError as exc:
+        # No machine offers this plan for any checkpoint; the visitor's node offers it,
+        # so the row can still be estimated and is reported as unsupported.
+        node = find_node_pool(inputs.node_pool_id)
+        issue = str(exc)
+    scenario = replace(scenario, node_pool_id=node.id)
+    quantization = find_quantization(scenario.quantization_id)
+    estimate = estimate_hosting(model, node, quantization, scenario)
+    if issue:
+        estimate = replace(estimate, compatibility_issue=issue, qualified=False)
+    return ModelComparison(
+        model=model,
+        quantization=quantization,
+        node=node,
+        estimate=estimate,
+        decision=_hosting_decision(model, node, estimate),
+    )
 
 
 def _demand_label(inputs: HostingInputs) -> str:
@@ -328,49 +351,22 @@ def _hosting_accelerators(
         )
         matched_hardware = False
         for quant_id in preferred_quants:
-            candidate_quant = find_quantization(quant_id)
-            required = weight_memory_gb(model, candidate_quant) * (1 + inputs.memory_overhead_pct / 100)
-            candidates = [
-                pool
-                for pool in pools
-                if any(price.plan is target_plan for price in pool.prices)
-                and not configuration_issue(
-                    replace(
-                        inputs,
-                        node_pool_id=pool.id,
-                        quantization_id=quant_id,
-                        billing_plan=target_plan,
-                    ),
-                    check_workload=False,
-                )
-            ]
-            if not candidates:
+            candidate = replace(inputs, quantization_id=quant_id)
+            try:
+                candidate_node = automatic_node(candidate, target_plan, pools)
+            except ValueError:
                 continue
-            workload_candidates = [
-                pool
-                for pool in candidates
-                if not configuration_issue(
-                    replace(
-                        inputs,
-                        node_pool_id=pool.id,
-                        quantization_id=quant_id,
-                        billing_plan=target_plan,
-                    )
-                )
-            ]
-            if workload_candidates or not matched_hardware:
-                chosen_quant = candidate_quant
+            # automatic_node prefers machines that also accept the workload; keep looking
+            # for a precision that does, but remember the first hardware match.
+            workload_fits = not configuration_issue(
+                replace(candidate, node_pool_id=candidate_node.id, billing_plan=target_plan)
+            )
+            if workload_fits or not matched_hardware:
+                chosen_quant = find_quantization(quant_id)
                 chosen_plan = target_plan
-                chosen_node = min(
-                    workload_candidates or candidates,
-                    key=lambda pool: (
-                        nodes_for_model(model, pool, required) > 1,
-                        nodes_for_model(model, pool, required) * pool.price(chosen_plan).hourly_usd,
-                        nodes_for_model(model, pool, required),
-                    ),
-                )
+                chosen_node = candidate_node
                 matched_hardware = True
-            if workload_candidates:
+            if workload_fits:
                 break
         scenario = replace(
             inputs,
@@ -488,16 +484,6 @@ def build_llm_self_hosting_view(
         scenario = replace(inputs, tokens_per_second=inputs.tokens_per_second * speed)
         scenario = replace(scenario, replicas=replicas_for_demand(scenario))
         budgets.append(estimate_hosting(model, node, quantization, scenario).total_monthly_usd)
-    comparisons: list[ModelComparison] = []
-    for candidate in FRONTIER_MODELS:
-        candidate_estimate = estimate_hosting(candidate, node, quantization, inputs)
-        comparisons.append(
-            ModelComparison(
-                candidate,
-                candidate_estimate,
-                _hosting_decision(candidate, node, candidate_estimate),
-            ),
-        )
     return LLMSelfHostingView(
         inputs=inputs,
         models=FRONTIER_MODELS,
@@ -508,7 +494,7 @@ def build_llm_self_hosting_view(
         selected_price=node.price(inputs.billing_plan),
         selected_quant=quantization,
         estimate=estimate,
-        comparison=tuple(comparisons),
+        comparison=tuple(_catalog_comparison(inputs, candidate) for candidate in FRONTIER_MODELS),
         validation=tuple(validation),
         snapshot_date=MODEL_SNAPSHOT,
         presets=DEMAND_PRESETS,
