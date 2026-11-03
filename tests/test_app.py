@@ -846,6 +846,25 @@ def test_http_boundary_preserves_head_and_unsupported_method_contract(
     )
 
 
+@pytest.mark.parametrize("path", ["/x", "/articles/some-slug/nested", "/sites/llm-self-hosting/a/b"])
+@pytest.mark.parametrize("method", ["GET", "HEAD", "POST", "DELETE"])
+def test_unknown_paths_share_the_html_not_found_page(client: AppClient, path: str, method: str) -> None:
+    response = client.request(method, path, headers={"accept-encoding": "br"})
+
+    assert response.status_code == 404, (method, path)
+    assert response.headers["content-type"].startswith("text/html")
+    assert response.headers["cache-control"] == "no-cache"
+    assert "'nonce-" in response.headers["content-security-policy"]
+    if method == "HEAD":
+        assert response.content == b""
+    else:
+        assert "Page not found" in response.text
+        assert 'content="noindex, follow"' in response.text
+    if method in {"GET", "HEAD"}:
+        # Route-rendered 404 pages keep Brotli; a 404 exception handler would bypass it.
+        assert response.headers["content-encoding"] == "br"
+
+
 def test_unexpected_failures_are_logged_and_return_a_non_leaking_500(
     monkeypatch: pytest.MonkeyPatch,
     snapshots: tuple[ApplicationAssets, ArticleCollection],

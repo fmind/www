@@ -563,22 +563,16 @@ def create_app(
         response.headers.update(headers)
         return response
 
+    # Routes, not a 404 exception handler: exception handlers run synchronously
+    # on the event loop and skip route compression. The router does not backtrack
+    # from /articles/{slug} to /{path}, so nested content paths need their own entry.
     @route(
-        ["/articles/{slug:str}/{nested_path:path}", "/sites/{slug:str}/{nested_path:path}"],
+        ["/{path:path}", "/articles/{slug:str}/{nested_path:path}", "/sites/{slug:str}/{nested_path:path}"],
         http_method=_READ_METHODS,
     )
-    async def nested_content_not_found(
-        slug: FromPath[str], nested_path: FromPath[str], request: AppRequest
-    ) -> Response[str]:
-        del slug, nested_path
-        # A Litestar handler registered for multiple paths is registered more
-        # than once; explicit offload avoids its sync wrapper being applied twice.
+    async def not_found(request: AppRequest) -> Response[str]:
+        # Litestar wraps a multi-path sync handler once per path, so offload explicitly.
         return await sync_to_thread(render_not_found, request)
-
-    @route("/{path:path}", http_method=_READ_METHODS, sync_to_thread=True)
-    def not_found(path: FromPath[str], request: AppRequest) -> Response[str]:
-        del path
-        return render_not_found(request)
 
     mcp_server = create_mcp_server(summaries, public_search, public_articles, markdown_by_slug)
     mcp_app = create_mcp_http_app(mcp_server)
@@ -670,7 +664,6 @@ def create_app(
             site_page,
             home,
             mcp_route,
-            nested_content_not_found,
             not_found,
         ],
         compression_config=CompressionConfig(backend="brotli", exclude=_COMPRESSION_EXCLUDE),
