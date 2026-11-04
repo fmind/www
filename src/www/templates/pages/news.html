@@ -1,21 +1,20 @@
 {% extends "base.html" %}
-{% from "macros/feeds.html" import feed_hint, feed_link %}
-{% from "macros/news.html" import edition_card, edition_sections %}
+{% from "macros/feeds.html" import feed_link %}
+{% from "macros/news.html" import edition_card, edition_links, link_count %}
 {% block content %}
   <section class="bg-base-200 min-h-screen px-4 py-14 md:py-20">
-    <div class="container mx-auto max-w-6xl">
+    <div class="container mx-auto max-w-4xl">
       <header class="text-center max-w-3xl mx-auto mb-10 md:mb-14">
         <p class="text-sm uppercase tracking-[0.2em] text-primary font-semibold mb-3">Curated daily</p>
         <h1 class="text-4xl md:text-6xl font-heading font-bold text-balance">News</h1>
         <p class="text-lg text-base-content/70 leading-relaxed mt-5">{{ page.description }}</p>
-        {{ feed_hint("each daily edition") }}
-        <div class="mt-3">{{ feed_link("btn btn-outline btn-primary rounded-full font-semibold", href=news_feed_path, subject="each daily edition") }}</div>
+        <div class="mt-6">{{ feed_link("btn btn-outline btn-primary rounded-full font-semibold", href=news_feed_path, subject="each daily edition") }}</div>
       </header>
       {% set latest = index.latest %}
       {% if latest %}
-        <section class="max-w-4xl mx-auto mb-16" aria-labelledby="latest-edition">
+        <section class="mb-16" aria-labelledby="latest-edition">
           <h2 id="latest-edition" class="text-3xl font-heading font-bold mb-6 border-b border-base-300 pb-3">Latest: <a class="hover:text-primary transition-colors" href="{{ latest.path }}">{{ latest.title }}</a></h2>
-          {{ edition_sections(latest, 3) }}
+          {{ edition_links(latest, 3) }}
         </section>
       {% else %}
         <div class="alert max-w-2xl mx-auto"><span>No news yet.</span></div>
@@ -35,9 +34,9 @@
             {% for month, editions in index.archive %}
               <section aria-labelledby="month-{{ loop.index }}">
                 <h3 id="month-{{ loop.index }}" class="text-xl font-heading font-bold text-base-content/70 mb-4">{{ month }}</h3>
-                <ul class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-2">
+                <ul class="sm:columns-2 lg:columns-3 gap-x-6">
                   {% for edition in editions %}
-                    <li><a class="link link-hover text-primary font-semibold" href="{{ edition.path }}"><time datetime="{{ edition.date.isoformat() }}">{{ edition.date.strftime('%a') }} {{ edition.date.day }}</time>{% if edition.topic %} · {{ edition.topic }}{% endif %}</a> <span class="text-sm text-base-content/65">· {{ edition.items|length }} link{% if edition.items|length != 1 %}s{% endif %}</span></li>
+                    <li class="break-inside-avoid py-1"><a class="link link-hover text-primary font-semibold" href="{{ edition.path }}"><time datetime="{{ edition.date.isoformat() }}">{{ edition.date.strftime('%a') }}, {{ edition.date.strftime('%B') }} {{ edition.date.day }}</time>{% if edition.topic %} · {{ edition.topic }}{% endif %}</a> <span class="text-sm text-base-content/65">· {{ link_count(edition) }}</span></li>
                   {% endfor %}
                 </ul>
               </section>

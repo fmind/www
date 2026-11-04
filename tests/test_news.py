@@ -318,22 +318,31 @@ def test_news_index_shows_latest_edition_past_week_and_archive(news_client: AppC
     page = response.text
     assert 'href="https://example.com/new-1">Title new-1</a>' in page
     assert 'href="https://example.com/new-4">Title new-4</a>' in page
-    assert (
-        page.index(">Highlights</h3>")
-        < page.index("Title new-3")
-        < page.index(">More</h3>")
-        < page.index("Title new-4")
-    )
+    # One ranked list of cards without section headings.
+    assert ">Highlights<" not in page
+    assert ">More<" not in page
+    latest = page[page.index('aria-label="Links of November 3, 2026"') : page.index(">Past week</h2>")]
+    assert latest.count('<li class="card') == 4
+    assert latest.index("Title new-3") < latest.index("Title new-4")
     assert page.count('href="/news/2026-11-03/"') == 1
     week = page[page.index(">Past week</h2>") : page.index(">Archive</h2>")]
-    assert 'href="/news/2026-11-02/"' in week
+    # Each card is one link to its edition and says how many links the edition holds.
+    assert 'class="after:absolute after:inset-0 after:rounded-[inherit]" href="/news/2026-11-02/"' in week
     assert 'href="/news/2026-10-30/"' in week
+    assert "See all 1 link →" in week
     assert "Title old" in week
     assert "&lt;img src=x onerror=alert(1)&gt;" in week
     archive = page[page.index(">Archive</h2>") :]
     assert ">October 2026</h3>" in archive
-    assert 'href="/news/2026-10-20/"><time datetime="2026-10-20">Tue 20</time></a>' in archive
-    assert 'href="/news/2026-10-08-cloud-next/"><time datetime="2026-10-08">Thu 8</time> · Cloud Next</a>' in archive
+    # One line per day: the date and how many links the edition holds.
+    assert (
+        'href="/news/2026-10-20/"><time datetime="2026-10-20">Tue, October 20</time></a> '
+        '<span class="text-sm text-base-content/65">· 1 link</span>'
+    ) in archive
+    assert (
+        'href="/news/2026-10-08-cloud-next/"><time datetime="2026-10-08">Thu, October 8</time> · Cloud Next</a>'
+        in archive
+    )
     assert "Title older" not in archive
     assert f'href="{METADATA.site_url}/news/feed.xml" title="Fmind news"' in page
     assert f'{METADATA.site_url}/articles/feed.xml" title="Fmind articles"' not in page
@@ -365,8 +374,8 @@ def test_news_edition_page_links_neighbours_and_markdown(news_client: AppClient)
     # Editions stay out of search results; /news/ and the feed lead readers to them.
     assert '<meta name="robots" content="noindex, follow"/>' in page
     assert '<link rel="canonical"' not in page
-    assert ">Highlights</h2>" in page
-    assert ">More</h2>" not in page
+    assert 'aria-label="Links of November 2, 2026"' in page
+    assert ">Highlights<" not in page
     # Titles and descriptions are text, never markup.
     assert "<img src=x" not in page
     assert "&lt;img src=x onerror=alert(1)&gt;" in page

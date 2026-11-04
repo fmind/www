@@ -334,9 +334,9 @@ html:has(#consent:not([hidden])) {
   scroll-padding-bottom: 16rem;
 }
 
-/* Room below the footer so its last links can scroll above the open banner. */
-html:has(#consent:not([hidden])) body {
-  padding-bottom: 16rem;
+/* Room inside the footer, in its own color, so its last links can scroll above the open banner. */
+html:has(#consent:not([hidden])) body > footer {
+  padding-bottom: calc(1.5rem + 16rem);
 }
 
 @media (prefers-reduced-motion: reduce) {

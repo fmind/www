@@ -8,7 +8,7 @@ metadata:
 
 # News
 
-Each edition is `content/news/YYYY-MM-DD.md` (a special edition appends a topic: `2026-04-23-google-next.md`). Validated editions feed `/news/` (the latest edition in full, the rest of its week as highlight cards, and older editions as day links by month), one page and `.md` export per edition (both `noindex`), `/news/feed.xml` (one Atom entry per edition), and `llms.txt`. Startup rejects any other file, heading, or line shape, a description over 30 words, a non-HTTPS link, and a link already published in any edition.
+Each edition is `content/news/YYYY-MM-DD.md` (a special edition appends a topic: `2026-04-23-google-next.md`). Validated editions feed `/news/` (the latest edition as one ranked list of cards, the rest of its week as cards that open each edition, and older editions one line per day by month), one page and `.md` export per edition (both `noindex`), `/news/feed.xml` (one Atom entry per edition), and `llms.txt`. Startup rejects any other file, heading, or line shape, a description over 30 words, a non-HTTPS link, and a link already published in any edition.
 
 ## Format
 

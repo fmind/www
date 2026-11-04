@@ -14,7 +14,7 @@ from www.data import METADATA
 
 NEWS_FEED_PATH = "/news/feed.xml"
 FEED_EDITION_LIMIT = 30
-# /news/ shows the latest edition in full, the rest of its week as highlight cards, and older editions as links.
+# /news/ shows the latest edition in full, the rest of its week as highlight cards, and older editions one per line.
 RECENT_DAYS = 7
 NEWS_TOPICS = "AI agents, Python, security, Google Cloud, and engineering"
 
