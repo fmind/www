@@ -35,9 +35,9 @@
             {% for month, editions in index.archive %}
               <section aria-labelledby="month-{{ loop.index }}">
                 <h3 id="month-{{ loop.index }}" class="text-xl font-heading font-bold text-base-content/70 mb-4">{{ month }}</h3>
-                <ul class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-2">
+                <ul class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-2">
                   {% for edition in editions %}
-                    <li><a class="link link-hover text-primary font-semibold" href="{{ edition.path }}">{{ edition.title }}</a> <span class="text-sm text-base-content/65">· {{ edition.items|length }} link{% if edition.items|length != 1 %}s{% endif %}</span></li>
+                    <li><a class="link link-hover text-primary font-semibold" href="{{ edition.path }}"><time datetime="{{ edition.date.isoformat() }}">{{ edition.date.strftime('%a') }} {{ edition.date.day }}</time>{% if edition.topic %} · {{ edition.topic }}{% endif %}</a> <span class="text-sm text-base-content/65">· {{ edition.items|length }} link{% if edition.items|length != 1 %}s{% endif %}</span></li>
                   {% endfor %}
                 </ul>
               </section>

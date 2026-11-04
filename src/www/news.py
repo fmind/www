@@ -23,6 +23,7 @@ NEWS_TOPICS = "AI agents, Python, security, Google Cloud, and engineering"
 # A corrected edition starts with the article front matter's correction date: +++, updated = "YYYY-MM-DD", +++.
 _SECTIONS = ("## Highlights", "## More")
 HIGHLIGHT_LIMIT = 3
+DESCRIPTION_WORD_LIMIT = 30
 _LINE = re.compile(r"^- \[(?P<title>[^\[\]]+)\]\((?P<url>https://\S+?)\): (?P<description>\S.*)$")
 # A daily edition is YYYY-MM-DD; a special edition appends a topic, such as 2026-04-23-google-next.
 _SLUG = re.compile(r"^(?P<date>\d{4}-\d{2}-\d{2})(?:-(?P<topic>[a-z0-9]+(?:-[a-z0-9]+)*))?$")
@@ -182,7 +183,10 @@ def parse_edition(slug: str, text: str) -> NewsEdition:
         entry = _LINE.fullmatch(line)
         if entry is None:
             raise NewsError(f"{slug}:{number}: expected '- [Title](https://...): Description'")
-        items.append(NewsItem(entry["title"].strip(), entry["url"], entry["description"].strip()))
+        description = entry["description"].strip()
+        if (words := len(description.split())) > DESCRIPTION_WORD_LIMIT:
+            raise NewsError(f"{slug}:{number}: description has {words} words; keep it to {DESCRIPTION_WORD_LIMIT}")
+        items.append(NewsItem(entry["title"].strip(), entry["url"], description))
         highlights += sections == 1
     if not items:
         raise NewsError(f"{slug}: edition has no links")

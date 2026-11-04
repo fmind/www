@@ -25,7 +25,7 @@
 {% macro edition_card(edition) -%}
   <article class="card bg-base-100 border border-base-300 shadow-lg hover:shadow-xl transition-shadow h-full">
     <div class="card-body p-5 sm:p-6">
-      <p class="text-sm text-base-content/65"><time datetime="{{ edition.date.isoformat() }}">{{ edition.date.strftime('%A') }}</time> · {{ edition.items|length }} link{% if edition.items|length != 1 %}s{% endif %}</p>
+      <p class="grow-0 text-sm text-base-content/65"><time datetime="{{ edition.date.isoformat() }}">{{ edition.date.strftime('%A') }}</time> · {{ edition.items|length }} link{% if edition.items|length != 1 %}s{% endif %}</p>
       <h3 class="card-title font-heading text-xl leading-snug mt-1"><a class="hover:text-primary transition-colors" href="{{ edition.path }}">{{ edition.title }}</a></h3>
       <ul class="list-disc pl-5 mt-2 space-y-1 text-base-content/75">
         {% for item in edition.highlights %}<li class="wrap-anywhere">{{ item.title }}</li>{% endfor %}

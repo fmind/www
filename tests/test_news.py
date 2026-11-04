@@ -118,6 +118,11 @@ def test_parse_edition_names_special_editions_by_topic() -> None:
             "holds 3 links",
         ),
         ("2026-11-03", edition_text("a", "b", "c") + "## More\n", "'## More' has no links"),
+        (
+            "2026-11-03",
+            "## Highlights\n" + LINE.format(title="A", path="a", description="word " * 31),
+            "2026-11-03:2: description has 31 words; keep it to 30",
+        ),
         ("2026-11-03", "+++\n" + edition_text("a"), "no closing '\\+\\+\\+' line"),
         ("2026-11-03", '+++\nupdated = "2026-11-04"\ndraft = true\n+++\n' + edition_text("a"), "holds only updated"),
         ("2026-11-03", "+++\nupdated = 2026-11-04\n+++\n" + edition_text("a"), "holds only updated"),
@@ -293,6 +298,7 @@ def news_client(make_app: Callable[..., Litestar], tmp_path_factory: pytest.Temp
     directory = write_editions(
         tmp_path_factory.mktemp("news"),
         {
+            "2026-10-08-cloud-next": edition_text("special"),
             "2026-10-20": edition_text("older"),
             "2026-10-30": edition_text("old"),
             "2026-11-02": "## Highlights\n- [<img src=x onerror=alert(1)>](https://example.com/evil): <b>Bold</b> claim.",
@@ -326,7 +332,8 @@ def test_news_index_shows_latest_edition_past_week_and_archive(news_client: AppC
     assert "&lt;img src=x onerror=alert(1)&gt;" in week
     archive = page[page.index(">Archive</h2>") :]
     assert ">October 2026</h3>" in archive
-    assert 'href="/news/2026-10-20/">October 20, 2026</a>' in archive
+    assert 'href="/news/2026-10-20/"><time datetime="2026-10-20">Tue 20</time></a>' in archive
+    assert 'href="/news/2026-10-08-cloud-next/"><time datetime="2026-10-08">Thu 8</time> · Cloud Next</a>' in archive
     assert "Title older" not in archive
     assert f'href="{METADATA.site_url}/news/feed.xml" title="Fmind news"' in page
     assert f'{METADATA.site_url}/articles/feed.xml" title="Fmind articles"' not in page
@@ -403,6 +410,7 @@ def test_news_feed_route_serves_cached_atom(news_client: AppClient) -> None:
         "News: November 2, 2026",
         "News: October 30, 2026",
         "News: October 20, 2026",
+        "News: Cloud Next: October 8, 2026",
     ]
     assert news_client.get("/news/feed.xml", headers={"if-none-match": response.headers["etag"]}).status_code == 304
 
