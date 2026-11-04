@@ -289,7 +289,7 @@ def create_app(
     profile = _Snapshot.of(render_profile_json(summaries))
     profile_schema = _Snapshot.of(render_profile_schema())
     feed = _Snapshot.of(render_atom_feed(public_articles).encode())
-    sitemap = _Snapshot.of(render_sitemap(public_articles, editions).encode())
+    sitemap = _Snapshot.of(render_sitemap(public_articles).encode())
     llms = render_llms_txt(public_articles)
     llms_full = _Snapshot.of(render_llms_full(llms, public_articles, markdown_by_slug).encode())
     llms_index_snapshot = _Snapshot.of(llms.encode())
@@ -434,7 +434,11 @@ def create_app(
                     "text/markdown; charset=utf-8",
                     _HOUR_CACHE,
                     cors=True,
-                    extra_headers={"vary": "Accept", "link": f'<{edition.url}>; rel="canonical"'},
+                    extra_headers={
+                        "vary": "Accept",
+                        "link": f'<{edition.url}>; rel="canonical"',
+                        "x-robots-tag": "noindex",
+                    },
                 )
             older, newer = edition_neighbours[slug]
             response = render_page(
@@ -456,7 +460,7 @@ def create_app(
                 "text/markdown; charset=utf-8",
                 _HOUR_CACHE,
                 cors=True,
-                extra_headers={"link": f'<{edition.url}>; rel="canonical"'},
+                extra_headers={"link": f'<{edition.url}>; rel="canonical"', "x-robots-tag": "noindex"},
             )
         return _redirect(f"/news/{quote(slug, safe='')}/")
 

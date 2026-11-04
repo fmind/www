@@ -1,13 +1,15 @@
 """Prepare pasted links for a news edition: clean URLs, skip published ones, and fetch source facts.
 
-Usage: uv run --locked python -m scripts.news prepare [--date YYYY-MM-DD] URL...
+Usage: uv run --locked python -m scripts.news prepare URL...
 
 Prints one JSON object per URL. `status` is `ok`, `duplicate` (already in an edition, named by
 `edition`), `invalid`, or `fetch_error` (the source gave no title, description, or text, so an agent
-must find the primary source before describing it). Descriptions are written only from these facts.
+must find the primary source before describing it). An `ok` result may still carry an `error` when one
+of several reads failed. Descriptions are written only from these facts.
 """
 
 import argparse
+import base64
 import html
 import json
 import re
@@ -15,7 +17,6 @@ import sys
 import urllib.request
 from collections.abc import Callable, Sequence
 from concurrent.futures import ThreadPoolExecutor
-from datetime import date
 from pathlib import Path
 from urllib.parse import quote, urlparse
 from xml.etree import ElementTree
@@ -78,7 +79,11 @@ def _youtube(url: str, fetch: Fetch) -> dict[str, str]:
     data = json.loads(oembed)
     author = _clean(data.get("author_name", ""))
     facts = {"title": _clean(data.get("title", "")), "description": f"Video by {author}" if author else ""}
-    _, page = fetch(url)
+    try:
+        _, page = fetch(url)
+    except (OSError, ValueError) as error:
+        # YouTube often throttles scripted page reads; the oEmbed title and channel still ground a line.
+        return facts | {"error": f"watch page: {type(error).__name__}: {error}"}
     if seconds := re.search(r'"lengthSeconds":"(\d+)"', page):
         facts["duration"] = _minutes(int(seconds[1]))
     if short := re.search(r'"shortDescription":"((?:[^"\\]|\\.)*)"', page):
@@ -110,16 +115,19 @@ def _github(url: str, fetch: Fetch) -> dict[str, str]:
     ]
     if topics := data.get("topics"):
         facts.append(f"Topics: {', '.join(topics[:8])}.")
-    _, readme = fetch(f"https://raw.githubusercontent.com/{quote(owner)}/{quote(repo)}/HEAD/README.md")
+    result = {"title": data.get("full_name") or f"{owner}/{repo}", "description": _clean(data.get("description") or "")}
+    try:
+        # The API finds the README whatever its name or format (README.md, readme.rst, docs/README.md).
+        _, body = fetch(f"https://api.github.com/repos/{quote(owner)}/{quote(repo)}/readme")
+        readme = base64.b64decode(json.loads(body)["content"]).decode("utf-8", errors="replace")
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        result["error"] = f"README: {type(error).__name__}: {error}"
+        readme = ""
     readme = re.sub(r"```.*?```", " ", readme, flags=re.DOTALL)
     readme = re.sub(r"!\[[^\]]*\]\([^)]*\)", " ", readme)
     readme = re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", readme)
     facts.append(_clean(re.sub(r"<[^>]+>", " ", readme)))
-    return {
-        "title": data.get("full_name") or f"{owner}/{repo}",
-        "description": _clean(data.get("description") or ""),
-        "excerpt": _clean(" ".join(facts)),
-    }
+    return result | {"excerpt": _clean(" ".join(facts))}
 
 
 def _arxiv(url: str, fetch: Fetch) -> dict[str, str]:
@@ -184,15 +192,10 @@ def source_facts(url: str, fetch: Fetch = fetch_text) -> dict[str, str]:
 
 
 def prepare(
-    urls: Sequence[str], edition: str, news_dir: Path = Path("content/news"), fetch: Fetch = fetch_text
+    urls: Sequence[str], news_dir: Path = Path("content/news"), fetch: Fetch = fetch_text
 ) -> list[dict[str, str]]:
-    """Canonicalize each URL, skip those already published or repeated, and fetch facts for the rest."""
-    published = {
-        canonicalize_url(item.url): other.slug
-        for other in load_news(news_dir)
-        if other.slug != edition
-        for item in other.items
-    }
+    """Canonicalize each URL, skip those in any edition (today's included) or repeated, and fetch facts for the rest."""
+    published = {canonicalize_url(item.url): edition.slug for edition in load_news(news_dir) for item in edition.items}
     results: list[dict[str, str]] = []
     pending: list[str] = []
     for raw in urls:
@@ -219,11 +222,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     commands = parser.add_subparsers(dest="command", required=True)
     command = commands.add_parser("prepare", help="clean, deduplicate, and fetch facts for pasted URLs")
-    command.add_argument("--date", default=date.today().isoformat(), help="edition slug (default: today)")
     command.add_argument("urls", nargs="+", metavar="URL")
     arguments = parser.parse_args(argv)
     try:
-        results = prepare(arguments.urls, arguments.date)
+        results = prepare(arguments.urls)
     except NewsError as error:
         print(f"error: {error}; fix content/news before preparing new links", file=sys.stderr)  # noqa: T201
         return 1

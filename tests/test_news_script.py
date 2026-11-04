@@ -1,5 +1,6 @@
 """The news preparation script, with every network read replaced by a fake."""
 
+import base64
 import json
 from collections.abc import Mapping
 from pathlib import Path
@@ -33,15 +34,15 @@ class FakeWeb:
 
 def write_edition(directory: Path, slug: str, *urls: str) -> Path:
     directory.mkdir(parents=True, exist_ok=True)
-    lines = (f"- Title {index}: {url} - About it." for index, url in enumerate(urls))
-    (directory / f"{slug}.txt").write_text("\n".join(lines), encoding="utf-8")
+    lines = (f"- [Title {index}]({url}): About it." for index, url in enumerate(urls[:3]))
+    (directory / f"{slug}.md").write_text("## Highlights\n\n" + "\n".join(lines), encoding="utf-8")
     return directory
 
 
 def test_prepare_skips_published_repeated_and_invalid_links(tmp_path: Path) -> None:
     directory = write_edition(tmp_path / "news", "2026-11-02", "https://example.com/old")
     write_edition(directory, "2026-11-03", "https://example.com/today")
-    web = FakeWeb({"https://example.com/new": ARTICLE, "https://example.com/today": ARTICLE})
+    web = FakeWeb({"https://example.com/new": ARTICLE})
 
     results = news.prepare(
         [
@@ -51,36 +52,37 @@ def test_prepare_skips_published_repeated_and_invalid_links(tmp_path: Path) -> N
             "https://example.com/today",
             "ftp://example.com/file",
         ],
-        "2026-11-03",
         directory,
         web,
     )
 
     by_status = [(result["status"], result["url"]) for result in results]
+    # A link already in the edition being extended is a duplicate too.
     assert by_status == [
         ("duplicate", "https://example.com/old"),
         ("duplicate", "https://example.com/new"),
+        ("duplicate", "https://example.com/today"),
         ("invalid", "ftp://example.com/file"),
         ("ok", "https://example.com/new"),
-        ("ok", "https://example.com/today"),
     ]
     assert results[0]["edition"] == "2026-11-02"
     assert results[1]["edition"] == "this batch"
-    assert "unsupported or invalid URL" in results[2]["error"]
-    assert web.requests == ["https://example.com/new", "https://example.com/today"]
+    assert results[2]["edition"] == "2026-11-03"
+    assert "unsupported or invalid URL" in results[3]["error"]
+    assert web.requests == ["https://example.com/new"]
 
 
 def test_prepare_resolves_shorteners_before_deduplicating(tmp_path: Path) -> None:
     directory = write_edition(tmp_path / "news", "2026-11-02", "https://example.com/old")
     web = FakeWeb({"https://bit.ly/abc": ("https://example.com/old?utm_campaign=x", "")})
 
-    [result] = news.prepare(["https://bit.ly/abc"], "2026-11-03", directory, web)
+    [result] = news.prepare(["https://bit.ly/abc"], directory, web)
 
     assert result == {"status": "duplicate", "url": "https://example.com/old", "edition": "2026-11-02"}
 
 
 def test_prepare_reports_unreachable_shorteners_as_invalid(tmp_path: Path) -> None:
-    [result] = news.prepare(["https://t.co/gone"], "2026-11-03", tmp_path, FakeWeb({}))
+    [result] = news.prepare(["https://t.co/gone"], tmp_path, FakeWeb({}))
 
     assert result["status"] == "invalid"
     assert result["error"] == "OSError: no route to https://t.co/gone"
@@ -120,13 +122,26 @@ def test_youtube_facts_use_oembed_and_watch_page() -> None:
     assert (facts["title"], facts["description"], facts["duration"]) == ("Talk", "Line one Line two", "1h 2m")
 
 
+def test_youtube_keeps_oembed_facts_when_the_watch_page_fails() -> None:
+    url = "https://www.youtube.com/watch?v=abc"
+    oembed = "https://www.youtube.com/oembed?url=https%3A%2F%2Fwww.youtube.com%2Fwatch%3Fv%3Dabc&format=json"
+    web = FakeWeb({oembed: json.dumps({"title": "Talk", "author_name": "Speaker"})})
+
+    facts = news.source_facts(url, web)
+
+    assert (facts["status"], facts["title"], facts["description"]) == ("ok", "Talk", "Video by Speaker")
+    assert facts["error"] == f"watch page: OSError: no route to {url}"
+
+
 def test_github_facts_combine_api_license_topics_and_readme() -> None:
     web = FakeWeb(
         {
             "https://api.github.com/repos/org/tool": json.dumps(
                 {"full_name": "org/tool", "description": "A tool.", "license": {"spdx_id": "MIT"}, "topics": ["ai"]}
             ),
-            "https://raw.githubusercontent.com/org/tool/HEAD/README.md": "# Tool\n```sh\nsecret\n```\n[Docs](x) ![logo](y)",
+            "https://api.github.com/repos/org/tool/readme": json.dumps(
+                {"content": base64.b64encode(b"# Tool\n```sh\nsecret\n```\n[Docs](x) ![logo](y)").decode()}
+            ),
         }
     )
 
@@ -135,6 +150,18 @@ def test_github_facts_combine_api_license_topics_and_readme() -> None:
     assert facts["title"] == "org/tool"
     assert facts["description"] == "A tool."
     assert facts["excerpt"] == "License: MIT. Topics: ai. # Tool Docs"
+    assert "error" not in facts
+
+
+def test_github_keeps_repository_facts_without_a_readme() -> None:
+    web = FakeWeb(
+        {"https://api.github.com/repos/org/tool": json.dumps({"full_name": "org/tool", "license": {"spdx_id": "MIT"}})}
+    )
+
+    facts = news.source_facts("https://github.com/org/tool", web)
+
+    assert (facts["status"], facts["title"], facts["excerpt"]) == ("ok", "org/tool", "License: MIT.")
+    assert facts["error"] == "README: OSError: no route to https://api.github.com/repos/org/tool/readme"
 
 
 def test_github_owner_pages_fall_back_to_page_facts() -> None:
@@ -184,11 +211,11 @@ def test_main_prints_json_and_names_invalid_content(
     monkeypatch.chdir(tmp_path)
     write_edition(tmp_path / "content" / "news", "2026-11-02", "https://example.com/old")
 
-    assert news.main(["prepare", "--date", "2026-11-03", "https://example.com/old"]) == 0
+    assert news.main(["prepare", "https://example.com/old"]) == 0
     assert json.loads(capsys.readouterr().out) == [
         {"status": "duplicate", "url": "https://example.com/old", "edition": "2026-11-02"}
     ]
 
-    (tmp_path / "content" / "news" / "2026-11-04.txt").write_text("broken", encoding="utf-8")
+    (tmp_path / "content" / "news" / "2026-11-04.md").write_text("## Highlights\nbroken", encoding="utf-8")
     assert news.main(["prepare", "https://example.com/new"]) == 1
-    assert "2026-11-04:1: expected" in capsys.readouterr().err
+    assert "2026-11-04:2: expected" in capsys.readouterr().err

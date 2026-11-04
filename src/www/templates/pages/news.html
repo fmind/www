@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% from "macros/feeds.html" import feed_hint, feed_link %}
-{% from "macros/news.html" import edition_card, news_items %}
+{% from "macros/news.html" import edition_card, edition_sections %}
 {% block content %}
   <section class="bg-base-200 min-h-screen px-4 py-14 md:py-20">
     <div class="container mx-auto max-w-6xl">
@@ -14,7 +14,7 @@
       {% if latest %}
         <section class="max-w-4xl mx-auto mb-16" aria-labelledby="latest-edition">
           <h2 id="latest-edition" class="text-3xl font-heading font-bold mb-6 border-b border-base-300 pb-3">Latest: <a class="hover:text-primary transition-colors" href="{{ latest.path }}">{{ latest.title }}</a></h2>
-          {{ news_items(latest) }}
+          {{ edition_sections(latest, 3) }}
         </section>
       {% else %}
         <div class="alert max-w-2xl mx-auto"><span>No news yet.</span></div>

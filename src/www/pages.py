@@ -151,6 +151,8 @@ def news_edition_metadata(edition: NewsEdition) -> PageMetadata:
         title=f"News: {edition.title} | Fmind",
         description=edition.description,
         canonical=edition.url,
+        # Editions are short link summaries: readers follow them from /news/ and the feed, search engines do not index them.
+        no_index=True,
     )
     return replace(page, feed_path=NEWS_FEED_PATH, feed_title="Fmind news", markdown_path=edition.markdown_path())
 

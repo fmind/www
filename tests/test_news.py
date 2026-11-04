@@ -25,22 +25,25 @@ from www.news import (
 type AppClient = TestClient[Any]
 
 ATOM = {"a": "http://www.w3.org/2005/Atom"}
-LINE = "- {title}: https://example.com/{path} - {description}"
+LINE = "- [{title}](https://example.com/{path}): {description}"
 
 
 def edition_text(*paths: str) -> str:
-    return "\n".join(LINE.format(title=f"Title {path}", path=path, description=f"About {path}.") for path in paths)
+    """A valid edition: the first three links are the highlights, the rest go under More."""
+    lines = [LINE.format(title=f"Title {path}", path=path, description=f"About {path}.") for path in paths]
+    more = ["", "## More", "", *lines[3:]] if len(lines) > 3 else []
+    return "\n".join(["## Highlights", "", *lines[:3], *more]) + "\n"
 
 
 def write_editions(directory: Path, editions: dict[str, str]) -> Path:
     directory.mkdir(exist_ok=True)
     for slug, text in editions.items():
-        (directory / f"{slug}.txt").write_text(text, encoding="utf-8")
+        (directory / f"{slug}.md").write_text(text, encoding="utf-8")
     return directory
 
 
 def test_parse_edition_reads_titles_with_colons_and_skips_blank_lines() -> None:
-    text = "\n- GDPx: Measuring models: https://example.com/a?x=1 - Benchmarks: 11 domains.\n\n"
+    text = "\n## Highlights\n\n- [GDPx: Measuring models](https://example.com/a?x=1): Benchmarks: 11 domains.\n\n"
 
     edition = parse_edition("2026-11-03", text)
 
@@ -56,6 +59,23 @@ def test_parse_edition_reads_titles_with_colons_and_skips_blank_lines() -> None:
     )
     assert item.domain == "example.com"
     assert edition.description.startswith("1 curated link on ")
+    assert (edition.highlights, edition.more) == ((item,), ())
+
+
+def test_parse_edition_splits_highlights_from_more() -> None:
+    edition = parse_edition("2026-11-03", edition_text("a", "b", "c", "d", "e"))
+
+    assert [item.title for item in edition.highlights] == ["Title a", "Title b", "Title c"]
+    assert [item.title for item in edition.more] == ["Title d", "Title e"]
+    assert edition.items == edition.highlights + edition.more
+
+
+def test_parse_edition_keeps_parentheses_in_urls() -> None:
+    text = "## Highlights\n- [Wiki](https://example.com/Foo_(bar)): About (it)."
+
+    [item] = parse_edition("2026-11-03", text).items
+
+    assert (item.url, item.description) == ("https://example.com/Foo_(bar)", "About (it).")
 
 
 def test_parse_edition_names_special_editions_by_topic() -> None:
@@ -73,9 +93,29 @@ def test_parse_edition_names_special_editions_by_topic() -> None:
         ("2026-02-30", edition_text("a"), "is not a calendar date"),
         ("2026-11-03-Topic", edition_text("a"), "file name must be YYYY-MM-DD"),
         ("2026-11-03", "", "edition has no links"),
-        ("2026-11-03", "- Title https://example.com - Missing colon", "2026-11-03:1: expected"),
-        ("2026-11-03", "- Title: http://example.com/a - Plain HTTP", "2026-11-03:1: expected"),
-        ("2026-11-03", edition_text("a") + "\nnot a link", "2026-11-03:2: expected"),
+        ("2026-11-03", "## Highlights\n", "edition has no links"),
+        ("2026-11-03", "- [Title](https://example.com/a): No section.", "2026-11-03:1: start the edition with"),
+        ("2026-11-03", "## Highlights\n- [Title](https://example.com/a) Missing colon", "2026-11-03:2: expected"),
+        ("2026-11-03", "## Highlights\n- [Title](http://example.com/a): Plain HTTP", "2026-11-03:2: expected"),
+        ("2026-11-03", "## Highlights\n- [A [B]](https://example.com/a): Brackets.", "2026-11-03:2: expected"),
+        ("2026-11-03", "## Highlights\n- Title: https://example.com/a - Old format", "2026-11-03:2: expected"),
+        ("2026-11-03", edition_text("a") + "\nnot a link", "2026-11-03:5: expected"),
+        ("2026-11-03", "## More\n" + LINE.format(title="A", path="a", description="B."), "2026-11-03:1: unexpected"),
+        ("2026-11-03", "# News\n" + edition_text("a"), "2026-11-03:1: unexpected heading"),
+        ("2026-11-03", edition_text("a", "b", "c", "d") + "## More\n", "2026-11-03:10: unexpected heading"),
+        (
+            "2026-11-03",
+            edition_text("a", "b", "c").replace(
+                "## Highlights\n", "## Highlights\n" + LINE.format(title="D", path="d", description="E.") + "\n"
+            ),
+            "holds 3 links",
+        ),
+        (
+            "2026-11-03",
+            edition_text("a", "b") + "## More\n" + LINE.format(title="C", path="c", description="D."),
+            "holds 3 links",
+        ),
+        ("2026-11-03", edition_text("a", "b", "c") + "## More\n", "'## More' has no links"),
     ],
 )
 def test_parse_edition_rejects_invalid_files(slug: str, text: str, message: str) -> None:
@@ -113,8 +153,8 @@ def test_load_news_sorts_newest_first_and_rejects_republished_links(tmp_path: Pa
 
     assert [edition.slug for edition in load_news(directory)] == ["2026-11-03", "2026-11-02-event", "2026-11-02"]
 
-    (directory / "2026-11-04.txt").write_text(
-        "- Again: https://example.com/a/?utm_medium=mail - Same link.\n", encoding="utf-8"
+    (directory / "2026-11-04.md").write_text(
+        "## Highlights\n- [Again](https://example.com/a/?utm_medium=mail): Same link.\n", encoding="utf-8"
     )
     with pytest.raises(
         NewsError, match=r"2026-11-04:1: duplicate link https://example.com/a \(already in 2026-11-02:1\)"
@@ -125,9 +165,17 @@ def test_load_news_sorts_newest_first_and_rejects_republished_links(tmp_path: Pa
 def test_load_news_names_unreadable_files(tmp_path: Path) -> None:
     directory = tmp_path / "news"
     directory.mkdir()
-    (directory / "2026-11-03.txt").write_bytes(b"\xff\xfe")
+    (directory / "2026-11-03.md").write_bytes(b"\xff\xfe")
 
     with pytest.raises(NewsError, match="cannot read edition"):
+        load_news(directory)
+
+
+def test_load_news_rejects_files_that_are_not_markdown_editions(tmp_path: Path) -> None:
+    directory = write_editions(tmp_path / "news", {"2026-11-03": edition_text("a")})
+    (directory / "2026-11-04.txt").write_text(edition_text("b"), encoding="utf-8")
+
+    with pytest.raises(NewsError, match=r"must be a YYYY-MM-DD\.md Markdown file"):
         load_news(directory)
 
 
@@ -148,19 +196,21 @@ def test_adjacent_editions_link_older_and_newer() -> None:
     assert neighbours["2026-11-01"] == (None, editions[1])
 
 
-def test_markdown_export_lists_every_link() -> None:
-    edition = parse_edition("2026-11-03", edition_text("a", "b"))
+def test_markdown_export_adds_metadata_to_the_edition_source() -> None:
+    source = edition_text("a", "b", "c", "d")
+    edition = parse_edition("2026-11-03", source)
 
     markdown = render_news_markdown(edition)
 
     assert markdown.startswith("# News: November 3, 2026\n")
-    assert f"- URL: {METADATA.site_url}/news/2026-11-03/" in markdown
-    assert "- [Title a](<https://example.com/a>): About a." in markdown
-    assert "- [Title b](<https://example.com/b>): About b." in markdown
+    assert f"- URL: {METADATA.site_url}/news/2026-11-03/\n\n## Highlights\n" in markdown
+    assert markdown.endswith(source)
 
 
 def test_feed_has_one_escaped_entry_per_recent_edition() -> None:
-    hostile = "- <script>alert(1)</script>: https://example.com/x?a=1&b=2 - Uses <b>markup</b> & entities."
+    hostile = (
+        "## Highlights\n- [<script>alert(1)</script>](https://example.com/x?a=1&b=2): Uses <b>markup</b> & entities."
+    )
     editions = tuple(
         parse_edition(
             f"2026-{month:02d}-{day:02d}", hostile if (month, day) == (12, 31) else edition_text(f"{month}-{day}")
@@ -179,6 +229,8 @@ def test_feed_has_one_escaped_entry_per_recent_edition() -> None:
     assert first.findtext("a:title", namespaces=ATOM) == "News: December 31, 2026"
     assert first.findtext("a:id", namespaces=ATOM) == f"{METADATA.site_url}/news/2026-12-31/"
     content = first.findtext("a:content", namespaces=ATOM) or ""
+    assert content.startswith("<h2>Highlights</h2><ul><li>")
+    assert "<h2>More</h2>" not in content
     assert '<a href="https://example.com/x?a=1&amp;b=2">&lt;script&gt;alert(1)&lt;/script&gt;</a>' in content
     assert "Uses &lt;b&gt;markup&lt;/b&gt; &amp; entities." in content
 
@@ -196,8 +248,8 @@ def news_client(make_app: Callable[..., Litestar], tmp_path_factory: pytest.Temp
         tmp_path_factory.mktemp("news"),
         {
             "2026-10-30": edition_text("old"),
-            "2026-11-02": "- <img src=x onerror=alert(1)>: https://example.com/evil - <b>Bold</b> claim.",
-            "2026-11-03": edition_text("new-1", "new-2"),
+            "2026-11-02": "## Highlights\n- [<img src=x onerror=alert(1)>](https://example.com/evil): <b>Bold</b> claim.",
+            "2026-11-03": edition_text("new-1", "new-2", "new-3", "new-4"),
         },
     )
     with TestClient(make_app(news=load_news(directory))) as client:
@@ -212,7 +264,13 @@ def test_news_index_shows_latest_edition_and_monthly_archive(news_client: AppCli
     assert response.status_code == 200
     page = response.text
     assert 'href="https://example.com/new-1">Title new-1</a>' in page
-    assert 'href="https://example.com/new-2">Title new-2</a>' in page
+    assert 'href="https://example.com/new-4">Title new-4</a>' in page
+    assert (
+        page.index(">Highlights</h3>")
+        < page.index("Title new-3")
+        < page.index(">More</h3>")
+        < page.index("Title new-4")
+    )
     assert page.count('href="/news/2026-11-03/"') == 1
     assert ">November 2026</h2>" in page
     assert ">October 2026</h2>" in page
@@ -244,8 +302,11 @@ def test_news_edition_page_links_neighbours_and_markdown(news_client: AppClient)
     assert "<title>News: November 2, 2026 | Fmind</title>" in page
     assert 'href="/news/2026-10-30/" rel="prev"' in page
     assert 'href="/news/2026-11-03/" rel="next"' in page
-    assert '<link rel="alternate" type="text/markdown" href="/news/2026-11-02.md"' in page
-    assert f'<link rel="canonical" href="{METADATA.site_url}/news/2026-11-02/"/>' in page
+    # Editions stay out of search results; /news/ and the feed lead readers to them.
+    assert '<meta name="robots" content="noindex, follow"/>' in page
+    assert '<link rel="canonical"' not in page
+    assert ">Highlights</h2>" in page
+    assert ">More</h2>" not in page
     # Titles and descriptions are text, never markup.
     assert "<img src=x" not in page
     assert "&lt;img src=x onerror=alert(1)&gt;" in page
@@ -262,6 +323,8 @@ def test_news_edition_markdown_by_suffix_and_negotiation(news_client: AppClient)
         assert response.headers["access-control-allow-origin"] == "*"
         assert response.headers["link"] == f'<{METADATA.site_url}/news/2026-11-03/>; rel="canonical"'
         assert response.text.startswith("# News: November 3, 2026\n")
+        assert "\n## More\n" in response.text
+        assert response.headers["x-robots-tag"] == "noindex"
     assert "Accept" in negotiated.headers["vary"].split(",")
     revalidated = news_client.get("/news/2026-11-03.md", headers={"if-none-match": exported.headers["etag"]})
     assert revalidated.status_code == 304
@@ -290,12 +353,12 @@ def test_news_feed_route_serves_cached_atom(news_client: AppClient) -> None:
     assert news_client.get("/news/feed.xml", headers={"if-none-match": response.headers["etag"]}).status_code == 304
 
 
-def test_news_reaches_sitemap_and_llms_txt(news_client: AppClient) -> None:
+def test_sitemap_lists_the_news_index_but_not_editions(news_client: AppClient) -> None:
     sitemap = news_client.get("/sitemap.xml").text
     llms = news_client.get("/llms.txt").text
 
     assert f"<loc>{METADATA.site_url}/news/</loc>" in sitemap
-    assert f"<loc>{METADATA.site_url}/news/2026-11-03/</loc><lastmod>2026-11-03</lastmod>" in sitemap
+    assert "/news/2026-" not in sitemap
     assert f"- [News feed]({METADATA.site_url}/news/feed.xml)" in llms
 
 

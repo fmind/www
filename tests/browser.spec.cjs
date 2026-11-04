@@ -218,11 +218,14 @@ test("published pages render without overflow, missing images, or external asset
   expect(sitemapResponse.status()).toBe(200);
   const sitemapPaths = [...(await sitemapResponse.text()).matchAll(/<loc>([^<]+)<\/loc>/g)]
     .map(([, location]) => new URL(location).pathname);
-  // The profile does not list news editions, so take them from the sitemap but require their slug shape.
-  const newsEditions = sitemapPaths.filter((path) =>
-    /^\/news\/\d{4}-\d{2}-\d{2}(?:-[a-z0-9]+(?:-[a-z0-9]+)*)?\/$/.test(path)
-  );
+  // News editions are noindex, so they stay out of the sitemap; /news/ links every one of them.
+  const newsIndex = await (await request.get("/news/")).text();
+  const newsEditions = [
+    ...new Set([...newsIndex.matchAll(/href="(\/news\/\d{4}-\d{2}-\d{2}(?:-[a-z0-9]+(?:-[a-z0-9]+)*)?\/)"/g)]
+      .map(([, path]) => path)),
+  ];
   expect(newsEditions.length).toBeGreaterThan(0);
+  expect(sitemapPaths.filter((path) => /^\/news\/./.test(path))).toEqual([]);
   const paths = [
     "/",
     "/connect",
@@ -233,7 +236,6 @@ test("published pages render without overflow, missing images, or external asset
     "/sites/",
     ...profile.site_pages.map((site) => new URL(site.url).pathname),
     ...profile.articles.map((article) => new URL(article.url).pathname),
-    ...newsEditions,
   ];
   // Discovery must stay closed over the indexable pages.
   expect([...new Set(sitemapPaths)].sort()).toEqual([...new Set(paths)].sort());
@@ -242,8 +244,8 @@ test("published pages render without overflow, missing images, or external asset
   page.on("request", (request) => {
     if (new URL(request.url()).origin !== new URL(baseURL).origin) external.push(request.url());
   });
-  // The QR display is intentionally noindex but needs the same rendering checks.
-  for (const path of [...paths, "/scan"]) {
+  // The QR display and news editions are intentionally noindex but need the same rendering checks.
+  for (const path of [...paths, "/scan", ...newsEditions]) {
     const response = await page.goto(path);
     expect(response.status(), path).toBe(200);
     await expect(page.locator("h1")).toHaveCount(1);

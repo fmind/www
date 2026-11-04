@@ -1,9 +1,9 @@
-{% macro news_items(edition) -%}
-  <ol class="space-y-4" aria-label="Links of {{ edition.title }}">
-    {% for item in edition.items %}
+{% macro news_items(items, label, level) -%}
+  <ol class="space-y-4" aria-label="{{ label }}">
+    {% for item in items %}
       <li class="card bg-base-100 border border-base-300 shadow-sm">
         <div class="card-body p-5 sm:p-6 gap-2">
-          <h3 class="font-heading text-lg sm:text-xl font-bold leading-snug wrap-anywhere"><a class="link link-hover text-primary" href="{{ item.url }}">{{ item.title }}</a></h3>
+          <h{{ level }} class="font-heading text-lg sm:text-xl font-bold leading-snug wrap-anywhere"><a class="link link-hover text-primary" href="{{ item.url }}">{{ item.title }}</a></h{{ level }}>
           <p class="text-sm text-base-content/65">{{ item.domain }}</p>
           <p class="text-base-content/80 leading-relaxed">{{ item.description }}</p>
         </div>
@@ -12,13 +12,23 @@
   </ol>
 {%- endmacro %}
 
+{# The edition's "## Highlights" and "## More" sections; `level` is the section heading level. #}
+{% macro edition_sections(edition, level) -%}
+  {% for heading, items in [("Highlights", edition.highlights), ("More", edition.more)] if items %}
+    <section class="{{ '' if loop.first else 'mt-12' }}" aria-label="{{ heading }} of {{ edition.title }}">
+      <h{{ level }} class="{{ 'text-3xl border-b border-base-300 pb-3' if level == 2 else 'text-xl text-base-content/70' }} font-heading font-bold mb-6">{{ heading }}</h{{ level }}>
+      {{ news_items(items, heading ~ " of " ~ edition.title, level + 1) }}
+    </section>
+  {% endfor %}
+{%- endmacro %}
+
 {% macro edition_card(edition) -%}
   <article class="card bg-base-100 border border-base-300 shadow-lg hover:shadow-xl transition-shadow h-full">
     <div class="card-body p-5 sm:p-6">
       <p class="text-sm text-base-content/65"><time datetime="{{ edition.date.isoformat() }}">{{ edition.date.strftime('%A') }}</time> · {{ edition.items|length }} link{% if edition.items|length != 1 %}s{% endif %}</p>
       <h3 class="card-title font-heading text-xl leading-snug mt-1"><a class="hover:text-primary transition-colors" href="{{ edition.path }}">{{ edition.title }}</a></h3>
       <ul class="list-disc pl-5 mt-2 space-y-1 text-base-content/75">
-        {% for item in edition.items[:3] %}<li class="wrap-anywhere">{{ item.title }}</li>{% endfor %}
+        {% for item in edition.highlights %}<li class="wrap-anywhere">{{ item.title }}</li>{% endfor %}
       </ul>
     </div>
   </article>

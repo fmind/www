@@ -26,7 +26,7 @@ from www.data import (
 )
 from www.markdown import rewrite_markdown_links
 from www.models import Article, ArticleIndexView, ArticleSummary, ArticleYear, Portfolio
-from www.news import NEWS_FEED_PATH, NewsEdition
+from www.news import NEWS_FEED_PATH
 from www.search import SearchIndex, normalize_search_query
 from www.tags import TAGS, sort_tags
 
@@ -99,7 +99,7 @@ def render_atom_feed(articles: Sequence[Article]) -> str:
     return _xml(feed)
 
 
-def render_sitemap(articles: Sequence[Article], editions: Sequence[NewsEdition] = ()) -> str:
+def render_sitemap(articles: Sequence[Article]) -> str:
     root = ElementTree.Element("urlset", xmlns=_SITEMAP)
     locations = (
         f"{METADATA.site_url}/",
@@ -118,10 +118,6 @@ def render_sitemap(articles: Sequence[Article], editions: Sequence[NewsEdition] 
         url = _sub(root, "url")
         _sub(url, "loc", article.url)
         _sub(url, "lastmod", article.modified_date().date().isoformat())
-    for edition in editions:
-        url = _sub(root, "url")
-        _sub(url, "loc", edition.url)
-        _sub(url, "lastmod", edition.date.isoformat())
     return _xml(root)
 
 

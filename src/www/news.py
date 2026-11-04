@@ -15,8 +15,11 @@ NEWS_FEED_PATH = "/news/feed.xml"
 FEED_EDITION_LIMIT = 30
 NEWS_TOPICS = "AI agents, Python, security, Google Cloud, and engineering"
 
-# One link per line: "- Title: https://... - One-sentence description". The title may contain ": ".
-_LINE = re.compile(r"^- (?P<title>.+?): (?P<url>https://\S+) - (?P<description>.+)$")
+# An edition is Markdown: "## Highlights" with 1 to 3 links, then "## More" with the rest when it has more than 3.
+# Each link is one list line: "- [Title](https://...): One-sentence description".
+_SECTIONS = ("## Highlights", "## More")
+HIGHLIGHT_LIMIT = 3
+_LINE = re.compile(r"^- \[(?P<title>[^\[\]]+)\]\((?P<url>https://\S+?)\): (?P<description>\S.*)$")
 # A daily edition is YYYY-MM-DD; a special edition appends a topic, such as 2026-04-23-google-next.
 _SLUG = re.compile(r"^(?P<date>\d{4}-\d{2}-\d{2})(?:-(?P<topic>[a-z0-9]+(?:-[a-z0-9]+)*))?$")
 _STRIP_PARAMS = frozenset(
@@ -47,6 +50,16 @@ class NewsEdition:
     date: date
     topic: str
     items: tuple[NewsItem, ...]
+    highlight_count: int
+    source: str
+
+    @property
+    def highlights(self) -> tuple[NewsItem, ...]:
+        return self.items[: self.highlight_count]
+
+    @property
+    def more(self) -> tuple[NewsItem, ...]:
+        return self.items[self.highlight_count :]
 
     @property
     def url(self) -> str:
@@ -110,7 +123,7 @@ def canonicalize_url(raw_url: str) -> str:
 
 
 def parse_edition(slug: str, text: str) -> NewsEdition:
-    """Parse one edition file; every nonblank line must be a well-formed link entry."""
+    """Parse one edition file: section headings in order and one well-formed link per nonblank line."""
     match = _SLUG.fullmatch(slug)
     if match is None:
         raise NewsError(f"{slug}: file name must be YYYY-MM-DD or YYYY-MM-DD-topic")
@@ -119,23 +132,42 @@ def parse_edition(slug: str, text: str) -> NewsEdition:
     except ValueError as error:
         raise NewsError(f"{slug}: {match['date']} is not a calendar date") from error
     items: list[NewsItem] = []
+    sections = 0
+    highlights = 0
     for number, line in enumerate(text.splitlines(), 1):
-        if not line.strip():
+        line = line.strip()
+        if not line:
             continue
-        entry = _LINE.fullmatch(line.strip())
+        if line.startswith("#"):
+            if sections == len(_SECTIONS) or line != _SECTIONS[sections]:
+                raise NewsError(f"{slug}:{number}: unexpected heading; use '## Highlights', then '## More'")
+            sections += 1
+            continue
+        if not sections:
+            raise NewsError(f"{slug}:{number}: start the edition with '## Highlights'")
+        entry = _LINE.fullmatch(line)
         if entry is None:
-            raise NewsError(f"{slug}:{number}: expected '- Title: https://... - Description'")
+            raise NewsError(f"{slug}:{number}: expected '- [Title](https://...): Description'")
         items.append(NewsItem(entry["title"].strip(), entry["url"], entry["description"].strip()))
+        highlights += sections == 1
     if not items:
         raise NewsError(f"{slug}: edition has no links")
+    if highlights > HIGHLIGHT_LIMIT or (sections == len(_SECTIONS) and highlights != HIGHLIGHT_LIMIT):
+        raise NewsError(f"{slug}: '## Highlights' holds {HIGHLIGHT_LIMIT} links, or every link of a smaller edition")
+    if sections == len(_SECTIONS) and len(items) == highlights:
+        raise NewsError(f"{slug}: '## More' has no links")
     topic = (match["topic"] or "").replace("-", " ").title()
-    return NewsEdition(slug=slug, date=edition_date, topic=topic, items=tuple(items))
+    return NewsEdition(
+        slug=slug, date=edition_date, topic=topic, items=tuple(items), highlight_count=highlights, source=text
+    )
 
 
 def load_news(directory: Path = Path("content/news")) -> tuple[NewsEdition, ...]:
     """Load every edition, newest first, and reject a link already published in another edition."""
     editions = []
-    for path in sorted(directory.glob("*.txt")):
+    for path in sorted(directory.iterdir()):
+        if path.suffix != ".md":
+            raise NewsError(f"{path}: an edition must be a YYYY-MM-DD.md Markdown file")
         try:
             text = path.read_text(encoding="utf-8")
         except (OSError, UnicodeDecodeError) as error:
@@ -174,16 +206,19 @@ def render_news_markdown(edition: NewsEdition) -> str:
         f"- URL: {edition.url}",
         "",
     ]
-    lines.extend(f"- [{item.title}](<{item.url}>): {item.description}" for item in edition.items)
-    return "\n".join(lines) + "\n"
+    return "\n".join(lines) + "\n" + edition.source.strip() + "\n"
 
 
 def _edition_html(edition: NewsEdition) -> str:
-    entries = "".join(
-        f'<li><a href="{html.escape(item.url)}">{html.escape(item.title)}</a>: {html.escape(item.description)}</li>'
-        for item in edition.items
-    )
-    return f"<ul>{entries}</ul>"
+    sections = []
+    for heading, items in (("Highlights", edition.highlights), ("More", edition.more)):
+        if items:
+            entries = "".join(
+                f'<li><a href="{html.escape(item.url)}">{html.escape(item.title)}</a>: {html.escape(item.description)}</li>'
+                for item in items
+            )
+            sections.append(f"<h2>{heading}</h2><ul>{entries}</ul>")
+    return "".join(sections)
 
 
 def render_news_feed(editions: Sequence[NewsEdition]) -> str:
