@@ -2,6 +2,7 @@
 
 import html
 import re
+import tomllib
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
@@ -17,6 +18,7 @@ NEWS_TOPICS = "AI agents, Python, security, Google Cloud, and engineering"
 
 # An edition is Markdown: "## Highlights" with 1 to 3 links, then "## More" with the rest when it has more than 3.
 # Each link is one list line: "- [Title](https://...): One-sentence description".
+# A corrected edition starts with the article front matter's correction date: +++, updated = "YYYY-MM-DD", +++.
 _SECTIONS = ("## Highlights", "## More")
 HIGHLIGHT_LIMIT = 3
 _LINE = re.compile(r"^- \[(?P<title>[^\[\]]+)\]\((?P<url>https://\S+?)\): (?P<description>\S.*)$")
@@ -52,6 +54,7 @@ class NewsEdition:
     items: tuple[NewsItem, ...]
     highlight_count: int
     source: str
+    updated: date
 
     @property
     def highlights(self) -> tuple[NewsItem, ...]:
@@ -88,6 +91,9 @@ class NewsEdition:
     def published(self) -> datetime:
         return datetime(self.date.year, self.date.month, self.date.day, tzinfo=UTC)
 
+    def modified(self) -> datetime:
+        return datetime(self.updated.year, self.updated.month, self.updated.day, tzinfo=UTC)
+
 
 def canonicalize_url(raw_url: str) -> str:
     """Normalize a URL for duplicate detection: standard hosts, no trackers, no fragment or trailing slash."""
@@ -122,8 +128,33 @@ def canonicalize_url(raw_url: str) -> str:
     return urlunparse(("https", host, path, "", urlencode(query), ""))
 
 
+def _split_front_matter(slug: str, text: str, edition_date: date) -> tuple[date, str, int]:
+    """Return the correction date (the edition date when absent), the Markdown body, and the body's first line."""
+    if not text.startswith("+++\n"):
+        return edition_date, text, 1
+    end = text.find("\n+++\n", 3)
+    if end < 0:
+        raise NewsError(f"{slug}: front matter opened on line 1 has no closing '+++' line")
+    header = text[4:end]
+    usage = 'front matter holds only updated = "YYYY-MM-DD"'
+    try:
+        metadata = tomllib.loads(header)
+    except tomllib.TOMLDecodeError as error:
+        raise NewsError(f"{slug}: {usage}: {error}") from error
+    value = metadata.get("updated")
+    if set(metadata) != {"updated"} or not isinstance(value, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
+        raise NewsError(f"{slug}: {usage}")
+    try:
+        updated = date.fromisoformat(value)
+    except ValueError as error:
+        raise NewsError(f"{slug}: updated {value!r} is not a calendar date") from error
+    if updated < edition_date:
+        raise NewsError(f"{slug}: updated {value} precedes the edition date")
+    return updated, text[end + 5 :], header.count("\n") + 4
+
+
 def parse_edition(slug: str, text: str) -> NewsEdition:
-    """Parse one edition file: section headings in order and one well-formed link per nonblank line."""
+    """Parse one edition file: optional front matter, section headings in order, and one link per nonblank line."""
     match = _SLUG.fullmatch(slug)
     if match is None:
         raise NewsError(f"{slug}: file name must be YYYY-MM-DD or YYYY-MM-DD-topic")
@@ -131,10 +162,11 @@ def parse_edition(slug: str, text: str) -> NewsEdition:
         edition_date = date.fromisoformat(match["date"])
     except ValueError as error:
         raise NewsError(f"{slug}: {match['date']} is not a calendar date") from error
+    updated, body, first_line = _split_front_matter(slug, text, edition_date)
     items: list[NewsItem] = []
     sections = 0
     highlights = 0
-    for number, line in enumerate(text.splitlines(), 1):
+    for number, line in enumerate(body.splitlines(), first_line):
         line = line.strip()
         if not line:
             continue
@@ -158,7 +190,13 @@ def parse_edition(slug: str, text: str) -> NewsEdition:
         raise NewsError(f"{slug}: '## More' has no links")
     topic = (match["topic"] or "").replace("-", " ").title()
     return NewsEdition(
-        slug=slug, date=edition_date, topic=topic, items=tuple(items), highlight_count=highlights, source=text
+        slug=slug,
+        date=edition_date,
+        topic=topic,
+        items=tuple(items),
+        highlight_count=highlights,
+        source=body,
+        updated=updated,
     )
 
 
@@ -203,6 +241,7 @@ def render_news_markdown(edition: NewsEdition) -> str:
         "",
         f"- Author: [{METADATA.name} ({METADATA.alternate_name})]({METADATA.site_url}/)",
         f"- Published: {edition.date.isoformat()}",
+        *([f"- Updated: {edition.updated.isoformat()}"] if edition.updated != edition.date else []),
         f"- URL: {edition.url}",
         "",
     ]
@@ -237,19 +276,21 @@ def render_news_feed(editions: Sequence[NewsEdition]) -> str:
     sub(feed, "title", "Fmind news")
     sub(feed, "subtitle", f"Daily curated links on {NEWS_TOPICS}.")
     sub(feed, "id", f"{METADATA.site_url}/news/")
-    latest = editions[0].published() if editions else datetime(1970, 1, 1, tzinfo=UTC)
+    entries = editions[:FEED_EDITION_LIMIT]
+    # A correction moves an entry's `updated`, so feed readers fetch it again.
+    latest = max((edition.modified() for edition in entries), default=datetime(1970, 1, 1, tzinfo=UTC))
     sub(feed, "updated", stamp(latest))
     sub(feed, "link", href=f"{METADATA.site_url}{NEWS_FEED_PATH}", rel="self", type="application/atom+xml")
     sub(feed, "link", href=f"{METADATA.site_url}/news/", rel="alternate", type="text/html")
     author = sub(feed, "author")
     sub(author, "name", METADATA.name)
     sub(author, "uri", f"{METADATA.site_url}/")
-    for edition in editions[:FEED_EDITION_LIMIT]:
+    for edition in entries:
         entry = sub(feed, "entry")
         sub(entry, "title", f"News: {edition.title}")
         sub(entry, "id", edition.url)
         sub(entry, "published", stamp(edition.published()))
-        sub(entry, "updated", stamp(edition.published()))
+        sub(entry, "updated", stamp(edition.modified()))
         sub(entry, "link", href=edition.url, rel="alternate", type="text/html")
         sub(entry, "content", _edition_html(edition), type="html")
         sub(entry, "summary", edition.description, type="text")

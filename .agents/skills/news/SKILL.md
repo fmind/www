@@ -37,4 +37,12 @@ Each edition is `content/news/YYYY-MM-DD.md` (a special edition appends a topic:
 1. **Validate**: `uv run --locked pytest tests/test_news.py` loads every published edition (run `mise run build:css` once on a fresh checkout). Show the owner the edition and wait for their OK before publishing.
 1. **Publish**: commit only the edition as `feat(news): add YYYY-MM-DD edition` (or `fix(news): ...` for a correction) and push `main`, which deploys production through the normal gate; this needs the owner's deploy authority. Watch `gh run list --workflow deploy.yml --commit <sha>`, then check `https://www.fmind.dev/news/<slug>/` and `/news/feed.xml` live.
 
-A daily edition is content, not a release: no version bump, tag, or changelog entry. Correct a published line in place; removing a link that readers already received in the feed needs the owner's OK.
+A daily edition is content, not a release: no version bump, tag, or changelog entry. Correct a published line in place. When the correction changes a fact or a link, start the file with front matter so the feed entry's `updated` moves and readers fetch it again; style-only edits keep it as is:
+
+```markdown
++++
+updated = "YYYY-MM-DD"
++++
+```
+
+Removing a link that readers already received in the feed needs the owner's OK.

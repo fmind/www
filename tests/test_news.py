@@ -116,6 +116,13 @@ def test_parse_edition_names_special_editions_by_topic() -> None:
             "holds 3 links",
         ),
         ("2026-11-03", edition_text("a", "b", "c") + "## More\n", "'## More' has no links"),
+        ("2026-11-03", "+++\n" + edition_text("a"), "no closing '\\+\\+\\+' line"),
+        ("2026-11-03", '+++\nupdated = "2026-11-04"\ndraft = true\n+++\n' + edition_text("a"), "holds only updated"),
+        ("2026-11-03", "+++\nupdated = 2026-11-04\n+++\n" + edition_text("a"), "holds only updated"),
+        ("2026-11-03", "+++\nupdated = \n+++\n" + edition_text("a"), "holds only updated"),
+        ("2026-11-03", '+++\nupdated = "2026-02-30"\n+++\n' + edition_text("a"), "not a calendar date"),
+        ("2026-11-03", '+++\nupdated = "2026-11-02"\n+++\n' + edition_text("a"), "precedes the edition date"),
+        ("2026-11-03", '+++\nupdated = "2026-11-04"\n+++\n## Highlights\nbad', "2026-11-03:5: expected"),
     ],
 )
 def test_parse_edition_rejects_invalid_files(slug: str, text: str, message: str) -> None:
@@ -205,6 +212,27 @@ def test_markdown_export_adds_metadata_to_the_edition_source() -> None:
     assert markdown.startswith("# News: November 3, 2026\n")
     assert f"- URL: {METADATA.site_url}/news/2026-11-03/\n\n## Highlights\n" in markdown
     assert markdown.endswith(source)
+
+
+def test_corrected_edition_moves_its_feed_and_export_update_time() -> None:
+    body = edition_text("a")
+    corrected = parse_edition("2026-11-02", f'+++\nupdated = "2026-11-05"\n+++\n\n{body}')
+    latest = parse_edition("2026-11-03", edition_text("b"))
+
+    assert (corrected.updated, latest.updated) == (date(2026, 11, 5), date(2026, 11, 3))
+    markdown = render_news_markdown(corrected)
+    assert "- Published: 2026-11-02\n- Updated: 2026-11-05\n" in markdown
+    assert markdown.endswith(body)
+    assert "+++" not in markdown
+    assert "- Updated:" not in render_news_markdown(latest)
+    feed = ElementTree.fromstring(render_news_feed((latest, corrected)))  # noqa: S314 - trusted serializer output
+    assert feed.findtext("a:updated", namespaces=ATOM) == "2026-11-05T00:00:00Z"
+    entries = feed.findall("a:entry", ATOM)
+    assert [entry.findtext("a:updated", namespaces=ATOM) for entry in entries] == [
+        "2026-11-03T00:00:00Z",
+        "2026-11-05T00:00:00Z",
+    ]
+    assert entries[1].findtext("a:published", namespaces=ATOM) == "2026-11-02T00:00:00Z"
 
 
 def test_feed_has_one_escaped_entry_per_recent_edition() -> None:
