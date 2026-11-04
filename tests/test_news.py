@@ -14,12 +14,14 @@ from www.data import METADATA
 from www.news import (
     FEED_EDITION_LIMIT,
     NewsError,
+    NewsIndex,
     adjacent_editions,
     canonicalize_url,
     load_news,
     parse_edition,
     render_news_feed,
     render_news_markdown,
+    split_news_index,
 )
 
 type AppClient = TestClient[Any]
@@ -193,6 +195,22 @@ def test_published_editions_are_valid() -> None:
     assert len({edition.slug for edition in editions}) == len(editions)
 
 
+def test_news_index_splits_by_the_latest_editions_week() -> None:
+    slugs = ("2026-11-03", "2026-10-30", "2026-10-28-cloud", "2026-10-28", "2026-10-27", "2026-09-30")
+    editions = tuple(parse_edition(slug, edition_text(slug)) for slug in slugs)
+
+    index = split_news_index(editions)
+
+    assert index.latest == editions[0]
+    # The week counts back from the latest edition's date, not from today, and keeps special editions.
+    assert [edition.slug for edition in index.recent] == ["2026-10-30", "2026-10-28-cloud", "2026-10-28"]
+    assert [(month, [edition.slug for edition in group]) for month, group in index.archive] == [
+        ("October 2026", ["2026-10-27"]),
+        ("September 2026", ["2026-09-30"]),
+    ]
+    assert split_news_index(()) == NewsIndex(None, (), ())
+
+
 def test_adjacent_editions_link_older_and_newer() -> None:
     editions = tuple(parse_edition(slug, edition_text(slug)) for slug in ("2026-11-03", "2026-11-02", "2026-11-01"))
 
@@ -275,6 +293,7 @@ def news_client(make_app: Callable[..., Litestar], tmp_path_factory: pytest.Temp
     directory = write_editions(
         tmp_path_factory.mktemp("news"),
         {
+            "2026-10-20": edition_text("older"),
             "2026-10-30": edition_text("old"),
             "2026-11-02": "## Highlights\n- [<img src=x onerror=alert(1)>](https://example.com/evil): <b>Bold</b> claim.",
             "2026-11-03": edition_text("new-1", "new-2", "new-3", "new-4"),
@@ -284,7 +303,7 @@ def news_client(make_app: Callable[..., Litestar], tmp_path_factory: pytest.Temp
         yield client
 
 
-def test_news_index_shows_latest_edition_and_monthly_archive(news_client: AppClient) -> None:
+def test_news_index_shows_latest_edition_past_week_and_archive(news_client: AppClient) -> None:
     assert news_client.get("/news", follow_redirects=False).headers["location"] == "/news/"
 
     response = news_client.get("/news/")
@@ -300,9 +319,15 @@ def test_news_index_shows_latest_edition_and_monthly_archive(news_client: AppCli
         < page.index("Title new-4")
     )
     assert page.count('href="/news/2026-11-03/"') == 1
-    assert ">November 2026</h2>" in page
-    assert ">October 2026</h2>" in page
-    assert 'href="/news/2026-10-30/"' in page
+    week = page[page.index(">Past week</h2>") : page.index(">Archive</h2>")]
+    assert 'href="/news/2026-11-02/"' in week
+    assert 'href="/news/2026-10-30/"' in week
+    assert "Title old" in week
+    assert "&lt;img src=x onerror=alert(1)&gt;" in week
+    archive = page[page.index(">Archive</h2>") :]
+    assert ">October 2026</h3>" in archive
+    assert 'href="/news/2026-10-20/">October 20, 2026</a>' in archive
+    assert "Title older" not in archive
     assert f'href="{METADATA.site_url}/news/feed.xml" title="Fmind news"' in page
     assert f'{METADATA.site_url}/articles/feed.xml" title="Fmind articles"' not in page
     assert 'href="/news/feed.xml" type="application/atom+xml"' in page
@@ -377,6 +402,7 @@ def test_news_feed_route_serves_cached_atom(news_client: AppClient) -> None:
         "News: November 3, 2026",
         "News: November 2, 2026",
         "News: October 30, 2026",
+        "News: October 20, 2026",
     ]
     assert news_client.get("/news/feed.xml", headers={"if-none-match": response.headers["etag"]}).status_code == 304
 
@@ -396,3 +422,5 @@ def test_news_index_without_editions(make_app: Callable[..., Litestar]) -> None:
 
     assert response.status_code == 200
     assert "No news yet." in response.text
+    assert "Past week" not in response.text
+    assert "Archive" not in response.text

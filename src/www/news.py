@@ -5,7 +5,7 @@ import re
 import tomllib
 from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 from xml.etree import ElementTree
@@ -14,6 +14,8 @@ from www.data import METADATA
 
 NEWS_FEED_PATH = "/news/feed.xml"
 FEED_EDITION_LIMIT = 30
+# /news/ shows the latest edition in full, the rest of its week as highlight cards, and older editions as links.
+RECENT_DAYS = 7
 NEWS_TOPICS = "AI agents, Python, security, Google Cloud, and engineering"
 
 # An edition is Markdown: "## Highlights" with 1 to 3 links, then "## More" with the rest when it has more than 3.
@@ -231,6 +233,26 @@ def adjacent_editions(editions: Sequence[NewsEdition]) -> dict[str, tuple[NewsEd
         )
         for index, edition in enumerate(editions)
     }
+
+
+@dataclass(frozen=True, slots=True)
+class NewsIndex:
+    latest: NewsEdition | None
+    recent: tuple[NewsEdition, ...]
+    archive: tuple[tuple[str, tuple[NewsEdition, ...]], ...]
+
+
+def split_news_index(editions: Sequence[NewsEdition]) -> NewsIndex:
+    """Split newest-first editions by the latest edition's date, so the page never depends on the clock."""
+    if not editions:
+        return NewsIndex(None, (), ())
+    latest, *rest = editions
+    start = latest.date - timedelta(days=RECENT_DAYS - 1)
+    recent = tuple(edition for edition in rest if edition.date >= start)
+    months: dict[str, list[NewsEdition]] = {}
+    for edition in rest[len(recent) :]:
+        months.setdefault(f"{edition.date:%B %Y}", []).append(edition)
+    return NewsIndex(latest, recent, tuple((month, tuple(group)) for month, group in months.items()))
 
 
 def render_news_markdown(edition: NewsEdition) -> str:

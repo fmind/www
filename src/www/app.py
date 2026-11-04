@@ -42,7 +42,15 @@ from www.log import configure_logging
 from www.mcp import create_mcp_http_app, create_mcp_server, render_mcp_server_card
 from www.middleware import Logger, SiteMiddleware, etag_matches, trace_fields
 from www.models import PageMetadata
-from www.news import NEWS_FEED_PATH, NewsEdition, adjacent_editions, load_news, render_news_feed, render_news_markdown
+from www.news import (
+    NEWS_FEED_PATH,
+    NewsEdition,
+    adjacent_editions,
+    load_news,
+    render_news_feed,
+    render_news_markdown,
+    split_news_index,
+)
 from www.pages import (
     ARTICLE_INDEX_STRUCTURED_DATA,
     agents_metadata,
@@ -238,17 +246,7 @@ def create_app(
     edition_neighbours = adjacent_editions(editions)
     news_markdown = {edition.slug: _Snapshot.of(render_news_markdown(edition).encode()) for edition in editions}
     news_feed = _Snapshot.of(render_news_feed(editions).encode())
-    news_archive: list[tuple[str, list[NewsEdition]]] = []
-    for edition in editions[1:]:
-        month = f"{edition.date:%B %Y}"
-        if not news_archive or news_archive[-1][0] != month:
-            news_archive.append((month, []))
-        news_archive[-1][1].append(edition)
-    news_context: dict[str, object] = {
-        "latest": editions[0] if editions else None,
-        "archive": tuple((month, tuple(group)) for month, group in news_archive),
-        "news_feed_path": NEWS_FEED_PATH,
-    }
+    news_context: dict[str, object] = {"index": split_news_index(editions), "news_feed_path": NEWS_FEED_PATH}
     article_metadata_by_slug = {
         slug: article_metadata(article, get_structured_data(article))
         for slug, article in article_collection.by_slug.items()

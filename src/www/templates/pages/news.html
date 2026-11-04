@@ -11,6 +11,7 @@
         {{ feed_hint("each daily edition") }}
         <div class="mt-3">{{ feed_link("btn btn-outline btn-primary rounded-full font-semibold", href=news_feed_path, subject="each daily edition") }}</div>
       </header>
+      {% set latest = index.latest %}
       {% if latest %}
         <section class="max-w-4xl mx-auto mb-16" aria-labelledby="latest-edition">
           <h2 id="latest-edition" class="text-3xl font-heading font-bold mb-6 border-b border-base-300 pb-3">Latest: <a class="hover:text-primary transition-colors" href="{{ latest.path }}">{{ latest.title }}</a></h2>
@@ -19,16 +20,31 @@
       {% else %}
         <div class="alert max-w-2xl mx-auto"><span>No news yet.</span></div>
       {% endif %}
-      <div class="space-y-16">
-        {% for month, editions in archive %}
-          <section aria-labelledby="month-{{ loop.index }}">
-            <h2 id="month-{{ loop.index }}" class="text-3xl font-heading font-bold mb-6 border-b border-base-300 pb-3">{{ month }}</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {% for edition in editions %}{{ edition_card(edition) }}{% endfor %}
-            </div>
-          </section>
-        {% endfor %}
-      </div>
+      {% if index.recent %}
+        <section class="mb-16" aria-labelledby="past-week">
+          <h2 id="past-week" class="text-3xl font-heading font-bold mb-6 border-b border-base-300 pb-3">Past week</h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {% for edition in index.recent %}{{ edition_card(edition) }}{% endfor %}
+          </div>
+        </section>
+      {% endif %}
+      {% if index.archive %}
+        <section aria-labelledby="news-archive">
+          <h2 id="news-archive" class="text-3xl font-heading font-bold mb-6 border-b border-base-300 pb-3">Archive</h2>
+          <div class="space-y-10">
+            {% for month, editions in index.archive %}
+              <section aria-labelledby="month-{{ loop.index }}">
+                <h3 id="month-{{ loop.index }}" class="text-xl font-heading font-bold text-base-content/70 mb-4">{{ month }}</h3>
+                <ul class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-2">
+                  {% for edition in editions %}
+                    <li><a class="link link-hover text-primary font-semibold" href="{{ edition.path }}">{{ edition.title }}</a> <span class="text-sm text-base-content/65">· {{ edition.items|length }} link{% if edition.items|length != 1 %}s{% endif %}</span></li>
+                  {% endfor %}
+                </ul>
+              </section>
+            {% endfor %}
+          </div>
+        </section>
+      {% endif %}
     </div>
   </section>
 {% endblock %}
