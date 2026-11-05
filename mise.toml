@@ -40,6 +40,7 @@ typos = "1.52.0"
 version = "1.8.7"
 
 [tools."github:modelcontextprotocol/registry".platforms]
+linux-arm64 = { asset_pattern = "mcp-publisher_linux_arm64.tar.gz" }
 linux-x64 = { asset_pattern = "mcp-publisher_linux_amd64.tar.gz" }
 macos-arm64 = { asset_pattern = "mcp-publisher_darwin_arm64.tar.gz" }
 
