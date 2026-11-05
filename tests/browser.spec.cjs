@@ -1501,7 +1501,7 @@ test("article section navigation stays clear of content and tracks H2 sections",
   for (const width of [1919, 1600, 1440, 1280, 768, 390, 320]) {
     await page.setViewportSize({ width, height: 900 });
     await expect(navigation).toBeHidden();
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   }
 });
 

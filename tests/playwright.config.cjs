@@ -9,7 +9,7 @@ module.exports = defineConfig({
   // A committed test.only would silently narrow the CI gate; the other configs inherit this.
   forbidOnly: !!process.env.CI,
   // Each context is isolated and the shared server only serves immutable data.
-  workers: 2,
+  workers: process.env.CI ? 4 : 2,
   reporter: "list",
   use: {
     baseURL,
