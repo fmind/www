@@ -35,6 +35,9 @@ _PORTFOLIO_ADAPTER = TypeAdapter(Portfolio)
 ATOM_FULL_CONTENT_LIMIT = 15
 RELATED_ARTICLE_COUNT = 3
 _ATOM = "http://www.w3.org/2005/Atom"
+# Media RSS is the de facto thumbnail signal for feed readers (Feedly, Inoreader, NetNewsWire).
+_MEDIA = "http://search.yahoo.com/mrss/"
+ElementTree.register_namespace("media", _MEDIA)
 _SITEMAP = "http://www.sitemaps.org/schemas/sitemap/0.9"
 
 
@@ -45,7 +48,9 @@ def _sub(parent: ElementTree.Element, name: str, text: str = "", **attributes: s
 
 
 def _xml(element: ElementTree.Element) -> str:
-    return '<?xml version="1.0" encoding="UTF-8"?>\n' + ElementTree.tostring(element, encoding="unicode")
+    # Indented output reads well when a browser or feed reader shows the raw XML.
+    ElementTree.indent(element)
+    return '<?xml version="1.0" encoding="UTF-8"?>\n' + ElementTree.tostring(element, encoding="unicode") + "\n"
 
 
 def _atom_time(value: datetime) -> str:
@@ -78,6 +83,7 @@ def render_atom_feed(articles: Sequence[Article]) -> str:
     _sub(feed, "updated", _atom_time(updated))
     _sub(feed, "link", href=f"{METADATA.site_url}/articles/feed.xml", rel="self", type="application/atom+xml")
     _sub(feed, "link", href=f"{METADATA.site_url}/articles/", rel="alternate", type="text/html")
+    _sub(feed, "icon", f"{METADATA.site_url}/logo.png")
     author = _sub(feed, "author")
     _sub(author, "name", METADATA.name)
     _sub(author, "uri", f"{METADATA.site_url}/")
@@ -88,6 +94,8 @@ def render_atom_feed(articles: Sequence[Article]) -> str:
         _sub(entry, "published", _atom_time(article.date))
         _sub(entry, "updated", _atom_time(article.modified_date()))
         _sub(entry, "link", href=article.url, rel="alternate", type="text/html")
+        # Every entry gets a reader thumbnail, including the ones past the full-content limit.
+        _sub(entry, f"{{{_MEDIA}}}thumbnail", url=article.card_image_url)
         for tag in article.tags:
             # Feed readers filter and group by category; terms are the site's closed tag vocabulary.
             _sub(entry, "category", term=tag, scheme=f"{METADATA.site_url}/articles/?tag=", label=tag)

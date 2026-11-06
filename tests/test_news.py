@@ -271,8 +271,11 @@ def test_feed_has_one_escaped_entry_per_recent_edition() -> None:
         if (month, day) != (11, 31)
     )
 
-    feed = ElementTree.fromstring(render_news_feed(editions))  # noqa: S314 - trusted serializer output
+    body = render_news_feed(editions)
+    feed = ElementTree.fromstring(body)  # noqa: S314 - trusted serializer output
 
+    assert "\n  <entry>\n    <title>" in body
+    assert feed.findtext("a:icon", namespaces=ATOM) == f"{METADATA.site_url}/logo.png"
     entries = feed.findall("a:entry", ATOM)
     assert len(entries) == FEED_EDITION_LIMIT
     assert feed.findtext("a:updated", namespaces=ATOM) == "2026-12-31T00:00:00Z"

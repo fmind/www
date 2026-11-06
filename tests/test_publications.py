@@ -34,6 +34,7 @@ def article(
         updated=updated or datetime(2026, 1, day, tzinfo=UTC),
         tags=tags,
         url=f"{METADATA.site_url}/articles/{slug}/",
+        card_image_url=f"{METADATA.site_url}/static/img/articles/{slug}/cover-800.webp",
         markdown="Body with [root](/articles/).",
         html='<p><a href="/articles/">Body</a><img src="/static/x.webp"></p>',
         reading_minutes=3,
@@ -64,6 +65,14 @@ def test_atom_feed_limits_full_content_and_absolutizes_assets() -> None:
     body = render_atom_feed(articles)
 
     assert body.count('<content type="html">') == ATOM_FULL_CONTENT_LIMIT
+    assert "\n  <entry>\n    <title>" in body
+    assert f"<icon>{METADATA.site_url}/logo.png</icon>" in body
+    assert 'xmlns:media="http://search.yahoo.com/mrss/"' in body
+    thumbnails = [
+        element.get("url")
+        for element in ElementTree.fromstring(body).iter("{http://search.yahoo.com/mrss/}thumbnail")  # noqa: S314
+    ]
+    assert thumbnails == [item.card_image_url for item in articles]
     assert "<updated>2026-02-03T00:00:00Z</updated>" in body
     assert f"{METADATA.site_url}/static/x.webp" in body
     ElementTree.fromstring(body)  # noqa: S314 - parses trusted local serializer output

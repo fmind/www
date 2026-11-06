@@ -308,6 +308,8 @@ def render_news_feed(editions: Sequence[NewsEdition]) -> str:
     sub(feed, "updated", stamp(latest))
     sub(feed, "link", href=f"{METADATA.site_url}{NEWS_FEED_PATH}", rel="self", type="application/atom+xml")
     sub(feed, "link", href=f"{METADATA.site_url}/news/", rel="alternate", type="text/html")
+    # Atom `icon` is the square branding image feed readers show next to the feed name.
+    sub(feed, "icon", f"{METADATA.site_url}/logo.png")
     author = sub(feed, "author")
     sub(author, "name", METADATA.name)
     sub(author, "uri", f"{METADATA.site_url}/")
@@ -320,4 +322,5 @@ def render_news_feed(editions: Sequence[NewsEdition]) -> str:
         sub(entry, "link", href=edition.url, rel="alternate", type="text/html")
         sub(entry, "content", _edition_html(edition), type="html")
         sub(entry, "summary", edition.description, type="text")
-    return '<?xml version="1.0" encoding="UTF-8"?>\n' + ElementTree.tostring(feed, encoding="unicode")
+    ElementTree.indent(feed)
+    return '<?xml version="1.0" encoding="UTF-8"?>\n' + ElementTree.tostring(feed, encoding="unicode") + "\n"
