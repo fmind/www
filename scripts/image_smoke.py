@@ -33,6 +33,9 @@ from www.mcp import MCP_PROFILE_URI, MCP_PROTOCOL_VERSION
 # sets IMAGE_ARCHIVE for build:image and check:image; this default only serves runs
 # outside mise.
 IMAGE_ARCHIVE = Path("tmp/www-image.tar")
+# Mirrors the mise `IMAGE_PLATFORM` default; local archives follow the host override.
+_DEFAULT_IMAGE_PLATFORM = "linux/amd64"
+_IMAGE_PLATFORM = re.compile(r"linux/(amd64|arm64)\Z")
 CONTAINER_PORT = 8080
 EXPECTED_UID = 10001
 HEALTH_TIMEOUT_SECONDS = 120
@@ -184,6 +187,14 @@ def validate_image_reference(reference: str) -> None:
             raise SmokeError(f"invalid image digest: {digest}")
 
 
+def image_platform() -> str:
+    """Read the Docker platform shared with the mise image tasks, rejecting anything but Linux amd64/arm64."""
+    platform = os.environ.get("IMAGE_PLATFORM") or _DEFAULT_IMAGE_PLATFORM
+    if not _IMAGE_PLATFORM.fullmatch(platform):
+        raise SmokeError(f"IMAGE_PLATFORM must be linux/amd64 or linux/arm64, got {platform!r}")
+    return platform
+
+
 def _is_archive_target(target: str | Path | None) -> bool:
     if target is None:
         return True
@@ -205,7 +216,7 @@ def resolve_image_id(runner: Runner, target: str | Path | None = None) -> str:
 
     image_reference = str(target).strip()
     validate_image_reference(image_reference)
-    runner.run(("docker", "pull", "--platform", "linux/amd64", image_reference), timeout=180)
+    runner.run(("docker", "pull", "--platform", image_platform(), image_reference), timeout=180)
     return parse_image_id(
         runner.run(("docker", "image", "inspect", "--format", "{{.Id}}", image_reference), timeout=30).output
     )
@@ -560,6 +571,10 @@ def smoke_image(target: str | Path | None = None, *, runner: Runner | None = Non
             "container",
             "run",
             "--detach",
+            # An explicit platform keeps Docker's host-mismatch warning out of the
+            # output that carries the container ID.
+            "--platform",
+            image_platform(),
             "--name",
             container_name,
             "--publish",

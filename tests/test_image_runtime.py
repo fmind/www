@@ -21,6 +21,7 @@ from scripts.image_smoke import (
     assert_runtime_read_only,
     container_guard,
     exporter_environment_names,
+    image_platform,
     main,
     parse_configured_user,
     parse_loaded_reference,
@@ -537,7 +538,8 @@ def test_resolve_image_id_defaults_to_the_repository_archive_outside_mise(
     assert runner.commands == []
 
 
-def test_resolve_image_id_pulls_and_inspects_remote_reference() -> None:
+def test_resolve_image_id_pulls_and_inspects_remote_reference(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("IMAGE_PLATFORM", raising=False)  # Hosts may override the platform through mise.
     target = f"europe-west1-docker.pkg.dev/www-fmind-dev/app/www-fmind-dev@sha256:{'c' * 64}"
     digest = "sha256:" + ("c" * 64)
 
@@ -554,6 +556,22 @@ def test_resolve_image_id_pulls_and_inspects_remote_reference() -> None:
         ("docker", "pull", "--platform", "linux/amd64", target),
         ("docker", "image", "inspect", "--format", "{{.Id}}", target),
     ]
+
+
+def test_image_platform_follows_the_mise_variable_and_fails_closed(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("IMAGE_PLATFORM", raising=False)
+    assert image_platform() == "linux/amd64"
+    monkeypatch.setenv("IMAGE_PLATFORM", "linux/arm64")
+    assert image_platform() == "linux/arm64"
+    target = f"europe-west1-docker.pkg.dev/www-fmind-dev/app/www-fmind-dev@sha256:{'c' * 64}"
+    runner = RecordingRunner(
+        [CommandResult(returncode=0, output="pulled\n"), CommandResult(returncode=0, output="sha256:" + "c" * 64)]
+    )
+    resolve_image_id(runner, target)
+    assert runner.commands[0] == ("docker", "pull", "--platform", "linux/arm64", target)
+    monkeypatch.setenv("IMAGE_PLATFORM", "windows/amd64")
+    with pytest.raises(SmokeError, match="IMAGE_PLATFORM must be linux/amd64 or linux/arm64"):
+        image_platform()
 
 
 def test_main_rejects_extra_arguments(capsys: pytest.CaptureFixture[str]) -> None:

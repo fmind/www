@@ -2,6 +2,9 @@
 [env]
 APP_NAME = "www"
 IMAGE_ARCHIVE = "tmp/www-image.tar"
+# Production is linux/amd64; arm64 hosts override this in an ignored mise.local.toml
+# because Granian's native module hangs under QEMU user emulation.
+IMAGE_PLATFORM = "linux/amd64"
 PROJECT_ID = "www-fmind-dev"
 REPOSITORY = "app"
 SERVICE_NAME = "www-fmind-dev"
@@ -78,8 +81,8 @@ description = "Rebuild the self-hosted WOFF2 subsets from pinned upstream releas
 run = "uv run --locked --script scripts/build_fonts.py"
 
 [tasks."build:image"]
-description = "Build the linux/amd64 production OCI image as a local archive"
-run = 'mkdir -p tmp && docker buildx build --platform linux/amd64 --target runner --tag "$APP_NAME:local" --output "type=docker,dest=$IMAGE_ARCHIVE" .'
+description = "Build the IMAGE_PLATFORM production OCI image as a local archive"
+run = 'mkdir -p tmp && docker buildx build --platform "$IMAGE_PLATFORM" --target runner --tag "$APP_NAME:local" --output "type=docker,dest=$IMAGE_ARCHIVE" .'
 
 [tasks."build:images"]
 description = "Generate changed or missing article image derivatives"
@@ -142,7 +145,7 @@ depends = ["build:image"]
 # The owner has a global Trivy policy; unset it so local and CI scans use the
 # complete policy below and fail on the same fixable runtime findings. Inspect
 # without --ignore-unfixed when reviewing advisories that have no patch yet.
-run = 'env -u TRIVY_CONFIG trivy image --input "$IMAGE_ARCHIVE" --platform linux/amd64 --exit-code=1 --severity HIGH,CRITICAL --ignore-unfixed --scanners vuln,secret'
+run = 'env -u TRIVY_CONFIG trivy image --input "$IMAGE_ARCHIVE" --platform "$IMAGE_PLATFORM" --exit-code=1 --severity HIGH,CRITICAL --ignore-unfixed --scanners vuln,secret'
 
 [tasks."check:image:deployed"]
 description = "Resolve and scan every serving or tagged Cloud Run revision with Trivy"
