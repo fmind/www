@@ -319,6 +319,7 @@ def test_news_index_shows_latest_edition_past_week_and_archive(news_client: AppC
 
     assert response.status_code == 200
     page = response.text
+    assert "I read and watch all the content I share." in page
     assert 'href="https://example.com/new-1">Title new-1</a>' in page
     assert 'href="https://example.com/new-4">Title new-4</a>' in page
     # One ranked list of cards without section headings.

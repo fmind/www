@@ -132,7 +132,10 @@ def article_metadata(article: Article, structured_data: str) -> PageMetadata:
     )
 
 
-_NEWS_INDEX_DESCRIPTION = f"Daily curated links on {NEWS_TOPICS}, with one sentence on what changed."
+_NEWS_INDEX_DESCRIPTION = (
+    f"Daily curated links on {NEWS_TOPICS}, with one sentence on what changed. "
+    "I read and watch all the content I share."
+)
 
 
 def news_index_metadata() -> PageMetadata:
