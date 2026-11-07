@@ -122,9 +122,9 @@ def build(font_build: FontBuild) -> tuple[int, int]:
     """Instance, subset, and write one face; return its previous and new size."""
     # fontTools is declared inline above and installed by uv for this script only. Importing
     # it here keeps the checksum boundary importable, and testable, in the project environment.
-    from fontTools import subset  # ty: ignore[unresolved-import]
-    from fontTools.ttLib import TTFont  # ty: ignore[unresolved-import]
-    from fontTools.varLib import instancer  # ty: ignore[unresolved-import]
+    from fontTools import subset  # ty: ignore[import-not-found]
+    from fontTools.ttLib import TTFont  # ty: ignore[import-not-found]
+    from fontTools.varLib import instancer  # ty: ignore[import-not-found]
 
     archive = zipfile.ZipFile(io.BytesIO(download(font_build)))
     # Preserve the upstream timestamp through both serialization passes so a
