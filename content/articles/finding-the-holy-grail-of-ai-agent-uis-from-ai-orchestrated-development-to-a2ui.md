@@ -1,7 +1,6 @@
 +++
 title = "Finding the Holy Grail of AI Agent UIs: From AI-Orchestrated Development to A2UI"
 description = "Discover how A2UI solves the AI Agent UI bottleneck. A deep dive into replacing chatbots with agents that project their own native UIs."
-cover_alt = "Long-haired man with outstretched arms surrounded by glowing holographic interface panels over a night city"
 date = "2026-01-24"
 tags = ["Agent", "LLM"]
 slug = "finding-the-holy-grail-of-ai-agent-uis-from-ai-orchestrated-development-to-a2ui"

@@ -1,7 +1,6 @@
 +++
 title = "3P Principle: Purpose, Productivity, Performance"
 description = "A fundamental trade-off that affects the design of programming languages and the success of software projects."
-cover_alt = "Triangle diagram linking Purpose, Performance, and Productivity, with static, dynamic, and DSL languages on its edges"
 date = "2019-08-15"
 tags = ["Guide"]
 slug = "3p-principle-purpose-productivity-performance"

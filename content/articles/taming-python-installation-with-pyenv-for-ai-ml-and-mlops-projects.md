@@ -1,7 +1,6 @@
 +++
 title = "Taming Python Installation with Pyenv for AI/ML and MLOps Projects"
 description = "Tame your Python chaos! Learn how pyenv simplifies managing Python versions for AI/ML \u0026 MLOps, ensuring smooth, reproducible development."
-cover_alt = "Hand-drawn diagram of tangled arrows linking pip, easy_install, Homebrew, and Anaconda Pythons to many paths"
 date = "2024-10-08"
 tags = ["Python", "Guide"]
 slug = "taming-python-installation-with-pyenv-for-ai-ml-and-mlops-projects"

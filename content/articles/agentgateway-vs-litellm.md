@@ -1,7 +1,6 @@
 +++
 title = "LiteLLM is the known option. agentgateway is the open one."
 description = "Comparing LiteLLM and agentgateway for enterprise AI platforms: licensing boundaries, security advisories, ops footprints, and open governance."
-cover_alt = "Crowd queuing at a padlocked barred door beside an open lit doorway, under 'agentgateway is the open one.'"
 date = "2026-08-16"
 tags = ["Agent", "LLM", "Guide"]
 slug = "agentgateway-vs-litellm"

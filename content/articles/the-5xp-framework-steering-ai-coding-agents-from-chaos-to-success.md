@@ -1,7 +1,6 @@
 +++
 title = "The 5xP Framework: Steering AI Coding Agents from Chaos to Success"
 description = "AI Coding — or Spec-Driven Development — is a recent trend that amazes as much as it scares IT engineers."
-cover_alt = "Construction workers in hard hats climbing a yellow scaffolding grid against a clear blue sky"
 date = "2026-02-28"
 tags = ["Coding", "Guide"]
 slug = "the-5xp-framework-steering-ai-coding-agents-from-chaos-to-success"

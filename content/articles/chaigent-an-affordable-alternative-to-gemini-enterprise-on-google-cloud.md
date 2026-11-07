@@ -1,7 +1,6 @@
 +++
 title = "Chaigent: An affordable alternative to Gemini Enterprise on Google Cloud"
 description = "Build a cost-effective, private AI Agent solution on Google Cloud using Chainlit and Vertex AI. Detailed architecture and code guide."
-cover_alt = "Robot arm reaches a Chaigent gear above a Google Cloud platform under 'Chaigent: Build Affordable AI Agents'"
 date = "2026-02-06"
 tags = ["Agent", "Cloud", "Project"]
 slug = "chaigent-an-affordable-alternative-to-gemini-enterprise-on-google-cloud"

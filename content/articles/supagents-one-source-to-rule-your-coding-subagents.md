@@ -1,7 +1,6 @@
 +++
 title = "Supagents: One Source to Rule Your Coding Subagents"
 description = "Supagents compiles one Markdown persona per subagent into the native formats of Claude Code, Gemini CLI, GitHub Copilot, Cursor, OpenCode, and Kilo Code."
-cover_alt = "Robots in a futuristic library under the banner 'Supagents: Compile One AI Supagent Into Multiple AI Subagents'"
 date = "2026-05-10"
 tags = ["Coding", "Project"]
 slug = "supagents-one-source-to-rule-your-coding-subagents"

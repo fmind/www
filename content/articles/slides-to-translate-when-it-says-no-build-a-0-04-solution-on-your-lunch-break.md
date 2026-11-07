@@ -1,7 +1,6 @@
 +++
 title = "Slides-To-Translate: When IT Says No, Build a $0.04 Solution on Your Lunch Break"
 description = "It is a classic tale of corporate life. A colleague of mine at Decathlon had a mammoth task: translate a 155-slide presentation into several languages."
-cover_alt = "Split image of a frustrated man marking up printed slides and a smiling woman in a 'coding' shirt at a laptop"
 date = "2025-07-29"
 tags = ["LLM", "Demo"]
 slug = "slides-to-translate-when-it-says-no-build-a-0-04-solution-on-your-lunch-break"

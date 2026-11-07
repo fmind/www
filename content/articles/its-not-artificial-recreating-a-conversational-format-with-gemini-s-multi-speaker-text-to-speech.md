@@ -1,7 +1,6 @@
 +++
 title = "It’s Not Artificial: Recreating a Conversational Format with Gemini’s Multi-Speaker Text to Speech"
 description = "A guide to creating conversational AI with Gemini. Generate custom educational audio with multiple voices using a simple Python script."
-cover_alt = "Glowing blue light trails forming overlapping sine waves against a black background"
 date = "2025-07-20"
 tags = ["LLM", "Demo"]
 slug = "its-not-artificial-recreating-a-conversational-format-with-gemini-s-multi-speaker-text-to-speech"

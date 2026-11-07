@@ -1,7 +1,6 @@
 +++
 title = "The Great Data Divergence: Why Generative AI Demands a New Approach Beyond the Data Lake"
 description = "Explore the shift from slow data pipelines to real-time API management for building Gen AI systems and modern enterprise data architecture."
-cover_alt = "Wooden dock extending onto a calm lake that mirrors a forest and blue sky"
 date = "2025-06-23"
 tags = ["LLM", "Cloud"]
 slug = "the-great-data-divergence-why-generative-ai-demands-a-new-approach-beyond-the-data-lake"

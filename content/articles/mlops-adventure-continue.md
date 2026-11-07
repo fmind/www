@@ -1,7 +1,6 @@
 +++
 title = "The MLOps Adventure Continues: An AGENTS.md Ready Stack for AI/ML"
 description = "AI coding agents amplify repository friction. How we redesigned an MLOps codebase around deterministic single-command gates, SQLite isolation, and AGENTS.md."
-cover_alt = "Person and robot reading papers by cube conveyors under 'The MLOps Adventure Continues: An AGENTS.md Ready Stack for AI/ML'"
 date = "2026-08-11"
 tags = ["Coding", "MLOps", "Guide"]
 slug = "mlops-adventure-continue"

@@ -56,10 +56,7 @@ _KNOWN_FRONTMATTER = {
     "slug",
     "tags",
     "draft",
-    "cover_alt",
 }
-# Cover alt text feeds og:image:alt, twitter:image:alt, and the JSON-LD caption; the title is the fallback.
-COVER_ALT_LIMIT = 125
 
 
 class ArticleError(ValueError):
@@ -497,14 +494,15 @@ def parse_article(name: str, data: bytes, static_dir: Path = Path("static")) -> 
         updated = _parse_date(name, "updated", updated_value) if updated_value else published
         if updated < published:
             raise ArticleError(f'parse "{name}": updated date must not precede publish date')
-        cover_alt = " ".join(_string(metadata, "cover_alt").split())
-        if "cover_alt" in metadata and not 0 < len(cover_alt) <= COVER_ALT_LIMIT:
-            raise ArticleError(f'parse "{name}": cover_alt must hold 1 to {COVER_ALT_LIMIT} characters')
         image_path = _cover(static_dir, slug)
         card_image_path = _card_cover(static_dir, slug)
         markdown = markdown_bytes.decode("utf-8")
         rendered, sections, media = _render_markdown(markdown)
         _validate_body_media(static_dir, media)
+        # The body shows the cover with reviewed alt text (pub writes its `card alt`); social cards and
+        # JSON-LD reuse it, so one description serves every surface. The title covers a body without it.
+        cover_prefix = f"{_MEDIA_PREFIX}{slug}/cover."
+        cover_alt = next((alt for source, alt in media if source.startswith(cover_prefix)), "")
         body = enhance_body_images(rendered, static_dir)
         word_count = len(markdown.split())
         reading_minutes = max(1, (word_count + WORDS_PER_MINUTE - 1) // WORDS_PER_MINUTE)
@@ -520,7 +518,7 @@ def parse_article(name: str, data: bytes, static_dir: Path = Path("static")) -> 
             url=article_url,
             image_url=METADATA.site_url + image_path,
             card_image_url=METADATA.site_url + card_image_path,
-            image_alt=cover_alt or title,
+            image_alt=" ".join(cover_alt.split()) or title,
             reading_minutes=reading_minutes,
             markdown=markdown,
             html=body,

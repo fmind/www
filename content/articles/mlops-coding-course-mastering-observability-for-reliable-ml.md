@@ -1,7 +1,6 @@
 +++
 title = "MLOps Coding Course: Mastering Observability for Reliable ML 💡"
 description = "This article dives deep into the essential tools and practices for achieving comprehensive observability in your AI/ML projects."
-cover_alt = "Brass and steel sightseeing telescope on a terrace overlooking a sunny coastal city and the sea"
 date = "2024-07-28"
 tags = ["MLOps", "Guide"]
 slug = "mlops-coding-course-mastering-observability-for-reliable-ml"

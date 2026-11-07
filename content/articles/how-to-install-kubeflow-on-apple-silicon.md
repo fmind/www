@@ -1,7 +1,6 @@
 +++
 title = "How to install Kubeflow Pipelines v2 on Apple Silicon"
 description = "Kubeflow Pipelines (KFP) is a powerful platform for building machine learning pipelines at scale with Kubernetes."
-cover_alt = "Blue geometric heptagon logo above the 'Kubeflow' wordmark on a white background"
 date = "2022-09-24"
 tags = ["Cloud", "Guide"]
 slug = "how-to-install-kubeflow-on-apple-silicon"

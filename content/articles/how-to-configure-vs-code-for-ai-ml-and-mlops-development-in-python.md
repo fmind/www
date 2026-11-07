@@ -1,7 +1,6 @@
 +++
 title = "How to configure VS Code for AI, ML and MLOps development in Python 🛠️️"
 description = "In this article, I will outline the steps for configuring VS Code for data scientists and machine learning engineers."
-cover_alt = "Woodturner in a face shield shaping wood on a lathe, covered in shavings, in a busy workshop"
 date = "2023-11-23"
 tags = ["Python", "Guide"]
 slug = "how-to-configure-vs-code-for-ai-ml-and-mlops-development-in-python"

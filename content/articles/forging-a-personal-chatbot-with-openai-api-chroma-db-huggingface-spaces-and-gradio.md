@@ -1,7 +1,6 @@
 +++
 title = "Forging a Personal Chatbot with OpenAI API, Chroma DB, HuggingFace Spaces, and Gradio 🔥"
 description = "How I built a chatbot that answers questions about my resume with the OpenAI API, Chroma DB, HuggingFace Spaces, and Gradio, and what I learned along the way."
-cover_alt = "Toy Story meme of Buzz pointing out to a worried Woody, captioned 'GENERATIVE AI' and 'GENERATIVE AI EVERYWHERE!'"
 date = "2023-10-24"
 tags = ["LLM", "RAG", "Demo"]
 slug = "forging-a-personal-chatbot-with-openai-api-chroma-db-huggingface-spaces-and-gradio"

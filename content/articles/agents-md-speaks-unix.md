@@ -1,7 +1,6 @@
 +++
 title = "AGENTS.md speaks UNIX, and you should too"
 description = "Unix gives coding agents the tools. AGENTS.md explains where to edit, how to check, and what to preserve. Lessons from my dotfiles and human review."
-cover_alt = "Developer and robot at computers with shell command bubbles under 'AGENTS.md speaks UNIX, and you should too'"
 date = "2026-09-20"
 tags = ["Agent", "Coding", "Project"]
 slug = "agents-md-speaks-unix"

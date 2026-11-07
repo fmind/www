@@ -1,7 +1,6 @@
 +++
 title = "Bromate: Automate Your Browser with Agentic Workflows 🧭"
 description = "The AI landscape is constantly evolving, pushing the boundaries of what’s possible with technology."
-cover_alt = "Hand holding a compass in front of a forest valley and blurred mountain cliffs"
 date = "2024-09-14"
 tags = ["Agent", "Project"]
 slug = "bromate-automate-your-browser-with-agentic-workflows"

@@ -1,7 +1,6 @@
 +++
 title = "Stop Building Rigid AI/ML Pipelines: Embrace Reusable Components for Flexible MLOps"
 description = "MLOps pipelines are often too rigid. We propose using reusable artifacts orchestrated by DAGs. Think functional programming for ML!"
-cover_alt = "Worker in protective gear welding a large steel pipeline section inside an excavated trench"
 date = "2025-01-30"
 tags = ["MLOps", "Python"]
 slug = "stop-building-rigid-ai-ml-pipelines-embrace-reusable-components-for-flexible-mlops"

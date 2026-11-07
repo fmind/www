@@ -98,9 +98,7 @@ def test_parse_article_rejects_unknown_frontmatter_with_source_line(tmp_path: Pa
         ({"description": '"A teaser cut off by an import…"'}, "complete sentence"),
         ({"description": '"A teaser cut off by an import..."'}, "complete sentence"),
         ({"tags": '["Agent", "LLM", "Agent"]'}, "duplicate tag 'Agent'"),
-        ({"cover_alt": '"  "'}, "cover_alt must hold 1 to 125 characters"),
-        ({"cover_alt": '"' + "x" * 126 + '"'}, "cover_alt must hold 1 to 125 characters"),
-        ({"cover_alt": "3"}, "cover_alt must be a string"),
+        ({"cover_alt": '"A robot reading a map"'}, "unknown key 'cover_alt'"),
     ],
 )
 def test_parse_article_rejects_invalid_metadata(tmp_path: Path, metadata: dict[str, str], message: str) -> None:
@@ -522,10 +520,16 @@ def test_mcp_section_titles_use_rendered_heading_text(tmp_path: Path) -> None:
     assert [section["title"] for section in article_sections(item)] == ["Vim 📝", "Uses code"]
 
 
-def test_cover_alt_describes_the_social_image_and_falls_back_to_the_title(tmp_path: Path) -> None:
+def test_social_image_alt_reuses_the_body_cover_alt_and_falls_back_to_the_title(tmp_path: Path) -> None:
     static = assets(tmp_path)
-    described = parse_article("content/articles/example.md", source(cover_alt='"A robot  reading a map"'), static)
-    fallback = parse_article("content/articles/example.md", source(), static)
+    cover = "![A robot  reading a map](/static/img/articles/example/cover.webp)\n\nBody."
+    figure_only = "![A chart of costs](/static/img/articles/example/figure.png)\n\nBody."
+
+    described = parse_article("content/articles/example.md", source(cover), static)
+    other_image = parse_article("content/articles/example.md", source(figure_only), static)
+    plain = parse_article("content/articles/example.md", source(), static)
 
     assert described.image_alt == "A robot reading a map"
-    assert fallback.image_alt == fallback.title
+    # Only the cover describes the social image; other figures never stand in for it.
+    assert other_image.image_alt == other_image.title
+    assert plain.image_alt == plain.title

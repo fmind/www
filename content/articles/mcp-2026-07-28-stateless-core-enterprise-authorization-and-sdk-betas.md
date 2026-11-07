@@ -1,7 +1,6 @@
 +++
 title = "MCP 2026-07-28: Stateless core, enterprise authorization, and SDK betas"
 description = "Running a remote Model Context Protocol (MCP) server behind multiple instances presents immediate infrastructure challenges."
-cover_alt = "Silhouetted people walking through a dark immersive installation of hanging strands of white and blue lights"
 date = "2026-07-08"
 tags = ["Agent", "Guide"]
 slug = "mcp-2026-07-28-stateless-core-enterprise-authorization-and-sdk-betas"

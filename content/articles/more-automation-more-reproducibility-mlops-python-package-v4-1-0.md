@@ -1,7 +1,6 @@
 +++
 title = "More Automation + More Reproducibility = MLOps Python Package v4.1.0"
 description = "The MLOps Python Package is your go-to solution for building robust and reproducible AI/ML workflows. Check out the latest v4.1.0 release!"
-cover_alt = "Colorful mind map branching from a central 'MLOps Python Package' node into topics such as Tools, Code, Data, and Model"
 date = "2025-03-06"
 tags = ["MLOps", "Python", "Project"]
 slug = "more-automation-more-reproducibility-mlops-python-package-v4-1-0"

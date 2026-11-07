@@ -1,7 +1,6 @@
 +++
 title = "BKFC: An Agentic Workflow for Gathering Knowledge from Google Chat"
 description = "Team collaboration often lives and breathes within chat applications like Google Chat or Slack."
-cover_alt = "Five colleagues gather around a laptop at a round table in front of a whiteboard"
 date = "2025-04-08"
 tags = ["Agent", "Project"]
 slug = "bkfc-an-agentic-workflow-for-gathering-knowledge-from-google-chat"

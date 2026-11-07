@@ -1,7 +1,6 @@
 +++
 title = "We need POSIX for MLOps"
 description = "There is an ever-growing landscape of tools and solutions for MLOps. In this article, I propose a solution to address this challenge."
-cover_alt = "Dense landscape chart of hundreds of machine learning, AI, and data company logos grouped into categories"
 date = "2023-04-17"
 tags = ["MLOps"]
 slug = "we-need-posix-for-mlops"

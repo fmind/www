@@ -1,7 +1,6 @@
 +++
 title = "Ackgent: Rapid Agent Development on GCP with ADK and Agent Config"
 description = "Speed up AI agent development on GCP with Ackgent. Build, deploy, and iterate faster using Google ADK and Agent Config's declarative approach."
-cover_alt = "Cartoon developer at three monitors under a sign reading 'Declarative AI: just tell it what to do'"
 date = "2025-09-14"
 tags = ["Agent", "Cloud", "Project"]
 slug = "ackgent-rapid-agent-development-on-gcp-with-adk-and-agent-config"

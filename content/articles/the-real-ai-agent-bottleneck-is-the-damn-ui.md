@@ -1,7 +1,6 @@
 +++
 title = "The Real AI Agent Bottleneck is the Damn UI"
 description = "For AI agents, the biggest challenge isn’t the model, it’s the UI. A deep dive into the user interface bottleneck for enterprise AI."
-cover_alt = "Rocket labeled 'AI Agent Hub' launching over a city skyline at dusk"
 date = "2025-10-12"
 tags = ["Agent"]
 slug = "the-real-ai-agent-bottleneck-is-the-damn-ui"

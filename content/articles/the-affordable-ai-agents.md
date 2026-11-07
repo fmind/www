@@ -1,7 +1,6 @@
 +++
 title = "The Affordable AI Agents"
 description = "Engineering organizations are waking up to a sobering financial reality: the cost of running AI systems scales linearly, not logarithmically."
-cover_alt = "White piggy bank wearing glasses next to a calculator on a pink background"
 date = "2026-06-25"
 tags = ["Agent", "LLM"]
 slug = "the-affordable-ai-agents"

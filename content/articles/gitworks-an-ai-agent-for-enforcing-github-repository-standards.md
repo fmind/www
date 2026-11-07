@@ -1,7 +1,6 @@
 +++
 title = "GitWorks: an AI Agent for Enforcing GitHub Repository Standards"
 description = "A Python notebook agent that reviews GitHub repositories against your own guidelines automatically, using Google Colab, the GitHub API, and Gemini models."
-cover_alt = "Smiling humanoid robot with an exposed mechanical head and arms writing code at a desktop monitor"
 date = "2025-04-14"
 tags = ["Coding", "Project"]
 slug = "gitworks-an-ai-agent-for-enforcing-github-repository-standards"

@@ -1,7 +1,6 @@
 +++
 title = "CAG vs. RAG: Choosing the Right Strategy for Your AI Application"
 description = "CAG vs RAG for Generative AI: Compare latency, cost \u0026 complexity. Choose the best LLM context strategy for your app."
-cover_alt = "Black and white photo of a man in a deerstalker hat peering through a magnifying glass"
 date = "2025-04-23"
 tags = ["LLM", "RAG"]
 slug = "cag-vs-rag-choosing-the-right-strategy-for-your-ai-application"

@@ -1,7 +1,6 @@
 +++
 title = "Introducing GentWriter: Building a Multi-Agent Content Generator with Google’s ADK 👾"
 description = "How I built GentWriter with Google's ADK: a multi-agent system that turns one article URL into an SEO description, an X post, and a LinkedIn post."
-cover_alt = "Bearded man in a black top hat and waistcoat tipping his hat while leaning on a cane against a dark backdrop"
 date = "2025-04-28"
 tags = ["Agent", "Python", "Project"]
 slug = "introducing-gentwriter-building-a-multi-agent-content-generator-with-googles-adk"
