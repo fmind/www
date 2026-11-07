@@ -87,9 +87,9 @@ jobs:
           fetch-depth: 100
           persist-credentials: false # the gate only reads the tree, never pushes back
       - name: Set up mise tools
-        uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
+        uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
         with:
-          version: 2026.10.25 # pinned mise; bump deliberately with mise.lock tooling
+          version: 2026.11.3 # pinned mise; bump deliberately with mise.lock tooling
           install: true
           cache: true
       - name: Install dependencies
@@ -125,9 +125,9 @@ jobs:
         with:
           persist-credentials: false
       - name: Set up mise tools
-        uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
+        uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
         with:
-          version: 2026.10.25 # pinned mise; bump deliberately with mise.lock tooling
+          version: 2026.11.3 # pinned mise; bump deliberately with mise.lock tooling
           install: true
           cache: true
       - name: Install dependencies
@@ -156,9 +156,9 @@ jobs:
         with:
           persist-credentials: false
       - name: Set up mise tools
-        uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
+        uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
         with:
-          version: 2026.10.25 # pinned mise; bump deliberately with mise.lock tooling
+          version: 2026.11.3 # pinned mise; bump deliberately with mise.lock tooling
           install: true
           cache: true
       - name: Install dependencies
@@ -168,7 +168,7 @@ jobs:
         with:
           # Pin the builder: the action otherwise pulls the mutable buildx-stable-1
           # tag. Dependabot does not bump driver-opts; keep both jobs in step.
-          driver-opts: image=moby/buildkit:v0.34.1@sha256:99368f3e46177c6405b9740e4461d91cee004128daeecca78d4ceac50ec1da5c
+          driver-opts: image=moby/buildkit:v0.34.2@sha256:c5f8862f52499773af85bc07695b2379ef08e8002352b0df2c4864c91d78dabe
       - name: Select the daily Trivy database cache
         id: trivy-cache
         run: echo "key=trivy-db-${RUNNER_OS}-$(date -u +%F)" >> "$GITHUB_OUTPUT"
@@ -228,9 +228,9 @@ jobs:
         with:
           persist-credentials: false # deploy authenticates to GCP via WIF, not git
       - name: Set up mise
-        uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
+        uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
         with:
-          version: 2026.10.25 # pinned mise; bump deliberately with mise.lock tooling
+          version: 2026.11.3 # pinned mise; bump deliberately with mise.lock tooling
           install: false
           cache: false
       - name: Install pinned deployment tools
@@ -245,7 +245,7 @@ jobs:
           service_account: ${{ env.SERVICE_ACCOUNT }}
           workload_identity_provider: ${{ env.WORKLOAD_IDENTITY_PROVIDER }}
       - name: Docker Auth
-        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
         with:
           registry: ${{ env.AR_HOSTNAME }}
           username: oauth2accesstoken
@@ -253,7 +253,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
         with:
-          driver-opts: image=moby/buildkit:v0.34.1@sha256:99368f3e46177c6405b9740e4461d91cee004128daeecca78d4ceac50ec1da5c
+          driver-opts: image=moby/buildkit:v0.34.2@sha256:c5f8862f52499773af85bc07695b2379ef08e8002352b0df2c4864c91d78dabe
       - name: Build and Push Image
         id: build
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
@@ -285,7 +285,7 @@ jobs:
         id: deploy
         uses: google-github-actions/deploy-cloudrun@2028e2d7d30a78c6910e0632e48dd561b064884d # v3.0.1
         with:
-          gcloud_version: 591.0.0 # pinned Cloud SDK; the action defaults to latest
+          gcloud_version: 592.0.0 # pinned Cloud SDK; the action defaults to latest
           service: ${{ env.SERVICE_NAME }}
           region: ${{ env.REGION }}
           image: ${{ env.AR_HOSTNAME }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}@${{ steps.build.outputs.digest }}
