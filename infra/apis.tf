@@ -40,6 +40,13 @@ resource "google_project_service" "iamcredentials" {
   disable_on_destroy = false
 }
 
+# Security Token Service exchanges GitHub OIDC tokens for the Workload Identity Federation in wif.tf.
+resource "google_project_service" "sts" {
+  project            = var.project_id
+  service            = "sts.googleapis.com"
+  disable_on_destroy = false
+}
+
 resource "google_project_service" "logging" {
   project            = var.project_id
   service            = "logging.googleapis.com"
@@ -70,5 +77,6 @@ resource "time_sleep" "wait_for_apis" {
     google_project_service.logging,
     google_project_service.monitoring,
     google_project_service.run,
+    google_project_service.sts,
   ]
 }
