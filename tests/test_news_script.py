@@ -2,7 +2,10 @@
 
 import base64
 import json
+import re
+import subprocess
 from collections.abc import Mapping
+from datetime import date
 from pathlib import Path
 
 import pytest
@@ -219,3 +222,167 @@ def test_main_prints_json_and_names_invalid_content(
     (tmp_path / "content" / "news" / "2026-11-04.md").write_text("## Highlights\nbroken", encoding="utf-8")
     assert news.main(["prepare", "https://example.com/new"]) == 1
     assert "2026-11-04:2: expected" in capsys.readouterr().err
+
+
+# Draft and publish run against a local bare remote, with a fake writer and fake web.
+TODAY = date(2026, 11, 7)
+NEW_URL = "https://example.com/new"
+
+
+def run_git(cwd: Path, *args: str) -> str:
+    return subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True, text=True).stdout  # noqa: S603, S607
+
+
+class FakeWriter:
+    """Return queued answers in turn and record every prompt."""
+
+    def __init__(self, *answers: list[dict[str, str]]) -> None:
+        self.answers = list(answers)
+        self.prompts: list[str] = []
+
+    def __call__(self, prompt: str) -> Mapping[str, object]:
+        self.prompts.append(prompt)
+        return {"items": self.answers.pop(0)}
+
+
+def line(url: str, description: str = "Ships a tested change.") -> dict[str, str]:
+    return {"url": url, "title": f"Title of {url.rsplit('/', 1)[-1]}", "description": description}
+
+
+@pytest.fixture
+def site(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """A checkout whose origin/main holds one older edition and the real news skill."""
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(tmp_path / "gitconfig"))
+    monkeypatch.setenv("GIT_CONFIG_NOSYSTEM", "1")
+    for key in ("AUTHOR", "COMMITTER"):
+        monkeypatch.setenv(f"GIT_{key}_NAME", "Test")
+        monkeypatch.setenv(f"GIT_{key}_EMAIL", "test@example.test")
+    run_git(tmp_path, "init", "--quiet", "--bare", "--initial-branch=main", "remote.git")
+    run_git(tmp_path, "clone", "--quiet", str(tmp_path / "remote.git"), "repo")
+    repo = tmp_path / "repo"
+    write_edition(repo / "content" / "news", "2026-11-06", "https://example.com/old")
+    skill = repo / news.SKILL
+    skill.parent.mkdir(parents=True)
+    skill.write_text(news.SKILL.read_text(encoding="utf-8"), encoding="utf-8")
+    run_git(repo, "add", ".")
+    run_git(repo, "commit", "--quiet", "-m", "init")
+    run_git(repo, "push", "--quiet", "origin", "HEAD:main")
+    return repo
+
+
+def draft(site: Path, writer: FakeWriter, *urls: str, feedback: str = "") -> str:
+    web = FakeWeb({NEW_URL: ARTICLE, "https://example.com/second": ARTICLE})
+    return news.draft(
+        urls, day=TODAY, repo=site, drafts=site / "tmp" / "drafts", fetch=web, writer=writer, feedback=feedback
+    )
+
+
+def draft_id(preview: str) -> str:
+    match = re.search(r"Draft ([0-9a-f]{12}) ", preview)
+    assert match, preview
+    return match[1]
+
+
+def test_draft_and_publish_push_only_the_edition_on_top_of_origin(site: Path) -> None:
+    writer = FakeWriter([line("https://example.com/second"), line(NEW_URL)])
+
+    preview = draft(
+        site, writer, NEW_URL, "https://example.com/old", "https://docs.google.com/d/1", "https://example.com/second"
+    )
+
+    assert "2 links (2 new)" in preview
+    assert "1. Title of second (example.com): Ships a tested change." in preview
+    assert "https://example.com/old: already in 2026-11-06" in preview
+    assert "https://docs.google.com/d/1: link-shared document" in preview
+    assert "untrusted data" in writer.prompts[0]
+    assert "## Highlights" in writer.prompts[0]  # the format rules come from the news skill
+    assert not (site / "content" / "news" / "2026-11-07.md").exists()
+    # Local work that is not on origin/main must never ride along with the edition.
+    (site / "README.md").write_text("local change", encoding="utf-8")
+    run_git(site, "add", "README.md")
+    run_git(site, "commit", "--quiet", "-m", "local work")
+
+    summary = news.publish(draft_id(preview), repo=site, drafts=site / "tmp" / "drafts")
+
+    remote = site.parent / "remote.git"
+    assert run_git(remote, "log", "-1", "--format=%s", "main") == "feat(news): add 2026-11-07 edition\n"
+    assert run_git(remote, "diff-tree", "--no-commit-id", "--name-only", "-r", "main").split() == [
+        "content/news/2026-11-07.md"
+    ]
+    assert "README.md" not in run_git(remote, "ls-tree", "--name-only", "main")
+    published = run_git(remote, "show", "main:content/news/2026-11-07.md")
+    assert published.startswith("## Highlights\n\n- [Title of second](https://example.com/second): ")
+    assert "Published the 2026-11-07 edition (2 links)" in summary
+    assert "https://www.fmind.dev/news/2026-11-07/" in summary
+    with pytest.raises(news.NewsError, match="already published"):
+        news.publish(draft_id(preview), repo=site, drafts=site / "tmp" / "drafts")
+
+
+def test_draft_keeps_published_lines_and_retries_a_rejected_answer(site: Path) -> None:
+    write_edition(site / "content" / "news", "2026-11-07", "https://example.com/today")
+    run_git(site, "add", ".")
+    run_git(site, "commit", "--quiet", "-m", "today")
+    run_git(site, "push", "--quiet", "origin", "HEAD:main")
+    too_long = " ".join(["word"] * 31)
+    writer = FakeWriter(
+        [line(NEW_URL, too_long), line("https://example.com/today")],
+        [line(NEW_URL), line("https://example.com/today", "Rewritten by the model.")],
+    )
+
+    preview = draft(site, writer, NEW_URL, feedback="Put the new link first.")
+
+    assert "has 31 words" in writer.prompts[1]
+    assert "Put the new link first." in writer.prompts[0]
+    assert "2 links (1 new)" in preview
+    assert "2. Title 0 (example.com): About it." in preview  # the published line stays verbatim
+
+    summary = news.publish(draft_id(preview), repo=site, drafts=site / "tmp" / "drafts")
+
+    assert "(2 links)" in summary
+    subject = run_git(site.parent / "remote.git", "log", "-1", "--format=%s", "main")
+    assert subject == "feat(news): add links to the 2026-11-07 edition\n"
+
+
+def test_publish_refuses_an_edition_changed_on_main_since_the_draft(site: Path, tmp_path: Path) -> None:
+    preview = draft(site, FakeWriter([line(NEW_URL)]), NEW_URL)
+    run_git(tmp_path, "clone", "--quiet", str(tmp_path / "remote.git"), "other")
+    write_edition(tmp_path / "other" / "content" / "news", "2026-11-07", "https://example.com/elsewhere")
+    run_git(tmp_path / "other", "add", ".")
+    run_git(tmp_path / "other", "commit", "--quiet", "-m", "concurrent edition")
+    run_git(tmp_path / "other", "push", "--quiet", "origin", "HEAD:main")
+
+    with pytest.raises(news.NewsError, match="changed on main since draft"):
+        news.publish(draft_id(preview), repo=site, drafts=site / "tmp" / "drafts")
+
+
+def test_draft_refuses_links_with_nothing_new_and_bad_writer_answers(site: Path) -> None:
+    with pytest.raises(news.NewsError, match=r"(?s)no new link.*already in 2026-11-06"):
+        draft(site, FakeWriter(), "https://example.com/old")
+    with pytest.raises(news.NewsError, match="failed validation twice: the answer leaves out"):
+        draft(site, FakeWriter([], []), NEW_URL)
+    with pytest.raises(news.NewsError, match="not one of the listed links"):
+        news.ordered_items({"items": [line("https://example.com/other")]}, (), [NEW_URL])
+    with pytest.raises(news.NewsError, match="not a draft ID"):
+        news.publish("../../etc", repo=site)
+
+
+def test_agy_writer_denies_every_tool(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[list[str]] = []
+
+    def fake_run(command: list[str], **_: object) -> subprocess.CompletedProcess[str]:
+        calls.append(command)
+        output = {"structured_output": {"items": []}} if len(calls) == 1 else {"response": "no schema"}
+        return subprocess.CompletedProcess(command, 0, json.dumps(output), "")
+
+    monkeypatch.setattr(news.subprocess, "run", fake_run)
+
+    assert news.agy_writer("prompt") == {"items": []}
+    command = calls[0]
+    assert "--dangerously-skip-permissions" not in command
+    denied = json.loads(command[command.index("--settings") + 1])["permissions"]["deny"]
+    assert set(denied) == {
+        f"{kind}(*)" for kind in ("read_file", "write_file", "command", "read_url", "execute_url", "mcp")
+    }
+    assert command[-1] == "-p=prompt"
+    with pytest.raises(news.NewsError, match="no structured output"):
+        news.agy_writer("prompt")
