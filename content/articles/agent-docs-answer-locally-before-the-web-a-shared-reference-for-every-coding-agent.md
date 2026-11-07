@@ -1,6 +1,7 @@
 +++
 title = "Agent Docs: Answer Locally Before the Web — A Shared Reference for Every Coding Agent"
 description = "Pair-program with a coding agent for an afternoon and you start noticing a quiet, recurring tax."
+cover_alt = "Futuristic library where a robot faces a hologram of an .agents/docs/ folder tree under 'Agent Docs'"
 date = "2026-05-14"
 tags = ["Coding", "Project"]
 slug = "agent-docs-answer-locally-before-the-web-a-shared-reference-for-every-coding-agent"

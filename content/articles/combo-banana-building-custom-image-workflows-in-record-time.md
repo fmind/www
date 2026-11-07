@@ -1,6 +1,7 @@
 +++
 title = "Combo-Banana: Building Custom Image Workflows in Record Time"
 description = "Build custom AI image workflows fast with Combo-Banana. Empower designers to automate tedious editing tasks with Google Nano-Banana."
+cover_alt = "Multi-armed superhero banana beside image steps, turning a raw phone photo into a clean product shot"
 date = "2025-09-08"
 tags = ["LLM", "Project"]
 slug = "combo-banana-building-custom-image-workflows-in-record-time"

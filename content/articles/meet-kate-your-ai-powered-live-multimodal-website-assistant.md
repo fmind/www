@@ -1,6 +1,7 @@
 +++
 title = "Meet Kate: Your AI-Powered, Live Multimodal Website Assistant 🤖"
 description = "Meet Kate: an AI-powered, live, multimodal website assistant. She uses voice, understands your needs, and retrieves info from a website."
+cover_alt = "Android avatar with a glowing blue face and headphones, labeled 'KATE' on its chest, on a dark background"
 date = "2025-02-15"
 tags = ["Agent", "Demo"]
 slug = "meet-kate-your-ai-powered-live-multimodal-website-assistant"

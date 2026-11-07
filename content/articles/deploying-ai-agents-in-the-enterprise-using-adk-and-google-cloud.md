@@ -1,6 +1,7 @@
 +++
 title = "Deploying AI Agents in the Enterprise using ADK and Google Cloud"
 description = "Learn to deploy AI agents in the enterprise using ADK \u0026 Google Cloud. We compare Cloud Run \u0026 Vertex AI for secure, scalable AgentOps."
+cover_alt = "Rows of identical humanoid robots holding smiley-face tablets and briefcases in a glass-walled city office"
 date = "2025-08-10"
 tags = ["Agent", "Cloud"]
 slug = "deploying-ai-agents-in-the-enterprise-using-adk-and-google-cloud"

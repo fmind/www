@@ -1,6 +1,7 @@
 +++
 title = "Powering Up your Agent in Production with ADK, OAuth and Gemini Enterprise"
 description = "Power up your AI agent in production. Learn to deploy a secure ‘Slides Translator’ using ADK, OAuth, and Gemini Enterprise."
+cover_alt = "Engineer in safety glasses soldering the open chest of a humanoid robot at a workbench with glowing screens"
 date = "2025-11-01"
 tags = ["Agent", "Cloud"]
 slug = "powering-up-your-agent-in-production-with-adk-oauth-and-gemini-enterprise"

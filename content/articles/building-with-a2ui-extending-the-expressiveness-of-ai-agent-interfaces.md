@@ -1,6 +1,7 @@
 +++
 title = "Building with A2UI: Extending the Expressiveness of AI Agent Interfaces"
 description = "Building AI-First apps with A2UI: from the Agent-View-Controller (AVC) pattern to managing latency. A practical case study with Featest."
+cover_alt = "Glowing brain streams A2UI protocol messages into a rendered app interface under 'Building with A2UI'"
 date = "2026-01-28"
 tags = ["Agent", "LLM"]
 slug = "building-with-a2ui-extending-the-expressiveness-of-ai-agent-interfaces"

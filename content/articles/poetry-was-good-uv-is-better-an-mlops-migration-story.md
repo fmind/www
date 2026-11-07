@@ -1,6 +1,7 @@
 +++
 title = "Poetry Was Good, Uv Is Better: An MLOps Migration Story"
 description = "Why I moved the MLOps Python Package from Poetry to uv: faster dependency management, stricter adherence to Python standards, and a simpler workflow."
+cover_alt = "Five cranes flying in formation across a cloudy blue sky"
 date = "2025-01-27"
 tags = ["MLOps", "Python"]
 slug = "poetry-was-good-uv-is-better-an-mlops-migration-story"

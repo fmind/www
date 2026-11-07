@@ -1,6 +1,7 @@
 +++
 title = "Is AI/ML Monitoring just Data Engineering? 🤔"
 description = "While the future of machine learning and MLOps is being debated, practitioners still need to attend to their machine learning models in production."
+cover_alt = "Cartoon unmasking meme: 'ML ENGINEER' pulls off the 'AI/ML MONITORING' mask to reveal 'DATA ENGINEERING'"
 date = "2023-07-15"
 tags = ["MLOps"]
 slug = "is-ai-ml-monitoring-just-data-engineering"

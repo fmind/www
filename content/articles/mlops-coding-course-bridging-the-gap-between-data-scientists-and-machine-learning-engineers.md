@@ -1,6 +1,7 @@
 +++
 title = "MLOps Coding Course: Bridging the gap between Data Scientists and Machine Learning Engineers"
 description = "The MLOps Coding Course is an open-source resource specifically designed to bridge the gap between data science and software engineering."
+cover_alt = "Glowing circuit-board brain icon over dark Python code defining a training job configuration"
 date = "2024-05-28"
 tags = ["MLOps", "Guide"]
 slug = "mlops-coding-course-bridging-the-gap-between-data-scientists-and-machine-learning-engineers"

@@ -1,6 +1,7 @@
 +++
 title = "MLOps Coding Skills: Bridging the Gap Between Specs and Agents"
 description = "Bridge the gap between engineering specs and AI agents using Agent Skills. Learn to inject ‘Senior Engineer’ context for production MLOps."
+cover_alt = "Meditating robot between a 'SPECS' tower and an 'AGENTS' cloud, captioned 'MLOps Coding Skills: Bridging the Gap'"
 date = "2026-01-28"
 tags = ["Coding", "MLOps", "Guide"]
 slug = "mlops-coding-skills-bridging-the-gap-between-specs-and-agents"

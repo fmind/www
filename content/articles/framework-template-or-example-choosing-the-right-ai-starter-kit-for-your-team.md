@@ -1,6 +1,7 @@
 +++
 title = "Framework, Template, or Example? 🤔 Choosing the Right AI Starter Kit for Your Team ✨"
 description = "Building AI applications is incredibly exciting. But let’s be honest: getting started can be challenging, especially in large organizations."
+cover_alt = "Black and white photo of workers in hard hats climbing stairs inside a large steel scaffolding structure"
 date = "2025-03-29"
 tags = ["MLOps", "Guide"]
 slug = "framework-template-or-example-choosing-the-right-ai-starter-kit-for-your-team"

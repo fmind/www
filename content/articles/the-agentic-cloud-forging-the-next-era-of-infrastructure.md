@@ -1,6 +1,7 @@
 +++
 title = "The Agentic Cloud: Forging the Next Era of Infrastructure"
 description = "Agentic Cloud: Disrupting cloud giants with AI. Learn how intelligent agents will commoditize hyperscalers \u0026 reshape infrastructure."
+cover_alt = "Bar chart titled 'Amazon and Microsoft Stay Ahead in Global Cloud Market' showing Q4 2024 cloud market shares"
 date = "2025-07-18"
 tags = ["Agent", "Cloud"]
 slug = "the-agentic-cloud-forging-the-next-era-of-infrastructure"

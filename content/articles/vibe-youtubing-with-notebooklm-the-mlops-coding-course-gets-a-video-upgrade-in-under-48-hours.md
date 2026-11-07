@@ -1,6 +1,7 @@
 +++
 title = "Vibe Youtubing with NotebookLM: The MLOps Coding Course Gets a Video Upgrade in Under 48 Hours"
 description = "I launched the first video series of my MLOps Coding Course, covering the introduction and the entire first chapter, made with NotebookLM in under 48 hours."
+cover_alt = "Cartoon director with a megaphone casting a line of robots on a film set, with a 'Robot Auditions' clapperboard"
 date = "2025-08-26"
 tags = ["LLM", "Demo"]
 slug = "vibe-youtubing-with-notebooklm-the-mlops-coding-course-gets-a-video-upgrade-in-under-48-hours"

@@ -1,6 +1,7 @@
 +++
 title = "mAIdAI: Building a Personal Assistant with Google Cloud and Vertex AI"
 description = "Build a personal AI assistant using Google Cloud Run, Vertex AI, and Google Chat. A guide to architecting context-aware agents."
+cover_alt = "Smiling cartoon robot labeled 'MAIDAI' with an orange beacon, surrounded by lifebuoys and faint app windows"
 date = "2026-02-05"
 tags = ["Agent", "Cloud", "Project"]
 slug = "maidai-building-a-personal-assistant-with-google-cloud-and-vertex-ai"

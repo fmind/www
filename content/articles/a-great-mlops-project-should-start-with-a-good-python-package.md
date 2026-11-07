@@ -1,6 +1,7 @@
 +++
 title = "A great MLOps project should start with a good Python Package 🐍"
 description = "MLOps practitioners (rightfully) point out that running notebooks in production is a bad software practice, but what are the alternatives?"
+cover_alt = "Comic diagram of tangled Python installs, pip versions, and paths pointing at each other in a messy web"
 date = "2023-06-24"
 tags = ["MLOps", "Python", "Project"]
 slug = "a-great-mlops-project-should-start-with-a-good-python-package"

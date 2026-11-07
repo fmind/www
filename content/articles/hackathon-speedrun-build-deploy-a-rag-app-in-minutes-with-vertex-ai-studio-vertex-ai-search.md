@@ -1,6 +1,7 @@
 +++
 title = "Hackathon Speedrun: Build \u0026 Deploy a RAG App in Minutes with Vertex AI Studio \u0026 Vertex AI Search!"
 description = "Build \u0026 deploy a RAG app in minutes! Use Vertex AI Studio \u0026 Vertex AI Search for a rapid hackathon win. Ground LLMs with your data."
+cover_alt = "Hand-drawn architecture diagram linking A2A and MCP docs, Vertex AI Studio and Search, Cloud Run, and a Gradio chatbot"
 date = "2025-05-11"
 tags = ["RAG", "Cloud", "Demo"]
 slug = "hackathon-speedrun-build-deploy-a-rag-app-in-minutes-with-vertex-ai-studio-vertex-ai-search"

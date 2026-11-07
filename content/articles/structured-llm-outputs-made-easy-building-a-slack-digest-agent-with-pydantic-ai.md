@@ -1,6 +1,7 @@
 +++
 title = "Structured LLM Outputs Made Easy: Building a Slack Digest Agent with Pydantic AI"
 description = "As developers and AI practitioners, many of us belong to vibrant online communities, like the MLOps Community on Slack."
+cover_alt = "Two-panel meme of a dog in a burning room labeled 'Tons of unread Slack threads' saying 'This is fine.'"
 date = "2025-04-15"
 tags = ["Agent", "LLM", "Python"]
 slug = "structured-llm-outputs-made-easy-building-a-slack-digest-agent-with-pydantic-ai"

@@ -1,6 +1,7 @@
 +++
 title = "Scaling the Summit: Challenges for Serving LLMs at Scale on GCP"
 description = "Navigate the challenges of scaling LLMs on GCP and get benchmark insights for cost-effective, reliable, and quick LLM serving."
+cover_alt = "Snow-covered mountain peak rising above a sea of clouds under a clear blue sky"
 date = "2025-07-17"
 tags = ["LLM", "Cloud"]
 slug = "scaling-the-summit-challenges-for-serving-llms-at-scale-on-gcp"

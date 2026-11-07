@@ -1,6 +1,7 @@
 +++
 title = "Agent Levers: A Plan-Do-Check-Act Loop That Makes Coding Agents Finish What They Start"
 description = "A coding agent is only as useful as the spec you give it. That sentence sounds like a truism until you watch it play out for an afternoon."
+cover_alt = "Cartoon developer with coffee pulls a lever that lifts code blocks beside a glowing purple robot"
 date = "2026-05-25"
 tags = ["Coding", "Guide"]
 slug = "agent-levers-a-plan-do-check-act-loop-that-makes-coding-agents-finish-what-they-start"

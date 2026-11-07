@@ -1,6 +1,7 @@
 +++
 title = "Agent Evolutions: Stop Guessing the Design — Evolve It"
 description = "Agent-evolutions is a set of Agent Skills that turns a coding agent into a budgeted genetic search over a design space, with verifiable scoring at every step."
+cover_alt = "Robots around a holographic fitness landscape in a lab, under the headline 'Agent Evolutions'"
 date = "2026-06-01"
 tags = ["Coding", "Project"]
 slug = "agent-evolutions-stop-guessing-the-design-evolve-it"
