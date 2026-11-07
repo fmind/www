@@ -1,5 +1,6 @@
 """Session fixtures shared by the application tests."""
 
+import os
 from collections.abc import Callable
 from functools import partial
 
@@ -8,6 +9,17 @@ from litestar import Litestar
 
 from www.assets import ApplicationAssets, load_application_assets
 from www.content import ArticleCollection, load_articles
+
+
+@pytest.fixture(autouse=True)
+def isolate_git(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Drop the GIT_* variables a Git hook exports, so tests never act on the repository running them.
+
+    A pre-push hook in a linked worktree exports an absolute GIT_DIR; without this, the news-script
+    fixtures committed to that worktree and pushed their commits to the real origin main (2026-11-07).
+    """
+    for name in [name for name in os.environ if name.startswith("GIT_")]:
+        monkeypatch.delenv(name)
 
 
 @pytest.fixture(scope="session")

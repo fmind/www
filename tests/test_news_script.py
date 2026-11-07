@@ -2,8 +2,10 @@
 
 import base64
 import json
+import os
 import re
 import subprocess
+import sys
 from collections.abc import Mapping
 from datetime import date
 from pathlib import Path
@@ -417,3 +419,38 @@ def test_agy_writer_denies_every_tool(monkeypatch: pytest.MonkeyPatch) -> None:
     assert command[-1] == "-p=prompt"
     with pytest.raises(news.NewsError, match="no structured output"):
         news.agy_writer("prompt")
+
+
+def test_publish_tests_never_touch_the_repository_running_them(tmp_path: Path) -> None:
+    """A hook exports GIT_DIR; the news fixtures must still commit and push only inside their own temp repos."""
+    outer = tmp_path / "outer"
+    run_git(tmp_path, "init", "--quiet", "--bare", "--initial-branch=main", "outer.git")
+    run_git(tmp_path, "clone", "--quiet", str(tmp_path / "outer.git"), "outer")
+    run_git(
+        outer, "-c", "user.name=T", "-c", "user.email=t@example.test", "commit", "--quiet", "--allow-empty", "-m", "x"
+    )
+    run_git(outer, "push", "--quiet", "origin", "HEAD:main")
+    before = run_git(tmp_path / "outer.git", "rev-parse", "main")
+    environment = {**os.environ, "GIT_DIR": str(outer / ".git"), "GIT_WORK_TREE": str(outer)}
+
+    subprocess.run(  # noqa: S603 - fixed interpreter and test selection
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "-q",
+            "-p",
+            "no:cacheprovider",
+            "--no-cov",
+            "-o",
+            "addopts=",
+            f"{Path(__file__)}::test_draft_and_publish_push_only_the_edition_on_top_of_origin",
+        ],
+        env=environment,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    assert run_git(tmp_path / "outer.git", "rev-parse", "main") == before
+    assert run_git(outer, "log", "--format=%s") == "x\n"
