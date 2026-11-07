@@ -1,7 +1,7 @@
 """News editions: parsing, validation, exports, and the /news routes."""
 
 from collections.abc import Callable, Iterator
-from datetime import date
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
 from xml.etree import ElementTree
@@ -130,6 +130,21 @@ def test_parse_edition_names_special_editions_by_topic() -> None:
         ("2026-11-03", '+++\nupdated = "2026-02-30"\n+++\n' + edition_text("a"), "not a calendar date"),
         ("2026-11-03", '+++\nupdated = "2026-11-02"\n+++\n' + edition_text("a"), "precedes the edition date"),
         ("2026-11-03", '+++\nupdated = "2026-11-04"\n+++\n## Highlights\nbad', "2026-11-03:5: expected"),
+        (
+            "2026-11-03",
+            "## Highlights\n" + LINE.format(title="A", path="a", description="Read [this](javascript:alert(1))."),
+            "2026-11-03:2: description must be plain text",
+        ),
+        (
+            "2026-11-03",
+            "## Highlights\n" + LINE.format(title="A", path="a", description="See <https://evil.example>."),
+            "description must be plain text",
+        ),
+        (
+            "2026-11-03",
+            "## Highlights\n" + LINE.format(title="A", path="a", description="Mirrors https://evil.example now."),
+            "description must be plain text",
+        ),
     ],
 )
 def test_parse_edition_rejects_invalid_files(slug: str, text: str, message: str) -> None:
@@ -147,6 +162,10 @@ def test_parse_edition_rejects_invalid_files(slug: str, text: str, message: str)
         ("https://m.youtube.com/watch?v=abc123&t=42", "https://www.youtube.com/watch?v=abc123"),
         ("https://www.youtube.com/@channel", "https://www.youtube.com/@channel"),
         ("https://arxiv.org/pdf/2601.00001v2.pdf", "https://arxiv.org/abs/2601.00001v2"),
+        # Only X share links carry s= and t= trackers; elsewhere they can name the page.
+        ("https://x.com/user/status/1?t=abc&s=20", "https://x.com/user/status/1"),
+        ("https://forum.example.com/viewtopic.php?t=123", "https://forum.example.com/viewtopic.php?t=123"),
+        ("https://example.com/p;v=2?flag&id=1", "https://example.com/p;v=2?flag=&id=1"),
     ],
 )
 def test_canonicalize_url_normalizes_hosts_and_strips_trackers(raw: str, canonical: str) -> None:
@@ -157,6 +176,11 @@ def test_canonicalize_url_normalizes_hosts_and_strips_trackers(raw: str, canonic
 def test_canonicalize_url_rejects_non_web_urls(raw: str) -> None:
     with pytest.raises(NewsError, match="unsupported or invalid URL"):
         canonicalize_url(raw)
+
+
+def test_canonicalize_url_rejects_credentials() -> None:
+    with pytest.raises(NewsError, match="carries credentials"):
+        canonicalize_url("https://user:secret@example.com/post")
 
 
 def test_load_news_sorts_newest_first_and_rejects_republished_links(tmp_path: Path) -> None:
@@ -242,7 +266,10 @@ def test_corrected_edition_moves_its_feed_and_export_update_time() -> None:
     corrected = parse_edition("2026-11-02", f'+++\nupdated = "2026-11-05"\n+++\n\n{body}')
     latest = parse_edition("2026-11-03", edition_text("b"))
 
-    assert (corrected.updated, latest.updated) == (date(2026, 11, 5), date(2026, 11, 3))
+    assert (corrected.updated, latest.updated) == (
+        datetime(2026, 11, 5, tzinfo=UTC),
+        datetime(2026, 11, 3, tzinfo=UTC),
+    )
     markdown = render_news_markdown(corrected)
     assert "- Published: 2026-11-02\n- Updated: 2026-11-05\n" in markdown
     assert markdown.endswith(body)
@@ -258,10 +285,26 @@ def test_corrected_edition_moves_its_feed_and_export_update_time() -> None:
     assert entries[1].findtext("a:published", namespaces=ATOM) == "2026-11-02T00:00:00Z"
 
 
+def test_links_added_later_the_same_day_move_the_feed_entry_by_timestamp() -> None:
+    extended = parse_edition("2026-11-03", f'+++\nupdated = "2026-11-03T15:04:05Z"\n+++\n\n{edition_text("a", "b")}')
+
+    assert extended.modified() == datetime(2026, 11, 3, 15, 4, 5, tzinfo=UTC)
+    assert "- Published: 2026-11-03\n- Updated: 2026-11-03T15:04:05Z\n" in render_news_markdown(extended)
+    entry = ElementTree.fromstring(render_news_feed((extended,))).find("a:entry", ATOM)  # noqa: S314 - trusted output
+    assert entry is not None
+    assert entry.findtext("a:updated", namespaces=ATOM) == "2026-11-03T15:04:05Z"
+
+
+@pytest.mark.parametrize(
+    "value", ["2026-11-03T15:04:05", "2026-11-03T15:04Z", "2026-11-03 15:04:05Z", "2026-11-03T25:00:00Z"]
+)
+def test_updated_timestamps_must_be_utc_seconds(value: str) -> None:
+    with pytest.raises(NewsError, match=r"holds only updated|not a calendar date"):
+        parse_edition("2026-11-03", f'+++\nupdated = "{value}"\n+++\n{edition_text("a")}')
+
+
 def test_feed_has_one_escaped_entry_per_recent_edition() -> None:
-    hostile = (
-        "## Highlights\n- [<script>alert(1)</script>](https://example.com/x?a=1&b=2): Uses <b>markup</b> & entities."
-    )
+    hostile = "## Highlights\n- [<script>alert(1)</script>](https://example.com/x?a=1&b=2): Ranks a > b & entities."
     editions = tuple(
         parse_edition(
             f"2026-{month:02d}-{day:02d}", hostile if (month, day) == (12, 31) else edition_text(f"{month}-{day}")
@@ -286,7 +329,7 @@ def test_feed_has_one_escaped_entry_per_recent_edition() -> None:
     assert content.startswith("<h2>Highlights</h2><ul><li>")
     assert "<h2>More</h2>" not in content
     assert '<a href="https://example.com/x?a=1&amp;b=2">&lt;script&gt;alert(1)&lt;/script&gt;</a>' in content
-    assert "Uses &lt;b&gt;markup&lt;/b&gt; &amp; entities." in content
+    assert "Ranks a &gt; b &amp; entities." in content
 
 
 def test_feed_without_editions_is_still_valid() -> None:
@@ -304,7 +347,7 @@ def news_client(make_app: Callable[..., Litestar], tmp_path_factory: pytest.Temp
             "2026-10-08-cloud-next": edition_text("special"),
             "2026-10-20": edition_text("older"),
             "2026-10-30": edition_text("old"),
-            "2026-11-02": "## Highlights\n- [<img src=x onerror=alert(1)>](https://example.com/evil): <b>Bold</b> claim.",
+            "2026-11-02": "## Highlights\n- [<img src=x onerror=alert(1)>](https://example.com/evil): Bold > claim & more.",
             "2026-11-03": edition_text("new-1", "new-2", "new-3", "new-4"),
         },
     )
@@ -383,7 +426,7 @@ def test_news_edition_page_links_neighbours_and_markdown(news_client: AppClient)
     # Titles and descriptions are text, never markup.
     assert "<img src=x" not in page
     assert "&lt;img src=x onerror=alert(1)&gt;" in page
-    assert "&lt;b&gt;Bold&lt;/b&gt; claim." in page
+    assert "Bold &gt; claim &amp; more." in page
 
 
 def test_news_edition_markdown_by_suffix_and_negotiation(news_client: AppClient) -> None:

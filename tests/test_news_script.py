@@ -339,8 +339,12 @@ def test_draft_keeps_published_lines_and_retries_a_rejected_answer(site: Path) -
     summary = news.publish(draft_id(preview), repo=site, drafts=site / "tmp" / "drafts")
 
     assert "(2 links)" in summary
-    subject = run_git(site.parent / "remote.git", "log", "-1", "--format=%s", "main")
+    remote = site.parent / "remote.git"
+    subject = run_git(remote, "log", "-1", "--format=%s", "main")
     assert subject == "feat(news): add links to the 2026-11-07 edition\n"
+    # Added links move the feed entry so readers fetch the edition again the same day.
+    edition = news.parse_edition("2026-11-07", run_git(remote, "show", "main:content/news/2026-11-07.md"))
+    assert edition.modified() > edition.published()
 
 
 def test_publish_refuses_an_edition_changed_on_main_since_the_draft(site: Path, tmp_path: Path) -> None:
@@ -364,6 +368,33 @@ def test_draft_refuses_links_with_nothing_new_and_bad_writer_answers(site: Path)
         news.ordered_items({"items": [line("https://example.com/other")]}, (), [NEW_URL])
     with pytest.raises(news.NewsError, match="not a draft ID"):
         news.publish("../../etc", repo=site)
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        # Each title closes the link early and re-opens it, so the line would re-parse to another URL.
+        "Real](https://evil.example/x): Releases a tool. [Real",
+        # A newline would add a second link line that nobody submitted.
+        "A](https://evil.example/): Releases X.\n- [B",
+    ],
+)
+def test_draft_rejects_titles_that_reparse_into_other_links(site: Path, title: str) -> None:
+    answer = [{**line(NEW_URL), "title": title}]
+
+    with pytest.raises(news.NewsError, match="failed validation twice"):
+        draft(site, FakeWriter(answer, answer), NEW_URL)
+
+    assert not (site / "tmp" / "drafts").exists()
+
+
+def test_publish_refuses_an_incomplete_draft_record(site: Path) -> None:
+    drafts = site / "tmp" / "drafts"
+    drafts.mkdir(parents=True)
+    (drafts / "0123456789ab.json").write_text('{"slug": "2026-11-07"}', encoding="utf-8")
+
+    with pytest.raises(news.NewsError, match="unreadable or incomplete"):
+        news.publish("0123456789ab", repo=site, drafts=drafts)
 
 
 def test_agy_writer_denies_every_tool(monkeypatch: pytest.MonkeyPatch) -> None:

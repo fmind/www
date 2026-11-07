@@ -32,14 +32,23 @@ import time
 import urllib.request
 from collections.abc import Callable, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
-from datetime import date, datetime
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote, urlparse
 from xml.etree import ElementTree
 from zoneinfo import ZoneInfo
 
-from www.news import HIGHLIGHT_LIMIT, NewsEdition, NewsError, NewsItem, canonicalize_url, load_news, parse_edition
+from www.news import (
+    HIGHLIGHT_LIMIT,
+    NewsEdition,
+    NewsError,
+    NewsItem,
+    canonicalize_url,
+    load_news,
+    parse_edition,
+    utc_stamp,
+)
 
 EXCERPT_LIMIT = 1500
 MAX_BYTES = 1_200_000
@@ -285,7 +294,7 @@ def git(repo: Path, *args: str, stdin: str | None = None, env: Mapping[str, str]
             cwd=repo,
             input=stdin,
             capture_output=True,
-            text=True,
+            encoding="utf-8",
             check=True,
             env={**os.environ, **env} if env else None,
         )
@@ -302,12 +311,16 @@ def fetch_main(repo: Path) -> str:
 
 def snapshot(repo: Path, commit: str, target: Path) -> Path:
     """Extract content/news of `commit` into `target` and return that news directory."""
-    archive = subprocess.run(  # noqa: S603 - fixed executable and arguments
-        ["git", "archive", "--format=tar", commit, "content/news"],  # noqa: S607
-        cwd=repo,
-        capture_output=True,
-        check=True,
-    ).stdout
+    try:
+        archive = subprocess.run(  # noqa: S603 - fixed executable and arguments
+            ["git", "archive", "--format=tar", commit, "content/news"],  # noqa: S607
+            cwd=repo,
+            capture_output=True,
+            check=True,
+        ).stdout
+    except subprocess.CalledProcessError as error:
+        message = error.stderr.decode("utf-8", "replace").strip() or error
+        raise NewsError(f"git archive failed: {message}") from error
     with tarfile.open(fileobj=io.BytesIO(archive)) as tar:
         tar.extractall(target, filter="data")
     return target / "content" / "news"
@@ -452,7 +465,12 @@ def draft(
         base = path.read_text(encoding="utf-8") if path.exists() else ""
         current = parse_edition(slug, base) if base else None
         existing = current.items if current else ()
-        front_matter = base[: len(base) - len(current.source)] if current else ""
+        front_matter = ""
+        if current:
+            # Links added to a published edition move its feed entry's `updated`, so readers fetch it
+            # again; strictly later than the previous value even when clocks or time zones disagree.
+            stamp = max(datetime.now(UTC).replace(microsecond=0), current.modified() + timedelta(seconds=1))
+            front_matter = f'+++\nupdated = "{utc_stamp(stamp)}"\n+++\n\n'
         results = prepare(urls, news_dir, fetch)
         skipped = [(result["url"], reason) for result in results if (reason := skip_reason(result))]
         facts = [result for result in results if not skip_reason(result)]
@@ -468,6 +486,9 @@ def draft(
                 markdown = render_edition(items, front_matter)
                 path.write_text(markdown, encoding="utf-8")
                 edition = next(edition for edition in load_news(news_dir) if edition.slug == slug)
+                # A title or description holding Markdown syntax could re-parse into other or extra links.
+                if edition.items != tuple(items):
+                    raise NewsError("the rendered edition does not parse back to the listed links; use plain text")
                 break
             except NewsError as error:
                 if attempt == WRITER_ATTEMPTS:
@@ -512,16 +533,18 @@ def publish(identifier: str, *, repo: Path = Path(), drafts: Path = DRAFTS) -> s
     record_path = drafts / f"{identifier}.json"
     try:
         record = json.loads(record_path.read_text(encoding="utf-8"))
+        slug, markdown, base = record["slug"], record["markdown"], record["base"]
     except FileNotFoundError as error:
         raise NewsError(f"draft {identifier} does not exist or was already published; draft again") from error
-    slug, markdown = record["slug"], record["markdown"]
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        raise NewsError(f"draft {identifier} is unreadable or incomplete; draft again") from error
     target = f"content/news/{slug}.md"
     commit = fetch_main(repo)
     with tempfile.TemporaryDirectory(prefix="news-publish-") as scratch:
         news_dir = snapshot(repo, commit, Path(scratch))
         path = news_dir / f"{slug}.md"
         current = path.read_text(encoding="utf-8") if path.exists() else ""
-        if (digest(current) if current else "") != record["base"]:
+        if (digest(current) if current else "") != base:
             raise NewsError(f"{target} changed on main since draft {identifier}; draft again")
         path.write_text(markdown, encoding="utf-8")
         edition = next(edition for edition in load_news(news_dir) if edition.slug == slug)

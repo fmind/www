@@ -20,16 +20,20 @@ NEWS_TOPICS = "AI agents, Python, security, Google Cloud, and engineering"
 
 # An edition is Markdown: "## Highlights" with 1 to 3 links, then "## More" with the rest when it has more than 3.
 # Each link is one list line: "- [Title](https://...): One-sentence description".
-# A corrected edition starts with the article front matter's correction date: +++, updated = "YYYY-MM-DD", +++.
+# A corrected or extended edition starts with front matter: +++, updated = "YYYY-MM-DD" or a UTC
+# "YYYY-MM-DDTHH:MM:SSZ" timestamp (scripts.news stamps links added later the same day), +++.
 _SECTIONS = ("## Highlights", "## More")
 HIGHLIGHT_LIMIT = 3
 DESCRIPTION_WORD_LIMIT = 30
 _LINE = re.compile(r"^- \[(?P<title>[^\[\]]+)\]\((?P<url>https://\S+?)\): (?P<description>\S.*)$")
+# Descriptions are plain prose: the .md export serves them raw, so no Markdown links, autolinks, or HTML.
+_DESCRIPTION_MARKUP = re.compile(r"[\[\]<]|://")
 # A daily edition is YYYY-MM-DD; a special edition appends a topic, such as 2026-04-23-google-next.
+_UPDATED = re.compile(r"\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}:\d{2}Z)?")
 _SLUG = re.compile(r"^(?P<date>\d{4}-\d{2}-\d{2})(?:-(?P<topic>[a-z0-9]+(?:-[a-z0-9]+)*))?$")
-_STRIP_PARAMS = frozenset(
-    {"si", "fbclid", "gclid", "feature", "s", "t", "igshid", "spm", "ref", "taid", "share_id", "is"}
-)
+_STRIP_PARAMS = frozenset({"si", "fbclid", "gclid", "feature", "igshid", "spm", "ref", "taid", "share_id", "is"})
+# X share links append s= and t= trackers; elsewhere t= or s= can name a topic or a timestamp, so keep them.
+_X_STRIP_PARAMS = frozenset({"s", "t"})
 _STRIP_PREFIXES = ("utm_", "ref_", "mc_")
 _YOUTUBE_HOSTS = frozenset({"youtu.be", "youtube.com", "www.youtube.com", "m.youtube.com"})
 
@@ -57,7 +61,7 @@ class NewsEdition:
     items: tuple[NewsItem, ...]
     highlight_count: int
     source: str
-    updated: date
+    updated: datetime
 
     @property
     def highlights(self) -> tuple[NewsItem, ...]:
@@ -95,7 +99,7 @@ class NewsEdition:
         return datetime(self.date.year, self.date.month, self.date.day, tzinfo=UTC)
 
     def modified(self) -> datetime:
-        return datetime(self.updated.year, self.updated.month, self.updated.day, tzinfo=UTC)
+        return self.updated
 
 
 def canonicalize_url(raw_url: str) -> str:
@@ -103,6 +107,8 @@ def canonicalize_url(raw_url: str) -> str:
     parsed = urlparse(raw_url.strip())
     if parsed.scheme not in ("http", "https") or not parsed.netloc:
         raise NewsError(f"unsupported or invalid URL {raw_url!r}")
+    if "@" in parsed.netloc:
+        raise NewsError(f"URL {raw_url!r} carries credentials; share the public link")
     host = parsed.netloc.lower().removeprefix("mobile.")
     if host in ("twitter.com", "www.twitter.com", "www.x.com"):
         host = "x.com"
@@ -121,37 +127,44 @@ def canonicalize_url(raw_url: str) -> str:
         host = "www.youtube.com"
     if host in ("arxiv.org", "www.arxiv.org", "export.arxiv.org") and path.startswith("/pdf/"):
         return f"https://arxiv.org/abs/{path.removeprefix('/pdf/').removesuffix('.pdf').strip('/')}"
+    strip = _STRIP_PARAMS | _X_STRIP_PARAMS if host == "x.com" else _STRIP_PARAMS
     query = [
         (key, value)
-        for key, value in parse_qsl(parsed.query)
-        if key.lower() not in _STRIP_PARAMS and not key.lower().startswith(_STRIP_PREFIXES)
+        for key, value in parse_qsl(parsed.query, keep_blank_values=True)
+        if key.lower() not in strip and not key.lower().startswith(_STRIP_PREFIXES)
     ]
     if len(path) > 1 and path.endswith("/"):
         path = path.rstrip("/")
-    return urlunparse(("https", host, path, "", urlencode(query), ""))
+    return urlunparse(("https", host, path, parsed.params, urlencode(query), ""))
 
 
-def _split_front_matter(slug: str, text: str, edition_date: date) -> tuple[date, str, int]:
-    """Return the correction date (the edition date when absent), the Markdown body, and the body's first line."""
+def utc_stamp(value: datetime) -> str:
+    """Format a UTC time as RFC 3339 with seconds and a Z suffix."""
+    return value.astimezone(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
+
+
+def _split_front_matter(slug: str, text: str, edition_date: date) -> tuple[datetime, str, int]:
+    """Return the update time (the edition date when absent), the Markdown body, and the body's first line."""
+    published = datetime(edition_date.year, edition_date.month, edition_date.day, tzinfo=UTC)
     if not text.startswith("+++\n"):
-        return edition_date, text, 1
+        return published, text, 1
     end = text.find("\n+++\n", 3)
     if end < 0:
         raise NewsError(f"{slug}: front matter opened on line 1 has no closing '+++' line")
     header = text[4:end]
-    usage = 'front matter holds only updated = "YYYY-MM-DD"'
+    usage = 'front matter holds only updated = "YYYY-MM-DD" or "YYYY-MM-DDTHH:MM:SSZ"'
     try:
         metadata = tomllib.loads(header)
     except tomllib.TOMLDecodeError as error:
         raise NewsError(f"{slug}: {usage}: {error}") from error
     value = metadata.get("updated")
-    if set(metadata) != {"updated"} or not isinstance(value, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
+    if set(metadata) != {"updated"} or not isinstance(value, str) or not _UPDATED.fullmatch(value):
         raise NewsError(f"{slug}: {usage}")
     try:
-        updated = date.fromisoformat(value)
+        updated = datetime.fromisoformat(value if "T" in value else f"{value}T00:00:00Z")
     except ValueError as error:
         raise NewsError(f"{slug}: updated {value!r} is not a calendar date") from error
-    if updated < edition_date:
+    if updated < published:
         raise NewsError(f"{slug}: updated {value} precedes the edition date")
     return updated, text[end + 5 :], header.count("\n") + 4
 
@@ -184,6 +197,8 @@ def parse_edition(slug: str, text: str) -> NewsEdition:
         if entry is None:
             raise NewsError(f"{slug}:{number}: expected '- [Title](https://...): Description'")
         description = entry["description"].strip()
+        if _DESCRIPTION_MARKUP.search(description):
+            raise NewsError(f"{slug}:{number}: description must be plain text, without links, brackets, or HTML")
         if (words := len(description.split())) > DESCRIPTION_WORD_LIMIT:
             raise NewsError(f"{slug}:{number}: description has {words} words; keep it to {DESCRIPTION_WORD_LIMIT}")
         items.append(NewsItem(entry["title"].strip(), entry["url"], description))
@@ -259,6 +274,11 @@ def split_news_index(editions: Sequence[NewsEdition]) -> NewsIndex:
     return NewsIndex(latest, recent, tuple((month, tuple(group)) for month, group in months.items()))
 
 
+def _updated_label(value: datetime) -> str:
+    """A date for a day-level correction, or the full UTC time for links added later that day."""
+    return value.date().isoformat() if value.time() == datetime.min.time() else utc_stamp(value)
+
+
 def render_news_markdown(edition: NewsEdition) -> str:
     lines = [
         f"# News: {edition.title}",
@@ -267,7 +287,7 @@ def render_news_markdown(edition: NewsEdition) -> str:
         "",
         f"- Author: [{METADATA.name} ({METADATA.alternate_name})]({METADATA.site_url}/)",
         f"- Published: {edition.date.isoformat()}",
-        *([f"- Updated: {edition.updated.isoformat()}"] if edition.updated != edition.date else []),
+        *([f"- Updated: {_updated_label(edition.updated)}"] if edition.updated != edition.published() else []),
         f"- URL: {edition.url}",
         "",
     ]
@@ -296,16 +316,13 @@ def render_news_feed(editions: Sequence[NewsEdition]) -> str:
         child.text = text
         return child
 
-    def stamp(value: datetime) -> str:
-        return value.isoformat(timespec="seconds").replace("+00:00", "Z")
-
     sub(feed, "title", "Fmind news")
     sub(feed, "subtitle", f"Daily curated links on {NEWS_TOPICS}.")
     sub(feed, "id", f"{METADATA.site_url}/news/")
     entries = editions[:FEED_EDITION_LIMIT]
     # A correction moves an entry's `updated`, so feed readers fetch it again.
     latest = max((edition.modified() for edition in entries), default=datetime(1970, 1, 1, tzinfo=UTC))
-    sub(feed, "updated", stamp(latest))
+    sub(feed, "updated", utc_stamp(latest))
     sub(feed, "link", href=f"{METADATA.site_url}{NEWS_FEED_PATH}", rel="self", type="application/atom+xml")
     sub(feed, "link", href=f"{METADATA.site_url}/news/", rel="alternate", type="text/html")
     # Atom `icon` is the square branding image feed readers show next to the feed name.
@@ -317,8 +334,8 @@ def render_news_feed(editions: Sequence[NewsEdition]) -> str:
         entry = sub(feed, "entry")
         sub(entry, "title", f"News: {edition.title}")
         sub(entry, "id", edition.url)
-        sub(entry, "published", stamp(edition.published()))
-        sub(entry, "updated", stamp(edition.modified()))
+        sub(entry, "published", utc_stamp(edition.published()))
+        sub(entry, "updated", utc_stamp(edition.modified()))
         sub(entry, "link", href=edition.url, rel="alternate", type="text/html")
         sub(entry, "content", _edition_html(edition), type="html")
         sub(entry, "summary", edition.description, type="text")
