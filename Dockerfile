@@ -1,15 +1,15 @@
 # Docs: https://docs.docker.com/reference/dockerfile/
-FROM python:3.14.10-slim@sha256:930e1abba7c4e8f96ed93e8012c35d174d7732752731bbd5e8e757d7ec6f3966 AS build
+FROM python:3.14.10-slim@sha256:af8a5aa14780025dbfbcfbc81bd8a91ebd87711dd5b0f48ed71090949dd7cb1d AS build
 ARG TARGETARCH
 ENV UV_COMPILE_BYTECODE=1
 ENV UV_LINK_MODE=copy
 WORKDIR /app
-COPY --from=ghcr.io/astral-sh/uv:0.13.6@sha256:af22a52f5eafef3d78e551599d405c02df61919d18028f0cea8eda93bc9986d0 /uv /uvx /bin/
-ADD --chmod=0755 --checksum=sha256:eca9e42452e39d19c68b74dc527c67fd7a890197d7cce329722e9a54e9fd339c \
-  https://github.com/dobicinaitis/tailwind-cli-extra/releases/download/v2.10.34/tailwindcss-extra-linux-x64 \
+COPY --from=ghcr.io/astral-sh/uv:0.13.7@sha256:96f40d3904aad8d0bd010539001d36c8e2188b981e1334471a90c4a1d93bb490 /uv /uvx /bin/
+ADD --chmod=0755 --checksum=sha256:d934e20381ef90291436f6026f7345db1ecaa3f431785a3f0f941f72c0786373 \
+  https://github.com/dobicinaitis/tailwind-cli-extra/releases/download/v2.10.35/tailwindcss-extra-linux-x64 \
   /usr/local/lib/tailwindcss-extra-amd64
-ADD --chmod=0755 --checksum=sha256:5798c5c79a734e4600de4491184fb8d55386c86790ef2fe91d59d58514b9657e \
-  https://github.com/dobicinaitis/tailwind-cli-extra/releases/download/v2.10.34/tailwindcss-extra-linux-arm64 \
+ADD --chmod=0755 --checksum=sha256:a7e0f2ea7e639ebef82d16c40819764d42bdb2d79c30ea3df1a2c783b4d6004a \
+  https://github.com/dobicinaitis/tailwind-cli-extra/releases/download/v2.10.35/tailwindcss-extra-linux-arm64 \
   /usr/local/lib/tailwindcss-extra-arm64
 RUN --mount=type=cache,target=/root/.cache/uv \
   --mount=type=bind,source=uv.lock,target=uv.lock \
@@ -24,7 +24,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     -i assets/css/input.css -o static/dist/styles.css --minify \
   && chmod -R u=rwX,go=rX /app/.venv /app/content /app/static
 
-FROM python:3.14.10-slim@sha256:930e1abba7c4e8f96ed93e8012c35d174d7732752731bbd5e8e757d7ec6f3966 AS runner
+FROM python:3.14.10-slim@sha256:af8a5aa14780025dbfbcfbc81bd8a91ebd87711dd5b0f48ed71090949dd7cb1d AS runner
 ENV ENVIRONMENT=production
 ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONDONTWRITEBYTECODE=1
