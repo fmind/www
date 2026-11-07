@@ -25,6 +25,9 @@ jobs:
     name: Detect changed paths
     runs-on: ubuntu-24.04
     timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read # find the last successful main deployment
     outputs:
       code: ${{ steps.detect.outputs.code }}
     steps:
@@ -38,8 +41,9 @@ jobs:
         env:
           EVENT_NAME: ${{ github.event_name }}
           BASE_REF: ${{ github.base_ref }}
-          EVENT_BEFORE: ${{ github.event.before }}
           CURRENT_SHA: ${{ github.sha }}
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
         run: |
           set -euo pipefail
           code="true"
@@ -56,8 +60,12 @@ jobs:
               fi
             fi
           elif [ "$EVENT_NAME" = "push" ]; then
-            if [ -n "$EVENT_BEFORE" ] && [ "$EVENT_BEFORE" != "0000000000000000000000000000000000000000" ] && git rev-parse --verify "$EVENT_BEFORE" >/dev/null 2>&1; then
-              files="$(git diff --name-only "$EVENT_BEFORE" "$CURRENT_SHA" || true)"
+            # Diff from the last fully verified deployment, not the previous push: a cancelled
+            # or failed code push followed by a content-only push must still run every job.
+            # Any lookup failure, or a base outside the fetched history, keeps the full suite.
+            verified="$(gh api "repos/$REPOSITORY/actions/workflows/deploy.yml/runs?branch=main&event=push&status=success&per_page=1" --jq '.workflow_runs[0].head_sha // empty' || true)"
+            if [ -n "$verified" ] && git merge-base --is-ancestor "$verified" "$CURRENT_SHA" 2>/dev/null; then
+              files="$(git diff --name-only "$verified" "$CURRENT_SHA" || true)"
               if [ -n "$files" ] && ! echo "$files" | grep -v '^content/' >/dev/null; then
                 echo "Only content/** changed in push"
                 code="false"

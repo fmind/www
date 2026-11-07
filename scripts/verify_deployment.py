@@ -206,7 +206,8 @@ def main(arguments: Sequence[str] = ()) -> int:
             sys.stdout.write(f"Verified candidate {revision}: {commit}, {image}, tagged health/discovery\n")
         else:
             revision = verify_service(describe_service(target), image, commit)
-            probe(PUBLIC_ORIGIN, timeout=15)
+            # Promotion can route the first public request to a cold instance; allow the 60s startup budget.
+            probe(PUBLIC_ORIGIN, timeout=65)
             probe_mcp(PUBLIC_ORIGIN, timeout=15)
             sys.stdout.write(
                 f"Verified {revision}: {commit}, {image}, 100% traffic, scale-to-zero, public health/discovery/MCP\n"

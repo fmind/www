@@ -142,11 +142,17 @@ def test_release_command_checks_public_health(
 
     # Each probe opens and closes its own client; keep the real class before patching it.
     client_class = httpx2.Client
-    monkeypatch.setattr(
-        verify_deployment.httpx2, "Client", lambda **_kwargs: client_class(transport=httpx2.MockTransport(respond))
-    )
+    timeouts: list[object] = []
+
+    def client(**kwargs: object) -> httpx2.Client:
+        timeouts.append(kwargs["timeout"])
+        return client_class(transport=httpx2.MockTransport(respond))
+
+    monkeypatch.setattr(verify_deployment.httpx2, "Client", client)
     healthy = http_status == 200 and health == "ok"
     assert verify_deployment.main() == (0 if healthy else 1)
+    # The first public request after promotion may cold start; it gets the startup-probe budget.
+    assert timeouts[0] == 65
     assert len(commands) == 1
     assert commands[0][1:4] == ("run", "services", "describe")
     output = capsys.readouterr()
