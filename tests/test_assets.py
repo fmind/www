@@ -13,6 +13,9 @@ FONT_FILES = (
 )
 
 
+FONT_FACES = "".join(f"@font-face{{src:url(/static/{relative})}}" for relative in FONT_FILES)
+
+
 def minimal_woff2() -> bytes:
     """Build the smallest header needed by the startup format check."""
     header = bytearray(48)
@@ -29,7 +32,7 @@ def static_tree(root: Path) -> Path:
     static = root / "static"
     (static / "dist").mkdir(parents=True)
     (static / "fonts").mkdir()
-    (static / "dist" / "styles.css").write_text("body{color:red}", encoding="utf-8")
+    (static / "dist" / "styles.css").write_text("body{color:red}" + FONT_FACES, encoding="utf-8")
     for relative in FONT_FILES:
         (static / relative).write_bytes(minimal_woff2())
     for relative, _ in ROOT_FILE_SOURCES.values():
@@ -41,10 +44,10 @@ def test_load_assets_returns_an_isolated_immutable_snapshot(tmp_path: Path) -> N
     static = static_tree(tmp_path)
 
     first = load_application_assets(static)
-    (static / "dist" / "styles.css").write_text("body{color:blue}", encoding="utf-8")
+    (static / "dist" / "styles.css").write_text("body{color:blue}" + FONT_FACES, encoding="utf-8")
     second = load_application_assets(static)
 
-    assert first.hashes["/static/dist/styles.css"] == "15c42ab7"
+    assert len(first.hashes["/static/dist/styles.css"]) == 8
     assert first.stylesheet.startswith("body{color:red}")
     assert second.hashes["/static/dist/styles.css"] != first.hashes["/static/dist/styles.css"]
     assert second.stylesheet.startswith("body{color:blue}")
@@ -103,4 +106,21 @@ def test_load_assets_rejects_corrupt_required_font(tmp_path: Path, relative: str
     (static / relative).write_bytes(payload)
 
     with pytest.raises(RuntimeError, match=f"invalid WOFF2 font.*{Path(relative).name}"):
+        load_application_assets(static)
+
+
+def test_load_assets_versions_font_urls_with_their_content_hash(tmp_path: Path) -> None:
+    assets = load_application_assets(static_tree(tmp_path))
+
+    for relative in FONT_FILES:
+        path = f"/static/{relative}"
+        assert f'url("{path}?v={assets.hashes[path]}")' in assets.stylesheet
+        assert f"url({path})" not in assets.stylesheet
+
+
+def test_load_assets_fails_when_the_stylesheet_drops_a_font_face(tmp_path: Path) -> None:
+    static = static_tree(tmp_path)
+    (static / "dist" / "styles.css").write_text("body{color:red}", encoding="utf-8")
+
+    with pytest.raises(RuntimeError, match=r"no @font-face for /static/fonts/GoogleSans-Variable\.woff2"):
         load_application_assets(static)

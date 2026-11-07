@@ -48,6 +48,9 @@
   --font-heading: 'Google Sans Subset', sans-serif;
   --font-body: 'Google Sans Subset', sans-serif;
   --font-mono: 'Google Sans Code Subset', ui-monospace, monospace;
+  /* Bounce two and a half times, then rest at the midpoint (no offset) instead of
+     moving forever (WCAG 2.2.2). */
+  --animate-bounce: bounce 1s 2.5;
 }
 
 /* Essential form boundaries use the theme control gray, not decorative gray. */
@@ -147,6 +150,17 @@
   transition:
     background-color 150ms ease,
     border-color 150ms ease;
+}
+
+/* Linked pills keep their look but get a touch area of at least 24px (WCAG 2.5.8). */
+a.tag {
+  position: relative;
+}
+
+a.tag::after {
+  position: absolute;
+  inset: -0.25rem -0.125rem;
+  content: "";
 }
 
 .tag::before {

@@ -634,7 +634,7 @@ test("late font downloads keep the article layout stable", async ({ page }) => {
       }
     }).observe({ type: "layout-shift", buffered: true });
   });
-  await page.route("**/static/fonts/*.woff2", async (route) => {
+  await page.route("**/static/fonts/*.woff2?v=*", async (route) => {
     // A cold connection delivers fonts after the initial font-display window.
     await delay(600);
     await route.continue();

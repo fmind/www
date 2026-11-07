@@ -50,9 +50,9 @@
     <meta name="twitter:description" content="{{ page.description }}"/>
     <meta name="twitter:image" content="{{ page.image_url }}"/>
     <meta name="twitter:image:alt" content="{{ page.image_alt }}"/>
-    <link rel="preload" href="/static/fonts/GoogleSans-Variable.woff2" crossorigin="anonymous" as="font" type="font/woff2"/>
+    <link rel="preload" href="{{ static_url('/static/fonts/GoogleSans-Variable.woff2') }}" crossorigin="anonymous" as="font" type="font/woff2"/>
     {% if page.preload_code_font %}
-      <link rel="preload" href="/static/fonts/GoogleSansCode-Variable.woff2" crossorigin="anonymous" as="font" type="font/woff2"/>
+      <link rel="preload" href="{{ static_url('/static/fonts/GoogleSansCode-Variable.woff2') }}" crossorigin="anonymous" as="font" type="font/woff2"/>
     {% endif %}
     {% if page.preload_image %}
       <link rel="preload" href="{{ page.preload_image }}" fetchpriority="high" as="image"/>
@@ -77,7 +77,7 @@
       {% include "partials/navigation.html" %}
     </header>{% endblock %}
     {% if page.is_home %}{% include "partials/section-menu.html" %}{% endif %}
-    <main class="{% block main_class %}min-h-screen{% endblock %}" id="main-content" tabindex="-1">
+    <main class="scroll-mt-24 {% block main_class %}min-h-screen{% endblock %}" id="main-content" tabindex="-1">
       {% block content %}{% endblock %}
     </main>
     {% block footer %}{% include "partials/footer.html" %}{% endblock %}

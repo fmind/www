@@ -118,5 +118,19 @@ def load_application_assets(static_dir: Path = Path("static")) -> ApplicationAss
     return ApplicationAssets(
         root_files=root_files,
         hashes=hashes,
-        stylesheet=stylesheet + highlight_css(),
+        stylesheet=_version_font_urls(stylesheet, hashes) + highlight_css(),
     )
+
+
+def _version_font_urls(stylesheet: str, hashes: Mapping[str, str]) -> str:
+    """Point each @font-face at its content-addressed URL, the one templates preload, so fonts cache immutably."""
+    for relative in _REQUIRED_WOFF2_FILES:
+        path = f"/static/{relative}"
+        # Tailwind keeps the authored quotes; accept either style so a minifier change cannot skip the rewrite.
+        sources = [f"url({quote}{path}{quote})" for quote in ("'", '"', "")]
+        if not any(source in stylesheet for source in sources):
+            msg = f"generated stylesheet has no @font-face for {path}; keep assets/css/input.css and fonts in sync"
+            raise RuntimeError(msg)
+        for source in sources:
+            stylesheet = stylesheet.replace(source, f'url("{path}?v={hashes[path]}")')
+    return stylesheet

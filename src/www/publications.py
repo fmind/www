@@ -107,21 +107,25 @@ def render_atom_feed(articles: Sequence[Article]) -> str:
     return _xml(feed)
 
 
-def render_sitemap(articles: Sequence[Article]) -> str:
+def render_sitemap(articles: Sequence[Article], news_modified: datetime | None = None) -> str:
     root = ElementTree.Element("urlset", xmlns=_SITEMAP)
-    locations = (
-        f"{METADATA.site_url}/",
-        f"{METADATA.site_url}/articles/",
-        f"{METADATA.site_url}/news/",
-        f"{METADATA.site_url}/connect",
-        f"{METADATA.site_url}/privacy",
-        f"{METADATA.site_url}/agents",
-        f"{METADATA.site_url}/sites/",
-        *(page.url for page in SITE_PAGES),
+    articles_modified = max((article.modified_date() for article in articles), default=None)
+    # Only the two archive indexes have a trustworthy change date: their newest article or edition.
+    locations: tuple[tuple[str, datetime | None], ...] = (
+        (f"{METADATA.site_url}/", None),
+        (f"{METADATA.site_url}/articles/", articles_modified),
+        (f"{METADATA.site_url}/news/", news_modified),
+        (f"{METADATA.site_url}/connect", None),
+        (f"{METADATA.site_url}/privacy", None),
+        (f"{METADATA.site_url}/agents", None),
+        (f"{METADATA.site_url}/sites/", None),
+        *((page.url, None) for page in SITE_PAGES),
     )
-    for location in locations:
+    for location, modified in locations:
         url = _sub(root, "url")
         _sub(url, "loc", location)
+        if modified is not None:
+            _sub(url, "lastmod", modified.date().isoformat())
     for article in articles:
         url = _sub(root, "url")
         _sub(url, "loc", article.url)
@@ -160,7 +164,7 @@ def render_llms_txt(articles: Sequence[Article]) -> str:
         f"- [Agent guide]({METADATA.site_url}/agents): Connection instructions, tool examples, and data boundaries.",
         f"- [API catalog]({METADATA.site_url}/.well-known/api-catalog): Public API discovery.",
         f"- [Agent skill]({METADATA.site_url}/.well-known/agent-skills/index.json): Research articles and compare hosting or MCP context-cost scenarios.",
-        f"- [MCP server]({METADATA.site_url}/mcp): Read-only portfolio tools, resources, and prompts.",
+        f"- [MCP server]({METADATA.site_url}/agents#mcp): Read-only portfolio tools, resources, and prompts at `{METADATA.site_url}/mcp` (Streamable HTTP, POST only).",
         f"- [JSON profile]({METADATA.site_url}/api/profile): Canonical portfolio and article index.",
         f"- [Profile schema]({METADATA.site_url}/api/profile/schema.json): JSON Schema for validating the profile response.",
         f"- [MCP discovery]({METADATA.site_url}/mcp/server-card): Available tools, prompts, and portfolio resource URI.",
@@ -177,14 +181,14 @@ def render_llms_txt(articles: Sequence[Article]) -> str:
     ]
     lines.extend(f"- **{card.title}**: {card.description}" for card in EXPERTISE)
     lines.extend(("", "## Sites", ""))
-    lines.extend(f"- [{page.title}]({page.url}) — {page.description}" for page in SITE_PAGES)
+    lines.extend(f"- [{page.title}]({page.url}): {page.description}" for page in SITE_PAGES)
     lines.extend(("", "## Articles", ""))
     lines.extend(
-        f"- [{article.title}]({article.url}) — {article.description} ([Markdown]({article.markdown_url()}))"
+        f"- [{article.title}]({article.url}): {article.description} ([Markdown]({article.markdown_url()}))"
         for article in articles
     )
     lines.extend(("", "## Optional", "", f"- [PhD thesis]({THESIS.url}): {THESIS.title}"))
-    lines.extend(f"- [{paper.title}]({paper.url}) — {paper.venue}" for paper in PAPERS)
+    lines.extend(f"- [{paper.title}]({paper.url}): {paper.venue}" for paper in PAPERS)
     return "\n".join(lines) + "\n"
 
 

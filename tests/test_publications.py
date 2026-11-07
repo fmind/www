@@ -41,15 +41,25 @@ def article(
     )
 
 
+SITEMAP = {"s": "http://www.sitemaps.org/schemas/sitemap/0.9"}
+
+
 def test_sitemap_lists_every_article_with_its_updated_date() -> None:
     native = article("native", 2, updated=datetime(2026, 2, 3, tzinfo=UTC))
     other = article("other", 1)
-    body = render_sitemap((native, other))
+    body = render_sitemap((native, other), datetime(2026, 3, 4, tzinfo=UTC))
+    urls = {
+        element.findtext("s:loc", namespaces=SITEMAP): element.findtext("s:lastmod", namespaces=SITEMAP)
+        for element in ElementTree.fromstring(body).iterfind("s:url", SITEMAP)  # noqa: S314 - trusted serializer output
+    }
 
-    assert native.url in body
-    assert other.url in body
-    assert "<lastmod>2026-02-03</lastmod>" in body
-    ElementTree.fromstring(body)  # noqa: S314 - parses trusted local serializer output
+    assert urls[native.url] == "2026-02-03"
+    assert urls[other.url] == "2026-01-01"
+    # Archive indexes change with their newest entry; other pages carry no guessed date.
+    assert urls[f"{METADATA.site_url}/articles/"] == "2026-02-03"
+    assert urls[f"{METADATA.site_url}/news/"] == "2026-03-04"
+    assert urls[f"{METADATA.site_url}/"] is None
+    assert render_sitemap((native, other)).count("<lastmod>") == 3
 
 
 def test_atom_feed_limits_full_content_and_absolutizes_assets() -> None:
@@ -96,6 +106,9 @@ def test_llms_and_article_markdown_surfaces_preserve_citation_metadata() -> None
     for playlist in YOUTUBE_SERIES:
         assert f"- [{playlist.title}]({playlist.url}): {playlist.description}" in channels
     assert f"[Markdown]({item.markdown_url()})" in index
+    # llmstxt.org list items are "[name](url): notes" so parsers keep each note.
+    assert f"- [{item.title}]({item.url}): {item.description} (" in index
+    assert " — " not in index.split("## Sites\n", 1)[1]
     assert "## Full articles" in full
     assert markdown in full
     assert "- Author: [Médéric Hurier (Fmind)](https://www.fmind.dev/)" in markdown

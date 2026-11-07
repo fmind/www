@@ -701,14 +701,6 @@ def test_static_unknown_and_noncanonical_paths_are_not_found(client: AppClient, 
     assert head.headers["content-length"] == response.headers["content-length"] == str(len(response.content))
 
 
-def test_font_preloads_share_the_unversioned_font_face_cache_keys(client: AppClient) -> None:
-    response = client.get("/articles/ackgent-rapid-agent-development-on-gcp-with-adk-and-agent-config/")
-
-    for path in FONT_PATHS:
-        assert f'<link rel="preload" href="{path}"' in response.text
-        assert f'href="{path}?v=' not in response.text
-
-
 def test_article_figures_do_not_compete_with_critical_font_and_stylesheet_loads(client: AppClient) -> None:
     response = client.get("/articles/ackgent-rapid-agent-development-on-gcp-with-adk-and-agent-config/")
 
@@ -733,8 +725,25 @@ def test_article_figures_do_not_compete_with_critical_font_and_stylesheet_loads(
 )
 def test_only_pages_with_monospace_text_preload_the_code_font(client: AppClient, path: str, code_font: bool) -> None:
     response = client.get(path)
-    assert '<link rel="preload" href="/static/fonts/GoogleSans-Variable.woff2"' in response.text
-    assert ('<link rel="preload" href="/static/fonts/GoogleSansCode-Variable.woff2"' in response.text) is code_font
+    assert re.search(
+        r'<link rel="preload" href="/static/fonts/GoogleSans-Variable\.woff2\?v=[0-9a-f]{8}"', response.text
+    )
+    code_preload = r'<link rel="preload" href="/static/fonts/GoogleSansCode-Variable\.woff2\?v=[0-9a-f]{8}"'
+    assert bool(re.search(code_preload, response.text)) is code_font
+
+
+def test_fonts_are_preloaded_and_styled_from_the_same_immutable_url(client: AppClient) -> None:
+    page = client.get("/agents").text
+    stylesheet_link = re.search(r'href="(/styles\.css\?v=[0-9a-f]{8})"', page)
+    assert stylesheet_link
+    stylesheet = client.get(stylesheet_link[1]).text
+
+    for path in FONT_PATHS:
+        preload = re.search(rf'<link rel="preload" href="({re.escape(path)}\?v=[0-9a-f]{{8}})"', page)
+        assert preload, path
+        # A preload only helps when the stylesheet requests the identical URL.
+        assert f'url("{preload[1]}")' in stylesheet
+        assert client.get(preload[1]).headers["cache-control"] == "public, max-age=31536000, immutable"
 
 
 @pytest.mark.parametrize("path", FONT_PATHS)
@@ -1239,7 +1248,7 @@ def test_google_analytics_waits_for_consent_on_the_production_host(client: AppCl
     page = client.get("/").text
     # The banner and its footer control start hidden; the script reveals them on www.fmind.dev only.
     assert (
-        '<div id="consent" class="fixed inset-x-0 bottom-0 z-50 p-4" role="region" aria-label="Cookie consent" hidden>'
+        '<div id="consent" class="fixed inset-x-0 bottom-0 z-50 p-4 print:hidden" role="region" aria-label="Cookie consent" hidden>'
         in page
     )
     assert "data-consent-open hidden>Cookie settings</button>" in page
@@ -1340,3 +1349,35 @@ def test_warm_pages_reuse_startup_validated_json_ld(client: AppClient, monkeypat
         assert client.get(path).status_code == 200, path
 
     assert not [value for value in decoded if '"@context"' in value]
+
+
+def test_revised_articles_show_the_updated_date_their_metadata_declares(client: AppClient) -> None:
+    revised = client.get("/articles/fixing-the-mlops-survey-on-llms-with-chatgpt-api-lessons-learned/").text
+    original = client.get("/articles/the-affordable-ai-agents/").text
+
+    # Google asks for a visible, labeled date that matches dateModified.
+    assert 'Updated <time datetime="2026-10-31">October 31, 2026</time>' in revised
+    assert '"dateModified":"2026-10-31"' in revised
+    assert "Updated <time" not in original
+
+
+def test_article_cards_expose_one_link_and_skip_target_clears_the_header(client: AppClient) -> None:
+    archive = client.get("/articles/").text
+    article = client.get("/articles/the-affordable-ai-agents/").text
+
+    # Each card's cover repeats its title link, so only the title is announced and focusable.
+    covers = re.findall(r'<a href="/articles/[^"]+/" class="block"[^>]*>', archive)
+    assert covers
+    assert all('tabindex="-1" aria-hidden="true"' in cover for cover in covers)
+    assert '<main class="scroll-mt-24 ' in archive
+    # The copy status stays in the accessibility tree while empty, so its first message is announced.
+    assert re.search(r'id="copy-link-status"[^>]*empty:sr-only', article)
+
+
+def test_decorative_bounce_stops_on_its_own(client: AppClient) -> None:
+    page = client.get("/").text
+    stylesheet_link = re.search(r'href="(/styles\.css\?v=[0-9a-f]{8})"', page)
+    assert stylesheet_link
+
+    # WCAG 2.2.2: motion must not repeat forever; 2.5 cycles end at the keyframes' resting midpoint.
+    assert "--animate-bounce:bounce 1s 2.5" in client.get(stylesheet_link[1]).text

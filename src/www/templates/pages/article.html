@@ -23,6 +23,10 @@
         <a href="/" rel="author" class="link link-primary">{{ metadata.name }} ({{ metadata.alternate_name }})</a>
         <span aria-hidden="true">·</span>
         <time datetime="{{ article.date.strftime('%Y-%m-%d') }}">{{ article.date.strftime('%B %-d, %Y') }}</time>
+        {% if article.modified_date().date() > article.date.date() %}
+          <span aria-hidden="true">·</span>
+          <span>Updated <time datetime="{{ article.modified_date().strftime('%Y-%m-%d') }}">{{ article.modified_date().strftime('%B %-d, %Y') }}</time></span>
+        {% endif %}
         <span aria-hidden="true">·</span>
         <span>{{ article.reading_minutes }} min read</span>
       </div>
@@ -42,7 +46,7 @@
         <p class="text-base-content/75 mt-3">{{ site_page.description }}</p>
       </aside>
     {% endfor %}
-    <p id="copy-link-status" role="status" aria-live="polite" aria-atomic="true" class="fixed bottom-4 left-4 right-4 z-50 mx-auto w-fit max-w-[calc(100%-2rem)] rounded-lg bg-base-100 px-4 py-3 text-sm shadow-lg border border-base-300 empty:hidden pointer-events-none"></p>
+    <p id="copy-link-status" role="status" aria-live="polite" aria-atomic="true" class="fixed bottom-4 left-4 right-4 z-50 mx-auto w-fit max-w-[calc(100%-2rem)] rounded-lg bg-base-100 px-4 py-3 text-sm shadow-lg border border-base-300 empty:sr-only pointer-events-none print:hidden"></p>
     {{ article_footer(related_articles, metadata, static_url) }}
   </article>
 {% endblock %}
