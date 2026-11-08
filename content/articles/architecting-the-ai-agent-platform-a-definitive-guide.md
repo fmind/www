@@ -1,6 +1,6 @@
 +++
 title = "Architecting the AI Agent Platform: A Definitive Guide"
-description = "Build a production-grade AI Agent Platform. A guide to the 7-layer architecture for scaling secure, autonomous enterprise agents."
+description = "AI agent platform architecture in 7 layers, from interaction and development to observability and trust: how to serve, secure, and monitor enterprise agents."
 date = "2025-12-10"
 tags = ["Agent", "Cloud", "Guide"]
 slug = "architecting-the-ai-agent-platform-a-definitive-guide"
