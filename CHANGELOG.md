@@ -2,6 +2,25 @@
 
 All notable changes to this project are documented in this file.
 
+## [2.9.0] - 2026-11-08
+
+### 🚀 Features
+
+- _(news)_ Add news API, MCP tools, and single-list edition format
+
+### 🐛 Bug Fixes
+
+- _(server)_ Bind loopback by default and let the image set HOST=0.0.0.0
+- _(branding)_ Use the theme master logo unchanged
+
+### ⚡ Performance
+
+- Speed up image checks, container build, and test suite
+
+### ⚙️ Build & CI
+
+- Unify deploy rollout, fold infra checks, and trim docs
+
 ## [2.8.1] - 2026-11-08
 
 ### ⚡ Performance
