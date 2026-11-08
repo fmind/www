@@ -2,6 +2,7 @@
 
 import os
 import re
+import shutil
 import subprocess
 import sys
 from collections.abc import Sequence
@@ -345,3 +346,48 @@ def test_module_invocation_rejects_missing_digest_without_gcloud() -> None:
     assert result.returncode == 2
     assert result.stdout == ""
     assert result.stderr.startswith("usage: mise run deploy <digest-ref> <commit-sha>\n")
+
+
+def _head_guard_script() -> str:
+    workflow = (Path(__file__).resolve().parents[1] / ".github" / "workflows" / "deploy.yml").read_text()
+    step = workflow.split("- name: Compare the run commit with the head of main", 1)[1].split("\n  deploy:", 1)[0]
+    block = step.split("run: |\n", 1)[1]
+    return "\n".join(line.removeprefix(" " * 10) for line in block.splitlines())
+
+
+@pytest.mark.parametrize(
+    ("head", "fails", "expected"),
+    [
+        (VALID_COMMIT, False, "head=true\n"),
+        ("f" * 40, False, "head=false\n"),
+        (VALID_COMMIT, True, ""),
+    ],
+    ids=["head-of-main", "superseded", "api-failure"],
+)
+def test_ci_deploys_only_the_current_head_of_main(tmp_path: Path, head: str, fails: bool, expected: str) -> None:
+    # A rerun of an older main run must never promote its image over a newer one.
+    fake_gh = tmp_path / "gh"
+    fake_gh.write_text(f"#!/bin/sh\n{'exit 1' if fails else f'echo {head}'}\n")
+    fake_gh.chmod(0o755)
+    output = tmp_path / "output"
+    output.touch()
+    env = {
+        "PATH": f"{tmp_path}:/usr/bin:/bin",
+        "CURRENT_SHA": VALID_COMMIT,
+        "REPOSITORY": "fmind/www",
+        "GITHUB_OUTPUT": str(output),
+    }
+
+    bash = shutil.which("bash")
+    assert bash
+    result = subprocess.run(  # noqa: S603 - runs the workflow's own step script
+        [bash, "-c", _head_guard_script()], env=env, capture_output=True, text=True, check=False
+    )
+
+    assert (result.returncode != 0) is fails
+    assert output.read_text() == expected
+    assert ("Superseded by" in result.stdout) is (head != VALID_COMMIT)
+
+    workflow = (Path(__file__).resolve().parents[1] / ".github" / "workflows" / "deploy.yml").read_text()
+    deploy_job = workflow.split("\n  deploy:\n", 1)[1]
+    assert deploy_job.startswith("    needs: current\n    if: needs.current.outputs.head == 'true'\n")

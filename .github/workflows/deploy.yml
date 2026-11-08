@@ -223,9 +223,39 @@ jobs:
             exit 1
           fi
           echo "All verification checks passed."
-  deploy:
+  current:
+    name: Confirm the commit is still the head of main
     needs: verify
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      head: ${{ steps.head.outputs.head }}
+    steps:
+      # A rerun of an older main run, or a run overtaken by a push during its gate,
+      # would otherwise promote an older image over a newer one. The newer commit's
+      # own run, queued in the same concurrency group, deploys it. An API failure
+      # fails this job, so nothing deploys unconfirmed.
+      - name: Compare the run commit with the head of main
+        id: head
+        env:
+          CURRENT_SHA: ${{ github.sha }}
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          head_sha="$(gh api "repos/$REPOSITORY/commits/main" --jq .sha)"
+          if [ "$head_sha" = "$CURRENT_SHA" ]; then
+            echo "head=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::Superseded by $head_sha on main; skipping the deployment of $CURRENT_SHA"
+            echo "head=false" >> "$GITHUB_OUTPUT"
+          fi
+  deploy:
+    needs: current
+    if: needs.current.outputs.head == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
