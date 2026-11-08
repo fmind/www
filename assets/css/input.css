@@ -147,14 +147,15 @@
   font-weight: 600;
   line-height: 1;
   white-space: nowrap;
+}
+
+/* Linked pills keep their look but get a touch area of at least 24px (WCAG 2.5.8).
+   Only they change on hover, so only they transition. */
+a.tag {
+  position: relative;
   transition:
     background-color 150ms ease,
     border-color 150ms ease;
-}
-
-/* Linked pills keep their look but get a touch area of at least 24px (WCAG 2.5.8). */
-a.tag {
-  position: relative;
 }
 
 a.tag::after {
@@ -331,6 +332,14 @@ a.tag:hover {
 .article-index article.card {
   content-visibility: auto;
   contain-intrinsic-block-size: auto 36rem;
+}
+
+/* Chromium starts transitions in skipped cards from browser-default colors once they
+   render (on scroll, or on a forced style pass such as Lighthouse's), which flashes
+   titles and tags and costs a long main-thread task. Keep card content transition-free;
+   span tags have no hover state, so only linked tags transition. */
+.article-index article.card h3 a {
+  transition: none;
 }
 
 .portfolio-content > section {

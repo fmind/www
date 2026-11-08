@@ -625,6 +625,27 @@ test("hidden mobile section navigation avoids layout work and resumes on desktop
   expect(await page.evaluate(() => window.sectionLayoutReads)).toBeGreaterThan(0);
 });
 
+test("archive cards render without flashing transitions from default colors", async ({ page }) => {
+  // Chromium starts transitions in content-visibility cards from browser defaults when they
+  // render; under Lighthouse that became one long task across every off-screen card.
+  await page.addInitScript(() => {
+    window.cardTransitions = [];
+    document.addEventListener("transitionrun", (event) => {
+      if (event.target.closest(".article-index article.card")) {
+        window.cardTransitions.push(`${event.target.tagName}.${event.target.className} ${event.propertyName}`);
+      }
+    }, true);
+  });
+  await page.goto("/articles/");
+  await page.evaluate(async () => {
+    for (let top = 0; top < document.documentElement.scrollHeight; top += window.innerHeight / 2) {
+      window.scrollTo({ top, behavior: "instant" });
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    }
+  });
+  expect(await page.evaluate(() => window.cardTransitions)).toEqual([]);
+});
+
 test("late font downloads keep the article layout stable", async ({ page }) => {
   await page.addInitScript(() => {
     window.layoutShifts = [];
