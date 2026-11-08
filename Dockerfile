@@ -37,6 +37,8 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 FROM python:3.14.10-slim@sha256:af8a5aa14780025dbfbcfbc81bd8a91ebd87711dd5b0f48ed71090949dd7cb1d AS runner
 ENV ENVIRONMENT=production
+# Cloud Run and published container ports need a non-loopback listener.
+ENV HOST=0.0.0.0
 ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1

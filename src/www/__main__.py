@@ -19,7 +19,7 @@ def build_server(config: Config, *, log_dictconfig: dict[str, Any] | None = None
     """Construct the bounded Cloud Run server around validated settings."""
     return Granian(
         "www.app:app",
-        address="0.0.0.0",  # noqa: S104 - Cloud Run requires a non-loopback listener.
+        address=config.host,
         port=config.port,
         interface=Interfaces.ASGI,
         websockets=False,

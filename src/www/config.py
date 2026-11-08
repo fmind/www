@@ -1,5 +1,6 @@
 """Typed environment configuration parsed once at process startup."""
 
+import ipaddress
 import os
 import re
 from collections.abc import Mapping
@@ -22,6 +23,8 @@ class Config:
     """Validated runtime settings."""
 
     environment: Environment = Environment.DEVELOPMENT
+    # Loopback keeps local runs off the network; the runtime image sets HOST=0.0.0.0 for Cloud Run.
+    host: str = "127.0.0.1"
     port: int = 8080
     # Empty outside Cloud Run: logs then omit Cloud Logging's request trace field.
     google_cloud_project: str = ""
@@ -38,6 +41,13 @@ class Config:
             msg = f"invalid ENVIRONMENT {raw_environment!r} (want {allowed})"
             raise ValueError(msg) from error
 
+        host = values.get("HOST", "127.0.0.1")
+        try:
+            ipaddress.ip_address(host)
+        except ValueError as error:
+            msg = f"invalid HOST {host!r} (want an IP address such as 127.0.0.1 or 0.0.0.0)"
+            raise ValueError(msg) from error
+
         raw_port = values.get("PORT", "8080")
         try:
             port = int(raw_port)
@@ -52,4 +62,4 @@ class Config:
         if project and not _PROJECT_ID.fullmatch(project):
             msg = f"invalid GOOGLE_CLOUD_PROJECT {project!r} (want a 6-30 character Google Cloud project ID)"
             raise ValueError(msg)
-        return cls(environment=environment, port=port, google_cloud_project=project)
+        return cls(environment=environment, host=host, port=port, google_cloud_project=project)

@@ -16,7 +16,7 @@ mise run install
 mise run watch
 ```
 
-Open `http://localhost:8080`; use `PORT=8081 mise run watch` for another port. The server binds `127.0.0.1`; `GRANIAN_HOST=0.0.0.0 mise run watch` opts in to LAN access. `.env.example` lists runtime variables; `.env` files are not loaded automatically. The default environment is `development`; production sets `ENVIRONMENT=production`. Reload watches `src/`, `content/`, and `static/`; restart after environment/configuration changes.
+Open `http://localhost:8080`; use `PORT=8081 mise run watch` for another port. The server binds `127.0.0.1`; `GRANIAN_HOST=0.0.0.0 mise run watch` opts in to LAN access. `uv run --locked www` (the production entrypoint) binds `HOST`, also `127.0.0.1` by default; the container image sets `HOST=0.0.0.0` for Cloud Run. `.env.example` lists runtime variables; `.env` files are not loaded automatically. The default environment is `development`; production sets `ENVIRONMENT=production`. Reload watches `src/`, `content/`, and `static/`; restart after environment/configuration changes.
 
 `src/www/app.py` constructs the immutable startup snapshot and routes. `src/www/__main__.py` starts Granian. Templates are wheel package data; the image copies the separate `content/` and `static/` trees beside the locked environment. [AGENTS.md](AGENTS.md) maps module ownership and invariants.
 

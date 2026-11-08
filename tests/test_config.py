@@ -15,9 +15,20 @@ def test_load_defaults() -> None:
 
 
 def test_load_production() -> None:
-    config = Config.load({"ENVIRONMENT": "production", "PORT": "9090", "GOOGLE_CLOUD_PROJECT": "example-project"})
+    environ = {
+        "ENVIRONMENT": "production",
+        "HOST": "0.0.0.0",  # noqa: S104 - the image's listener.
+        "PORT": "9090",
+        "GOOGLE_CLOUD_PROJECT": "example-project",
+    }
+    config = Config.load(environ)
 
-    assert config == Config(environment=Environment.PRODUCTION, port=9090, google_cloud_project="example-project")
+    assert config == Config(
+        environment=Environment.PRODUCTION,
+        host="0.0.0.0",  # noqa: S104 - the image's listener.
+        port=9090,
+        google_cloud_project="example-project",
+    )
 
 
 @pytest.mark.parametrize(
@@ -25,6 +36,8 @@ def test_load_production() -> None:
     [
         ({"ENVIRONMENT": ""}, "invalid ENVIRONMENT"),
         ({"ENVIRONMENT": "staging"}, "invalid ENVIRONMENT"),
+        ({"HOST": ""}, "invalid HOST"),
+        ({"HOST": "localhost"}, "invalid HOST"),
         ({"PORT": ""}, "invalid PORT"),
         ({"PORT": "not-a-port"}, "invalid PORT"),
         ({"PORT": "70000"}, "invalid PORT"),
@@ -46,7 +59,7 @@ def test_server_runtime_bounds_slow_headers_and_cloud_run_shutdown() -> None:
     server = build_server(Config(port=9090), log_dictconfig=log_dictconfig)
 
     assert server.target == "www.app:app"
-    assert server.bind_addr == "0.0.0.0"  # noqa: S104 - Cloud Run's required listener.
+    assert server.bind_addr == "127.0.0.1"
     assert server.bind_port == 9090
     assert server.interface is Interfaces.ASGI
     assert server.websockets is False
