@@ -13,7 +13,8 @@ from litestar.testing import TestClient
 from mcp.server.mcpserver.exceptions import ToolError
 from mcp_types import CallToolResult
 
-from www.content import article_summaries, load_articles, visible_articles
+from www.assets import ApplicationAssets
+from www.content import ArticleCollection, article_summaries, visible_articles
 from www.data import SITE_PAGES
 from www.mcp import create_mcp_server
 from www.publications import article_markdown_index
@@ -40,8 +41,8 @@ def client(make_app: Callable[[], Litestar]) -> Iterator[TestClient]:
 
 
 @pytest.fixture(scope="module")
-def server():
-    articles = visible_articles(load_articles().all)
+def server(snapshots: tuple[ApplicationAssets, ArticleCollection]):
+    articles = visible_articles(snapshots[1].all)
     return create_mcp_server(
         article_summaries(articles), SearchIndex(articles), articles, article_markdown_index(articles)
     )

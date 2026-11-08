@@ -11,6 +11,35 @@
   </div>
 {%- endmacro %}
 
+{% macro site_breadcrumb(current_label) -%}
+  <nav aria-label="Breadcrumb" class="text-sm text-base-content/70"><a class="link hover:text-primary" href="/sites/">Sites</a><span aria-hidden="true"> / </span><span aria-current="page">{{ current_label }}</span></nav>
+{%- endmacro %}
+
+{% macro validation_alert(messages) -%}
+  {% if messages %}<div class="alert alert-warning" role="alert"><div><p class="font-bold">Some inputs need attention.</p><ul class="list-disc ml-5 mt-1">{% for message in messages %}<li>{{ message }}</li>{% endfor %}</ul></div></div>{% endif %}
+{%- endmacro %}
+
+{% macro info_section(id, title, heading="h2") -%}
+  <section id="{{ id }}" aria-labelledby="{{ id }}-title" class="rounded-xl border border-base-300 bg-base-100 p-5">
+    <{{ heading }} id="{{ id }}-title" class="font-heading text-lg font-bold">{{ title }}</{{ heading }}>
+    {{ caller() }}
+  </section>
+{%- endmacro %}
+
+{% macro comparison_table(label, caption, wrapper_class="overflow-x-auto rounded-2xl border border-base-300 bg-base-100 shadow-sm focus-visible:outline-2 focus-visible:outline-primary", table_class="table w-full") -%}
+  <div class="{{ wrapper_class }}" role="region" aria-label="{{ label }}" tabindex="0">
+    <table class="{{ table_class }}">
+      <caption class="sr-only">{{ caption }}</caption>
+      {{ caller() }}
+    </table>
+  </div>
+{%- endmacro %}
+
+{% macro break_even_note(view, row, tag, base_class) -%}
+  {%- set dot = "." if tag == "p" else "" -%}
+  {%- if not view.estimate.topology_confirmed -%}<{{ tag }} class="{{ base_class }}">Capacity needs a multi-host pilot{{ dot }}</{{ tag }}>{%- elif row.break_even_fits -%}<{{ tag }} class="{{ base_class }}">Within modeled capacity; quality still unproved{{ dot }}</{{ tag }}>{%- else -%}<{{ tag }} class="{{ base_class }} font-semibold">Beyond this fleet's modeled capacity{{ dot }}</{{ tag }}>{%- endif -%}
+{%- endmacro %}
+
 {% macro number_input(id, label, value, minimum, maximum, step, help) -%}
   <div class="min-w-0"><label class="block font-semibold text-sm mb-2" for="{{ id }}">{{ label }}</label> <input class="input w-full min-w-0" id="{{ id }}" name="{{ id }}" form="calculator" type="number" min="{{ minimum }}" max="{{ maximum }}" step="{{ step }}" value="{{ value }}" aria-describedby="{{ id }}-help"/><p id="{{ id }}-help" class="text-sm text-base-content/70 leading-relaxed mt-2">{{ help }}</p></div>
 {%- endmacro %}
@@ -112,11 +141,11 @@
         <h4 class="font-heading font-bold"><a class="link link-primary" href="{{ row.baseline.source_url }}">{{ row.baseline.name }}</a></h4>
         {% if row.request_issue %}<p class="font-semibold mt-3">Unavailable: {{ row.request_issue }}</p>{% else %}<p class="font-heading font-bold text-3xl mt-3">{{ format_usd2(row.monthly_usd) }}<span class="text-sm font-body font-normal">/ month</span></p>{% endif %}
         {% if not row.request_issue %}<dl class="text-sm mt-4 space-y-3">
-          {% if view.inputs.mode == "advanced" %}<div><dt class="text-base-content/70">Standard input / output per 1M tokens</dt><dd class="font-semibold">{{ format_usd2(row.baseline.input_per_million) }} / {{ format_usd2(row.baseline.output_per_million) }}</dd></div>{% endif %}
+          <div><dt class="text-base-content/70">Standard input / output per 1M tokens</dt><dd class="font-semibold">{{ format_usd2(row.baseline.input_per_million) }} / {{ format_usd2(row.baseline.output_per_million) }}</dd></div>
           <div><dt class="text-base-content/70">Per 1,000 requests</dt><dd class="font-semibold">{{ format_usd2(row.per_thousand_requests_usd) }}</dd></div>
           <div><dt class="text-base-content/70">Break-even for this fixed fleet</dt><dd class="font-semibold">{% if blocker %}{{ blocker }}{% else %}{{ format_decimal(row.break_even_requests, 0) }} requests/month{% endif %}</dd></div>
         </dl>{% endif %}
-        {% if not row.request_issue and not blocker %}{% if not view.estimate.topology_confirmed %}<p class="text-sm mt-3">Capacity needs a multi-host pilot.</p>{% elif row.break_even_fits %}<p class="text-sm mt-3">Within modeled capacity; quality still unproved.</p>{% else %}<p class="text-sm font-semibold mt-3">Beyond this fleet's modeled capacity.</p>{% endif %}{% endif %}
+        {% if not row.request_issue and not blocker %}{{ break_even_note(view, row, "p", "text-sm mt-3") }}{% endif %}
         {% if row.needs_review %}<p class="text-sm font-semibold mt-3">Price needs review; check the source.</p>{% endif %}
       </article>
     {% endfor %}
@@ -124,8 +153,7 @@
 {%- endmacro %}
 
 {% macro accelerator_comparison(view) -%}
-  <section id="hosting-accelerators" aria-labelledby="hosting-accelerators-title" class="rounded-xl border border-base-300 bg-base-100 p-5">
-    <h3 id="hosting-accelerators-title" class="font-heading text-lg font-bold">GPU vs. Cloud TPU · this demand</h3>
+  {% call info_section("hosting-accelerators", "GPU vs. Cloud TPU · this demand", heading="h3") %}
     <p class="text-sm text-base-content/75 mt-2">Lowest-cost compatible GPU and Cloud TPU configurations for <strong>{{ view.selected_model.name }}</strong> under your workload and billing plan.</p>
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
       {% for row in view.accelerators %}
@@ -144,7 +172,7 @@
         </article>
       {% endfor %}
     </div>
-  </section>
+  {% endcall %}
 {%- endmacro %}
 
 {% macro simple_results(view) -%}
@@ -167,27 +195,22 @@
       <h3 class="font-heading text-xl font-bold">Managed APIs · same token budget</h3>
       <p class="text-sm text-base-content/75 mt-2">Standard text rates, ordered by price. These models have different capabilities.</p>
     </div>
-    <div class="rounded-xl border border-base-300 bg-base-100 overflow-x-auto" role="region" aria-label="API monthly cost comparison" tabindex="0">
-      <table class="table w-full">
-        <caption class="sr-only">API monthly costs for this workload</caption>
-        <thead class="text-base-content"><tr><th scope="col">Model</th><th scope="col" class="text-right">Per month</th></tr></thead>
-        <tbody>{% for row in view.apis|sort(attribute="monthly_usd") %}<tr>
-          <th scope="row"><a class="link link-primary" href="{{ row.baseline.source_url }}">{{ row.baseline.name }}</a>{% if row.needs_review %}<span class="block text-xs font-normal mt-1">Price needs review</span>{% endif %}</th>
-          <td class="text-right font-semibold">{% if row.request_issue %}Unavailable{% else %}{{ format_usd2(row.monthly_usd) }}{% endif %}</td>
-        </tr>{% endfor %}</tbody>
-      </table>
-    </div>
-    <section id="hosting-break-even" aria-labelledby="hosting-break-even-title" class="rounded-xl border border-base-300 bg-base-100 p-5">
-      <h3 id="hosting-break-even-title" class="font-heading text-lg font-bold">When could self-hosting cost less?</h3>
+    {% call comparison_table("API monthly cost comparison", "API monthly costs for this workload", wrapper_class="rounded-xl border border-base-300 bg-base-100 overflow-x-auto") %}
+      <thead class="text-base-content"><tr><th scope="col">Model</th><th scope="col" class="text-right">Per month</th></tr></thead>
+      <tbody>{% for row in view.apis|sort(attribute="monthly_usd") %}<tr>
+        <th scope="row"><a class="link link-primary" href="{{ row.baseline.source_url }}">{{ row.baseline.name }}</a>{% if row.needs_review %}<span class="block text-xs font-normal mt-1">Price needs review</span>{% endif %}</th>
+        <td class="text-right font-semibold">{% if row.request_issue %}Unavailable{% else %}{{ format_usd2(row.monthly_usd) }}{% endif %}</td>
+      </tr>{% endfor %}</tbody>
+    {% endcall %}
+    {% call info_section("hosting-break-even", "When could self-hosting cost less?", heading="h3") %}
       <p class="text-sm text-base-content/75 mt-3">Break-even holds this setup, token mix, and usage window fixed. More GPUs or operating costs change the threshold. Quality still needs testing.</p>
       <dl class="mt-4 divide-y divide-base-300 text-sm">{% for row in view.apis|sort(attribute="monthly_usd") %}<div class="py-3 sm:flex sm:justify-between gap-4"><dt class="font-semibold">{{ row.baseline.name }}</dt><dd>{% if row.request_issue %}{{ row.request_issue }}{% elif blocker %}{{ blocker }}{% elif not view.estimate.topology_confirmed %}Needs a multi-host pilot{% elif row.break_even_fits %}About {{ format_number(row.break_even_requests) }} calls/month{% else %}Beyond this setup's assumed capacity{% endif %}</dd></div>{% endfor %}</dl>
-    </section>
+    {% endcall %}
   </section>
 {%- endmacro %}
 
 {% macro setup_assumptions(view) -%}
-  <section id="recommended-fleet" aria-labelledby="recommended-fleet-title" class="rounded-xl border border-base-300 bg-base-100 p-5">
-    <h2 id="recommended-fleet-title" class="font-heading text-lg font-bold">Setup, running time, and assumptions</h2>
+  {% call info_section("recommended-fleet", "Setup, running time, and assumptions") %}
     <div class="space-y-3 mt-3 text-sm text-base-content/75 max-w-4xl">
       <p><strong>{{ view.selected_model.name }} · {{ view.selected_quant.name }}</strong>. {{ format_decimal(view.estimate.weight_memory_gb, 1) }} GB weights + {{ format_input(view.inputs.memory_overhead_pct) }}% reserve = {{ format_decimal(view.estimate.required_memory_gb, 1) }} GB per copy. The reserve does not calculate KV cache.</p>
       <p>{{ view.selected_node.name }} is the lowest-cost machine in this catalog for the selected checkpoint and plan, preferring one host over a multi-host setup. <a class="link link-primary" href="{{ view.selected_model.recipe_url }}">Serving reference</a>.{% if view.selected_quant.id == "nvfp4" %} The economical NVFP4 checkpoint needs quality testing.{% endif %}{% for node_id, limit in view.selected_model.node_context_limits if node_id == view.selected_node.id %} The verified recipe caps this setup at {{ "{:,}".format(limit) }} context tokens; compare larger machines in advanced settings.{% endfor %}{% if view.inputs.mode == "simple" and view.selected_quant.id != view.selected_model.default_quantization %}{% set default_quant = view.quantizations | selectattr("id", "equalto", view.selected_model.default_quantization) | first %} No machine on this pricing plan runs the default {{ default_quant.name.split(" · ")[0] }} checkpoint, so this estimate uses {{ view.selected_quant.name.split(" · ")[0] }}.{% endif %}</p>
@@ -196,7 +219,7 @@
       <p>Window load: {{ format_decimal(view.estimate.window_capacity_pct, 0) }}% of assumed capacity; monthly load: {{ format_decimal(view.estimate.demand_capacity_pct, 0) }}%. This is not measured GPU utilization.</p>
       <p>Each call budgets {{ format_decimal(view.inputs.input_tokens_request, 0) }} input and {{ format_decimal(view.inputs.output_tokens_request, 0) }} output tokens, including reasoning. Examples assume brief answers; heavy thinking, retries, and longer histories need a larger budget in advanced settings.</p>
     </div>
-  </section>
+  {% endcall %}
 {%- endmacro %}
 
 {% macro results(view) -%}
@@ -212,7 +235,7 @@
     {% if not view.estimate.compatibility_issue %}<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       {{ metric_card("Self-hosting / month", format_usd2(view.estimate.total_monthly_usd), format_usd2(view.estimate.compute_monthly_usd) ~ " compute + " ~ format_usd(view.estimate.control_monthly_usd) ~ " GKE fee, including idle time. Additional services and operating costs are excluded.") }}
       {{ metric_card("Fleet footprint", format_count(view.estimate.total_nodes, "node") ~ " · " ~ format_count(view.estimate.total_gpus, view.selected_node.chip), view.selected_model.name ~ " · " ~ format_ungrouped(view.estimate.required_memory_gb, 1) ~ " GB memory floor per replica · " ~ format_count(view.estimate.nodes_per_replica, "node") ~ " per replica.") }}
-      {% if view.inputs.mode == "advanced" %}{{ metric_card("Share of modeled capacity needed", format_ungrouped(view.estimate.demand_capacity_pct, 1) ~ "%", "Demand / usable output capacity of " ~ format_number(view.estimate.capacity_tokens_month) ~ " tokens/month. Over 100% means this fleet is too small.") }}{% endif %}
+      {{ metric_card("Share of modeled capacity needed", format_ungrouped(view.estimate.demand_capacity_pct, 1) ~ "%", "Demand / usable output capacity of " ~ format_number(view.estimate.capacity_tokens_month) ~ " tokens/month. Over 100% means this fleet is too small.") }}
     </div>
     {% endif %}
     <div class="rounded-2xl border border-primary/30 bg-primary/5 p-6">
@@ -226,37 +249,33 @@
       <p class="text-base-content/75 leading-relaxed mt-2">Same request count and token mix, using your selected API mode. Compare quality separately.</p>
     </div>
     {{ api_cards(view) }}
-    <div class="hidden md:block overflow-x-auto rounded-2xl border border-base-300 bg-base-100 shadow-sm focus-visible:outline-2 focus-visible:outline-primary" role="region" aria-label="API cost comparison" tabindex="0">
-      <table class="table w-full">
-        <caption class="sr-only">Monthly costs and break-even at the selected input and output token mix</caption>
-        <thead class="text-base-content"><tr><th scope="col">Option</th><th scope="col">Standard input / output<br/>USD per 1M tokens</th><th scope="col">Your monthly bill</th><th scope="col">Per 1,000 requests</th><th scope="col">Self-hosting break-even</th></tr></thead>
-        <tbody>
-          <tr class="bg-primary/5">
-            <th scope="row">Your GKE fleet<span class="block font-normal text-xs mt-1">{{ view.selected_node.name }}</span></th>
-            {% if view.estimate.compatibility_issue %}<td colspan="4">Unavailable: {{ view.estimate.compatibility_issue }}</td>{% else %}<td>Fixed fleet cost</td>
-            <td class="font-bold whitespace-nowrap">{{ format_usd2(view.estimate.total_monthly_usd) }}</td>
-            <td>{% if view.estimate.demand_fits and view.estimate.daily_demand_fits %}{{ format_usd2(view.estimate.per_thousand_requests_usd) }}{% else %}<span>Insufficient capacity</span>{% endif %}</td>
-            <td>Reference fleet<span class="block text-xs mt-1">{{ format_ungrouped(view.estimate.demand_capacity_pct, 1) }}% of usable capacity needed</span></td>{% endif %}
+    {% call comparison_table("API cost comparison", "Monthly costs and break-even at the selected input and output token mix", wrapper_class="hidden md:block overflow-x-auto rounded-2xl border border-base-300 bg-base-100 shadow-sm focus-visible:outline-2 focus-visible:outline-primary") %}
+      <thead class="text-base-content"><tr><th scope="col">Option</th><th scope="col">Standard input / output<br/>USD per 1M tokens</th><th scope="col">Your monthly bill</th><th scope="col">Per 1,000 requests</th><th scope="col">Self-hosting break-even</th></tr></thead>
+      <tbody>
+        <tr class="bg-primary/5">
+          <th scope="row">Your GKE fleet<span class="block font-normal text-xs mt-1">{{ view.selected_node.name }}</span></th>
+          {% if view.estimate.compatibility_issue %}<td colspan="4">Unavailable: {{ view.estimate.compatibility_issue }}</td>{% else %}<td>Fixed fleet cost</td>
+          <td class="font-bold whitespace-nowrap">{{ format_usd2(view.estimate.total_monthly_usd) }}</td>
+          <td>{% if view.estimate.demand_fits and view.estimate.daily_demand_fits %}{{ format_usd2(view.estimate.per_thousand_requests_usd) }}{% else %}<span>Insufficient capacity</span>{% endif %}</td>
+          <td>Reference fleet<span class="block text-xs mt-1">{{ format_ungrouped(view.estimate.demand_capacity_pct, 1) }}% of usable capacity needed</span></td>{% endif %}
+        </tr>
+        {% for row in view.apis|sort(attribute="monthly_usd") %}
+          <tr>
+            <th scope="row"><a class="link link-primary" href="{{ row.baseline.source_url }}" target="_blank" rel="noopener noreferrer">{{ row.baseline.name }}</a></th>
+            <td class="whitespace-nowrap">{{ format_usd2(row.baseline.input_per_million) }} / {{ format_usd2(row.baseline.output_per_million) }}</td>
+            {% if row.request_issue %}<td colspan="3" class="font-semibold">Unavailable: {{ row.request_issue }}</td>{% else %}<td class="font-bold whitespace-nowrap">{{ format_usd2(row.monthly_usd) }}</td><td>{{ format_usd2(row.per_thousand_requests_usd) }}</td><td>{% if blocker %}{{ blocker }}{% else %}{{ format_number(row.break_even_requests) }} requests/month{{ break_even_note(view, row, "span", "block text-xs mt-1") }}{% endif %}</td>{% endif %}
           </tr>
-          {% for row in view.apis|sort(attribute="monthly_usd") %}
-            <tr>
-              <th scope="row"><a class="link link-primary" href="{{ row.baseline.source_url }}" target="_blank" rel="noopener noreferrer">{{ row.baseline.name }}</a></th>
-              <td class="whitespace-nowrap">{{ format_usd2(row.baseline.input_per_million) }} / {{ format_usd2(row.baseline.output_per_million) }}</td>
-              {% if row.request_issue %}<td colspan="3" class="font-semibold">Unavailable: {{ row.request_issue }}</td>{% else %}<td class="font-bold whitespace-nowrap">{{ format_usd2(row.monthly_usd) }}</td><td>{{ format_usd2(row.per_thousand_requests_usd) }}</td><td>{% if blocker %}{{ blocker }}{% else %}{{ format_number(row.break_even_requests) }} requests/month{% if not view.estimate.topology_confirmed %}<span class="block text-xs mt-1">Capacity needs a multi-host pilot</span>{% elif row.break_even_fits %}<span class="block text-xs mt-1">Within modeled capacity; quality still unproved</span>{% else %}<span class="block text-xs font-semibold mt-1">Beyond this fleet's modeled capacity</span>{% endif %}{% endif %}</td>{% endif %}
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-    <section id="hosting-price-notes" aria-labelledby="hosting-price-notes-title" class="rounded-xl border border-base-300 bg-base-100 p-5">
-      <h3 id="hosting-price-notes-title" class="font-heading text-lg font-bold">Price notes and comparison boundaries · {{ view.snapshot_date }}</h3>
+        {% endfor %}
+      </tbody>
+    {% endcall %}
+    {% call info_section("hosting-price-notes", "Price notes and comparison boundaries · " ~ view.snapshot_date, heading="h3") %}
       <ul class="list-disc ml-5 space-y-3 mt-4 text-sm text-base-content/75">
         {% for row in view.apis %}<li><strong>{{ row.baseline.name }}:</strong> {{ row.baseline.note }}<p class="mt-2">{{ row.mode_note }}</p><p class="mt-2">{{ row.freshness }}</p></li>{% endfor %}
         <li>API estimates include input and output tokens. The selected mode includes either batch discounts or eligible cache reads, writes, and storage. Tools, media, taxes, regional premiums, and negotiated rates are excluded. API quotas and context limits still apply.</li>
         <li>Include billed reasoning in output tokens and all repeated tool calls in demand. These inputs cannot predict each model's actual verbosity, retries, or task success.</li>
         <li>For a one-off job, the API bill covers just that job. The fleet bill still covers your selected monthly running time. Reduce running time only if you can actually stop on-demand nodes, allowing for startup and processing.</li>
       </ul>
-    </section>
+    {% endcall %}
   </section>
   {% endif %}
 {%- endmacro %}

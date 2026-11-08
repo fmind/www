@@ -15,7 +15,7 @@ from litestar.testing import TestClient
 
 from www import content, rendering
 from www.assets import ApplicationAssets
-from www.content import ArticleCollection, load_articles, visible_articles
+from www.content import ArticleCollection, visible_articles
 from www.data import (
     BADGES,
     BIOGRAPHY,
@@ -227,9 +227,11 @@ def test_renderer_keeps_asset_snapshots_isolated_and_refreshes_the_footer_year()
     assert "© 2027" in rollover_render
 
 
-def test_renderer_renders_all_six_pages_with_real_domain_contexts() -> None:
+def test_renderer_renders_all_six_pages_with_real_domain_contexts(
+    snapshots: tuple[ApplicationAssets, ArticleCollection],
+) -> None:
     renderer = Renderer(application_assets())
-    articles = visible_articles(load_articles().all)
+    articles = visible_articles(snapshots[1].all)
     article = articles[0]
     index = article_index_data(articles, SearchIndex(articles), "", "")
     site_page = SITE_PAGES[0]
@@ -359,8 +361,10 @@ def test_startup_markup_is_validated_once_but_unknown_markup_remains_guarded(mon
 
 
 @pytest.mark.parametrize("count", [0, 1, 2])
-def test_article_section_navigation_requires_two_sections(count: int) -> None:
-    article = next(item for item in visible_articles(load_articles().all) if len(item.sections) >= 2)
+def test_article_section_navigation_requires_two_sections(
+    count: int, snapshots: tuple[ApplicationAssets, ArticleCollection]
+) -> None:
+    article = next(item for item in visible_articles(snapshots[1].all) if len(item.sections) >= 2)
     article = replace(article, sections=article.sections[:count])
     renderer = Renderer(application_assets(), article_html=(article.html,))
     rendered = renderer.render(

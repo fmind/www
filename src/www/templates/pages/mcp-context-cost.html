@@ -1,18 +1,18 @@
 {% extends "base.html" %}
-{% from "macros/sites.html" import metric_card %}
+{% from "macros/sites.html" import comparison_table, info_section, metric_card, site_breadcrumb, validation_alert %}
 {% block content %}
   {% set selected_ids = view.selected|map(attribute="server.id")|list %}
   {% set cheapest = view.models|first %}
   {% set priciest = view.models|last %}
   <section class="bg-base-200 min-h-screen px-4 py-8 md:py-10">
     <div class="container mx-auto max-w-7xl space-y-6 md:space-y-8">
-      <nav aria-label="Breadcrumb" class="text-sm text-base-content/70"><a class="link hover:text-primary" href="/sites/">Sites</a><span aria-hidden="true"> / </span><span aria-current="page">MCP context cost</span></nav>
+      {{ site_breadcrumb("MCP context cost") }}
       <header class="max-w-5xl">
         <h1 class="text-3xl md:text-5xl font-heading font-bold text-balance">How much context do your MCP tools take?</h1>
         <p class="text-base md:text-lg text-base-content/80 leading-relaxed mt-3 max-w-4xl">Every connected MCP server sends its tool definitions with each model request, before your prompt. Pick real, measured servers to see the tokens and what they cost.</p>
         <p class="text-sm text-base-content/70 mt-4">Tool snapshot {{ view.snapshot_date }} · Prices checked {{ view.price_date }} · USD planning estimates.</p>
       </header>
-      {% if view.validation %}<div class="alert alert-warning" role="alert"><div><p class="font-bold">Some inputs need attention.</p><ul class="list-disc ml-5 mt-1">{% for message in view.validation %}<li>{{ message }}</li>{% endfor %}</ul></div></div>{% endif %}
+      {{ validation_alert(view.validation) }}
       <form id="calculator" method="get" action="/sites/mcp-context-cost/" class="rounded-2xl border border-base-300 bg-base-100 p-5 md:p-6 space-y-5" aria-label="MCP context-cost scenario">
         <fieldset class="min-w-0">
           <legend class="font-heading text-xl font-bold">Your MCP servers</legend>
@@ -43,19 +43,16 @@
           {{ metric_card("Per month", format_budget(cheapest.month_usd) ~ "–" ~ format_budget(priciest.month_usd), "Tool definitions alone, before prompts, history, tool results and output.") }}
         </div>
         <h3 class="font-heading text-xl font-bold">Cost by model</h3>
-        <div class="overflow-x-auto rounded-2xl border border-base-300 bg-base-100 focus-visible:outline-2 focus-visible:outline-primary" role="region" aria-label="Cost by model, scroll horizontally on small screens" tabindex="0">
-          <table class="table w-full">
-            <caption class="sr-only">Tool-definition context share and input cost by managed API model</caption>
-            <thead class="text-base-content"><tr><th scope="col">Model</th><th scope="col" class="text-right">Input / 1M tokens</th><th scope="col" class="text-right">Context used</th><th scope="col" class="text-right">Per 1,000 requests</th><th scope="col" class="text-right">Per month</th></tr></thead>
-            <tbody>{% for model in view.models %}<tr>
-              <th scope="row" class="whitespace-nowrap"><a class="link link-primary" href="{{ model.source_url }}">{{ model.name }}</a>{% if model.needs_review %}<span class="block text-xs font-normal mt-1">Price needs review</span>{% endif %}</th>
-              <td class="text-right">{{ format_usd2(model.input_per_million) }}</td>
-              <td class="text-right">{{ format_decimal(model.context_percent, 2) }}%</td>
-              <td class="text-right">{{ format_usd2(model.per_thousand_requests_usd) }}</td>
-              <td class="text-right font-semibold">{{ format_usd2(model.month_usd) }}</td>
-            </tr>{% endfor %}</tbody>
-          </table>
-        </div>
+        {% call comparison_table("Cost by model, scroll horizontally on small screens", "Tool-definition context share and input cost by managed API model", wrapper_class="overflow-x-auto rounded-2xl border border-base-300 bg-base-100 focus-visible:outline-2 focus-visible:outline-primary") %}
+          <thead class="text-base-content"><tr><th scope="col">Model</th><th scope="col" class="text-right">Input / 1M tokens</th><th scope="col" class="text-right">Context used</th><th scope="col" class="text-right">Per 1,000 requests</th><th scope="col" class="text-right">Per month</th></tr></thead>
+          <tbody>{% for model in view.models %}<tr>
+            <th scope="row" class="whitespace-nowrap"><a class="link link-primary" href="{{ model.source_url }}">{{ model.name }}</a>{% if model.needs_review %}<span class="block text-xs font-normal mt-1">Price needs review</span>{% endif %}</th>
+            <td class="text-right">{{ format_usd2(model.input_per_million) }}</td>
+            <td class="text-right">{{ format_decimal(model.context_percent, 2) }}%</td>
+            <td class="text-right">{{ format_usd2(model.per_thousand_requests_usd) }}</td>
+            <td class="text-right font-semibold">{{ format_usd2(model.month_usd) }}</td>
+          </tr>{% endfor %}</tbody>
+        {% endcall %}
         <h3 class="font-heading text-xl font-bold">Where the tokens come from</h3>
         <ul class="rounded-2xl border border-base-300 bg-base-100 p-5 md:p-6 space-y-4" aria-label="Tokens by server">
           {% for share in view.selected %}
@@ -75,19 +72,17 @@
           <li><strong>Prefer CLI skills where they fit.</strong> <a class="link link-primary" href="https://agentskills.io/specification#progressive-disclosure">Agent Skills progressive disclosure</a> keeps only short metadata in context and loads instructions when used.</li>
         </ul>
       </section>
-      <section id="context-method" aria-labelledby="context-method-title" class="rounded-xl border border-base-300 bg-base-100 p-5">
-        <h2 id="context-method-title" class="font-heading text-lg font-bold">Method and limitations</h2>
+      {% call info_section("context-method", "Method and limitations") %}
         <ul class="list-disc ml-5 mt-3 space-y-3 text-sm text-base-content/75 max-w-4xl">
           <li>Tokens per request add the measured tool definitions of the selected servers: name, description and input schema, serialized as compact JSON and counted with tiktoken 0.14.0 (o200k_base). Monthly tokens multiply by requests per day and 30 days.</li>
           <li>Cost multiplies tokens by each model's standard input price. Context used divides tokens by the model's input limit. Prices come from the same dated snapshot as the <a class="link link-primary" href="/sites/llm-self-hosting/">LLM hosting comparison</a>.</li>
           <li>Excluded: caching discounts, instructions, history, tool results, output and reasoning, client wrappers and output schemas. Each provider tokenizes differently; measure your own client before budgeting.</li>
         </ul>
-      </section>
-      <section id="context-sources" aria-labelledby="context-sources-title" class="rounded-xl border border-base-300 bg-base-100 p-5">
-        <h2 id="context-sources-title" class="font-heading text-lg font-bold">Sources</h2>
+      {% endcall %}
+      {% call info_section("context-sources", "Sources") %}
         <ul class="mt-3 space-y-4">{% for server in view.servers %}<li><a class="link link-primary font-semibold" href="{{ server.source_url }}">{{ server.name }} · {{ server.version }}</a><p class="text-sm text-base-content/75">{{ server.tools }} tools · {{ format_decimal(server.tokens, 0) }} tokens · Measured {{ server.measured_on }}. {{ server.note }}</p><a class="link link-primary text-sm" href="{{ server.evidence_url }}">{{ server.evidence_label }}</a></li>{% endfor %}</ul>
         <p class="text-sm text-base-content/75 mt-4">Input prices checked {{ view.price_date }}: {% for model in view.models %}<a class="link link-primary" href="{{ model.source_url }}">{{ model.name }}</a>{% if not loop.last %}, {% endif %}{% endfor %}. <a class="link link-primary" href="{{ view.benchmark_url }}">Pinned public MCP context benchmark</a>.</p>
-      </section>
+      {% endcall %}
     </div>
   </section>
 {% endblock %}

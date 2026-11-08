@@ -57,7 +57,7 @@ def test_server_reload_scope(
 
     with cli.make_context("granian", arguments) as context:
         paths = context.params["reload_paths"] or (tmp_path,)
-        with closing(watch(*paths, step=50, rust_timeout=500, yield_on_timeout=True)) as changes:
+        with closing(watch(*paths, step=10, rust_timeout=100, yield_on_timeout=True)) as changes:
             # Prime the OS watcher before changing a file, without a timing-based sleep.
             assert next(changes) == set()
             changed.write_text("after")

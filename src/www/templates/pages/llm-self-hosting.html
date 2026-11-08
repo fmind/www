@@ -1,14 +1,11 @@
 {% extends "base.html" %}
-{% from "macros/sites.html" import basic_form, api_options, cost_explorer, demand_form, fleet_form, latency, model_size, precision_guide, quality, results, sensitivity, setup_assumptions %}
+{% from "macros/sites.html" import api_options, basic_form, comparison_table, cost_explorer, demand_form, fleet_form, info_section, latency, model_size, precision_guide, quality, results, sensitivity, setup_assumptions, site_breadcrumb, validation_alert %}
 {% block content %}
   {# The status stays outside the swapped region so assistive technology observes it before updates. #}
   <p data-update-status class="sr-only" role="status"></p>
   <section data-hosting-calculator class="bg-base-200 min-h-screen px-4 py-8 md:py-10">
     <div class="container mx-auto max-w-7xl space-y-6 md:space-y-8">
-      <nav aria-label="Breadcrumb" class="text-sm text-base-content/70">
-        <a class="link hover:text-primary" href="/sites/">Sites</a>
-        <span aria-hidden="true">/ </span><span aria-current="page">LLM self-hosting</span>
-      </nav>
+      {{ site_breadcrumb("LLM self-hosting") }}
       <header class="max-w-5xl">
         <p class="text-sm uppercase tracking-[0.18em] text-primary font-semibold mb-4">Google Cloud · GKE Standard</p>
         <h1 class="text-3xl md:text-5xl font-heading font-bold text-balance">What would self-hosting cost?</h1>
@@ -20,14 +17,7 @@
           <a class="link link-primary" href="#quality-lab">Evaluate value</a>
         </nav>{% endif %}
       </header>
-      {% if view.validation %}
-        <div class="alert alert-warning" role="alert">
-          <div>
-            <p class="font-bold">Some inputs need attention.</p>
-            <ul class="list-disc ml-5 mt-1">{% for message in view.validation %}<li>{{ message }}</li>{% endfor %}</ul>
-          </div>
-        </div>
-      {% endif %}
+      {{ validation_alert(view.validation) }}
       <form id="calculator" method="get" action="/sites/llm-self-hosting/" class="space-y-6 scroll-mt-24" aria-label="GKE self-hosting scenario">
         <button type="submit" hidden tabindex="-1" aria-hidden="true">Update comparison</button>
         {{ basic_form(view) }}
@@ -46,40 +36,35 @@
           <h2 id="frontier-table" class="text-3xl md:text-4xl font-heading font-bold mt-2">Open-weight model catalog</h2>
           <p class="text-base-content/75 leading-relaxed mt-3">Released checkpoint formats and published serving recipes. Each model is sized on its own lowest-cost compatible machine for your pricing plan, preferring one host, with your workload and fleet settings; models without a compatible machine have no usable estimate.</p>
         </div>
-        <div class="overflow-x-auto rounded-2xl border border-base-300 bg-base-100 shadow-sm focus-visible:outline-2 focus-visible:outline-primary" role="region" aria-label="Open-weight model comparison, scroll horizontally on small screens" tabindex="0">
-          <table class="table table-zebra w-full">
-            <caption class="sr-only">Open-weight models and modeled GKE footprint and cost</caption>
-            <thead class="text-base-content"><tr><th scope="col">Model</th><th scope="col">License</th><th scope="col">Memory</th><th scope="col">Fleet</th><th scope="col">Monthly</th><th scope="col">Decision</th></tr></thead>
-            <tbody>
-              {% for row in view.comparison %}
-                <tr>
-                  <th scope="row"><a class="link link-primary font-semibold" href="{{ row.model.weights_url }}" target="_blank" rel="noopener noreferrer">{{ row.model.name }}</a><span class="block text-xs font-normal text-base-content/70 mt-1">{{ row.model.creator }} · {{ model_size(row.model) }} parameters</span></th>
-                  <td><a class="link" href="{{ row.model.weights_url }}" target="_blank" rel="noopener noreferrer">{{ row.model.license }}</a><span class="block text-xs text-base-content/70">{{ row.model.license_class }}</span></td>
-                  {# Unsupported rows have no real checkpoint or topology to size. #}
-                  {% if row.estimate.compatibility_issue %}<td>—</td><td>—</td>{% else %}<td>{{ format_decimal(row.estimate.required_memory_gb, 0) }} GB</td>
-                  <td>{{ format_count(row.estimate.total_nodes, "node") }} / {{ format_count(row.estimate.total_gpus, row.node.chip) }}<span class="block text-xs text-base-content/70">{{ row.node.name }} · {{ row.quantization.name.split(" · ")[0] }}</span></td>{% endif %}
-                  <td>{% if row.estimate.compatibility_issue %}Unavailable{% else %}{{ format_usd(row.estimate.total_monthly_usd) }}{% endif %}</td>
-                  <td>{{ row.decision }}</td>
-                </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
+        {% call comparison_table("Open-weight model comparison, scroll horizontally on small screens", "Open-weight models and modeled GKE footprint and cost", table_class="table table-zebra w-full") %}
+          <thead class="text-base-content"><tr><th scope="col">Model</th><th scope="col">License</th><th scope="col">Memory</th><th scope="col">Fleet</th><th scope="col">Monthly</th><th scope="col">Decision</th></tr></thead>
+          <tbody>
+            {% for row in view.comparison %}
+              <tr>
+                <th scope="row"><a class="link link-primary font-semibold" href="{{ row.model.weights_url }}" target="_blank" rel="noopener noreferrer">{{ row.model.name }}</a><span class="block text-xs font-normal text-base-content/70 mt-1">{{ row.model.creator }} · {{ model_size(row.model) }} parameters</span></th>
+                <td><a class="link" href="{{ row.model.weights_url }}" target="_blank" rel="noopener noreferrer">{{ row.model.license }}</a><span class="block text-xs text-base-content/70">{{ row.model.license_class }}</span></td>
+                {# Unsupported rows have no real checkpoint or topology to size. #}
+                {% if row.estimate.compatibility_issue %}<td>—</td><td>—</td>{% else %}<td>{{ format_decimal(row.estimate.required_memory_gb, 0) }} GB</td>
+                <td>{{ format_count(row.estimate.total_nodes, "node") }} / {{ format_count(row.estimate.total_gpus, row.node.chip) }}<span class="block text-xs text-base-content/70">{{ row.node.name }} · {{ row.quantization.name.split(" · ")[0] }}</span></td>{% endif %}
+                <td>{% if row.estimate.compatibility_issue %}Unavailable{% else %}{{ format_usd(row.estimate.total_monthly_usd) }}{% endif %}</td>
+                <td>{{ row.decision }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        {% endcall %}
       </section>
       {{ quality(view) }}
       {% endif %}
       {% if view.inputs.mode == "simple" %}{{ setup_assumptions(view) }}{% endif %}
-      <section id="hosting-method" aria-labelledby="hosting-method-title" class="rounded-xl border border-base-300 bg-base-100 p-5">
-        <h2 id="hosting-method-title" class="font-heading text-lg font-bold">Method and limitations</h2>
+      {% call info_section("hosting-method", "Method and limitations") %}
         <ul class="list-disc ml-5 mt-4 space-y-3 text-sm text-base-content/75 max-w-4xl">
           <li>Infrastructure only: whole GPU or TPU nodes and a {{ format_usd2(view.cluster_hourly_usd) }}/hour GKE cluster fee. Disks, network, load balancers, licenses, taxes, and operations are extra. US reference pricing; regional availability and prices vary.</li>
           <li>Model weights plus {{ format_input(view.inputs.memory_overhead_pct) }}% reserve select a compatible checkpoint and machine. Capacity assumes {{ format_input(view.inputs.tokens_per_second) }} output tokens/s per model copy, with {{ format_input(view.inputs.target_utilization) }}% usable, regardless of GPU. This is an illustrative input, not a benchmark. Measure prompt processing, reasoning, KV cache, concurrency, and latency before sizing production.</li>
           <li>Monthly running hours and each active-day window constrain capacity separately. Simple mode sizes complete model copies; advanced mode keeps your chosen setup fixed. Scheduled examples assume nodes run only during active windows. Commitments bill 730 hours/month, including idle time, and require GPU or TPU reservations.</li>
           <li>API prices include input and output, including reasoning. The same token budget does not establish equal quality or actual usage. Break-even holds the setup fixed; more replicas and operating costs change it.</li>
         </ul>
-      </section>
-      <section id="hosting-sources" aria-labelledby="hosting-sources-title" class="rounded-xl border border-base-300 bg-base-100 p-5">
-        <h2 id="hosting-sources-title" class="font-heading text-lg font-bold">Sources · checked {{ view.snapshot_date }}</h2>
+      {% endcall %}
+      {% call info_section("hosting-sources", "Sources · checked " ~ view.snapshot_date) %}
         <p class="text-base-content/70 mt-2">Snapshot checked {{ view.snapshot_date }}. Prices and runtime support change; follow the linked authority before committing spend.</p>
         <ul class="mt-5 space-y-3">
           <li><a class="link link-primary font-semibold" href="{{ view.model_source_url }}" target="_blank" rel="noopener noreferrer">Selected model card and checkpoint</a><span class="block text-sm text-base-content/65">Official model parameters, context, checkpoint formats, and license.</span></li>
@@ -93,7 +78,7 @@
           {% for baseline in view.apis %}<li><a class="link link-primary font-semibold" href="{{ baseline.baseline.source_url }}" target="_blank" rel="noopener noreferrer">{{ baseline.baseline.name }} pricing</a><span class="block text-sm text-base-content/75">{{ baseline.baseline.note }}</span><span class="block text-sm text-base-content/75 mt-1">{{ baseline.freshness }}</span><a class="link link-primary text-sm" href="{{ baseline.baseline.cache_url }}" target="_blank" rel="noopener noreferrer">Cache fees and requirements</a></li>{% endfor %}
           <li><a class="link link-primary font-semibold" href="https://docs.vllm.ai/en/latest/features/quantization/" target="_blank" rel="noopener noreferrer">vLLM quantization documentation</a><span class="block text-sm text-base-content/75">Memory trade-offs and format support by GPU and runtime implementation.</span></li>
         </ul>
-      </section>
+      {% endcall %}
     </div>
   </section>
 {% endblock %}

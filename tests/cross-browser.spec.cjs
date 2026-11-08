@@ -32,7 +32,7 @@ test("portfolio and contact pages render and reflow", async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await page.goto("/");
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    for (const label of ["Portfolio", "Articles", "Sites"]) {
+    for (const label of ["Portfolio", "Articles", "News", "Sites"]) {
       await expect(
         page.getByRole("navigation", { name: "Primary navigation" }).getByRole("link", { name: label, exact: true }),
       ).toBeInViewport();

@@ -27,13 +27,15 @@ RUN --mount=type=cache,target=/root/.cache/uv \
   --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
   uv sync --locked --no-install-project --no-dev
 COPY . /app
-# Authored media may be owner-only; normalize the immutable runtime trees so
-# UID 10001 can read them without gaining write access.
+# Authored media may be owner-only; normalize any entry that is not already
+# world-readable and non-group/other-writable without copying up clean layers.
 RUN --mount=type=cache,target=/root/.cache/uv \
   uv sync --locked --no-dev --no-editable \
   && tailwindcss-extra -i assets/css/input.css -o static/dist/styles.css --minify \
   && /app/.venv/bin/python -m www.assets static static-hashes.json \
-  && chmod -R u=rwX,go=rX /app/.venv /app/content /app/static /app/static-hashes.json
+  && find /app/.venv /app/content /app/static /app/static-hashes.json \
+    \( ! -perm -0444 -o -perm /0022 -o \( -type d ! -perm -0111 \) \) \
+    -exec chmod u=rwX,go=rX {} +
 
 FROM python:3.14.10-slim@sha256:af8a5aa14780025dbfbcfbc81bd8a91ebd87711dd5b0f48ed71090949dd7cb1d AS runner
 ENV ENVIRONMENT=production
@@ -45,12 +47,12 @@ ENV PYTHONUNBUFFERED=1
 WORKDIR /app
 # Debian security fixes can lag the pinned base image by weeks (OpenSSL and
 # PCRE2 on 2026-10-05); apply them so the scanned, deployed digest carries them.
-RUN apt-get update \
-  && apt-get upgrade --yes --no-install-recommends \
-  && rm -rf /var/lib/apt/lists/*
 # Runtime images install only the locked application environment; retaining pip
 # adds an unused package installer and its vendored dependency attack surface.
-RUN python -m pip uninstall --yes --root-user-action=ignore pip \
+RUN apt-get update \
+  && apt-get upgrade --yes --no-install-recommends \
+  && rm -rf /var/lib/apt/lists/* \
+  && python -m pip uninstall --yes --root-user-action=ignore pip \
   && groupadd --gid 10001 app \
   && useradd --uid 10001 --gid 10001 --no-create-home --shell /usr/sbin/nologin app \
   # The web runtime never needs privileged Debian login or mount helpers.

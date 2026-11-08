@@ -495,6 +495,9 @@ def _identity_graph() -> list[dict[str, object]]:
     return [person, website]
 
 
+_IDENTITY_GRAPH: tuple[dict[str, object], ...] = tuple(_identity_graph())
+
+
 def _json_ld(graph: list[dict[str, object]]) -> str:
     return json.dumps({"@context": "https://schema.org", "@graph": graph}, ensure_ascii=False, separators=(",", ":"))
 
@@ -503,7 +506,7 @@ def get_page_structured_data(page_type: str, url: str, name: str, description: s
     """Build a connected WebPage-family graph for a hosted page other than the profile."""
     return _json_ld(
         [
-            *_identity_graph(),
+            *_IDENTITY_GRAPH,
             {
                 "@id": f"{url}#webpage",
                 "@type": page_type,
@@ -521,7 +524,7 @@ def get_application_structured_data(url: str, name: str, description: str) -> st
     """Describe a free decision tool as a WebApplication inside the shared site graph."""
     return _json_ld(
         [
-            *_identity_graph(),
+            *_IDENTITY_GRAPH,
             {
                 "@id": f"{url}#webpage",
                 "@type": "WebPage",
@@ -552,7 +555,7 @@ def get_structured_data(article: Article | None = None) -> str:
     person_id = f"{METADATA.site_url}/#person"
     profile_id = f"{METADATA.site_url}/#profile"
     website_id = f"{METADATA.site_url}/#website"
-    graph = _identity_graph()
+    graph: list[dict[str, object]] = [*_IDENTITY_GRAPH]
     if article is None:
         graph.append(
             {

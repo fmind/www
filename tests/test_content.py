@@ -8,14 +8,17 @@ import pytest
 from PIL import Image
 
 import www.content as content_module
+from www.assets import ApplicationAssets
 from www.content import (
     FIGURE_SIZES,
+    ArticleCollection,
     ArticleError,
     article_summaries,
     load_articles,
     parse_article,
     visible_articles,
 )
+from www.data import EXPERIENCES
 from www.tags import tag_names
 
 
@@ -141,8 +144,10 @@ def test_cover_prefers_webp_and_names_the_accepted_formats(tmp_path: Path) -> No
         parse_article("content/articles/example.md", source(), static)
 
 
-def test_published_content_uses_every_tag_and_defines_its_color() -> None:
-    used_tags = {tag for article in load_articles().all for tag in article.tags}
+def test_published_content_uses_every_tag_and_defines_its_color(
+    snapshots: tuple[ApplicationAssets, ArticleCollection],
+) -> None:
+    used_tags = {tag for article in snapshots[1].all for tag in article.tags}
     names = tag_names()
     expected_tags = set(names)
     stylesheet = Path("assets/css/input.css").read_text(encoding="utf-8")
@@ -150,6 +155,9 @@ def test_published_content_uses_every_tag_and_defines_its_color() -> None:
     assert len(names) == len(expected_tags)
     assert used_tags == expected_tags
     assert {tag for tag in expected_tags if f"[data-tag='{tag}']" in stylesheet} == expected_tags
+    for experience in EXPERIENCES:
+        assert f"[data-company='{experience.company}']" in stylesheet
+        assert experience.brand_color.lower() in stylesheet.lower()
 
 
 def test_parse_article_renders_safe_extended_markdown_and_normalizes_headings(
@@ -421,8 +429,10 @@ def test_load_articles_sorts_and_filters_drafts(tmp_path: Path) -> None:
     assert article_summaries(collection.all)[0].slug == "second"
 
 
-def test_real_archive_loads_and_has_no_public_drafts() -> None:
-    collection = load_articles()
+def test_real_archive_loads_and_has_no_public_drafts(
+    snapshots: tuple[ApplicationAssets, ArticleCollection],
+) -> None:
+    collection = snapshots[1]
 
     # Exact totals over the archive as of 2026-09-20 catch renderer drift in either
     # direction, while a newer article needs no test edit before it can be pushed.

@@ -14,13 +14,12 @@ from www.ranges import etag_matches, range_file_response, strong_etag_matches
 
 
 async def static_asset_response(
-    asset_path: str, request: Request[Any, Any, Any], application_assets: ApplicationAssets, static_dir: Path
+    asset_path: str, request: Request[Any, Any, Any], application_assets: ApplicationAssets, static_root: Path
 ) -> ASGIApp:
     """Serve only files recorded in the immutable startup inventory."""
     relative_path = asset_path.lstrip("/")
     asset_url = f"/static/{relative_path}"
     digest = application_assets.hashes.get(asset_url)
-    static_root = static_dir.resolve()
     # Look up the immutable URL inventory before touching the filesystem.
     # Unknown paths (including NULs and dot segments) are client misses,
     # and files added after startup must not become public accidentally.

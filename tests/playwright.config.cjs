@@ -8,10 +8,11 @@ module.exports = defineConfig({
   outputDir: "../tmp/browser-results",
   // A committed test.only would silently narrow the CI gate; the other configs inherit this.
   forbidOnly: !!process.env.CI,
-  // Each context is isolated and the shared server only serves immutable data. Without
-  // fullyParallel, one spec file across two projects never uses more than two workers;
-  // the cross-browser config inherits two because four on a CI runner starve WebKit.
-  workers: 2,
+  // Each context is isolated and the shared server only serves immutable data.
+  // Run Chromium journeys in parallel across workers; cross-browser overrides this
+  // to two workers without intra-file parallelism because four on CI starve WebKit.
+  fullyParallel: true,
+  workers: process.env.CI ? 2 : 4,
   reporter: "list",
   use: {
     baseURL,
@@ -30,7 +31,7 @@ module.exports = defineConfig({
     { name: "mobile-light", use: { viewport: { width: 390, height: 844 }, colorScheme: "light", isMobile: true } },
   ],
   webServer: process.env.BROWSER_BASE_URL ? undefined : {
-    command: "uv run --locked www",
+    command: "uv run --locked --no-dev www",
     cwd: process.cwd(),
     // Playwright merges this into the child environment; empty values disable
     // inherited collectors without changing the parent test process.

@@ -4,6 +4,8 @@ import json
 
 import pytest
 
+from www.assets import ApplicationAssets
+from www.content import ArticleCollection
 from www.data import METADATA, SITE_PAGES, get_structured_data
 from www.models import ArticleIndexView, PageMetadata
 from www.pages import (
@@ -20,10 +22,10 @@ from www.pages import (
 )
 
 
-def test_search_metadata_is_noindex_and_preloads_first_result() -> None:
-    from www.content import load_articles
-
-    first = load_articles().all[0]
+def test_search_metadata_is_noindex_and_preloads_first_result(
+    snapshots: tuple[ApplicationAssets, ArticleCollection],
+) -> None:
+    first = snapshots[1].all[0]
     metadata = article_index_metadata(ArticleIndexView(query="agents", results=(first,)))
 
     assert metadata.no_index

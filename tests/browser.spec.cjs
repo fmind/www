@@ -209,43 +209,12 @@ test("readers can subscribe and follow without JavaScript", async ({ browser }, 
   }
 });
 
-test("published pages render without overflow, missing images, or external assets", async ({ page, request, baseURL }) => {
-  // A remote full-sitemap crawl needs headroom for network variance while each
-  // navigation and image assertion remains independently bounded below.
-  test.setTimeout(360000);
-  const profile = await (await request.get("/api/profile")).json();
-  const sitemapResponse = await request.get("/sitemap.xml");
-  expect(sitemapResponse.status()).toBe(200);
-  const sitemapPaths = [...(await sitemapResponse.text()).matchAll(/<loc>([^<]+)<\/loc>/g)]
-    .map(([, location]) => new URL(location).pathname);
-  // News editions are noindex, so they stay out of the sitemap; /news/ links every one of them.
-  const newsIndex = await (await request.get("/news/")).text();
-  const newsEditions = [
-    ...new Set([...newsIndex.matchAll(/href="(\/news\/\d{4}-\d{2}-\d{2}(?:-[a-z0-9]+(?:-[a-z0-9]+)*)?\/)"/g)]
-      .map(([, path]) => path)),
-  ];
-  expect(newsEditions.length).toBeGreaterThan(0);
-  expect(sitemapPaths.filter((path) => /^\/news\/./.test(path))).toEqual([]);
-  const paths = [
-    "/",
-    "/connect",
-    "/privacy",
-    "/agents",
-    "/articles/",
-    "/news/",
-    "/sites/",
-    ...profile.site_pages.map((site) => new URL(site.url).pathname),
-    ...profile.articles.map((article) => new URL(article.url).pathname),
-  ];
-  // Discovery must stay closed over the indexable pages.
-  expect([...new Set(sitemapPaths)].sort()).toEqual([...new Set(paths)].sort());
-  expect(sitemapPaths).toHaveLength(paths.length);
+async function assertPagesRender(page, baseURL, paths) {
   const external = [];
   page.on("request", (request) => {
     if (new URL(request.url()).origin !== new URL(baseURL).origin) external.push(request.url());
   });
-  // The QR display and news editions are intentionally noindex but need the same rendering checks.
-  for (const path of [...paths, "/scan", ...newsEditions]) {
+  for (const path of paths) {
     const response = await page.goto(path);
     expect(response.status(), path).toBe(200);
     await expect(page.locator("h1")).toHaveCount(1);
@@ -278,7 +247,69 @@ test("published pages render without overflow, missing images, or external asset
     }
   }
   expect(external).toEqual([]);
-});
+}
+
+test(
+  "published portfolio, news, and site pages render without overflow, missing images, or external assets",
+  async ({ page, request, baseURL }) => {
+    test.setTimeout(180000);
+    const profile = await (await request.get("/api/profile")).json();
+    const sitemapResponse = await request.get("/sitemap.xml");
+    expect(sitemapResponse.status()).toBe(200);
+    const sitemapPaths = [...(await sitemapResponse.text()).matchAll(/<loc>([^<]+)<\/loc>/g)]
+      .map(([, location]) => new URL(location).pathname);
+    // News editions are noindex, so they stay out of the sitemap; /news/ links every one of them.
+    const newsIndex = await (await request.get("/news/")).text();
+    const newsEditions = [
+      ...new Set([...newsIndex.matchAll(/href="(\/news\/\d{4}-\d{2}-\d{2}(?:-[a-z0-9]+(?:-[a-z0-9]+)*)?\/)"/g)]
+        .map(([, path]) => path)),
+    ];
+    expect(newsEditions.length).toBeGreaterThan(0);
+    expect(sitemapPaths.filter((path) => /^\/news\/./.test(path))).toEqual([]);
+    const nonArticlePaths = [
+      "/",
+      "/connect",
+      "/privacy",
+      "/agents",
+      "/articles/",
+      "/news/",
+      "/sites/",
+      ...profile.site_pages.map((site) => new URL(site.url).pathname),
+    ];
+    const paths = [
+      ...nonArticlePaths,
+      ...profile.articles.map((article) => new URL(article.url).pathname),
+    ];
+    // Discovery must stay closed over the indexable pages.
+    expect([...new Set(sitemapPaths)].sort()).toEqual([...new Set(paths)].sort());
+    expect(sitemapPaths).toHaveLength(paths.length);
+    // The QR display and representative news editions (newest, special-topic slug, oldest)
+    // are intentionally noindex but need the same rendering checks; all editions are
+    // validated at startup and use the same image-free template.
+    const specialNewsEdition = newsEditions.find((path) => !/^\/news\/\d{4}-\d{2}-\d{2}\/$/.test(path));
+    const sampledNewsEditions = [
+      ...new Set([newsEditions[0], specialNewsEdition ?? newsEditions[1], newsEditions.at(-1)].filter(Boolean)),
+    ];
+    await assertPagesRender(page, baseURL, [...nonArticlePaths, "/scan", ...sampledNewsEditions]);
+  },
+);
+
+const articleSweepShards = 4;
+for (let shard = 0; shard < articleSweepShards; shard += 1) {
+  test(
+    `published articles (${
+      shard + 1
+    }/${articleSweepShards}) render without overflow, missing images, or external assets`,
+    async ({ page, request, baseURL }) => {
+      test.setTimeout(180000);
+      const profile = await (await request.get("/api/profile")).json();
+      const paths = profile.articles
+        .filter((_, index) => index % articleSweepShards === shard)
+        .map((article) => new URL(article.url).pathname);
+      await assertPagesRender(page, baseURL, paths);
+    },
+  );
+}
 
 test("cost chart labels remain legible and contained at the tablet breakpoint", async ({ page }) => {
   await page.setViewportSize({ width: 640, height: 900 });

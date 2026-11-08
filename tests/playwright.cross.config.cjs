@@ -3,6 +3,8 @@ const shared = require("./playwright.config.cjs");
 
 module.exports = defineConfig({
   ...shared,
+  fullyParallel: false,
+  workers: 2,
   // Firefox stalls when seeded localStorage meets a context without JavaScript, and these
   // journeys never click behind the production consent banner, so start without a choice.
   use: { ...shared.use, storageState: undefined },

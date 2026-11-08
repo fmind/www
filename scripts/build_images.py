@@ -135,6 +135,15 @@ def _require_derivable(source: Path, decoded: Image.Image) -> None:
         )
 
 
+def _inspect_source(source: Path, data: bytes) -> tuple[int, int]:
+    try:
+        with Image.open(BytesIO(data)) as decoded:
+            _require_derivable(source, decoded)
+            return decoded.size
+    except (OSError, ValueError) as error:
+        raise ImageDerivativeError(f'decode "{source}": {error}') from error
+
+
 def _decode(source: Path, data: bytes | None = None) -> Image.Image:
     source_data = _read(source) if data is None else data
     try:
@@ -357,21 +366,25 @@ def _read_optional_target(target: Path) -> bytes | None:
 
 
 def _ensure_locked_target(
-    decoded: Image.Image,
+    source: Path,
+    source_data: bytes,
+    decoded: Image.Image | None,
     target: Path,
     width: int,
     trusted_digest: str | None,
-) -> tuple[str, bool]:
+) -> tuple[str, bool, Image.Image | None]:
     existing = _read_optional_target(target)
     if existing is not None and trusted_digest is not None and _digest(existing) == trusted_digest:
-        return trusted_digest, _set_generated_mode(target)
+        return trusted_digest, _set_generated_mode(target), decoded
 
+    if decoded is None:
+        decoded = _decode(source, source_data)
     encoded = _encode(decoded, target, width)
     encoded_digest = _digest(encoded)
     if existing == encoded:
-        return encoded_digest, _set_generated_mode(target)
+        return encoded_digest, _set_generated_mode(target), decoded
     _write_atomically(target, encoded)
-    return encoded_digest, True
+    return encoded_digest, True, decoded
 
 
 def _remove_obsolete_target(target: Path) -> bool:
@@ -463,17 +476,27 @@ def _generate_locked(
         source_data = _read(source)
         source_digest = _digest(source_data)
         old_entry = old_lock.sources.get(source_name)
-        decoded = _decode(source, source_data)
+        trusted_source = (
+            old_lock.recipe == recipe and old_entry is not None and old_entry.source_sha256 == source_digest
+        )
+        decoded: Image.Image | None = None
         target_digests: dict[str, str] = {}
         try:
-            for width in _eligible_widths(source, decoded.width):
+            if trusted_source:
+                source_width, _ = _inspect_source(source, source_data)
+            else:
+                decoded = _decode(source, source_data)
+                source_width = decoded.width
+            for width in _eligible_widths(source, source_width):
                 target = derivative_name(source, width)
                 target_name = _relative_name(root, target)
                 current_targets.add(target_name)
-                trusted_digest = None
-                if old_lock.recipe == recipe and old_entry is not None and old_entry.source_sha256 == source_digest:
-                    trusted_digest = old_entry.targets.get(target_name)
-                target_digest, changed = _ensure_locked_target(
+                trusted_digest = (
+                    old_entry.targets.get(target_name) if trusted_source and old_entry is not None else None
+                )
+                target_digest, changed, decoded = _ensure_locked_target(
+                    source,
+                    source_data,
                     decoded,
                     target,
                     width,
@@ -483,7 +506,8 @@ def _generate_locked(
                 if changed:
                     changed_sources.add(source_name)
         finally:
-            decoded.close()
+            if decoded is not None:
+                decoded.close()
         new_entries[source_name] = _LockEntry(
             sha256=source_digest,
             targets=target_digests,
@@ -522,7 +546,6 @@ def _require_mode(path: Path) -> None:
 def _image_details(path: Path, data: bytes) -> tuple[str | None, tuple[int, int]]:
     try:
         with Image.open(BytesIO(data)) as decoded:
-            decoded.load()
             return decoded.format, decoded.size
     except (OSError, ValueError) as error:
         raise ImageDerivativeError(f'decode "{path}": {error}') from error
@@ -575,9 +598,7 @@ def check_derivatives(root: Path, *, lock_path: Path, output: TextIO | None = No
             raise ImageDerivativeError(
                 f'source digest differs from the lock for "{source}"; run `mise run build:images`'
             )
-        decoded = _decode(source, source_data)
-        source_size = decoded.size
-        decoded.close()
+        source_size = _inspect_source(source, source_data)
         eligible_widths = _eligible_widths(source, source_size[0])
         expected_names = {_relative_name(root, derivative_name(source, width)): width for width in eligible_widths}
         if missing_entries := sorted(set(expected_names) - set(entry.targets)):
