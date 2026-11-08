@@ -494,10 +494,7 @@ test("homepage presents the headline, six skills, and responsive social links", 
       ["#projects .card", gray],
     ]
   ) {
-    const card = page.locator(selector).first();
-    // content-visibility defers off-screen rendering, including color transitions.
-    await card.scrollIntoViewIfNeeded();
-    await expect(card).toHaveCSS("background-color", color);
+    await expect(page.locator(selector).first()).toHaveCSS("background-color", color);
   }
   const project = page.getByRole("link", { name: "Send Email", exact: true }).first();
   await expect(project).toHaveAttribute("href", "mailto:contact@fmind.dev");
@@ -625,26 +622,45 @@ test("hidden mobile section navigation avoids layout work and resumes on desktop
   expect(await page.evaluate(() => window.sectionLayoutReads)).toBeGreaterThan(0);
 });
 
-test("archive cards render without flashing transitions from default colors", async ({ page }) => {
-  // Chromium starts transitions in content-visibility cards from browser defaults when they
-  // render; under Lighthouse that became one long task across every off-screen card.
-  await page.addInitScript(() => {
-    window.cardTransitions = [];
-    document.addEventListener("transitionrun", (event) => {
-      if (event.target.closest(".article-index article.card")) {
-        window.cardTransitions.push(`${event.target.tagName}.${event.target.className} ${event.propertyName}`);
+test(
+  "pages render off-screen content without transitions from browser defaults",
+  async ({ browser, baseURL }, testInfo) => {
+    // A style pass forced before the stylesheet arrives leaves content-visibility content with
+    // browser-default styles; when it renders, every transition runs at once from those defaults.
+    // A fresh context per page keeps the stylesheet uncached, as on a first visit.
+    for (const path of ["/articles/", "/"]) {
+      const context = await browser.newContext({ ...testInfo.project.use, baseURL });
+      try {
+        const page = await context.newPage();
+        await page.addInitScript(() => {
+          window.startedTransitions = [];
+          document.addEventListener("transitionrun", (event) => {
+            if (event.target.closest("main")) {
+              window.startedTransitions.push(`${event.target.tagName}.${event.target.className} ${event.propertyName}`);
+            }
+          }, true);
+        });
+        await page.goto(path);
+        await page.evaluate(async () => {
+          for (let top = 0; top < document.documentElement.scrollHeight; top += window.innerHeight / 2) {
+            window.scrollTo({ top, behavior: "instant" });
+            await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+          }
+        });
+        expect(await page.evaluate(() => window.startedTransitions), path).toEqual([]);
+        if (path === "/") {
+          // The approved hover motion still animates.
+          const card = page.locator("#about .card").first();
+          await card.scrollIntoViewIfNeeded();
+          await card.hover();
+          await expect.poll(() => card.evaluate((element) => element.getAnimations().length)).toBeGreaterThan(0);
+        }
+      } finally {
+        await context.close();
       }
-    }, true);
-  });
-  await page.goto("/articles/");
-  await page.evaluate(async () => {
-    for (let top = 0; top < document.documentElement.scrollHeight; top += window.innerHeight / 2) {
-      window.scrollTo({ top, behavior: "instant" });
-      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     }
-  });
-  expect(await page.evaluate(() => window.cardTransitions)).toEqual([]);
-});
+  },
+);
 
 test("late font downloads keep the article layout stable", async ({ page }) => {
   await page.addInitScript(() => {

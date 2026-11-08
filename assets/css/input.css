@@ -334,22 +334,14 @@ a.tag:hover {
   contain-intrinsic-block-size: auto 36rem;
 }
 
-/* Chromium starts transitions in skipped cards from browser-default colors once they
-   render (on scroll, or on a forced style pass such as Lighthouse's), which flashes
-   titles and tags and costs a long main-thread task. Keep card content transition-free;
-   span tags have no hover state, so only linked tags transition. */
+/* A style pass forced before the stylesheet arrives (such as a hit test or a DevTools call)
+   leaves skipped content with browser-default styles. When it renders (on scroll, or on a
+   forced style pass such as Lighthouse's), its transitions all run from those defaults,
+   flashing titles and tags in one long main-thread task. Keep card content transition-free;
+   span tags have no hover state, so only linked tags transition. Pages whose off-screen
+   content keeps hover transitions, like the homepage, must not use content-visibility. */
 .article-index article.card h3 a {
   transition: none;
-}
-
-.portfolio-content > section {
-  content-visibility: auto;
-  contain-intrinsic-size: auto 1200px;
-}
-
-/* Native fragment jumps need real preceding heights, including without JS. */
-.portfolio-content:has(> section:target) > section {
-  content-visibility: visible;
 }
 
 /* While the fixed consent banner is open, keep keyboard focus scrolled above it (WCAG 2.4.11). */
