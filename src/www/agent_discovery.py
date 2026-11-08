@@ -23,13 +23,23 @@ def render_api_catalog() -> bytes:
                 "linkset": [
                     {
                         "anchor": origin + "/.well-known/api-catalog",
-                        "item": [{"href": origin + "/api/profile"}, {"href": origin + "/mcp"}],
+                        "item": [
+                            {"href": origin + "/api/profile"},
+                            {"href": origin + "/api/news"},
+                            {"href": origin + "/mcp"},
+                        ],
                     },
                     {
                         "anchor": origin + "/api/profile",
                         "describedby": [
                             {"href": origin + "/api/profile/schema.json", "type": "application/schema+json"}
                         ],
+                        "service-doc": [{"href": origin + "/agents#http", "type": "text/html"}],
+                        "status": [{"href": origin + "/health", "type": "application/json"}],
+                    },
+                    {
+                        "anchor": origin + "/api/news",
+                        "describedby": [{"href": origin + "/api/news/schema.json", "type": "application/schema+json"}],
                         "service-doc": [{"href": origin + "/agents#http", "type": "text/html"}],
                         "status": [{"href": origin + "/health", "type": "application/json"}],
                     },

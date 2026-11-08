@@ -3,12 +3,15 @@
 import os
 from collections.abc import Callable
 from functools import partial
+from typing import TYPE_CHECKING
 
 import pytest
-from litestar import Litestar
 
-from www.assets import ApplicationAssets, load_application_assets
-from www.content import ArticleCollection, load_articles
+if TYPE_CHECKING:
+    from litestar import Litestar
+
+    from www.assets import ApplicationAssets
+    from www.content import ArticleCollection
 
 
 @pytest.fixture(autouse=True)
@@ -25,7 +28,11 @@ def isolate_git(monkeypatch: pytest.MonkeyPatch) -> None:
 @pytest.fixture(scope="session")
 def snapshots() -> tuple[ApplicationAssets, ArticleCollection]:
     """Load the validated startup content once; frozen dataclasses and read-only mappings make it safe to share."""
-    return load_application_assets(), load_articles()
+    from www.assets import load_application_assets
+    from www.content import load_articles
+
+    assets = load_application_assets()
+    return assets, load_articles(image_sizes=assets.image_sizes)
 
 
 @pytest.fixture(scope="session")
@@ -36,6 +43,8 @@ def make_app(snapshots: tuple[ApplicationAssets, ArticleCollection]) -> Callable
     """
     # Import lazily: importing www.app also builds its module-level app, which unrelated test files skip.
     from www.app import create_app
+    from www.news import load_news
 
     assets, collection = snapshots
-    return partial(create_app, assets=assets, collection=collection)
+    news = load_news()
+    return partial(create_app, assets=assets, collection=collection, news=news)

@@ -1,4 +1,4 @@
-{# One ranked list of cards; the first ones are the edition's highlights. #}
+{# One ranked list of cards, ordered from most to least interesting. #}
 {% macro edition_links(edition, level) -%}
   <ol class="space-y-4" aria-label="Links of {{ edition.title }}">
     {% for item in edition.items %}
@@ -24,7 +24,7 @@
       <p class="grow-0 text-sm text-base-content/65"><time datetime="{{ edition.date.isoformat() }}">{{ edition.date.strftime('%A') }}</time></p>
       <h3 class="card-title font-heading text-xl leading-snug mt-1 text-primary"><a class="after:absolute after:inset-0 after:rounded-[inherit]" href="{{ edition.path }}">{{ edition.title }}</a></h3>
       <ul class="list-disc pl-5 mt-2 space-y-1 text-base-content/75">
-        {% for item in edition.highlights %}<li class="wrap-anywhere">{{ item.title }}</li>{% endfor %}
+        {% for item in edition.items[:3] %}<li class="wrap-anywhere">{{ item.title }}</li>{% endfor %}
       </ul>
       <p class="grow-0 mt-auto pt-3 text-sm font-semibold text-primary">See all {{ link_count(edition) }} →</p>
     </div>

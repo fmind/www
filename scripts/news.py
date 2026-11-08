@@ -41,7 +41,6 @@ from xml.etree import ElementTree
 from zoneinfo import ZoneInfo
 
 from www.news import (
-    HIGHLIGHT_LIMIT,
     NewsEdition,
     NewsError,
     NewsItem,
@@ -144,19 +143,17 @@ def _minutes(seconds: int) -> str:
 def _youtube(url: str, fetch: Fetch) -> dict[str, str]:
     _, oembed = fetch(f"https://www.youtube.com/oembed?url={quote(url, safe='')}&format=json")
     data = _json_object(oembed)
-    author = _clean(data.get("author_name", ""))
-    facts = {"title": _clean(data.get("title", "")), "description": f"Video by {author}" if author else ""}
+    facts = {"title": _clean(data.get("title", ""))}
     try:
         _, page = fetch(url)
+        if seconds := re.search(r'"lengthSeconds":"(\d+)"', page):
+            facts["duration"] = _minutes(int(seconds[1]))
+        if short := re.search(r'"shortDescription":"((?:[^"\\]|\\.)*)"', page):
+            text = _clean(json.loads(f'"{short[1]}"'))
+            facts["description"] = text[:600]
+            facts["excerpt"] = text[:EXCERPT_LIMIT]
     except (OSError, ValueError) as error:
-        # YouTube often throttles scripted page reads; the oEmbed title and channel still ground a line.
-        return facts | {"error": f"watch page: {type(error).__name__}: {error}"}
-    if seconds := re.search(r'"lengthSeconds":"(\d+)"', page):
-        facts["duration"] = _minutes(int(seconds[1]))
-    if short := re.search(r'"shortDescription":"((?:[^"\\]|\\.)*)"', page):
-        text = _clean(json.loads(f'"{short[1]}"'))
-        facts["description"] = text[:600] or facts["description"]
-        facts["excerpt"] = text[:EXCERPT_LIMIT]
+        facts["error"] = f"watch page: {type(error).__name__}: {error}"
     return facts
 
 
@@ -168,21 +165,44 @@ def _x(url: str, fetch: Fetch) -> dict[str, str]:
     return {"title": f"{author} on X" if author else "X post", "description": text[:600], "excerpt": text}
 
 
+_GITHUB_SITE_PATHS = frozenset(
+    {
+        "about",
+        "blog",
+        "collections",
+        "customer-stories",
+        "events",
+        "explore",
+        "features",
+        "login",
+        "marketplace",
+        "new",
+        "notifications",
+        "orgs",
+        "pricing",
+        "search",
+        "security-advisories",
+        "settings",
+        "signup",
+        "sponsors",
+        "topics",
+        "trending",
+    }
+)
+
+
 def _github(url: str, fetch: Fetch) -> dict[str, str]:
     parts = [part for part in urlparse(url).path.split("/") if part]
-    if len(parts) < 2:
+    if len(parts) != 2 or parts[0].lower() in _GITHUB_SITE_PATHS:
         return _page(url, fetch)
     owner, repo = parts[0], parts[1]
-    _, body = fetch(f"https://api.github.com/repos/{quote(owner)}/{quote(repo)}")
+    try:
+        _, body = fetch(f"https://api.github.com/repos/{quote(owner)}/{quote(repo)}")
+    except OSError:
+        return _page(url, fetch)
     data = _json_object(body)
-    facts = [
-        f"License: {spdx}."
-        for spdx in [(data.get("license") or {}).get("spdx_id")]
-        if spdx not in (None, "NOASSERTION")
-    ]
-    if topics := data.get("topics"):
-        facts.append(f"Topics: {', '.join(topics[:8])}.")
-    result = {"title": data.get("full_name") or f"{owner}/{repo}", "description": _clean(data.get("description") or "")}
+    description = _clean(data.get("description") or "")
+    result = {"title": data.get("full_name") or f"{owner}/{repo}", "description": description}
     try:
         # The API finds the README whatever its name or format (README.md, readme.rst, docs/README.md).
         _, body = fetch(f"https://api.github.com/repos/{quote(owner)}/{quote(repo)}/readme")
@@ -193,7 +213,18 @@ def _github(url: str, fetch: Fetch) -> dict[str, str]:
     readme = re.sub(r"```.*?```", " ", readme, flags=re.DOTALL)
     readme = re.sub(r"!\[[^\]]*\]\([^)]*\)", " ", readme)
     readme = re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", readme)
-    facts.append(_clean(re.sub(r"<[^>]+>", " ", readme)))
+    readme_text = _clean(re.sub(r"<[^>]+>", " ", readme))
+    if not description and not readme_text:
+        return result
+    facts = [
+        f"License: {spdx}."
+        for spdx in [(data.get("license") or {}).get("spdx_id")]
+        if spdx not in (None, "NOASSERTION")
+    ]
+    if topics := data.get("topics"):
+        facts.append(f"Topics: {', '.join(topics[:8])}.")
+    if readme_text:
+        facts.append(readme_text)
     return result | {"excerpt": _clean(" ".join(facts))}
 
 
@@ -272,7 +303,7 @@ def source_facts(url: str, fetch: Fetch = fetch_text) -> dict[str, str]:
     except (OSError, ValueError, ElementTree.ParseError) as error:
         result["error"] = f"{type(error).__name__}: {error}"
     result["excerpt"] = result["excerpt"][:EXCERPT_LIMIT]
-    has_facts = any(result[key] for key in ("title", "description", "excerpt"))
+    has_facts = bool(result["title"] and (result["description"] or result["excerpt"]))
     return {"status": "ok" if has_facts else "fetch_error", **result}
 
 
@@ -323,7 +354,7 @@ WRITER_FIELDS = ("url", "title", "description")
 WRITER_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
-    "required": ["items"],
+    "required": ["items", "unverified"],
     "properties": {
         "items": {
             "type": "array",
@@ -337,7 +368,19 @@ WRITER_SCHEMA: dict[str, Any] = {
                     "description": {"type": "string"},
                 },
             },
-        }
+        },
+        "unverified": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": False,
+                "required": ["url", "reason"],
+                "properties": {
+                    "url": {"type": "string"},
+                    "reason": {"type": "string"},
+                },
+            },
+        },
     },
 }
 
@@ -414,11 +457,14 @@ def writer_prompt(
         ),
         f"Rules from the news skill:\n\n{rules}",
         (
-            "Return every link below exactly once in `items`, ordered from most to least interesting. For a published "
-            "line, copy its url, title, and description unchanged. For a new link, keep its url, write the title from "
-            "the source title, and write one English sentence of at most 30 words as the description. Start each new "
-            "description with a third-person verb whose subject is the link, such as Releases, Open-sources, or "
-            "Explains, never with the title or a noun."
+            "Return every published line and every verifiable new link in `items`, ordered from most to least "
+            "interesting, and put any new link whose source facts do not clearly state what the work is or does "
+            "(for example, a vague title with only sponsor or social links, or a login/cookie wall) in `unverified` "
+            "with a short `reason` (`[]` when every new link is verifiable). Never guess or extrapolate a title or "
+            "description. For a published line, copy its url, title, and description unchanged. For a verifiable new "
+            "link, keep its url, write the title from the source title, and write one English sentence of at most 30 "
+            "words as the description. Start each new description with a third-person verb whose subject is the link, "
+            "such as Releases, Open-sources, or Explains, never with the title or a noun."
         ),
     ]
     if feedback:
@@ -456,11 +502,15 @@ def agy_writer(prompt: str) -> Mapping[str, Any]:
     return output
 
 
-def ordered_items(output: Mapping[str, Any], existing: Sequence[NewsItem], new_urls: Sequence[str]) -> list[NewsItem]:
-    """Check the writer listed each link once and keep published lines verbatim; raise NewsError otherwise."""
+def ordered_items(
+    output: Mapping[str, Any], existing: Sequence[NewsItem], new_urls: Sequence[str]
+) -> tuple[list[NewsItem], list[tuple[str, str]]]:
+    """Check the writer accounted for each link once and keep published lines verbatim; raise NewsError otherwise."""
     published = {canonicalize_url(item.url): item for item in existing}
-    expected = set(published) | set(new_urls)
+    allowed_new = set(new_urls)
+    expected = set(published) | allowed_new
     items: list[NewsItem] = []
+    unverified: list[tuple[str, str]] = []
     seen: set[str] = set()
     entries = output.get("items")
     if not isinstance(entries, list):
@@ -475,18 +525,27 @@ def ordered_items(output: Mapping[str, Any], existing: Sequence[NewsItem], new_u
         items.append(
             published.get(url) or NewsItem(entry["title"].strip(), url, " ".join(entry["description"].split()))
         )
+    held = output.get("unverified", [])
+    if not isinstance(held, list):
+        raise NewsError("`unverified` must be a list")
+    for entry in held:
+        if not isinstance(entry, dict) or not all(isinstance(entry.get(key), str) for key in ("url", "reason")):
+            raise NewsError("each unverified entry needs string url and reason fields")
+        url = canonicalize_url(entry["url"])
+        reason = " ".join(entry["reason"].split())
+        if url not in allowed_new or url in seen or not reason:
+            raise NewsError(f"{url} cannot be held back as unverified, appears twice, or has no reason")
+        seen.add(url)
+        unverified.append((url, f"insufficient facts ({reason}); publish it from a session after checking the source"))
     if missing := expected - seen:
         raise NewsError(f"the answer leaves out {', '.join(sorted(missing))}")
-    return items
+    return items, unverified
 
 
 def render_edition(items: Sequence[NewsItem], front_matter: str = "") -> str:
-    """The edition file: the first links under Highlights, the rest under More."""
+    """The edition file: optional front matter and one ranked link per line."""
     lines = [f"- [{item.title}]({item.url}): {item.description}" for item in items]
-    text = "## Highlights\n\n" + "\n".join(lines[:HIGHLIGHT_LIMIT]) + "\n"
-    if len(lines) > HIGHLIGHT_LIMIT:
-        text += "\n## More\n\n" + "\n".join(lines[HIGHLIGHT_LIMIT:]) + "\n"
-    return front_matter + text
+    return front_matter + "\n".join(lines) + "\n"
 
 
 def skip_reason(result: Mapping[str, str]) -> str:
@@ -502,6 +561,18 @@ def skip_reason(result: Mapping[str, str]) -> str:
     if status == "fetch_error":
         return "no facts fetched; publish it from a session after finding the primary source"
     return ""
+
+
+def _validate_in_archive(news_dir: Path, slug: str, markdown: str) -> NewsEdition:
+    """Write `markdown` into `news_dir/<slug>.md`, validate the full archive, and return the parsed edition."""
+    (news_dir / f"{slug}.md").write_text(markdown, encoding="utf-8")
+    return next(edition for edition in load_news(news_dir) if edition.slug == slug)
+
+
+def _require_new_links(has_new: bool, slug: str, skipped: Sequence[tuple[str, str]]) -> None:
+    if not has_new:
+        skipped_text = "".join(f"\n- {url}: {reason}" for url, reason in skipped)
+        raise NewsError(f"no new link to add to {slug}:{skipped_text}")
 
 
 def draft(
@@ -532,18 +603,18 @@ def draft(
         results = prepare(urls, news_dir, fetch)
         skipped = [(result["url"], reason) for result in results if (reason := skip_reason(result))]
         facts = [result for result in results if not skip_reason(result)]
-        skipped_text = "".join(f"\n- {url}: {reason}" for url, reason in skipped)
-        if not facts:
-            raise NewsError(f"no new link to add to {slug}:{skipped_text}")
+        _require_new_links(bool(facts), slug, skipped)
         rules = writer_rules(repo / SKILL)
         rejection = ""
+        held: list[tuple[str, str]] = []
         for attempt in range(1, WRITER_ATTEMPTS + 1):
             try:
                 output = writer(writer_prompt(rules, existing, facts, feedback, rejection))
-                items = ordered_items(output, existing, [fact["url"] for fact in facts])
+                items, held = ordered_items(output, existing, [fact["url"] for fact in facts])
+                if len(items) == len(existing):
+                    break
                 markdown = render_edition(items, front_matter)
-                path.write_text(markdown, encoding="utf-8")
-                edition = next(edition for edition in load_news(news_dir) if edition.slug == slug)
+                edition = _validate_in_archive(news_dir, slug, markdown)
                 # A title or description holding Markdown syntax could re-parse into other or extra links.
                 if edition.items != tuple(items):
                     raise NewsError("the rendered edition does not parse back to the listed links; use plain text")
@@ -552,6 +623,8 @@ def draft(
                 if attempt == WRITER_ATTEMPTS:
                     raise NewsError(f"the writer's lines failed validation twice: {error}") from error
                 rejection = str(error)
+        skipped.extend(held)
+        _require_new_links(len(items) > len(existing), slug, skipped)
     identifier = digest(f"{slug}\n{digest(base)}\n{markdown}")[:12]
     drafts.mkdir(parents=True, exist_ok=True)
     cutoff = time.time() - DRAFT_DAYS * 86_400
@@ -604,8 +677,7 @@ def publish(identifier: str, *, repo: Path = Path(), drafts: Path = DRAFTS) -> s
         current = path.read_text(encoding="utf-8") if path.exists() else ""
         if (digest(current) if current else "") != base:
             raise NewsError(f"{target} changed on main since draft {identifier}; draft again")
-        path.write_text(markdown, encoding="utf-8")
-        edition = next(edition for edition in load_news(news_dir) if edition.slug == slug)
+        edition = _validate_in_archive(news_dir, slug, markdown)
         blob = git(repo, "hash-object", "-w", "--stdin", stdin=markdown).strip()
         # A private index builds the commit from origin/main alone: no working tree, local branch, or unpushed commit.
         index = {"GIT_INDEX_FILE": str(Path(scratch) / "index")}

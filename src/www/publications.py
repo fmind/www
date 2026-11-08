@@ -24,7 +24,7 @@ from www.data import (
     YOUTUBE_SERIES,
 )
 from www.models import Article, ArticleIndexView, ArticleSummary, ArticleYear, Portfolio
-from www.news import NEWS_FEED_PATH, utc_stamp, xml_document, xml_sub
+from www.news import NEWS_FEED_PATH, atom_feed_root, utc_stamp, xml_document, xml_sub
 from www.search import SearchIndex, normalize_search_query
 from www.tags import TAGS, sort_tags
 
@@ -32,7 +32,6 @@ _PORTFOLIO_ADAPTER = TypeAdapter(Portfolio)
 
 ATOM_FULL_CONTENT_LIMIT = 15
 RELATED_ARTICLE_COUNT = 3
-_ATOM = "http://www.w3.org/2005/Atom"
 # Media RSS is the de facto thumbnail signal for feed readers (Feedly, Inoreader, NetNewsWire).
 _MEDIA = "http://search.yahoo.com/mrss/"
 ElementTree.register_namespace("media", _MEDIA)
@@ -58,17 +57,8 @@ def absolute_article_html(body: str) -> str:
 
 
 def render_atom_feed(articles: Sequence[Article]) -> str:
-    feed = ElementTree.Element("feed", xmlns=_ATOM)
-    xml_sub(feed, "title", "Fmind articles")
-    xml_sub(feed, "id", f"{METADATA.site_url}/articles/")
     updated = max((article.modified_date() for article in articles), default=datetime(1970, 1, 1, tzinfo=UTC))
-    xml_sub(feed, "updated", utc_stamp(updated))
-    xml_sub(feed, "link", href=f"{METADATA.site_url}/articles/feed.xml", rel="self", type="application/atom+xml")
-    xml_sub(feed, "link", href=f"{METADATA.site_url}/articles/", rel="alternate", type="text/html")
-    xml_sub(feed, "icon", f"{METADATA.site_url}/logo.png")
-    author = xml_sub(feed, "author")
-    xml_sub(author, "name", METADATA.name)
-    xml_sub(author, "uri", f"{METADATA.site_url}/")
+    feed = atom_feed_root("Fmind articles", "/articles/", "/articles/feed.xml", updated)
     for index, article in enumerate(articles):
         entry = xml_sub(feed, "entry")
         xml_sub(entry, "title", article.title)
@@ -149,12 +139,14 @@ def render_llms_txt(articles: Sequence[Article]) -> str:
         f"- [MCP server]({METADATA.site_url}/agents#mcp): Read-only portfolio tools, resources, and prompts at `{METADATA.site_url}/mcp` (Streamable HTTP, POST only).",
         f"- [JSON profile]({METADATA.site_url}/api/profile): Canonical portfolio and article index.",
         f"- [Profile schema]({METADATA.site_url}/api/profile/schema.json): JSON Schema for validating the profile response.",
+        f"- [JSON news]({METADATA.site_url}/api/news): Curated daily tech news archive as JSON.",
+        f"- [News schema]({METADATA.site_url}/api/news/schema.json): JSON Schema for validating the news response.",
         f"- [MCP discovery]({METADATA.site_url}/.well-known/mcp/server-card.json): Available tools, prompts, and portfolio resource URI.",
         f"- [Bulk article export]({METADATA.site_url}/llms-full.txt): This index plus every public article in Markdown. Use only when you need the whole collection and your reader can handle its size; otherwise search and read individual articles.",
         f"- Article source: append `.md` to any article slug ({METADATA.site_url}/articles/<slug>.md) for its raw Markdown.",
         "- If your reader rejects `text/markdown`, read the regular article URL as HTML; the full article requires no JavaScript.",
         f"- [Atom feed]({METADATA.site_url}/articles/feed.xml): Reverse-chronological publication feed.",
-        f"- [News]({METADATA.site_url}/news/): Daily curated links, one page per day; append `.md` to an edition (`{METADATA.site_url}/news/<YYYY-MM-DD>.md`) for its Markdown.",
+        f"- [News]({METADATA.site_url}/news/): Daily curated links, one page per day; request `Accept: text/markdown` on `/news/` or append `.md` to an edition (`{METADATA.site_url}/news/<YYYY-MM-DD>.md`) for Markdown.",
         f"- [News feed]({METADATA.site_url}{NEWS_FEED_PATH}): Atom feed with one entry per daily edition.",
         f"- [Sitemap]({METADATA.site_url}/sitemap.xml): Canonical hosted pages.",
         "",
@@ -289,7 +281,7 @@ def article_sections(article: Article) -> tuple[dict[str, str], ...]:
 
 def render_home_markdown(articles: tuple[ArticleSummary, ...]) -> bytes:
     """Render the complete public portfolio without scraping its HTML layout."""
-    profile = json.loads(render_profile_json(articles))
+    profile = _PORTFOLIO_ADAPTER.dump_python(portfolio_snapshot(articles), mode="json")
     lines = [
         f"# {METADATA.name} ({METADATA.alternate_name})",
         "",

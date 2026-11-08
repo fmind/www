@@ -15,7 +15,8 @@ from mcp_types import CallToolResult
 from pydantic import TypeAdapter
 
 from www.agent_discovery import AGENT_SKILL_PATH, prefers_markdown
-from www.content import article_summaries, load_articles, visible_articles
+from www.assets import ApplicationAssets
+from www.content import ArticleCollection, article_summaries, visible_articles
 from www.mcp import create_mcp_server
 from www.publications import article_markdown_index
 from www.search import SearchIndex
@@ -64,7 +65,7 @@ def test_negotiation_respects_quality_exclusions_specificity_and_browser_default
     assert prefers_markdown(accept) is markdown
 
 
-@pytest.mark.parametrize("path", ["/", "/articles/the-affordable-ai-agents/"])
+@pytest.mark.parametrize("path", ["/", "/articles/the-affordable-ai-agents/", "/news/"])
 def test_negotiated_get_and_head_preserve_html_and_cache_variants(client: TestClient[Any], path: str) -> None:
     for accept, content_type in (
         ("text/markdown", "text/markdown"),
@@ -86,7 +87,7 @@ def test_negotiated_get_and_head_preserve_html_and_cache_variants(client: TestCl
             assert response.headers["access-control-allow-origin"] == "*"
         else:
             assert response.text.startswith("<!DOCTYPE html>")
-    if path != "/":
+    if path not in ("/", "/news/"):
         assert (
             client.get(path, headers={"accept": "text/markdown"}).content
             == client.get(path.rstrip("/") + ".md").content
@@ -112,6 +113,7 @@ def test_catalog_links_and_skill_digest_are_resolvable(client: TestClient[Any]) 
     assert response.headers["access-control-allow-origin"] == "*"
     assert {urlsplit(link["href"]).path for link in response.json()["linkset"][0]["item"]} == {
         "/api/profile",
+        "/api/news",
         "/mcp",
     }
     assert 'rel="api-catalog"' in client.head("/.well-known/api-catalog").headers["link"]
@@ -194,10 +196,22 @@ def test_mcp_search_read_cite_workflow_over_http(client: TestClient[Any]) -> Non
     assert call_tool(client, "get_article", {"slug": "unknown-article"})["isError"]
     assert call_tool(client, "get_article", {"slug": "../privacy"})["isError"]
 
+    news_search = call_tool(client, "search_news", {"limit": 1})["structuredContent"]
+    news_edition = call_tool(client, "get_news", {"slug": news_search["editions"][0]["slug"]})
+    assert not news_edition.get("isError", False)
+    news_body = news_edition["structuredContent"]
+    news_metadata = news_body["edition"]
+    assert news_body["markdown"] == client.get(f"/news/{news_metadata['slug']}.md").text
+    assert news_body["canonical_url"] == news_metadata["url"]
+    assert call_tool(client, "get_news", {"slug": "1999-01-01"})["isError"]
+    assert call_tool(client, "get_news", {"slug": "../privacy"})["isError"]
+
 
 @pytest.mark.anyio
-async def test_mcp_article_reader_never_exposes_drafts() -> None:
-    public = visible_articles(load_articles().all)
+async def test_mcp_article_reader_never_exposes_drafts(
+    snapshots: tuple[ApplicationAssets, ArticleCollection],
+) -> None:
+    public = visible_articles(snapshots[1].all)
     draft = replace(public[0], slug="private-draft", draft=True, markdown="private text")
     server = create_mcp_server(
         article_summaries(public), SearchIndex(public), (*public, draft), article_markdown_index(public)

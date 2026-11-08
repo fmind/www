@@ -6,6 +6,7 @@ import io
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import time
@@ -44,7 +45,7 @@ class FakeWeb:
 def write_edition(directory: Path, slug: str, *urls: str) -> Path:
     directory.mkdir(parents=True, exist_ok=True)
     lines = (f"- [Title {index}]({url}): About it." for index, url in enumerate(urls[:3]))
-    (directory / f"{slug}.md").write_text("## Highlights\n\n" + "\n".join(lines), encoding="utf-8")
+    (directory / f"{slug}.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
     return directory
 
 
@@ -131,15 +132,17 @@ def test_youtube_facts_use_oembed_and_watch_page() -> None:
     assert (facts["title"], facts["description"], facts["duration"]) == ("Talk", "Line one Line two", "1h 2m")
 
 
-def test_youtube_keeps_oembed_facts_when_the_watch_page_fails() -> None:
+def test_youtube_requires_watch_page_description_instead_of_guessing_from_author() -> None:
     url = "https://www.youtube.com/watch?v=abc"
     oembed = "https://www.youtube.com/oembed?url=https%3A%2F%2Fwww.youtube.com%2Fwatch%3Fv%3Dabc&format=json"
-    web = FakeWeb({oembed: json.dumps({"title": "Talk", "author_name": "Speaker"})})
+    meta = json.dumps({"title": "Talk", "author_name": "Speaker"})
 
-    facts = news.source_facts(url, web)
+    failed_watch = news.source_facts(url, FakeWeb({oembed: meta}))
+    empty_watch = news.source_facts(url, FakeWeb({oembed: meta, url: '"lengthSeconds":"120"'}))
 
-    assert (facts["status"], facts["title"], facts["description"]) == ("ok", "Talk", "Video by Speaker")
-    assert facts["error"] == f"watch page: OSError: no route to {url}"
+    assert (failed_watch["status"], failed_watch["title"], failed_watch["description"]) == ("fetch_error", "Talk", "")
+    assert failed_watch["error"] == f"watch page: OSError: no route to {url}"
+    assert (empty_watch["status"], empty_watch["title"], empty_watch["duration"]) == ("fetch_error", "Talk", "2m")
 
 
 def test_github_facts_combine_api_license_topics_and_readme() -> None:
@@ -162,21 +165,46 @@ def test_github_facts_combine_api_license_topics_and_readme() -> None:
     assert "error" not in facts
 
 
-def test_github_keeps_repository_facts_without_a_readme() -> None:
-    web = FakeWeb(
+def test_github_keeps_repository_facts_without_a_readme_only_when_described() -> None:
+    described = FakeWeb(
+        {
+            "https://api.github.com/repos/org/tool": json.dumps(
+                {"full_name": "org/tool", "description": "A tool.", "license": {"spdx_id": "MIT"}}
+            )
+        }
+    )
+    undescribed = FakeWeb(
         {"https://api.github.com/repos/org/tool": json.dumps({"full_name": "org/tool", "license": {"spdx_id": "MIT"}})}
     )
 
-    facts = news.source_facts("https://github.com/org/tool", web)
+    ok_facts = news.source_facts("https://github.com/org/tool", described)
+    empty_facts = news.source_facts("https://github.com/org/tool", undescribed)
 
-    assert (facts["status"], facts["title"], facts["excerpt"]) == ("ok", "org/tool", "License: MIT.")
-    assert facts["error"] == "README: OSError: no route to https://api.github.com/repos/org/tool/readme"
+    assert (ok_facts["status"], ok_facts["title"], ok_facts["description"], ok_facts["excerpt"]) == (
+        "ok",
+        "org/tool",
+        "A tool.",
+        "License: MIT.",
+    )
+    assert ok_facts["error"] == "README: OSError: no route to https://api.github.com/repos/org/tool/readme"
+    assert (empty_facts["status"], empty_facts["title"], empty_facts["excerpt"]) == ("fetch_error", "org/tool", "")
 
 
-def test_github_owner_pages_fall_back_to_page_facts() -> None:
-    web = FakeWeb({"https://github.com/org": ARTICLE})
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://github.com/org",
+        "https://github.com/blog/ship-it",
+        "https://github.com/org/tool/releases/tag/v1.0",
+        "https://github.com/org/tool",
+    ],
+)
+def test_github_non_repo_paths_and_api_outages_fall_back_to_page_facts(url: str) -> None:
+    web = FakeWeb({url: ARTICLE})
 
-    assert news.source_facts("https://github.com/org", web)["title"] == "A & B"
+    facts = news.source_facts(url, web)
+
+    assert (facts["status"], facts["title"]) == ("ok", "A & B")
 
 
 def test_arxiv_and_x_facts() -> None:
@@ -336,9 +364,9 @@ def test_main_prints_json_and_names_invalid_content(
         {"status": "duplicate", "url": "https://example.com/old", "edition": "2026-11-02"}
     ]
 
-    (tmp_path / "content" / "news" / "2026-11-04.md").write_text("## Highlights\nbroken", encoding="utf-8")
+    (tmp_path / "content" / "news" / "2026-11-04.md").write_text("broken\n", encoding="utf-8")
     assert news.main(["prepare", "https://example.com/new"]) == 1
-    assert "2026-11-04:2: expected" in capsys.readouterr().err
+    assert "2026-11-04:1: expected" in capsys.readouterr().err
 
 
 # Draft and publish run against a local bare remote, with a fake writer and fake web.
@@ -353,37 +381,68 @@ def run_git(cwd: Path, *args: str) -> str:
 class FakeWriter:
     """Return queued answers in turn and record every prompt."""
 
-    def __init__(self, *answers: list[dict[str, str]]) -> None:
+    def __init__(self, *answers: list[dict[str, str]] | Mapping[str, object]) -> None:
         self.answers = list(answers)
         self.prompts: list[str] = []
 
     def __call__(self, prompt: str) -> Mapping[str, object]:
         self.prompts.append(prompt)
-        return {"items": self.answers.pop(0)}
+        answer = self.answers.pop(0)
+        return answer if isinstance(answer, Mapping) else {"items": answer}
 
 
 def line(url: str, description: str = "Ships a tested change.") -> dict[str, str]:
     return {"url": url, "title": f"Title of {url.rsplit('/', 1)[-1]}", "description": description}
 
 
+@pytest.fixture(scope="module")
+def _site_template(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    root = tmp_path_factory.mktemp("news_site")
+    env = {key: value for key, value in os.environ.items() if not key.startswith("GIT_")}
+    env.update(
+        {
+            "GIT_CONFIG_GLOBAL": str(root / "gitconfig"),
+            "GIT_CONFIG_NOSYSTEM": "1",
+            "GIT_AUTHOR_NAME": "Test",
+            "GIT_AUTHOR_EMAIL": "test@example.test",
+            "GIT_COMMITTER_NAME": "Test",
+            "GIT_COMMITTER_EMAIL": "test@example.test",
+        }
+    )
+    for cwd, args in (
+        (root, ("init", "--quiet", "--bare", "--initial-branch=main", "remote.git")),
+        (root, ("clone", "--quiet", str(root / "remote.git"), "repo")),
+    ):
+        subprocess.run(["git", *args], cwd=cwd, env=env, check=True, capture_output=True, text=True)  # noqa: S603, S607
+    repo = root / "repo"
+    write_edition(repo / "content" / "news", "2026-11-06", "https://example.com/old")
+    skill = repo / news.SKILL
+    skill.parent.mkdir(parents=True)
+    skill.write_text(news.SKILL.read_text(encoding="utf-8"), encoding="utf-8")
+    for args in (
+        ("add", "."),
+        ("commit", "--quiet", "-m", "init"),
+        ("push", "--quiet", "origin", "HEAD:main"),
+    ):
+        subprocess.run(["git", *args], cwd=repo, env=env, check=True, capture_output=True, text=True)  # noqa: S603, S607
+    return root
+
+
 @pytest.fixture
-def site(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+def site(tmp_path: Path, _site_template: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     """A checkout whose origin/main holds one older edition and the real news skill."""
     monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(tmp_path / "gitconfig"))
     monkeypatch.setenv("GIT_CONFIG_NOSYSTEM", "1")
     for key in ("AUTHOR", "COMMITTER"):
         monkeypatch.setenv(f"GIT_{key}_NAME", "Test")
         monkeypatch.setenv(f"GIT_{key}_EMAIL", "test@example.test")
-    run_git(tmp_path, "init", "--quiet", "--bare", "--initial-branch=main", "remote.git")
-    run_git(tmp_path, "clone", "--quiet", str(tmp_path / "remote.git"), "repo")
-    repo = tmp_path / "repo"
-    write_edition(repo / "content" / "news", "2026-11-06", "https://example.com/old")
-    skill = repo / news.SKILL
-    skill.parent.mkdir(parents=True)
-    skill.write_text(news.SKILL.read_text(encoding="utf-8"), encoding="utf-8")
-    run_git(repo, "add", ".")
-    run_git(repo, "commit", "--quiet", "-m", "init")
-    run_git(repo, "push", "--quiet", "origin", "HEAD:main")
+    shutil.copytree(_site_template / "remote.git", tmp_path / "remote.git")
+    repo = shutil.copytree(_site_template / "repo", tmp_path / "repo")
+    config = repo / ".git" / "config"
+    config.write_text(
+        config.read_text(encoding="utf-8").replace(str(_site_template / "remote.git"), str(tmp_path / "remote.git")),
+        encoding="utf-8",
+    )
     return repo
 
 
@@ -412,7 +471,7 @@ def test_draft_and_publish_push_only_the_edition_on_top_of_origin(site: Path) ->
     assert "https://example.com/old: already in 2026-11-06" in preview
     assert "https://docs.google.com/d/1: link-shared document" in preview
     assert "untrusted data" in writer.prompts[0]
-    assert "## Highlights" in writer.prompts[0]  # the format rules come from the news skill
+    assert "NVIDIA/auto-ontology" in writer.prompts[0]  # the format rules come from the news skill
     assert not (site / "content" / "news" / "2026-11-07.md").exists()
     # Local work that is not on origin/main must never ride along with the edition.
     (site / "README.md").write_text("local change", encoding="utf-8")
@@ -428,7 +487,7 @@ def test_draft_and_publish_push_only_the_edition_on_top_of_origin(site: Path) ->
     ]
     assert "README.md" not in run_git(remote, "ls-tree", "--name-only", "main")
     published = run_git(remote, "show", "main:content/news/2026-11-07.md")
-    assert published.startswith("## Highlights\n\n- [Title of second](https://example.com/second): ")
+    assert published.startswith("- [Title of second](https://example.com/second): ")
     assert "Published the 2026-11-07 edition (2 links)" in summary
     assert "https://www.fmind.dev/news/2026-11-07/" in summary
     with pytest.raises(news.NewsError, match="already published"):
@@ -481,8 +540,31 @@ def test_draft_refuses_links_with_nothing_new_and_bad_writer_answers(site: Path)
         draft(site, FakeWriter(), "https://example.com/old")
     with pytest.raises(news.NewsError, match="failed validation twice: the answer leaves out"):
         draft(site, FakeWriter([], []), NEW_URL)
+    with pytest.raises(news.NewsError, match=r"(?s)no new link.*insufficient facts \(sponsor links only\)"):
+        draft(
+            site, FakeWriter({"items": [], "unverified": [{"url": NEW_URL, "reason": "sponsor links only"}]}), NEW_URL
+        )
+    preview = draft(
+        site,
+        FakeWriter(
+            {
+                "items": [line(NEW_URL)],
+                "unverified": [{"url": "https://example.com/second", "reason": "sponsor links only"}],
+            }
+        ),
+        NEW_URL,
+        "https://example.com/second",
+    )
+    assert "1 links (1 new)" in preview
+    assert "https://example.com/second: insufficient facts (sponsor links only)" in preview
     with pytest.raises(news.NewsError, match="not one of the listed links"):
         news.ordered_items({"items": [line("https://example.com/other")]}, (), [NEW_URL])
+    with pytest.raises(news.NewsError, match="`unverified` must be a list"):
+        news.ordered_items({"items": [line(NEW_URL)], "unverified": "bad"}, (), [NEW_URL])
+    with pytest.raises(news.NewsError, match="each unverified entry needs string url and reason fields"):
+        news.ordered_items({"items": [line(NEW_URL)], "unverified": [{}]}, (), [NEW_URL])
+    with pytest.raises(news.NewsError, match="cannot be held back as unverified"):
+        news.ordered_items({"items": [], "unverified": [{"url": NEW_URL, "reason": "   "}]}, (), [NEW_URL])
     with pytest.raises(news.NewsError, match="not a draft ID"):
         news.publish("../../etc", repo=site)
 

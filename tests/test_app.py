@@ -26,7 +26,7 @@ import www.publications as publications_module
 from www.app import app, create_app
 from www.assets import ApplicationAssets
 from www.config import Config, Environment
-from www.content import ArticleCollection, article_summaries, load_articles, visible_articles
+from www.content import ArticleCollection, article_summaries, visible_articles
 from www.data import METADATA, OPEN_SOURCE, SAME_AS_PROFILES, SITE_PAGES
 from www.middleware import ANALYTICS_LOG_NAME, CLOUD_TRACE_LOG_KEY
 from www.rendering import Renderer
@@ -69,9 +69,11 @@ def client() -> Iterator[AppClient]:
 
 
 def test_startup_renders_article_markdown_once_for_all_public_consumers(
-    snapshots: tuple[ApplicationAssets, ArticleCollection], monkeypatch: pytest.MonkeyPatch
+    snapshots: tuple[ApplicationAssets, ArticleCollection],
+    make_app: Callable[..., Litestar],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    assets, collection = snapshots
+    _, collection = snapshots
     rendered: list[str] = []
     original = publications_module.render_article_markdown
 
@@ -80,7 +82,7 @@ def test_startup_renders_article_markdown_once_for_all_public_consumers(
         return original(article)
 
     monkeypatch.setattr(publications_module, "render_article_markdown", render)
-    with TestClient(create_app(assets=assets, collection=collection)) as client:
+    with TestClient(make_app()) as client:
         article = next(item for item in collection.all if not item.draft)
         markdown = client.get(article.markdown_path()).text
         assert markdown in client.get("/llms-full.txt").text
@@ -403,8 +405,11 @@ def test_machine_surfaces_keep_content_cache_and_cors_contracts(client: AppClien
         assert marker in response.content
 
 
-def test_startup_snapshots_revalidate_with_weak_etags(client: AppClient) -> None:
-    article = visible_articles(load_articles().all)[0]
+def test_startup_snapshots_revalidate_with_weak_etags(
+    client: AppClient,
+    snapshots: tuple[ApplicationAssets, ArticleCollection],
+) -> None:
+    article = visible_articles(snapshots[1].all)[0]
     markdown = {"accept": "text/markdown"}
     cases = (
         ("/llms.txt", {}),
@@ -414,11 +419,14 @@ def test_startup_snapshots_revalidate_with_weak_etags(client: AppClient) -> None
         ("/robots.txt", {}),
         ("/api/profile", {}),
         ("/api/profile/schema.json", {}),
+        ("/api/news", {}),
+        ("/api/news/schema.json", {}),
         ("/.well-known/api-catalog", {}),
         ("/.well-known/mcp/server-card.json", {}),
         ("/.well-known/agent-skills/index.json", {}),
         (article.markdown_path(), {}),
         (f"/articles/{article.slug}/", markdown),
+        ("/news/", markdown),
         ("/", markdown),
     )
 
@@ -801,7 +809,7 @@ def test_every_response_has_security_headers_and_text_can_compress(client: AppCl
 
 def test_dynamic_rendering_and_search_run_outside_the_asgi_loop(
     monkeypatch: pytest.MonkeyPatch,
-    snapshots: tuple[ApplicationAssets, ArticleCollection],
+    make_app: Callable[..., Litestar],
 ) -> None:
     observed_running_loops: list[bool] = []
     original_render = Renderer.render
@@ -816,7 +824,7 @@ def test_dynamic_rendering_and_search_run_outside_the_asgi_loop(
         return original_render(self, *args, **kwargs)
 
     monkeypatch.setattr(Renderer, "render", recording_render)
-    threaded_app = create_app(assets=snapshots[0], collection=snapshots[1], logger=RecordingLogger())
+    threaded_app = make_app(logger=RecordingLogger())
 
     with TestClient(threaded_app) as test_client:
         for path in ("/", "/articles/?q=agents", "/sites/llm-self-hosting/?requests=234", "/missing"):
@@ -826,13 +834,11 @@ def test_dynamic_rendering_and_search_run_outside_the_asgi_loop(
 
 
 def test_http_boundary_preserves_head_and_unsupported_method_contract(
-    snapshots: tuple[ApplicationAssets, ArticleCollection],
+    make_app: Callable[..., Litestar],
 ) -> None:
     logger = RecordingLogger()
-    production = create_app(
+    production = make_app(
         config=Config(environment=Environment.PRODUCTION),
-        assets=snapshots[0],
-        collection=snapshots[1],
         logger=logger,
     )
 
@@ -877,7 +883,7 @@ def test_unknown_paths_share_the_html_not_found_page(client: AppClient, path: st
 
 def test_unexpected_failures_are_logged_and_return_a_non_leaking_500(
     monkeypatch: pytest.MonkeyPatch,
-    snapshots: tuple[ApplicationAssets, ArticleCollection],
+    make_app: Callable[..., Litestar],
 ) -> None:
     def fail_render(*_: object, **__: object) -> str:
         msg = "private render failure"
@@ -885,7 +891,7 @@ def test_unexpected_failures_are_logged_and_return_a_non_leaking_500(
 
     monkeypatch.setattr(app_module.Renderer, "render", fail_render)
     logger = RecordingLogger()
-    failing_app = create_app(assets=snapshots[0], collection=snapshots[1], logger=logger)
+    failing_app = make_app(logger=logger)
 
     with TestClient(failing_app, raise_server_exceptions=False) as test_client:
         response = test_client.get("/")
@@ -902,7 +908,7 @@ def test_unexpected_failures_are_logged_and_return_a_non_leaking_500(
 
 def test_unexpected_failure_log_carries_the_active_trace_context(
     monkeypatch: pytest.MonkeyPatch,
-    snapshots: tuple[ApplicationAssets, ArticleCollection],
+    make_app: Callable[..., Litestar],
 ) -> None:
     def fail_render(*_: object, **__: object) -> str:
         raise RuntimeError("traced render failure")
@@ -912,7 +918,7 @@ def test_unexpected_failure_log_carries_the_active_trace_context(
     monkeypatch.setattr(app_module, "shutdown_telemetry", lambda _: True)
     monkeypatch.setattr(app_module.Renderer, "render", fail_render)
     logger = RecordingLogger()
-    failing_app = create_app(assets=snapshots[0], collection=snapshots[1], logger=logger)
+    failing_app = make_app(logger=logger)
 
     with TestClient(failing_app, raise_server_exceptions=False) as test_client:
         assert test_client.get("/").status_code == 500
@@ -924,7 +930,7 @@ def test_unexpected_failure_log_carries_the_active_trace_context(
 
 def test_unexpected_failure_log_joins_the_cloud_run_request_trace(
     monkeypatch: pytest.MonkeyPatch,
-    snapshots: tuple[ApplicationAssets, ArticleCollection],
+    make_app: Callable[..., Litestar],
 ) -> None:
     def fail_render(*_: object, **__: object) -> str:
         raise RuntimeError("untraced render failure")
@@ -932,10 +938,8 @@ def test_unexpected_failure_log_joins_the_cloud_run_request_trace(
     monkeypatch.setattr(app_module, "configure_telemetry", lambda: None)
     monkeypatch.setattr(app_module.Renderer, "render", fail_render)
     logger = RecordingLogger()
-    failing_app = create_app(
+    failing_app = make_app(
         config=Config(environment=Environment.PRODUCTION, google_cloud_project="example-project"),
-        assets=snapshots[0],
-        collection=snapshots[1],
         logger=logger,
     )
     trace_id = "4bf92f3577b34da6a3ce929d0e0e4736"
@@ -966,7 +970,7 @@ def test_startup_logs_one_record_with_every_phase_duration(
 
 def test_mcp_mount_is_stateless_bounded_and_origin_protected(
     client: AppClient,
-    snapshots: tuple[ApplicationAssets, ArticleCollection],
+    make_app: Callable[..., Litestar],
 ) -> None:
     initialize = MCP_INITIALIZE
     headers = MCP_ACCEPT
@@ -1016,7 +1020,7 @@ def test_mcp_mount_is_stateless_bounded_and_origin_protected(
     assert oversized.status_code == 413
 
     logger = RecordingLogger()
-    logged_app = create_app(assets=snapshots[0], collection=snapshots[1], logger=logger)
+    logged_app = make_app(logger=logger)
     with TestClient(logged_app) as test_client:
         assert test_client.post("/mcp", json=initialize, headers=headers).status_code == 200
     request_log = next(values for event, values in logger.records if event == "http request processed")
@@ -1049,11 +1053,9 @@ def test_mcp_rejects_every_method_but_post(client: AppClient, path: str, method:
     assert client.request(method, path, headers={"host": "evil.example"}).status_code == 421
 
 
-def test_mcp_accepts_the_production_host_and_origin(snapshots: tuple[ApplicationAssets, ArticleCollection]) -> None:
-    production = create_app(
+def test_mcp_accepts_the_production_host_and_origin(make_app: Callable[..., Litestar]) -> None:
+    production = make_app(
         config=Config(environment=Environment.PRODUCTION),
-        assets=snapshots[0],
-        collection=snapshots[1],
         logger=RecordingLogger(),
     )
 
@@ -1143,13 +1145,11 @@ def test_mcp_caller_mistakes_are_invalid_params_without_error_logs(
 
 
 def test_slash_aliases_share_mcp_policy_and_canonical_log_paths(
-    snapshots: tuple[ApplicationAssets, ArticleCollection],
+    make_app: Callable[..., Litestar],
 ) -> None:
     logger = RecordingLogger()
-    production = create_app(
+    production = make_app(
         config=Config(environment=Environment.PRODUCTION),
-        assets=snapshots[0],
-        collection=snapshots[1],
         logger=logger,
     )
 
@@ -1222,20 +1222,17 @@ def test_slash_aliases_share_mcp_policy_and_canonical_log_paths(
 
 def test_opentelemetry_is_opt_in_and_correlates_request_logs(
     monkeypatch: pytest.MonkeyPatch,
-    snapshots: tuple[ApplicationAssets, ArticleCollection],
+    make_app: Callable[..., Litestar],
 ) -> None:
-    assets, collection = snapshots
     monkeypatch.setattr(app_module, "configure_telemetry", lambda: None)
-    uninstrumented = create_app(assets=assets, collection=collection, logger=RecordingLogger())
+    uninstrumented = make_app(logger=RecordingLogger())
     assert not any(isinstance(plugin, OpenTelemetryPlugin) for plugin in uninstrumented.plugins)
 
     provider = TracerProvider(shutdown_on_exit=False)
     logger = RecordingLogger()
     monkeypatch.setattr(app_module, "configure_telemetry", lambda: provider)
-    instrumented = create_app(
+    instrumented = make_app(
         config=Config(),
-        assets=assets,
-        collection=collection,
         logger=logger,
     )
     assert any(isinstance(plugin, OpenTelemetryPlugin) for plugin in instrumented.plugins)
@@ -1254,13 +1251,13 @@ def test_opentelemetry_is_opt_in_and_correlates_request_logs(
 
 def test_incomplete_telemetry_shutdown_is_reported(
     monkeypatch: pytest.MonkeyPatch,
-    snapshots: tuple[ApplicationAssets, ArticleCollection],
+    make_app: Callable[..., Litestar],
 ) -> None:
     provider = TracerProvider(shutdown_on_exit=False)
     monkeypatch.setattr(app_module, "configure_telemetry", lambda: provider)
     monkeypatch.setattr(app_module, "shutdown_telemetry", lambda _: False)
     logger = RecordingLogger()
-    instrumented = create_app(assets=snapshots[0], collection=snapshots[1], logger=logger)
+    instrumented = make_app(logger=logger)
 
     with TestClient(instrumented):
         pass
@@ -1273,14 +1270,14 @@ def test_incomplete_telemetry_shutdown_is_reported(
 
 @pytest.mark.parametrize("environment", [Environment.PRODUCTION, Environment.DEVELOPMENT])
 def test_drafts_never_enter_production_discovery(
-    snapshots: tuple[ApplicationAssets, ArticleCollection], environment: Environment
+    snapshots: tuple[ApplicationAssets, ArticleCollection],
+    make_app: Callable[..., Litestar],
+    environment: Environment,
 ) -> None:
-    assets, collection = snapshots
+    _, collection = snapshots
     draft = replace(collection.all[0], slug="private-draft-probe", title="Private draft probe", draft=True)
     drafted = ArticleCollection((*collection.all, draft), MappingProxyType({**collection.by_slug, draft.slug: draft}))
-    application = create_app(
-        config=Config(environment=environment), assets=assets, collection=drafted, logger=RecordingLogger()
-    )
+    application = make_app(config=Config(environment=environment), collection=drafted, logger=RecordingLogger())
 
     with TestClient(application) as test_client:
         # Machine-readable discovery is public-only in every environment.
@@ -1327,8 +1324,11 @@ def test_google_analytics_waits_for_consent_on_the_production_host(client: AppCl
     assert "deleted automatically after 30 days" in privacy
 
 
-def test_every_page_template_satisfies_the_inline_csp(client: AppClient) -> None:
-    article = visible_articles(load_articles().all)[0]
+def test_every_page_template_satisfies_the_inline_csp(
+    client: AppClient,
+    snapshots: tuple[ApplicationAssets, ArticleCollection],
+) -> None:
+    article = visible_articles(snapshots[1].all)[0]
     # One served path per PageTemplate, so a new inline style or script on any page fails here.
     paths = (
         "/",
@@ -1338,6 +1338,8 @@ def test_every_page_template_satisfies_the_inline_csp(client: AppClient) -> None
         "/privacy",
         "/articles/",
         f"/articles/{article.slug}/",
+        "/news/",
+        "/news/2026-11-06/",
         "/sites/",
         "/sites/llm-self-hosting/",
         "/sites/mcp-context-cost/",
@@ -1395,7 +1397,11 @@ def test_mcp_server_cards_compress_like_other_snapshots(client: AppClient, path:
     assert response.headers["etag"].startswith('W/"')
 
 
-def test_warm_pages_reuse_startup_validated_json_ld(client: AppClient, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_warm_pages_reuse_startup_validated_json_ld(
+    client: AppClient,
+    snapshots: tuple[ApplicationAssets, ArticleCollection],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     # Every indexable page graph is validated once at startup; requests must not parse it again.
     decoded: list[str] = []
     real_loads = json.loads
@@ -1405,7 +1411,7 @@ def test_warm_pages_reuse_startup_validated_json_ld(client: AppClient, monkeypat
         return real_loads(value, *args, **kwargs)
 
     monkeypatch.setattr(json, "loads", spy)
-    article = visible_articles(load_articles().all)[0]
+    article = visible_articles(snapshots[1].all)[0]
     for path in ("/", "/articles/", f"/articles/{article.slug}/", "/sites/", "/connect", "/agents", "/privacy"):
         assert client.get(path).status_code == 200, path
 

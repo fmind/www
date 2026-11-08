@@ -9,22 +9,28 @@ from mcp.shared.exceptions import MCPError
 from mcp_types import INVALID_PARAMS, CallToolResult, InputRequiredResult, TextContent
 from mcp_types.version import LATEST_MODERN_VERSION
 
-from www.content import article_summaries, load_articles, visible_articles
+from www.assets import ApplicationAssets
+from www.content import ArticleCollection, article_summaries, visible_articles
 from www.mcp import AUDIENCE_LIMIT, BRIEF_LIMIT, TAG_LIMIT, create_mcp_server, render_mcp_server_card
+from www.news import load_news, render_news_markdown
 from www.publications import article_markdown_index, render_profile_json
 from www.search import SEARCH_QUERY_LIMIT, SearchIndex
 
 
 @pytest.fixture(scope="module")
-def mcp_server() -> MCPServer[None]:
-    articles = visible_articles(load_articles().all)
+def mcp_server(snapshots: tuple[ApplicationAssets, ArticleCollection]) -> MCPServer[None]:
+    articles = visible_articles(snapshots[1].all)
     return create_mcp_server(
-        article_summaries(articles), SearchIndex(articles), articles, article_markdown_index(articles)
+        article_summaries(articles),
+        SearchIndex(articles),
+        articles,
+        article_markdown_index(articles),
+        load_news(),
     )
 
 
 @pytest.mark.anyio
-async def test_server_lists_ten_read_only_tools_and_two_prompts(mcp_server: MCPServer[None]) -> None:
+async def test_server_lists_twelve_read_only_tools_and_two_prompts(mcp_server: MCPServer[None]) -> None:
     tools = await mcp_server.list_tools()
     prompts = await mcp_server.list_prompts()
 
@@ -37,6 +43,8 @@ async def test_server_lists_ten_read_only_tools_and_two_prompts(mcp_server: MCPS
         "list_projects",
         "get_services",
         "get_article",
+        "search_news",
+        "get_news",
         "compare_llm_hosting",
         "compare_mcp_context_cost",
     ]
@@ -190,6 +198,46 @@ async def test_search_tool_filters_by_a_known_tag(mcp_server: MCPServer[None]) -
 
 
 @pytest.mark.anyio
+async def test_news_tools_list_search_read_and_validate_inputs(mcp_server: MCPServer[None]) -> None:
+    editions = load_news()
+    latest = await mcp_server.call_tool("search_news", {"limit": 2})
+    assert isinstance(latest, CallToolResult)
+    assert isinstance(latest.structured_content, dict)
+    assert latest.structured_content["query"] == ""
+    assert latest.structured_content["total"] == len(editions)
+    assert len(latest.structured_content["editions"]) == min(2, len(editions))
+    assert latest.structured_content["editions"][0]["slug"] == editions[0].slug
+
+    first_word = editions[0].items[0].title.split()[0]
+    searched = await mcp_server.call_tool("search_news", {"query": f"  {first_word}  ", "limit": 5})
+    assert isinstance(searched, CallToolResult)
+    assert isinstance(searched.structured_content, dict)
+    assert searched.structured_content["query"] == first_word
+    assert searched.structured_content["total"] >= 1
+    assert searched.structured_content["editions"]
+
+    edition = await mcp_server.call_tool("get_news", {"slug": editions[0].slug})
+    assert isinstance(edition, CallToolResult)
+    assert isinstance(edition.structured_content, dict)
+    assert edition.structured_content["canonical_url"] == editions[0].url
+    assert edition.structured_content["markdown"] == render_news_markdown(editions[0])
+    assert edition.structured_content["edition"]["slug"] == editions[0].slug
+
+    with pytest.raises(ToolError, match="query must not be empty"):
+        await mcp_server.call_tool("search_news", {"query": "   "})
+    with pytest.raises(ToolError, match="query"):
+        await mcp_server.call_tool("search_news", {"query": "a" * (SEARCH_QUERY_LIMIT + 1)})
+    for limit in (0, -1, 51, True, "3", 2.0):
+        with pytest.raises(ToolError, match="limit"):
+            await mcp_server.call_tool("search_news", {"limit": limit})
+    with pytest.raises(ToolError, match="News edition not found"):
+        await mcp_server.call_tool("get_news", {"slug": "1999-01-01"})
+    for invalid_slug in ("not-a-date", "../privacy", "2026-11-03-UPPER"):
+        with pytest.raises(ToolError, match="slug"):
+            await mcp_server.call_tool("get_news", {"slug": invalid_slug})
+
+
+@pytest.mark.anyio
 async def test_tools_reject_unknown_arguments_and_advertise_closed_schemas(mcp_server: MCPServer[None]) -> None:
     tools = await mcp_server.list_tools()
     assert all(tool.input_schema.get("additionalProperties") is False for tool in tools)
@@ -229,7 +277,9 @@ async def test_prompt_caller_mistakes_are_invalid_params(mcp_server: MCPServer[N
 
 
 @pytest.mark.anyio
-async def test_profile_resource_and_prompt_are_grounded(mcp_server: MCPServer[None]) -> None:
+async def test_profile_resource_and_prompt_are_grounded(
+    mcp_server: MCPServer[None], snapshots: tuple[ApplicationAssets, ArticleCollection]
+) -> None:
     resources = await mcp_server.list_resources()
     contents = await mcp_server.read_resource("portfolio://profile.json")
     prompt = await mcp_server.get_prompt(
@@ -245,7 +295,7 @@ async def test_profile_resource_and_prompt_are_grounded(mcp_server: MCPServer[No
     assert not isinstance(contents, InputRequiredResult)
     portfolio = json.loads(next(iter(contents)).content)
     assert portfolio["metadata"]["alternate_name"] == "Fmind"
-    assert len(portfolio["articles"]) == len(visible_articles(load_articles().all))
+    assert len(portfolio["articles"]) == len(visible_articles(snapshots[1].all))
     assert not isinstance(prompt, InputRequiredResult)
     assert prompt.description == "A structured, evidence-based fit assessment using the portfolio tools."
     prompt_content = prompt.messages[0].content
@@ -261,7 +311,9 @@ async def test_profile_resource_and_prompt_are_grounded(mcp_server: MCPServer[No
 
 
 @pytest.mark.anyio
-async def test_server_card_describes_the_same_transport_and_primitives(mcp_server: MCPServer[None]) -> None:
+async def test_server_card_describes_the_same_transport_and_primitives(
+    mcp_server: MCPServer[None], snapshots: tuple[ApplicationAssets, ArticleCollection]
+) -> None:
     card = json.loads(await render_mcp_server_card(mcp_server))
     # This compatibility summary must not claim a nonexistent official schema.
     assert "$schema" not in card
@@ -275,7 +327,7 @@ async def test_server_card_describes_the_same_transport_and_primitives(mcp_serve
         "type": "streamable-http",
         "endpoint": "https://www.fmind.dev/mcp",
     }
-    assert len(card["tools"]) == 10
+    assert len(card["tools"]) == 12
     assert len(card["prompts"]) == 2
     assert card["resources"][0]["name"] == "profile"
     assert card["resources"][0]["uri"] == "portfolio://profile.json"
@@ -283,12 +335,14 @@ async def test_server_card_describes_the_same_transport_and_primitives(mcp_serve
     contents = await mcp_server.read_resource(card["resources"][0]["uri"])
     assert not isinstance(contents, InputRequiredResult)
     assert json.loads(next(iter(contents)).content) == json.loads(
-        render_profile_json(article_summaries(visible_articles(load_articles().all)))
+        render_profile_json(article_summaries(visible_articles(snapshots[1].all)))
     )
 
 
-def test_profile_json_omits_private_and_zero_value_fields() -> None:
-    articles = article_summaries(visible_articles(load_articles().all))
+def test_profile_json_omits_private_and_zero_value_fields(
+    snapshots: tuple[ApplicationAssets, ArticleCollection],
+) -> None:
+    articles = article_summaries(visible_articles(snapshots[1].all))
     profile = json.loads(render_profile_json(articles))
 
     assert render_profile_json(articles).endswith(b"\n")

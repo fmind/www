@@ -1,8 +1,10 @@
 """Daily news editions: strict parsing, URL canonicalization, and the news feed and Markdown exports."""
 
 import html
+import json
 import re
 import tomllib
+from collections import Counter
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
@@ -10,20 +12,21 @@ from pathlib import Path
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 from xml.etree import ElementTree
 
+from pydantic import TypeAdapter
+
 from www.data import METADATA
+from www.search import tokenize
 
 NEWS_FEED_PATH = "/news/feed.xml"
 FEED_EDITION_LIMIT = 30
-# /news/ shows the latest edition in full, the rest of its week as highlight cards, and older editions one per line.
+# /news/ shows the latest edition in full, the rest of its week as preview cards, and older editions one per line.
 RECENT_DAYS = 7
 NEWS_TOPICS = "AI agents, Python, security, Google Cloud, and engineering"
 
-# An edition is Markdown: "## Highlights" with 1 to 3 links, then "## More" with the rest when it has more than 3.
-# Each link is one list line: "- [Title](https://...): One-sentence description".
+# An edition is Markdown: one list line per link, "- [Title](https://...): One-sentence description",
+# ordered from most to least interesting.
 # A corrected or extended edition starts with front matter: +++, updated = "YYYY-MM-DD" or a UTC
 # "YYYY-MM-DDTHH:MM:SSZ" timestamp (scripts.news stamps links added later the same day), +++.
-_SECTIONS = ("## Highlights", "## More")
-HIGHLIGHT_LIMIT = 3
 DESCRIPTION_WORD_LIMIT = 30
 _LINE = re.compile(r"^- \[(?P<title>[^\[\]]+)\]\((?P<url>https://\S+?)\): (?P<description>\S.*)$")
 # Descriptions are plain prose: the .md export serves them raw, so no Markdown links, autolinks, or HTML.
@@ -42,6 +45,40 @@ class NewsError(ValueError):
     """A news edition cannot be accepted into the immutable startup collection."""
 
 
+@dataclass(frozen=True, slots=True, kw_only=True)
+class NewsItemSummary:
+    title: str
+    url: str
+    domain: str
+    description: str
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class NewsEditionSummary:
+    slug: str
+    date: date
+    updated: datetime
+    title: str
+    topic: str
+    description: str
+    url: str
+    markdown_url: str
+    items: tuple[NewsItemSummary, ...]
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class NewsArchive:
+    title: str
+    description: str
+    url: str
+    feed_url: str
+    updated: datetime
+    editions: tuple[NewsEditionSummary, ...]
+
+
+_NEWS_ARCHIVE_ADAPTER = TypeAdapter(NewsArchive)
+
+
 @dataclass(frozen=True, slots=True)
 class NewsItem:
     title: str
@@ -52,6 +89,14 @@ class NewsItem:
     def domain(self) -> str:
         return urlparse(self.url).netloc.removeprefix("www.")
 
+    def summary(self) -> NewsItemSummary:
+        return NewsItemSummary(
+            title=self.title,
+            url=self.url,
+            domain=self.domain,
+            description=self.description,
+        )
+
 
 @dataclass(frozen=True, slots=True)
 class NewsEdition:
@@ -59,17 +104,8 @@ class NewsEdition:
     date: date
     topic: str
     items: tuple[NewsItem, ...]
-    highlight_count: int
     source: str
     updated: datetime
-
-    @property
-    def highlights(self) -> tuple[NewsItem, ...]:
-        return self.items[: self.highlight_count]
-
-    @property
-    def more(self) -> tuple[NewsItem, ...]:
-        return self.items[self.highlight_count :]
 
     @property
     def url(self) -> str:
@@ -81,6 +117,9 @@ class NewsEdition:
 
     def markdown_path(self) -> str:
         return f"/news/{self.slug}.md"
+
+    def markdown_url(self) -> str:
+        return f"{METADATA.site_url}{self.markdown_path()}"
 
     def date_label(self) -> str:
         return f"{self.date:%B} {self.date.day}, {self.date.year}"
@@ -100,6 +139,20 @@ class NewsEdition:
 
     def modified(self) -> datetime:
         return self.updated
+
+    def summary(self, items: Sequence[NewsItem] | None = None) -> NewsEditionSummary:
+        selected = self.items if items is None else items
+        return NewsEditionSummary(
+            slug=self.slug,
+            date=self.date,
+            updated=self.updated,
+            title=self.title,
+            topic=self.topic,
+            description=self.description,
+            url=self.url,
+            markdown_url=self.markdown_url(),
+            items=tuple(item.summary() for item in selected),
+        )
 
 
 def canonicalize_url(raw_url: str) -> str:
@@ -125,8 +178,12 @@ def canonicalize_url(raw_url: str) -> str:
         if video:
             return f"https://www.youtube.com/watch?v={video}"
         host = "www.youtube.com"
-    if host in ("arxiv.org", "www.arxiv.org", "export.arxiv.org") and path.startswith("/pdf/"):
-        return f"https://arxiv.org/abs/{path.removeprefix('/pdf/').removesuffix('.pdf').strip('/')}"
+    if (
+        host in ("arxiv.org", "www.arxiv.org", "export.arxiv.org")
+        and path.startswith(("/pdf/", "/html/"))
+        and (paper := path.removeprefix("/pdf/").removeprefix("/html/").removesuffix(".pdf").strip("/"))
+    ):
+        return f"https://arxiv.org/abs/{paper}"
     strip = _STRIP_PARAMS | _X_STRIP_PARAMS if host == "x.com" else _STRIP_PARAMS
     query = [
         (key, value)
@@ -184,7 +241,7 @@ def _split_front_matter(slug: str, text: str, edition_date: date) -> tuple[datet
 
 
 def parse_edition(slug: str, text: str) -> NewsEdition:
-    """Parse one edition file: optional front matter, section headings in order, and one link per nonblank line."""
+    """Parse one edition file: optional front matter and one link per nonblank line."""
     match = _SLUG.fullmatch(slug)
     if match is None:
         raise NewsError(f"{slug}: file name must be YYYY-MM-DD or YYYY-MM-DD-topic")
@@ -194,19 +251,10 @@ def parse_edition(slug: str, text: str) -> NewsEdition:
         raise NewsError(f"{slug}: {match['date']} is not a calendar date") from error
     updated, body, first_line = _split_front_matter(slug, text, edition_date)
     items: list[NewsItem] = []
-    sections = 0
-    highlights = 0
     for number, line in enumerate(body.splitlines(), first_line):
         line = line.strip()
         if not line:
             continue
-        if line.startswith("#"):
-            if sections == len(_SECTIONS) or line != _SECTIONS[sections]:
-                raise NewsError(f"{slug}:{number}: unexpected heading; use '## Highlights', then '## More'")
-            sections += 1
-            continue
-        if not sections:
-            raise NewsError(f"{slug}:{number}: start the edition with '## Highlights'")
         entry = _LINE.fullmatch(line)
         if entry is None:
             raise NewsError(f"{slug}:{number}: expected '- [Title](https://...): Description'")
@@ -216,20 +264,14 @@ def parse_edition(slug: str, text: str) -> NewsEdition:
         if (words := len(description.split())) > DESCRIPTION_WORD_LIMIT:
             raise NewsError(f"{slug}:{number}: description has {words} words; keep it to {DESCRIPTION_WORD_LIMIT}")
         items.append(NewsItem(entry["title"].strip(), entry["url"], description))
-        highlights += sections == 1
     if not items:
         raise NewsError(f"{slug}: edition has no links")
-    if highlights > HIGHLIGHT_LIMIT or (sections == len(_SECTIONS) and highlights != HIGHLIGHT_LIMIT):
-        raise NewsError(f"{slug}: '## Highlights' holds {HIGHLIGHT_LIMIT} links, or every link of a smaller edition")
-    if sections == len(_SECTIONS) and len(items) == highlights:
-        raise NewsError(f"{slug}: '## More' has no links")
     topic = (match["topic"] or "").replace("-", " ").title()
     return NewsEdition(
         slug=slug,
         date=edition_date,
         topic=topic,
         items=tuple(items),
-        highlight_count=highlights,
         source=body,
         updated=updated,
     )
@@ -308,36 +350,128 @@ def render_news_markdown(edition: NewsEdition) -> str:
     return "\n".join(lines) + "\n" + edition.source.strip() + "\n"
 
 
-def _edition_html(edition: NewsEdition) -> str:
-    sections = []
-    for heading, items in (("Highlights", edition.highlights), ("More", edition.more)):
-        if items:
-            entries = "".join(
-                f'<li><a href="{html.escape(item.url)}">{html.escape(item.title)}</a>: {html.escape(item.description)}</li>'
-                for item in items
+def render_news_index_markdown(editions: Sequence[NewsEdition]) -> str:
+    lines = [
+        f"# News — {METADATA.name} ({METADATA.alternate_name})",
+        "",
+        f"> Daily curated links on {NEWS_TOPICS}, with one sentence on what changed.",
+        "",
+        f"- Author: [{METADATA.name} ({METADATA.alternate_name})]({METADATA.site_url}/)",
+        f"- Feed: {METADATA.site_url}{NEWS_FEED_PATH}",
+        f"- JSON API: {METADATA.site_url}/api/news",
+        f"- URL: {METADATA.site_url}/news/",
+    ]
+    for edition in editions:
+        lines.extend(
+            (
+                "",
+                f"## [{edition.title}]({edition.url}) ([Markdown]({edition.markdown_url()}))",
+                "",
+                edition.source.strip(),
             )
-            sections.append(f"<h2>{heading}</h2><ul>{entries}</ul>")
-    return "".join(sections)
+        )
+    return "\n".join(lines) + "\n"
 
 
-def render_news_feed(editions: Sequence[NewsEdition]) -> str:
-    """One Atom entry per edition, so a busy day never floods a reader with separate link entries."""
-    atom = "http://www.w3.org/2005/Atom"
-    feed = ElementTree.Element("feed", xmlns=atom)
-    xml_sub(feed, "title", "Fmind news")
-    xml_sub(feed, "subtitle", f"Daily curated links on {NEWS_TOPICS}.")
-    xml_sub(feed, "id", f"{METADATA.site_url}/news/")
-    entries = editions[:FEED_EDITION_LIMIT]
-    # A correction moves an entry's `updated`, so feed readers fetch it again.
-    latest = max((edition.modified() for edition in entries), default=datetime(1970, 1, 1, tzinfo=UTC))
-    xml_sub(feed, "updated", utc_stamp(latest))
-    xml_sub(feed, "link", href=f"{METADATA.site_url}{NEWS_FEED_PATH}", rel="self", type="application/atom+xml")
-    xml_sub(feed, "link", href=f"{METADATA.site_url}/news/", rel="alternate", type="text/html")
+def news_archive_snapshot(editions: Sequence[NewsEdition]) -> NewsArchive:
+    return NewsArchive(
+        title="Fmind news",
+        description=f"Daily curated links on {NEWS_TOPICS}, selected by {METADATA.name}.",
+        url=f"{METADATA.site_url}/news/",
+        feed_url=f"{METADATA.site_url}{NEWS_FEED_PATH}",
+        updated=max((edition.modified() for edition in editions), default=datetime(1970, 1, 1, tzinfo=UTC)),
+        editions=tuple(edition.summary() for edition in editions),
+    )
+
+
+def render_news_json(editions: Sequence[NewsEdition]) -> bytes:
+    """Render the canonical machine-readable news archive with a final newline."""
+    return _NEWS_ARCHIVE_ADAPTER.dump_json(news_archive_snapshot(editions), indent=2) + b"\n"
+
+
+def render_news_schema() -> bytes:
+    """Describe the serialized news archive fields using the same model as the API."""
+    schema = {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": f"{METADATA.site_url}/api/news/schema.json",
+        **_NEWS_ARCHIVE_ADAPTER.json_schema(mode="serialization"),
+    }
+    return (json.dumps(schema, ensure_ascii=False, indent=2) + "\n").encode()
+
+
+def search_news_editions(editions: Sequence[NewsEdition], query: str) -> tuple[NewsEditionSummary, ...]:
+    """Search editions by relevance across edition dates, topics, link titles, domains, URLs, and descriptions."""
+    terms = tuple(dict.fromkeys(tokenize(query)))
+    if not terms or not editions:
+        return ()
+
+    hits: list[tuple[int, int, NewsEditionSummary]] = []
+    for position, edition in enumerate(editions):
+        edition_terms = Counter(tokenize(f"{edition.slug} {edition.title} {edition.topic}"))
+        header_matches = all(term in edition_terms for term in terms)
+        matched_items: list[NewsItem] = []
+        edition_score = sum(edition_terms[term] * 3 for term in terms) if header_matches else 0
+        for item in edition.items:
+            item_terms: Counter[str] = Counter()
+            for text, boost in (
+                (item.title, 3),
+                (item.domain, 3),
+                (item.description, 2),
+                (item.url, 1),
+            ):
+                item_terms.update({term: count * boost for term, count in Counter(tokenize(text)).items()})
+            combined = edition_terms + item_terms
+            if all(term in combined for term in terms):
+                matched_items.append(item)
+                edition_score += sum(item_terms[term] for term in terms)
+        if header_matches:
+            hits.append((edition_score, position, edition.summary()))
+        elif matched_items:
+            hits.append((edition_score, position, edition.summary(matched_items)))
+    hits.sort(key=lambda hit: (-hit[0], hit[1]))
+    return tuple(summary for _, _, summary in hits)
+
+
+def _edition_html(edition: NewsEdition) -> str:
+    entries = "".join(
+        f'<li><a href="{html.escape(item.url)}">{html.escape(item.title)}</a>: {html.escape(item.description)}</li>'
+        for item in edition.items
+    )
+    return f"<ul>{entries}</ul>"
+
+
+def atom_feed_root(
+    title: str, page_path: str, feed_path: str, updated: datetime, subtitle: str = ""
+) -> ElementTree.Element:
+    """Build the shared Atom feed header for hosted publications."""
+    feed = ElementTree.Element("feed", xmlns="http://www.w3.org/2005/Atom")
+    xml_sub(feed, "title", title)
+    if subtitle:
+        xml_sub(feed, "subtitle", subtitle)
+    xml_sub(feed, "id", f"{METADATA.site_url}{page_path}")
+    xml_sub(feed, "updated", utc_stamp(updated))
+    xml_sub(feed, "link", href=f"{METADATA.site_url}{feed_path}", rel="self", type="application/atom+xml")
+    xml_sub(feed, "link", href=f"{METADATA.site_url}{page_path}", rel="alternate", type="text/html")
     # Atom `icon` is the square branding image feed readers show next to the feed name.
     xml_sub(feed, "icon", f"{METADATA.site_url}/logo.png")
     author = xml_sub(feed, "author")
     xml_sub(author, "name", METADATA.name)
     xml_sub(author, "uri", f"{METADATA.site_url}/")
+    return feed
+
+
+def render_news_feed(editions: Sequence[NewsEdition]) -> str:
+    """One Atom entry per edition, so a busy day never floods a reader with separate link entries."""
+    entries = editions[:FEED_EDITION_LIMIT]
+    # A correction moves an entry's `updated`, so feed readers fetch it again.
+    latest = max((edition.modified() for edition in entries), default=datetime(1970, 1, 1, tzinfo=UTC))
+    feed = atom_feed_root(
+        "Fmind news",
+        "/news/",
+        NEWS_FEED_PATH,
+        latest,
+        subtitle=f"Daily curated links on {NEWS_TOPICS}.",
+    )
     for edition in entries:
         entry = xml_sub(feed, "entry")
         xml_sub(entry, "title", f"News: {edition.title}")

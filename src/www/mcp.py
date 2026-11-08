@@ -1,7 +1,7 @@
 """Read-only Model Context Protocol portfolio server and discovery card."""
 
 import json
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from importlib.metadata import version
 from typing import Annotated, Any, cast, override
 
@@ -59,6 +59,7 @@ from www.models import (
     Thesis,
     WorkExperience,
 )
+from www.news import NewsEdition, NewsEditionSummary, render_news_markdown, search_news_editions
 from www.publications import article_sections, render_profile_json
 from www.search import SEARCH_QUERY_LIMIT, SearchIndex, normalize_search_query
 from www.sites.agent import HostingResult, compare_hosting
@@ -87,7 +88,7 @@ _TITLE = f"{METADATA.name} ({METADATA.alternate_name}) — {METADATA.job_title} 
 _WEBSITE_URL = f"{METADATA.site_url}/"
 
 _ICON_URL = f"{METADATA.site_url}/static/img/favicons/icon-192.png"
-_DESCRIPTION = f"{METADATA.description} Read-only access to the public profile, services, articles, and sites."
+_DESCRIPTION = f"{METADATA.description} Read-only access to the public profile, services, articles, news, and sites."
 _ICONS = [Icon(src=_ICON_URL, mime_type="image/png", sizes=["192x192"])]
 _READ_ONLY = ToolAnnotations(read_only_hint=True, open_world_hint=False)
 _CACHE_HINTS = {
@@ -217,6 +218,18 @@ class ArticleResult(_ResultModel):
     sections: tuple[dict[str, str], ...]
 
 
+class SearchNewsResult(_ResultModel):
+    query: str
+    editions: tuple[NewsEditionSummary, ...]
+    total: int
+
+
+class NewsResult(_ResultModel):
+    edition: NewsEditionSummary
+    canonical_url: str
+    markdown: str
+
+
 def build_version() -> str:
     """Return the package version in the server implementation format."""
     return f"v{version('www')}"
@@ -227,18 +240,31 @@ def create_mcp_server(
     index: SearchIndex,
     publications: tuple[Article, ...],
     markdown_by_slug: Mapping[str, str],
+    news: Sequence[NewsEdition] = (),
+    *,
+    profile_json_bytes: bytes | None = None,
 ) -> MCPServer[None]:
     """Build the immutable portfolio MCP server."""
-    profile_json = render_profile_json(articles).decode()
+    profile_json = (profile_json_bytes or render_profile_json(articles)).decode()
+    summaries_by_slug = {summary.slug: summary for summary in articles}
     article_results = {
         article.slug: ArticleResult(
-            article=article.summary(),
+            article=summaries_by_slug.get(article.slug) or article.summary(),
             canonical_url=article.url,
             markdown=markdown_by_slug[article.slug],
             sections=article_sections(article),
         )
         for article in publications
         if not article.draft
+    }
+    news_summaries = tuple(edition.summary() for edition in news)
+    news_results = {
+        edition.slug: NewsResult(
+            edition=summary,
+            canonical_url=edition.url,
+            markdown=render_news_markdown(edition),
+        )
+        for edition, summary in zip(news, news_summaries, strict=True)
     }
     server: MCPServer[None] = _PortfolioMCPServer(
         name="www",
@@ -247,7 +273,7 @@ def create_mcp_server(
         instructions=(
             f"Query the portfolio of {METADATA.name} ({METADATA.alternate_name}): {METADATA.headline_primary}. "
             "Explore profile, leadership, work experience, credentials, publications, projects, and services. "
-            "Search and read published articles with citations, or compare LLM hosting and MCP context costs using the calculators."
+            "Search and read published articles with citations, browse daily curated tech news, or compare LLM hosting and MCP context costs using the calculators."
         ),
         website_url=_WEBSITE_URL,
         icons=_ICONS,
@@ -389,6 +415,78 @@ def create_mcp_server(
         result = article_results.get(slug)
         if result is None:
             raise ToolError("Article not found. Use search_articles to find a public article slug.")
+        return result
+
+    @server.tool(
+        name="search_news",
+        title="Search news",
+        description=(
+            "Search or list the daily curated tech news editions (titles, domains, URLs, descriptions, and dates). "
+            "Omit query to list the latest editions, or pass a query to return matching editions and links."
+        ),
+        annotations=_READ_ONLY,
+        structured_output=True,
+    )
+    def search_news(
+        query: Annotated[
+            str | None,
+            Field(
+                max_length=SEARCH_QUERY_LIMIT,
+                description=(
+                    "optional words or YYYY-MM-DD date to search for across news titles, domains, descriptions, "
+                    f"and edition dates (at most {SEARCH_QUERY_LIMIT} characters); omit for the latest editions"
+                ),
+            ),
+        ] = None,
+        limit: Annotated[
+            int,
+            Field(
+                strict=True,
+                ge=1,
+                le=MAXIMUM_SEARCH_RESULTS,
+                description=f"maximum number of editions to return (default {DEFAULT_SEARCH_RESULTS}, maximum {MAXIMUM_SEARCH_RESULTS})",
+            ),
+        ] = DEFAULT_SEARCH_RESULTS,
+    ) -> SearchNewsResult:
+        if query is None:
+            return SearchNewsResult(
+                query="",
+                editions=news_summaries[:limit],
+                total=len(news_summaries),
+            )
+        normalized = normalize_search_query(query)
+        if not normalized:
+            raise ToolError("query must not be empty")
+        ranked = search_news_editions(news, normalized)
+        return SearchNewsResult(
+            query=normalized,
+            editions=ranked[:limit],
+            total=len(ranked),
+        )
+
+    @server.tool(
+        name="get_news",
+        title="Read a news edition",
+        description=(
+            "Read a published daily news edition's complete Markdown, curated links, dates, and canonical URL. "
+            "Use an edition slug (YYYY-MM-DD or YYYY-MM-DD-topic) from search_news."
+        ),
+        annotations=_READ_ONLY,
+        structured_output=True,
+    )
+    def get_news(
+        slug: Annotated[
+            str,
+            Field(
+                min_length=10,
+                max_length=200,
+                pattern=r"^\d{4}-\d{2}-\d{2}(?:-[a-z0-9]+(?:-[a-z0-9]+)*)?$",
+            ),
+        ],
+    ) -> NewsResult:
+        result = news_results.get(slug)
+        if result is None:
+            raise ToolError("News edition not found. Use search_news to find a published edition slug.")
         return result
 
     @server.tool(

@@ -20,7 +20,9 @@ from www.news import (
     load_news,
     parse_edition,
     render_news_feed,
+    render_news_index_markdown,
     render_news_markdown,
+    search_news_editions,
     split_news_index,
 )
 
@@ -31,10 +33,9 @@ LINE = "- [{title}](https://example.com/{path}): {description}"
 
 
 def edition_text(*paths: str) -> str:
-    """A valid edition: the first three links are the highlights, the rest go under More."""
+    """A valid edition with one ranked link per line."""
     lines = [LINE.format(title=f"Title {path}", path=path, description=f"About {path}.") for path in paths]
-    more = ["", "## More", "", *lines[3:]] if len(lines) > 3 else []
-    return "\n".join(["## Highlights", "", *lines[:3], *more]) + "\n"
+    return "\n".join(lines) + "\n"
 
 
 def write_editions(directory: Path, editions: dict[str, str]) -> Path:
@@ -45,7 +46,7 @@ def write_editions(directory: Path, editions: dict[str, str]) -> Path:
 
 
 def test_parse_edition_reads_titles_with_colons_and_skips_blank_lines() -> None:
-    text = "\n## Highlights\n\n- [GDPx: Measuring models](https://example.com/a?x=1): Benchmarks: 11 domains.\n\n"
+    text = "\n- [GDPx: Measuring models](https://example.com/a?x=1): Benchmarks: 11 domains.\n\n"
 
     edition = parse_edition("2026-11-03", text)
 
@@ -61,19 +62,16 @@ def test_parse_edition_reads_titles_with_colons_and_skips_blank_lines() -> None:
     )
     assert item.domain == "example.com"
     assert edition.description.startswith("1 curated link on ")
-    assert (edition.highlights, edition.more) == ((item,), ())
 
 
-def test_parse_edition_splits_highlights_from_more() -> None:
+def test_parse_edition_preserves_link_order() -> None:
     edition = parse_edition("2026-11-03", edition_text("a", "b", "c", "d", "e"))
 
-    assert [item.title for item in edition.highlights] == ["Title a", "Title b", "Title c"]
-    assert [item.title for item in edition.more] == ["Title d", "Title e"]
-    assert edition.items == edition.highlights + edition.more
+    assert [item.title for item in edition.items] == ["Title a", "Title b", "Title c", "Title d", "Title e"]
 
 
 def test_parse_edition_keeps_parentheses_in_urls() -> None:
-    text = "## Highlights\n- [Wiki](https://example.com/Foo_(bar)): About (it)."
+    text = "- [Wiki](https://example.com/Foo_(bar)): About (it)."
 
     [item] = parse_edition("2026-11-03", text).items
 
@@ -95,33 +93,18 @@ def test_parse_edition_names_special_editions_by_topic() -> None:
         ("2026-02-30", edition_text("a"), "is not a calendar date"),
         ("2026-11-03-Topic", edition_text("a"), "file name must be YYYY-MM-DD"),
         ("2026-11-03", "", "edition has no links"),
-        ("2026-11-03", "## Highlights\n", "edition has no links"),
-        ("2026-11-03", "- [Title](https://example.com/a): No section.", "2026-11-03:1: start the edition with"),
-        ("2026-11-03", "## Highlights\n- [Title](https://example.com/a) Missing colon", "2026-11-03:2: expected"),
-        ("2026-11-03", "## Highlights\n- [Title](http://example.com/a): Plain HTTP", "2026-11-03:2: expected"),
-        ("2026-11-03", "## Highlights\n- [A [B]](https://example.com/a): Brackets.", "2026-11-03:2: expected"),
-        ("2026-11-03", "## Highlights\n- Title: https://example.com/a - Old format", "2026-11-03:2: expected"),
-        ("2026-11-03", edition_text("a") + "\nnot a link", "2026-11-03:5: expected"),
-        ("2026-11-03", "## More\n" + LINE.format(title="A", path="a", description="B."), "2026-11-03:1: unexpected"),
-        ("2026-11-03", "# News\n" + edition_text("a"), "2026-11-03:1: unexpected heading"),
-        ("2026-11-03", edition_text("a", "b", "c", "d") + "## More\n", "2026-11-03:10: unexpected heading"),
+        ("2026-11-03", "\n\n", "edition has no links"),
+        ("2026-11-03", "- [Title](https://example.com/a) Missing colon", "2026-11-03:1: expected"),
+        ("2026-11-03", "- [Title](http://example.com/a): Plain HTTP", "2026-11-03:1: expected"),
+        ("2026-11-03", "- [A [B]](https://example.com/a): Brackets.", "2026-11-03:1: expected"),
+        ("2026-11-03", "- Title: https://example.com/a - Old format", "2026-11-03:1: expected"),
+        ("2026-11-03", edition_text("a") + "\nnot a link", "2026-11-03:3: expected"),
+        ("2026-11-03", "## Highlights\n" + edition_text("a"), "2026-11-03:1: expected"),
+        ("2026-11-03", "# News\n" + edition_text("a"), "2026-11-03:1: expected"),
         (
             "2026-11-03",
-            edition_text("a", "b", "c").replace(
-                "## Highlights\n", "## Highlights\n" + LINE.format(title="D", path="d", description="E.") + "\n"
-            ),
-            "holds 3 links",
-        ),
-        (
-            "2026-11-03",
-            edition_text("a", "b") + "## More\n" + LINE.format(title="C", path="c", description="D."),
-            "holds 3 links",
-        ),
-        ("2026-11-03", edition_text("a", "b", "c") + "## More\n", "'## More' has no links"),
-        (
-            "2026-11-03",
-            "## Highlights\n" + LINE.format(title="A", path="a", description="word " * 31),
-            "2026-11-03:2: description has 31 words; keep it to 30",
+            LINE.format(title="A", path="a", description="word " * 31),
+            "2026-11-03:1: description has 31 words; keep it to 30",
         ),
         ("2026-11-03", "+++\n" + edition_text("a"), "no closing '\\+\\+\\+' line"),
         ("2026-11-03", '+++\nupdated = "2026-11-04"\ndraft = true\n+++\n' + edition_text("a"), "holds only updated"),
@@ -129,20 +112,20 @@ def test_parse_edition_names_special_editions_by_topic() -> None:
         ("2026-11-03", "+++\nupdated = \n+++\n" + edition_text("a"), "holds only updated"),
         ("2026-11-03", '+++\nupdated = "2026-02-30"\n+++\n' + edition_text("a"), "not a calendar date"),
         ("2026-11-03", '+++\nupdated = "2026-11-02"\n+++\n' + edition_text("a"), "precedes the edition date"),
-        ("2026-11-03", '+++\nupdated = "2026-11-04"\n+++\n## Highlights\nbad', "2026-11-03:5: expected"),
+        ("2026-11-03", '+++\nupdated = "2026-11-04"\n+++\nbad', "2026-11-03:4: expected"),
         (
             "2026-11-03",
-            "## Highlights\n" + LINE.format(title="A", path="a", description="Read [this](javascript:alert(1))."),
-            "2026-11-03:2: description must be plain text",
+            LINE.format(title="A", path="a", description="Read [this](javascript:alert(1))."),
+            "2026-11-03:1: description must be plain text",
         ),
         (
             "2026-11-03",
-            "## Highlights\n" + LINE.format(title="A", path="a", description="See <https://evil.example>."),
+            LINE.format(title="A", path="a", description="See <https://evil.example>."),
             "description must be plain text",
         ),
         (
             "2026-11-03",
-            "## Highlights\n" + LINE.format(title="A", path="a", description="Mirrors https://evil.example now."),
+            LINE.format(title="A", path="a", description="Mirrors https://evil.example now."),
             "description must be plain text",
         ),
     ],
@@ -162,6 +145,7 @@ def test_parse_edition_rejects_invalid_files(slug: str, text: str, message: str)
         ("https://m.youtube.com/watch?v=abc123&t=42", "https://www.youtube.com/watch?v=abc123"),
         ("https://www.youtube.com/@channel", "https://www.youtube.com/@channel"),
         ("https://arxiv.org/pdf/2601.00001v2.pdf", "https://arxiv.org/abs/2601.00001v2"),
+        ("https://arxiv.org/html/2601.00001v2", "https://arxiv.org/abs/2601.00001v2"),
         # Only X share links carry s= and t= trackers; elsewhere they can name the page.
         ("https://x.com/user/status/1?t=abc&s=20", "https://x.com/user/status/1"),
         ("https://forum.example.com/viewtopic.php?t=123", "https://forum.example.com/viewtopic.php?t=123"),
@@ -192,7 +176,7 @@ def test_load_news_sorts_newest_first_and_rejects_republished_links(tmp_path: Pa
     assert [edition.slug for edition in load_news(directory)] == ["2026-11-03", "2026-11-02-event", "2026-11-02"]
 
     (directory / "2026-11-04.md").write_text(
-        "## Highlights\n- [Again](https://example.com/a/?utm_medium=mail): Same link.\n", encoding="utf-8"
+        "- [Again](https://example.com/a/?utm_medium=mail): Same link.\n", encoding="utf-8"
     )
     with pytest.raises(
         NewsError, match=r"2026-11-04:1: duplicate link https://example.com/a \(already in 2026-11-02:1\)"
@@ -257,7 +241,7 @@ def test_markdown_export_adds_metadata_to_the_edition_source() -> None:
     markdown = render_news_markdown(edition)
 
     assert markdown.startswith("# News: November 3, 2026\n")
-    assert f"- URL: {METADATA.site_url}/news/2026-11-03/\n\n## Highlights\n" in markdown
+    assert f"- URL: {METADATA.site_url}/news/2026-11-03/\n\n- [Title a]" in markdown
     assert markdown.endswith(source)
 
 
@@ -304,7 +288,7 @@ def test_updated_timestamps_must_be_utc_seconds(value: str) -> None:
 
 
 def test_feed_has_one_escaped_entry_per_recent_edition() -> None:
-    hostile = "## Highlights\n- [<script>alert(1)</script>](https://example.com/x?a=1&b=2): Ranks a > b & entities."
+    hostile = "- [<script>alert(1)</script>](https://example.com/x?a=1&b=2): Ranks a > b & entities."
     editions = tuple(
         parse_edition(
             f"2026-{month:02d}-{day:02d}", hostile if (month, day) == (12, 31) else edition_text(f"{month}-{day}")
@@ -326,8 +310,8 @@ def test_feed_has_one_escaped_entry_per_recent_edition() -> None:
     assert first.findtext("a:title", namespaces=ATOM) == "News: December 31, 2026"
     assert first.findtext("a:id", namespaces=ATOM) == f"{METADATA.site_url}/news/2026-12-31/"
     content = first.findtext("a:content", namespaces=ATOM) or ""
-    assert content.startswith("<h2>Highlights</h2><ul><li>")
-    assert "<h2>More</h2>" not in content
+    assert content.startswith("<ul><li>")
+    assert "<h2" not in content
     assert '<a href="https://example.com/x?a=1&amp;b=2">&lt;script&gt;alert(1)&lt;/script&gt;</a>' in content
     assert "Ranks a &gt; b &amp; entities." in content
 
@@ -347,7 +331,7 @@ def news_client(make_app: Callable[..., Litestar], tmp_path_factory: pytest.Temp
             "2026-10-08-cloud-next": edition_text("special"),
             "2026-10-20": edition_text("older"),
             "2026-10-30": edition_text("old"),
-            "2026-11-02": "## Highlights\n- [<img src=x onerror=alert(1)>](https://example.com/evil): Bold > claim & more.",
+            "2026-11-02": "- [<img src=x onerror=alert(1)>](https://example.com/evil): Bold > claim & more.",
             "2026-11-03": edition_text("new-1", "new-2", "new-3", "new-4"),
         },
     )
@@ -439,7 +423,7 @@ def test_news_edition_markdown_by_suffix_and_negotiation(news_client: AppClient)
         assert response.headers["access-control-allow-origin"] == "*"
         assert response.headers["link"] == f'<{METADATA.site_url}/news/2026-11-03/>; rel="canonical"'
         assert response.text.startswith("# News: November 3, 2026\n")
-        assert "\n## More\n" in response.text
+        assert "\n- [Title new-4](https://example.com/new-4): About new-4.\n" in response.text
         assert response.headers["x-robots-tag"] == "noindex"
     assert "Accept" in negotiated.headers["vary"].split(",")
     revalidated = news_client.get("/news/2026-11-03.md", headers={"if-none-match": exported.headers["etag"]})
@@ -488,3 +472,54 @@ def test_news_index_without_editions(make_app: Callable[..., Litestar]) -> None:
     assert "No news yet." in response.text
     assert "Past week" not in response.text
     assert "Archive" not in response.text
+
+
+def test_news_api_and_index_markdown_serve_validated_archive(news_client: AppClient) -> None:
+    from jsonschema import Draft202012Validator
+
+    api = news_client.get("/api/news")
+    assert api.status_code == 200
+    assert api.headers["content-type"] == "application/json; charset=utf-8"
+    assert api.headers["access-control-allow-origin"] == "*"
+    assert api.headers["link"] == '</api/news/schema.json>; rel="describedby"; type="application/schema+json"'
+    schema_response = news_client.get("/api/news/schema.json")
+    assert schema_response.status_code == 200
+    assert schema_response.headers["content-type"].startswith("application/schema+json")
+    schema = schema_response.json()
+    Draft202012Validator.check_schema(schema)
+    payload = api.json()
+    Draft202012Validator(schema).validate(payload)
+    assert [edition["slug"] for edition in payload["editions"]] == [
+        "2026-11-03",
+        "2026-11-02",
+        "2026-10-30",
+        "2026-10-20",
+        "2026-10-08-cloud-next",
+    ]
+
+    negotiated = news_client.get("/news/", headers={"accept": "text/markdown"})
+    assert negotiated.status_code == 200
+    assert negotiated.headers["content-type"] == "text/markdown; charset=utf-8"
+    assert negotiated.headers["link"] == f'<{METADATA.site_url}/news/>; rel="canonical"'
+    assert "Accept" in negotiated.headers["vary"].split(",")
+    assert negotiated.text.startswith("# News — ")
+    assert f"## [November 3, 2026]({METADATA.site_url}/news/2026-11-03/)" in negotiated.text
+
+
+def test_search_news_editions_matches_items_and_edition_headers() -> None:
+    editions = (
+        parse_edition("2026-11-03", edition_text("new-1", "new-2")),
+        parse_edition("2026-10-08-cloud-next", edition_text("special-a", "special-b")),
+    )
+
+    by_item = search_news_editions(editions, "new-2")
+    assert [summary.slug for summary in by_item] == ["2026-11-03"]
+    assert [item.title for item in by_item[0].items] == ["Title new-2"]
+
+    by_header = search_news_editions(editions, "cloud next")
+    assert [summary.slug for summary in by_header] == ["2026-10-08-cloud-next"]
+    assert [item.title for item in by_header[0].items] == ["Title special-a", "Title special-b"]
+
+    assert search_news_editions(editions, "   ") == ()
+    assert search_news_editions(editions, "nonexistent") == ()
+    assert render_news_index_markdown(()).startswith("# News — ")

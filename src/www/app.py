@@ -49,7 +49,10 @@ from www.news import (
     adjacent_editions,
     load_news,
     render_news_feed,
+    render_news_index_markdown,
+    render_news_json,
     render_news_markdown,
+    render_news_schema,
     split_news_index,
 )
 from www.pages import (
@@ -276,6 +279,9 @@ def create_app(
         api_catalog = _Snapshot.of(render_api_catalog())
         skill_body, skill_index = (_Snapshot.of(body) for body in public_skill())
         root_files = {path: _Snapshot.of(response.body) for path, response in application_assets.root_files.items()}
+        news_api = _Snapshot.of(render_news_json(editions))
+        news_schema = _Snapshot.of(render_news_schema())
+        news_index_markdown = _Snapshot.of(render_news_index_markdown(editions).encode())
         news_markdown = {edition.slug: _Snapshot.of(render_news_markdown(edition).encode()) for edition in editions}
         news_feed = _Snapshot.of(render_news_feed(editions).encode())
         # Weak: compression may re-encode the body, but the CSS it carries is identical.
@@ -356,13 +362,15 @@ def create_app(
     def render_not_found(request: AppRequest) -> Response[str]:
         return render_page(request, PageTemplate.NOT_FOUND, not_found_page, status_code=404)
 
+    static_root_dir = static_dir.resolve()
+
     @route("/static/{asset_path:path}", http_method=_READ_METHODS)
     async def static_asset(asset_path: FromPath[str], request: AppRequest) -> ASGIApp:
-        return await static_asset_response(asset_path, request, application_assets, static_dir)
+        return await static_asset_response(asset_path, request, application_assets, static_root_dir)
 
     @route(["/banner.png", "/logo.png", "/portrait.jpg"], http_method=_READ_METHODS)
     async def branding_asset(request: AppRequest) -> ASGIApp:
-        return await static_asset_response(request.scope["path"], request, application_assets, static_dir)
+        return await static_asset_response(request.scope["path"], request, application_assets, static_root_dir)
 
     @route("/static", http_method=_READ_METHODS, sync_to_thread=False)
     def static_root(request: AppRequest) -> Redirect | Response[bytes]:
@@ -409,6 +417,23 @@ def create_app(
             request, profile_schema, "application/schema+json; charset=utf-8", _HOUR_CACHE, cors=True
         )
 
+    @route("/api/news", http_method=_READ_METHODS, sync_to_thread=False)
+    def news_api_route(request: AppRequest) -> Response[bytes]:
+        return _snapshot_response(
+            request,
+            news_api,
+            "application/json; charset=utf-8",
+            _HOUR_CACHE,
+            cors=True,
+            extra_headers={"link": '</api/news/schema.json>; rel="describedby"; type="application/schema+json"'},
+        )
+
+    @route("/api/news/schema.json", http_method=_READ_METHODS, sync_to_thread=False)
+    def news_schema_api(request: AppRequest) -> Response[bytes]:
+        return _snapshot_response(
+            request, news_schema, "application/schema+json; charset=utf-8", _HOUR_CACHE, cors=True
+        )
+
     @route(
         ["/mcp/server-card", "/.well-known/mcp/server-card.json"],
         http_method=_READ_METHODS,
@@ -449,10 +474,14 @@ def create_app(
         return _snapshot_response(request, news_feed, "application/atom+xml; charset=utf-8", _HOUR_CACHE)
 
     @route("/news", http_method=_READ_METHODS, sync_to_thread=True)
-    def news_index(request: AppRequest) -> Redirect | Response[str]:
+    def news_index(request: AppRequest) -> Redirect | Response[bytes] | Response[str]:
         if not _request_path(request).endswith("/"):
             return _redirect("/news/")
-        return render_page(request, PageTemplate.NEWS, news_page, news_context)
+        if prefers_markdown(request.headers.get("accept", "")):
+            return _markdown_response(request, news_index_markdown, f"{METADATA.site_url}/news/", negotiated=True)
+        response = render_page(request, PageTemplate.NEWS, news_page, news_context)
+        response.headers["vary"] = "Accept"
+        return response
 
     @route("/news/{slug:str}", http_method=_READ_METHODS, sync_to_thread=True)
     def news_edition(slug: FromPath[str], request: AppRequest) -> Redirect | Response[bytes] | Response[str]:
@@ -650,7 +679,14 @@ def create_app(
         return await sync_to_thread(render_not_found, request)
 
     with _timed(phases, "mcp"):
-        mcp_server = create_mcp_server(summaries, public_search, public_articles, markdown_by_slug)
+        mcp_server = create_mcp_server(
+            summaries,
+            public_search,
+            public_articles,
+            markdown_by_slug,
+            editions,
+            profile_json_bytes=profile.body,
+        )
         mcp_app = create_mcp_http_app(mcp_server)
     mcp_route = asgi("/mcp", is_mount=True, copy_scope=True)(mcp_app)
     tracer_provider = configure_telemetry()
@@ -721,6 +757,8 @@ def create_app(
             security_policy,
             profile_api,
             profile_schema_api,
+            news_api_route,
+            news_schema_api,
             mcp_server_card,
             llms_index,
             llms_full_index,
