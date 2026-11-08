@@ -2,6 +2,27 @@
 
 All notable changes to this project are documented in this file.
 
+## [2.8.1] - 2026-11-08
+
+### ⚡ Performance
+
+- _(articles)_ Stop archive cards from transitioning out of default colors
+- _(home)_ Render portfolio sections without content-visibility
+- _(assets)_ Record raster dimensions in the build manifest
+
+### 📚 Documentation
+
+- _(release)_ Watch every main push through promotion
+- _(articles)_ Point the CLI guidance link at its moved path
+
+### 🧪 Testing
+
+- _(browser)_ Forbid scroll-time default-style transitions on every page layout
+
+### ⚙️ Build & CI
+
+- _(deploy)_ Deploy only the current head of main
+
 ## [2.8.0] - 2026-11-08
 
 ### 🚀 Features
