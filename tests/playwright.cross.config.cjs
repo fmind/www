@@ -7,6 +7,9 @@ module.exports = defineConfig({
   // journeys never click behind the production consent banner, so start without a choice.
   use: { ...shared.use, storageState: undefined },
   testMatch: "cross-browser.spec.cjs",
+  // Firefox and WebKit are heavier than Chromium: four at once on a CI runner starve WebKit
+  // past its scroll and viewport waits, so keep the original two workers everywhere.
+  workers: 2,
   // On a CI runner, opening a WebKit page alone has taken 18s of the default 30s budget;
   // remote runs get room for browser startup, while the local server keeps the default.
   timeout: process.env.BROWSER_BASE_URL ? 60000 : 30000,
