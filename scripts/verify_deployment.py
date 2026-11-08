@@ -1,9 +1,8 @@
 """Verify that an expected immutable release owns the ready production traffic.
 
-`candidate` mode runs before promotion: it proves that the no-traffic revision
-under CANDIDATE_TAG is the qualified release and serves health/discovery on its
-tagged URL. The default mode runs after promotion against the public origin and
-also completes one MCP initialize there, because /mcp accepts only the public host.
+`verify_candidate` is shared with `scripts/deploy.py` before promotion; the CLI
+runs after promotion against the public origin and completes one MCP initialize
+there, because `/mcp` accepts only the public host.
 """
 
 import json
@@ -13,7 +12,6 @@ import shutil
 import subprocess
 import sys
 from collections.abc import Mapping, Sequence
-from pathlib import Path
 from typing import Any
 
 import httpx2
@@ -36,10 +34,8 @@ _MCP_INITIALIZE = {
 _REQUIRED_ENVIRONMENT = {
     "IMAGE_REF": "the qualified <repository>@sha256:<digest> image reference",
     "GITHUB_SHA": "the full commit SHA that image was built from",
-    "CANDIDATE_TAG": "the traffic tag of the no-traffic revision (CI uses `candidate`)",
 }
-_TAG = re.compile(r"[a-z][a-z0-9-]*[a-z0-9]\Z")
-_USAGE = "usage: python -m scripts.verify_deployment [candidate]\n"
+_USAGE = "usage: python -m scripts.verify_deployment\n"
 
 
 class VerificationError(ValueError):
@@ -169,13 +165,6 @@ def describe_service(target: DeploymentTarget) -> dict[str, Any]:
     return document
 
 
-def _record_output(revision: str, environment: Mapping[str, str]) -> None:
-    """Expose the verified revision to a later GitHub Actions promotion step."""
-    if output := environment.get("GITHUB_OUTPUT"):
-        with Path(output).open("a", encoding="utf-8") as stream:
-            stream.write(f"revision={revision}\n")
-
-
 def _required(name: str, environment: Mapping[str, str]) -> str:
     """Name a missing variable and its expected value instead of reporting a bare KeyError."""
     if value := environment.get(name):
@@ -185,33 +174,20 @@ def _required(name: str, environment: Mapping[str, str]) -> str:
 
 def main(arguments: Sequence[str] = ()) -> int:
     """Use read-only Cloud Run metadata and bounded HTTP requests; never mutate traffic."""
-    if tuple(arguments) not in {(), ("candidate",)}:
+    if tuple(arguments):
         sys.stderr.write(_USAGE)
         return 2
-    candidate = bool(arguments)
     try:
         target = DeploymentTarget.from_environment()
         image = validate_image_reference(_required("IMAGE_REF", os.environ), target)
         commit = validate_commit(_required("GITHUB_SHA", os.environ))
-        if candidate:
-            tag = _required("CANDIDATE_TAG", os.environ)
-            if not _TAG.fullmatch(tag):
-                raise VerificationError("CANDIDATE_TAG is invalid")
-            revision, url = verify_candidate(
-                describe_service(target), image, commit, tag=tag, service_name=target.service_name
-            )
-            # A zero-traffic revision may cold start; allow the 60s startup-probe budget.
-            probe(url, timeout=65)
-            _record_output(revision, os.environ)
-            sys.stdout.write(f"Verified candidate {revision}: {commit}, {image}, tagged health/discovery\n")
-        else:
-            revision = verify_service(describe_service(target), image, commit)
-            # Promotion can route the first public request to a cold instance; allow the 60s startup budget.
-            probe(PUBLIC_ORIGIN, timeout=65)
-            probe_mcp(PUBLIC_ORIGIN, timeout=15)
-            sys.stdout.write(
-                f"Verified {revision}: {commit}, {image}, 100% traffic, scale-to-zero, public health/discovery/MCP\n"
-            )
+        revision = verify_service(describe_service(target), image, commit)
+        # Promotion can route the first public request to a cold instance; allow the 60s startup budget.
+        probe(PUBLIC_ORIGIN, timeout=65)
+        probe_mcp(PUBLIC_ORIGIN, timeout=15)
+        sys.stdout.write(
+            f"Verified {revision}: {commit}, {image}, 100% traffic, scale-to-zero, public health/discovery/MCP\n"
+        )
     except (
         KeyError,
         IndexError,

@@ -2,7 +2,6 @@
 
 import json
 import subprocess
-from pathlib import Path
 from typing import Any
 
 import httpx2
@@ -166,24 +165,20 @@ def test_release_command_checks_public_health(
         assert not output.out
 
 
-@pytest.mark.parametrize(
-    ("mode", "missing"),
-    [((), "IMAGE_REF"), ((), "GITHUB_SHA"), (("candidate",), "CANDIDATE_TAG"), (("candidate",), "IMAGE_REF")],
-)
+@pytest.mark.parametrize("missing", ["IMAGE_REF", "GITHUB_SHA"])
 def test_missing_release_environment_names_the_variable(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], mode: tuple[str, ...], missing: str
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], missing: str
 ) -> None:
     for key, value in {
         **TARGET_ENVIRONMENT,
         "IMAGE_REF": IMAGE,
         "GITHUB_SHA": COMMIT,
-        "CANDIDATE_TAG": "candidate",
     }.items():
         monkeypatch.setenv(key, value)
     monkeypatch.delenv(missing)
     monkeypatch.setattr(verify_deployment.shutil, "which", pytest.fail)
 
-    assert verify_deployment.main(mode) == 1
+    assert verify_deployment.main() == 1
     error = capsys.readouterr().err
     assert error.startswith(f"deployment verification failed: {missing} is not set; export it as ")
     assert "KeyError" not in error
@@ -299,73 +294,6 @@ def test_candidate_revision_must_belong_to_service(candidate: dict[str, Any]) ->
     candidate["status"]["traffic"][1]["revisionName"] = "other-00001-abc"
     with pytest.raises(ValueError, match="does not belong"):
         verify(candidate)
-
-
-@pytest.mark.parametrize("healthy", [True, False])
-def test_candidate_command_probes_tagged_url_and_records_revision(
-    candidate: dict[str, Any],
-    monkeypatch: pytest.MonkeyPatch,
-    capsys: pytest.CaptureFixture[str],
-    tmp_path: Path,
-    healthy: bool,
-) -> None:
-    output = tmp_path / "github-output"
-    for key, value in {
-        "REGION": "europe-west1",
-        "PROJECT_ID": "www-fmind-dev",
-        "REPOSITORY": "app",
-        "SERVICE_NAME": "www-fmind-dev",
-        "IMAGE_REF": IMAGE,
-        "GITHUB_SHA": COMMIT,
-        "CANDIDATE_TAG": TAG,
-        "GITHUB_OUTPUT": str(output),
-    }.items():
-        monkeypatch.setenv(key, value)
-
-    def describe(command: tuple[str, ...], **_kwargs: object) -> subprocess.CompletedProcess[str]:
-        return subprocess.CompletedProcess(command, 0, json.dumps(candidate), "")
-
-    monkeypatch.setattr(verify_deployment.shutil, "which", lambda _: "/usr/bin/gcloud")
-    monkeypatch.setattr(verify_deployment.subprocess, "run", describe)
-    hosts: set[str] = set()
-    methods: set[str] = set()
-
-    def respond(request: httpx2.Request) -> httpx2.Response:
-        hosts.add(request.url.host)
-        methods.add(request.method)
-        return httpx2.Response(200 if healthy else 503, json={"status": "ok"})
-
-    client = httpx2.Client(transport=httpx2.MockTransport(respond))
-    monkeypatch.setattr(verify_deployment.httpx2, "Client", lambda **_kwargs: client)
-
-    assert verify_deployment.main(("candidate",)) == (0 if healthy else 1)
-    assert hosts == {"candidate---www-fmind-dev-ba55y5pbla-ew.a.run.app"}
-    # The tagged run.app host is outside the MCP host allowlist, so the candidate gets no POST.
-    assert methods == {"GET"}
-    if healthy:
-        assert output.read_text(encoding="utf-8") == f"revision={REVISION}\n"
-        assert "Verified candidate" in capsys.readouterr().out
-    else:
-        assert not output.exists()
-        assert "HTTPStatusError" in capsys.readouterr().err
-
-
-def test_invalid_candidate_tag_fails_before_gcloud(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
-) -> None:
-    for key, value in {
-        "REGION": "europe-west1",
-        "PROJECT_ID": "www-fmind-dev",
-        "REPOSITORY": "app",
-        "SERVICE_NAME": "www-fmind-dev",
-        "IMAGE_REF": IMAGE,
-        "GITHUB_SHA": COMMIT,
-        "CANDIDATE_TAG": "Bad\nrevision=x",
-    }.items():
-        monkeypatch.setenv(key, value)
-    monkeypatch.setattr(verify_deployment.shutil, "which", pytest.fail)
-    assert verify_deployment.main(("candidate",)) == 1
-    assert "CANDIDATE_TAG is invalid" in capsys.readouterr().err
 
 
 @pytest.mark.parametrize("commit", ["B" * 40, "b" * 39])

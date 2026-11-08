@@ -41,7 +41,7 @@ def test_image_build_tool_pins_match_mise() -> None:
     dockerfile = (repository / "Dockerfile").read_text()
     build_system = _load_toml(repository / "pyproject.toml")["build-system"]
 
-    # The image builds CSS and the wheel with its own copies of these tools.
+    # The image builds CSS and the locked Python environment with its own copies of these tools.
     uv_version = tools["aqua:astral-sh/uv"]
     assert re.findall(r"ghcr\.io/astral-sh/uv:([^@]+)@sha256:", dockerfile) == [uv_version]
     assert build_system["requires"] == [f"uv_build=={uv_version}"]

@@ -1,8 +1,6 @@
 """Contract tests for the manual Cloud Run deployment boundary."""
 
 import os
-import re
-import shutil
 import subprocess
 import sys
 from collections.abc import Sequence
@@ -143,37 +141,31 @@ def test_invalid_arguments_exit_with_usage_without_invoking_gcloud(
     assert runner.commands == []
     captured = capsys.readouterr()
     assert captured.out == ""
-    assert captured.err.startswith("usage: mise run deploy <digest-ref> <commit-sha>\n")
+    assert captured.err.startswith("usage: mise run deploy <digest-ref> <commit-sha>")
 
 
-def test_ci_promotion_drops_the_candidate_tag_that_manual_rollouts_also_clear() -> None:
-    workflow = (Path(__file__).resolve().parents[1] / ".github" / "workflows" / "deploy.yml").read_text()
-
-    # A tag left on a promoted revision keeps it publicly served after a later rollback.
-    assert re.search(rf"^  CANDIDATE_TAG: {deploy.CI_TAG}$", workflow, re.MULTILINE)
-    promotion = workflow.split("- name: Promote the verified revision", 1)[1].split("- name:", 1)[0]
-    assert '--to-revisions "$REVISION=100" --remove-tags "$CANDIDATE_TAG"' in promotion
-    # An unpromoted candidate (failed or cancelled after deployment) loses its public tag URL
-    # instead of keeping it until the next deploy.
-    cleanup = workflow.split("- name: Remove the candidate tag after a failed or cancelled rollout", 1)[1].split(
-        "- name:", 1
-    )[0]
-    condition = "(failure() || cancelled()) && steps.deploy.outcome != 'skipped' && steps.promote.outcome != 'success'"
-    assert f"if: {condition}" in cleanup
-    assert (
-        "id: deploy" in workflow.split("- name: Deploy candidate revision without traffic", 1)[1].split("- name:", 1)[0]
-    )
-    assert "id: promote" in promotion
-    assert '--remove-tags "$CANDIDATE_TAG"' in cleanup
-    assert "--to-revisions" not in cleanup
-
-
-def test_gates_reuse_the_ci_scan_and_smoke_tasks_for_the_exact_digest() -> None:
+def test_ci_workflow_delegates_gate_and_rollout_to_canonical_tasks() -> None:
     assert build_gate_commands(VALID_IMAGE) == GATES
 
     workflow = (Path(__file__).resolve().parents[1] / ".github" / "workflows" / "deploy.yml").read_text()
-    assert 'mise run check:image:digest "$IMAGE_REF"' in workflow
-    assert 'mise run test:image "$IMAGE_REF"' in workflow
+    assert "run: mise run all" in workflow
+    assert 'run: mise run deploy "$IMAGE_REF" "$GITHUB_SHA"' in workflow
+    assert "run: |" not in workflow
+    assert "run: >-" not in workflow
+
+
+def test_interrupted_rollout_cleans_up_the_candidate_tag_without_moving_traffic(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    runner = RecordingRunner()
+
+    def interrupt(*_args: object) -> None:
+        raise KeyboardInterrupt
+
+    assert main((VALID_IMAGE, VALID_COMMIT), target=TARGET, runner=runner, verifier=interrupt) == 130
+    assert runner.commands[-1] == CLEANUP
+    assert not any(argument.startswith("--to-revisions") for command in runner.commands for argument in command)
+    assert capsys.readouterr().err == "deployment interrupted; traffic was not promoted\n"
 
 
 def test_successful_rollout_gates_the_digest_before_any_cloud_run_change() -> None:
@@ -345,49 +337,48 @@ def test_module_invocation_rejects_missing_digest_without_gcloud() -> None:
 
     assert result.returncode == 2
     assert result.stdout == ""
-    assert result.stderr.startswith("usage: mise run deploy <digest-ref> <commit-sha>\n")
-
-
-def _head_guard_script() -> str:
-    workflow = (Path(__file__).resolve().parents[1] / ".github" / "workflows" / "deploy.yml").read_text()
-    step = workflow.split("- name: Compare the run commit with the head of main", 1)[1].split("\n  deploy:", 1)[0]
-    block = step.split("run: |\n", 1)[1]
-    return "\n".join(line.removeprefix(" " * 10) for line in block.splitlines())
+    assert result.stderr.startswith("usage: mise run deploy <digest-ref> <commit-sha>")
 
 
 @pytest.mark.parametrize(
-    ("head", "fails", "expected"),
+    ("head", "repository", "fails", "expected"),
     [
-        (VALID_COMMIT, False, "head=true\n"),
-        ("f" * 40, False, "head=false\n"),
-        (VALID_COMMIT, True, ""),
+        (VALID_COMMIT, "fmind/www", False, "head=true\n"),
+        ("f" * 40, "fmind/www", False, "head=false\n"),
+        (VALID_COMMIT, "fmind/www", True, ""),
+        ("not-a-sha", "fmind/www", False, ""),
+        (VALID_COMMIT, "../bad", False, ""),
     ],
-    ids=["head-of-main", "superseded", "api-failure"],
+    ids=["head-of-main", "superseded", "api-failure", "malformed-sha", "invalid-repository"],
 )
-def test_ci_deploys_only_the_current_head_of_main(tmp_path: Path, head: str, fails: bool, expected: str) -> None:
+def test_ci_deploys_only_the_current_head_of_main(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    head: str,
+    repository: str,
+    fails: bool,
+    expected: str,
+) -> None:
     # A rerun of an older main run must never promote its image over a newer one.
     fake_gh = tmp_path / "gh"
     fake_gh.write_text(f"#!/bin/sh\n{'exit 1' if fails else f'echo {head}'}\n")
     fake_gh.chmod(0o755)
     output = tmp_path / "output"
     output.touch()
-    env = {
-        "PATH": f"{tmp_path}:/usr/bin:/bin",
-        "CURRENT_SHA": VALID_COMMIT,
-        "REPOSITORY": "fmind/www",
-        "GITHUB_OUTPUT": str(output),
-    }
+    monkeypatch.setenv("PATH", f"{tmp_path}:/usr/bin:/bin")
+    monkeypatch.setenv("GITHUB_SHA", VALID_COMMIT)
+    monkeypatch.setenv("GITHUB_REPOSITORY", repository)
+    monkeypatch.setenv("GITHUB_OUTPUT", str(output))
 
-    bash = shutil.which("bash")
-    assert bash
-    result = subprocess.run(  # noqa: S603 - runs the workflow's own step script
-        [bash, "-c", _head_guard_script()], env=env, capture_output=True, text=True, check=False
-    )
+    returncode = main(("--check-head",))
+    captured = capsys.readouterr()
 
-    assert (result.returncode != 0) is fails
+    assert (returncode == 0) is bool(expected)
     assert output.read_text() == expected
-    assert ("Superseded by" in result.stdout) is (head != VALID_COMMIT)
+    assert ("Superseded by" in captured.out) is (expected == "head=false\n")
 
     workflow = (Path(__file__).resolve().parents[1] / ".github" / "workflows" / "deploy.yml").read_text()
+    assert "run: uv run --locked python -m scripts.deploy --check-head" in workflow
     deploy_job = workflow.split("\n  deploy:\n", 1)[1]
-    assert deploy_job.startswith("    needs: current\n    if: needs.current.outputs.head == 'true'\n")
+    assert deploy_job.startswith("    needs: verify\n    if: needs.verify.outputs.head == 'true'\n")

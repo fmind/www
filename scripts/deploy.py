@@ -1,24 +1,30 @@
-"""Fail-closed argument boundary for manual Cloud Run rollouts."""
+"""Fail-closed argument boundary for CI and manual Cloud Run rollouts."""
 
 import os
 import re
 import secrets
+import shutil
+import signal
 import subprocess
 import sys
+import threading
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
+from pathlib import Path
+from types import FrameType
 
 _DIGEST = re.compile(r"sha256:[0-9a-f]{64}\Z")
 _COMMIT = re.compile(r"[0-9a-f]{40}\Z")
 _CONFIG_VALUE = re.compile(r"[a-z][a-z0-9-]*[a-z0-9]\Z")
+_REPOSITORY = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]*/[A-Za-z0-9][A-Za-z0-9_.-]*\Z")
 _CONFIG_NAMES = ("REGION", "PROJECT_ID", "REPOSITORY", "SERVICE_NAME")
 # The CI deploy action labels revisions `commit-sha=<GITHUB_SHA>`; release
 # verification reads the same label, so a manual rollout must restamp it.
 COMMIT_LABEL = "commit-sha"
 MANUAL_TAG = "manual-candidate"
-# CI verifies its no-traffic revision under this tag (`CANDIDATE_TAG` in deploy.yml).
+# Cleared alongside MANUAL_TAG on promotion so no legacy CI candidate tag remains public.
 CI_TAG = "candidate"
-_USAGE = "usage: mise run deploy <digest-ref> <commit-sha>\n"
+_USAGE = "usage: mise run deploy <digest-ref> <commit-sha> | python -m scripts.deploy --check-head\n"
 
 
 class DeploymentUsageError(ValueError):
@@ -168,6 +174,45 @@ def verify_promoted_release(target: DeploymentTarget, image: str, commit: str, e
     probe_mcp(PUBLIC_ORIGIN, timeout=15)
 
 
+def check_main_head(environment: Mapping[str, str] = os.environ) -> int:
+    """Confirm the current workflow commit is still the head of main before deploying."""
+    try:
+        commit = validate_commit(environment.get("GITHUB_SHA") or environment.get("CURRENT_SHA", ""))
+        repository = environment.get("GITHUB_REPOSITORY") or environment.get("REPOSITORY", "")
+        if not _REPOSITORY.fullmatch(repository):
+            raise DeploymentUsageError("GITHUB_REPOSITORY must be set to <owner>/<repo>")
+        executable = shutil.which("gh", path=environment.get("PATH"))
+        if executable is None:
+            raise DeploymentUsageError("gh is not installed")
+        result = subprocess.run(  # noqa: S603 - fixed read-only gh argv.
+            (executable, "api", f"repos/{repository}/commits/main", "--jq", ".sha"),
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=30,
+            env=dict(environment),
+        )
+        head_sha = result.stdout.strip()
+        if result.returncode != 0 or not _COMMIT.fullmatch(head_sha):
+            raise DeploymentUsageError("could not resolve the current head of main")
+        is_head = head_sha == commit
+        if output := environment.get("GITHUB_OUTPUT"):
+            with Path(output).open("a", encoding="utf-8") as stream:
+                stream.write(f"head={'true' if is_head else 'false'}\n")
+        if not is_head:
+            sys.stdout.write(f"::notice::Superseded by {head_sha} on main; skipping the deployment of {commit}\n")
+        return 0
+    except (DeploymentUsageError, OSError, subprocess.SubprocessError) as error:
+        detail = str(error) if isinstance(error, DeploymentUsageError) else type(error).__name__
+        sys.stderr.write(f"deploy: {detail}\n")
+        return 1
+
+
+def _raise_interrupt(_signum: int, _frame: FrameType | None) -> None:
+    raise KeyboardInterrupt
+
+
 def main(
     arguments: Sequence[str] | None = None,
     *,
@@ -180,9 +225,11 @@ def main(
 
     An unpromoted candidate loses its manual tag; a promoted one gets the `test:deployed` checks.
     """
+    release_arguments = tuple(sys.argv[1:] if arguments is None else arguments)
+    if release_arguments == ("--check-head",):
+        return check_main_head()
     try:
         deployment_target = target or DeploymentTarget.from_environment()
-        release_arguments = tuple(sys.argv[1:] if arguments is None else arguments)
         suffix = f"manual-{secrets.token_hex(6)}"
         commands = build_deploy_commands(release_arguments, deployment_target, revision_suffix=suffix)
     except DeploymentUsageError as error:
@@ -198,17 +245,32 @@ def main(
                 sys.stderr.write(f"image gate {gate[2]} failed; nothing was deployed\n")
                 return returncode
         release = (deployment_target, *release_arguments, f"{deployment_target.service_name}-{suffix}")
-        if not (returncode := execute(commands[0])):
-            try:
-                (verifier or verify_created_revision)(*release)
-            except Exception as error:
-                # Provider/HTTP diagnostics may contain private data. Fail closed
-                # and report the cause's type without reflecting its unsafe text.
-                sys.stderr.write(f"candidate verification failed: {type(error).__name__}; traffic was not promoted\n")
-                returncode = 1
-            else:
-                returncode = execute(commands[1])
-        if returncode:
+        promoted = False
+        in_main_thread = threading.current_thread() is threading.main_thread()
+        previous_sigterm = signal.getsignal(signal.SIGTERM) if in_main_thread else None
+        if in_main_thread:
+            signal.signal(signal.SIGTERM, _raise_interrupt)
+        try:
+            if not (returncode := execute(commands[0])):
+                try:
+                    (verifier or verify_created_revision)(*release)
+                except Exception as error:
+                    # Provider/HTTP diagnostics may contain private data. Fail closed
+                    # and report the cause's type without reflecting its unsafe text.
+                    sys.stderr.write(
+                        f"candidate verification failed: {type(error).__name__}; traffic was not promoted\n"
+                    )
+                    returncode = 1
+                else:
+                    returncode = execute(commands[1])
+                    promoted = returncode == 0
+        except KeyboardInterrupt:
+            sys.stderr.write("deployment interrupted; traffic was not promoted\n")
+            returncode = 130
+        finally:
+            if in_main_thread and previous_sigterm is not None:
+                signal.signal(signal.SIGTERM, previous_sigterm)
+        if not promoted:
             if execute(commands[2]):
                 sys.stderr.write(
                     f"removing the {MANUAL_TAG} tag failed; remove it by hand, since its tag URL stays public\n"

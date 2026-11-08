@@ -1,12 +1,10 @@
 # Docs: https://docs.docker.com/build/concepts/context/#dockerignore-files
 **/.agents
-**/.cache
 **/.claude
 **/.git
 **/.mise
 **/.pytest_cache
 **/.ruff_cache
-**/.ty_cache
 **/.venv
 **/__pycache__
 *.db

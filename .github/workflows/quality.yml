@@ -16,19 +16,19 @@ permissions:
 concurrency:
   group: quality-${{ github.ref }}-${{ inputs.target || 'local' }}
   cancel-in-progress: true
+env:
+  BROWSER_BASE_URL: ${{ inputs.target == 'production' && 'https://www.fmind.dev' || '' }}
 jobs:
   browsers:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
-    env:
-      BROWSER_BASE_URL: ${{ inputs.target == 'production' && 'https://www.fmind.dev' || '' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
         with:
-          version: 2026.11.3 # pinned mise; bump deliberately with mise.lock tooling
+          version: 2026.11.4 # pinned mise; bump deliberately with mise.lock tooling
           install: false
           cache: true
           # Key tools on the lockfiles only: task edits in mise.toml must not force fresh
@@ -37,16 +37,11 @@ jobs:
       - name: Install pinned tools
         run: mise install --locked -y aqua:astral-sh/uv python node github:dobicinaitis/tailwind-cli-extra npm:playwright
       - name: Install Python dependencies
-        run: uv sync --locked --all-groups
+        run: uv sync --locked --no-dev
       - name: Install browser binaries and ephemeral runner libraries
         run: mise run install:browser:cross -- --with-deps
-      - name: Exercise local Firefox and WebKit
-        if: inputs.target != 'production'
+      - name: Exercise Firefox and WebKit
         run: mise run test:browser:cross
-      - name: Exercise production Firefox and WebKit
-        # Like the Chromium step below, production journeys need no local build.
-        if: inputs.target == 'production'
-        run: mise run --skip-deps test:browser:cross
       - name: Install Chromium for production journeys
         if: inputs.target == 'production'
         run: mise run install:browser
@@ -73,7 +68,7 @@ jobs:
           persist-credentials: false
       - uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
         with:
-          version: 2026.11.3 # pinned mise; bump deliberately with mise.lock tooling
+          version: 2026.11.4 # pinned mise; bump deliberately with mise.lock tooling
           install: false
           cache: true
           # Key tools on the lockfiles only: task edits in mise.toml must not force fresh
@@ -82,29 +77,13 @@ jobs:
       - name: Install pinned tools
         run: mise install --locked -y aqua:astral-sh/uv python node github:dobicinaitis/tailwind-cli-extra npm:playwright npm:lighthouse
       - name: Install Python dependencies
-        run: uv sync --locked --all-groups
+        run: uv sync --locked --no-dev
       - name: Install Chromium
         run: mise run install:browser
       - name: Allow the pinned Chromium sandbox
-        # Ubuntu restricts user namespaces for downloaded browsers. Grant only
-        # this executable access; retain Chromium's sandbox and host policy.
-        run: |
-          chromium_path="$(NODE_PATH="$(mise where npm:playwright)/node_modules" node -p 'require("playwright").chromium.executablePath()')"
-          test -x "$chromium_path"
-          sudo tee /etc/apparmor.d/www-lighthouse-chromium > /dev/null <<EOF
-          abi <abi/4.0>,
-          include <tunables/global>
-          profile www-lighthouse-chromium "$chromium_path" flags=(unconfined) {
-            userns,
-          }
-          EOF
-          sudo apparmor_parser -r /etc/apparmor.d/www-lighthouse-chromium
-      - name: Qualify local portfolio pages
-        if: inputs.target != 'production'
+        run: node scripts/lighthouse.mjs --allow-sandbox
+      - name: Qualify portfolio pages
         run: mise run test:lighthouse:local
-      - name: Qualify production portfolio pages
-        if: inputs.target == 'production'
-        run: mise run test:lighthouse -- --base-url https://www.fmind.dev
       - name: Retain exact Lighthouse reports
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

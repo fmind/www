@@ -1,19 +1,19 @@
 # AGENTS.md — www
 
-Python 3.14, Litestar, strict Jinja, Tailwind/DaisyUI, and Granian. No client framework, Node application, or database. Templates are package data; `content/` and `static/` are deployed beside the wheel.
+Python 3.14, Litestar, strict Jinja, Tailwind/DaisyUI, and Granian. No client framework, Node application, or database. Templates are package data; `content/` and `static/` are deployed beside the locked Python environment.
 
 ## Delivery
 
 - **Use the mise task contract**: `mise.toml` serves local work, hooks, and CI. See [README](README.md#tasks) and `mise tasks` for commands, and [README](README.md#development) for prerequisites.
-- **Pass `mise run all` before done**: it must pass without unresolved warnings; infrastructure changes also pass `mise run check:tofu`, and new behavior needs a regression test. Run it in the foreground, because background runs have been killed under memory pressure.
+- **Pass `mise run all` before done**: it must pass without unresolved warnings, and new behavior needs a regression test. Run it in the foreground, because background runs have been killed under memory pressure.
 - **Iterate with focused tests**: run `mise run build:css` once, because app startup reads the generated stylesheet, then `uv run --locked pytest tests/<file>.py`.
 - **Run affected out-of-gate checks**: network link checks, cross-browser tests, and Lighthouse are separate tasks; run those relevant to the change.
-- **Keep scratch out of the tracked tree**: tasks write their outputs only to the ignored `tmp/`; ad hoc scratch and review reports go to OS temporary directories, and no review report is committed.
+- **Keep scratch out of the tracked tree**: tasks write only to the ignored `tmp/`; ad hoc scratch and review reports go to OS temporary directories and are never committed.
 - **A `main` push deploys production**: pushing needs deploy authority; published tags are immutable.
-- **Keep the approved visual style**: the site's current style (shadows, gradients, hover motion, paired buttons, and its Tailwind/DaisyUI theme) is an approved exception to [DESIGN.md](https://github.com/fmind/theme/blob/main/DESIGN.md); DESIGN.md still governs new pages and components where the site has no established pattern.
-- **Get consent before restyling**: layout, style, component, or home-page structure changes need the owner's OK on a proposal branch with before/after screenshots. Content edits inside existing components are fine; new pages reuse existing components unchanged.
+- **Keep the approved visual style**: the site's current style (shadows, gradients, hover motion, paired buttons, and its Tailwind/DaisyUI theme) is an approved exception to [DESIGN.md](https://github.com/fmind/theme/blob/main/DESIGN.md), which still governs new pages and components without an established pattern.
+- **Get consent before restyling**: layout, style, component, or home-page structure changes need the owner's OK on a proposal branch with before/after screenshots; content edits and new pages reusing existing components do not.
 - **Keep Cloud Run scale-to-zero**: service and revision minimum instances 0, maximum 5, and request-based CPU (`cpu_idle = true`). Raising capacity or enabling always-on instances needs explicit owner authorization.
-- **CI owns only digest and traffic**: OpenTofu owns service settings. A `main` deployment must deploy only the current head of `main`, scan and smoke-test its pushed immutable digest, verify a no-traffic `candidate` revision, then promote exactly that revision and verify ready revision, traffic, and health; review error logs separately with the owner identity.
+- **CI owns only digest and traffic**: OpenTofu owns service settings; CI and `mise run deploy` promote only an immutable digest that passes scan, smoke, and no-traffic candidate checks ([README](README.md#deployment), [release skill](.agents/skills/release/SKILL.md)).
 
 ## Ownership
 
@@ -21,7 +21,7 @@ Python 3.14, Litestar, strict Jinja, Tailwind/DaisyUI, and Granian. No client fr
 - `app.py`: startup snapshot, routes, middleware composition, MCP lifespan, teardown.
 - `mcp.py`: read-only tools, finite HTTP transport, capabilities, and discovery. Every non-POST method returns 405 with `Allow: POST`, so GET/HEAD never open idle notification streams; retain SDK host/origin validation.
 - `content.py`, `assets.py`, `search.py`: validated publications, static inventory/hashes, BM25 article search.
-- `news.py`: validated daily editions in `content/news/` and their Atom feed and Markdown exports; `scripts/news.py` prepares links, and drafts and publishes Chat editions. The [news skill](.agents/skills/news/SKILL.md) owns the format and rules.
+- `news.py`: validated daily editions in `content/news/` and their Atom feed, JSON/schema API (`/api/news`), search, and Markdown exports; `scripts/news.py` prepares links, and drafts and publishes Chat editions. The [news skill](.agents/skills/news/SKILL.md) owns the format and rules.
 - `publications.py`: canonical profile JSON/schema, feeds, sitemap, LLM text; shared by HTTP and MCP.
 - `agent_discovery.py`, `agent_skills/`: API catalog, representation negotiation, packaged visitor skill/index; separate from `.agents/` maintenance skills.
 - `connect.py`: public vCard; `/connect` is discoverable, `/scan` is a noindex QR utility.
@@ -33,17 +33,17 @@ Python 3.14, Litestar, strict Jinja, Tailwind/DaisyUI, and Granian. No client fr
 
 ## Invariants
 
-- **Validate at boundaries, construct once**: parse external input at boundaries and fail with contextual chained errors. Construct validated articles, search, assets, publications, renderer, and MCP once; requests must not observe partial state.
+- **Validate at boundaries, construct once**: parse external input at boundaries with chained errors, and construct the startup snapshot (articles, news, search, assets, publications, renderer, MCP) once before serving.
 - **Trust markup only in `rendering.py`**: keep Jinja `StrictUndefined` and autoescape. Only `rendering.py` may trust validated article/biography HTML or guarded JSON-LD.
 - **Stay light-only and self-hosted**: Google Sans is body text, Google Sans Code is code. Use existing macros and small nonce-authorized page interactions; do not add a JS bundle without a real module graph.
 - **Serve one content-addressed stylesheet**: Tailwind classes belong in `src/www/templates/**/*.html`. Authored build inputs go in `assets/`; final public artifacts go in `static/`. Pages link `/styles.css?v=<hash>` (Tailwind output plus syntax colors, served from memory); CSP allows no inline `<style>`.
-- **Publish only validated articles**: the validated article collection is the only publication source; drafts never enter production discovery. Current Markdown is the authoritative article body.
-- **Register tools explicitly**: register tools in `data.py:SITE_PAGES` and wire routes/templates/views explicitly. Formulas remain server-owned. MCP tools reject invalid values and unknown argument keys instead of silently applying defaults.
+- **Publish only validated articles**: `content/articles/<slug>.md` is the authoritative body; drafts never enter production discovery.
+- **Register tools explicitly**: register tools in `data.py:SITE_PAGES` with server-owned formulas; MCP tools reject invalid values and unknown argument keys instead of applying defaults.
 - **Keep articles reviewed**: tags, image derivatives, captions, and figure sizes follow the [article skill](.agents/skills/article/SKILL.md); keep `content.py:FIGURE_SIZES` aligned with article CSS, and `check:images` never writes.
 - **Build fonts only with the generator**: use `scripts/build_fonts.py`; keep required assets, CSS faces, and template preloads synchronized. Preserve subset-specific face names.
 - **Keep portrait masters private**: keep them outside `static/`; export with `build:portrait`.
-- **Keep analytics cookieless or consented**: first-party analytics remain cookieless and aggregate, with 180-day expiry and empty `country` until a trusted geography boundary exists. Google Analytics 4 (`google_analytics_id`) loads only on www.fmind.dev after an explicit Accept in `partials/consent.html`, with rejection as easy as acceptance and no advertising features or Google signals; never load it before consent, and keep `/privacy` and the CSP's Google hosts in step with it.
+- **Keep analytics cookieless or consented**: first-party analytics stay cookieless and aggregate (180-day expiry, empty `country` until a trusted geography boundary exists). Google Analytics 4 (`google_analytics_id`) loads only on www.fmind.dev after an explicit Accept in `partials/consent.html` (Reject equally prominent, no ad features or Google signals); keep `/privacy` and CSP Google hosts in step.
 - **Keep the scheduled image scanner read-only**: maintain advisory triage in `SECURITY.md`.
 - **Keep the CLI contract**: the PyPI `fmind` CLI (github.com/fmind/cli) consumes the `/api/profile` keys in its `PROFILE_SHAPE`, `/articles/<slug>.md`, and the `/mcp` transport; release a CLI update before removing or renaming any of them.
 
-Task procedures live in `.agents/skills/`: `article`, `news`, `site`, `infra`, `release`, `website-analytics`, and `finops-analytics`. Keep instructions concise and avoid repeating the README or task definitions.
+Task procedures live in `.agents/skills/` (`article`, `news`, `site`, `infra`, `release`, `website-analytics`, `finops-analytics`).

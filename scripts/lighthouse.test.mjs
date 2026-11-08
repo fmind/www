@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { access, mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
+import { access, chmod, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { test } from "node:test";
@@ -51,13 +51,19 @@ function perfectReport(audit) {
 
 test("parseArguments accepts only the documented CLI contract", () => {
   assert.deepEqual(harness.parseArguments(["--base-url=https://candidate.example"]), {
+    allowSandbox: false,
     baseUrl: "https://candidate.example",
     help: false,
   });
   assert.equal(harness.parseArguments(["--base-url", "http://127.0.0.1:8000"]).baseUrl, "http://127.0.0.1:8000");
+  assert.equal(harness.parseArguments(["--allow-sandbox"]).allowSandbox, true);
   assert.equal(harness.parseArguments(["--help"]).help, true);
 
   assert.throws(() => harness.parseArguments([]), /base-url is required/u);
+  assert.throws(
+    () => harness.parseArguments(["--allow-sandbox", "--base-url=https://candidate.example"]),
+    /cannot be combined/u,
+  );
   assert.throws(() => harness.parseArguments(["--wat"]), /unknown argument/u);
   assert.throws(
     () => harness.parseArguments(["--base-url=https://candidate.example", "--mode=portfolio"]),
@@ -648,4 +654,39 @@ test("runAudit keeps the NO_NAVSTART retry inside each performance run", async (
   assert.equal(outputs.length, 5);
   assert.equal(result.passed, true);
   assert.deepEqual(result.performanceRuns.map((run) => run.score), [0.97, 1, 1]);
+});
+
+test("allowChromiumSandbox installs an AppArmor userns profile only for a safe executable path", async (context) => {
+  await mkdir(REPOSITORY_TMP, { recursive: true });
+  const fixture = await mkdtemp(join(REPOSITORY_TMP, "lighthouse-sandbox-test-"));
+  context.after(async () => {
+    await rm(fixture, { force: true, recursive: true });
+  });
+  const fakeChromium = join(fixture, "chrome");
+  await writeFile(fakeChromium, "#!/bin/sh\n");
+  await chmod(fakeChromium, 0o755);
+
+  const calls = [];
+  let installedProfile = "";
+  await harness.allowChromiumSandbox(fakeChromium, {
+    outputDirectory: fixture,
+    runProcessImplementation: async (command, args) => {
+      calls.push([command, ...args]);
+      if (args[0] === "install") installedProfile = await readFile(args[3], "utf8");
+      return { code: 0, signal: null, stdout: "", stderr: "", timedOut: false };
+    },
+  });
+
+  assert.equal(calls.length, 2);
+  assert.equal(calls[0][0], "sudo");
+  assert.equal(calls[0][1], "install");
+  assert.equal(calls[0][5], "/etc/apparmor.d/www-lighthouse-chromium");
+  assert.deepEqual(calls[1], ["sudo", "apparmor_parser", "-r", "/etc/apparmor.d/www-lighthouse-chromium"]);
+  assert.match(
+    installedProfile,
+    new RegExp(`profile www-lighthouse-chromium "${fakeChromium}" flags=\\(unconfined\\)`),
+  );
+  await assert.rejects(access(join(fixture, "www-lighthouse-chromium.apparmor")), { code: "ENOENT" });
+
+  await assert.rejects(harness.allowChromiumSandbox("/bad/\"quote/chrome"), /invalid Chromium executable path/u);
 });

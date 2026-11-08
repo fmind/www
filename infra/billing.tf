@@ -31,7 +31,7 @@ resource "google_bigquery_dataset" "billing" {
     prevent_destroy = true
   }
 
-  depends_on = [google_project_service.bigquery]
+  depends_on = [time_sleep.wait_for_apis]
 }
 
 data "google_project" "current" {}

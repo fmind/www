@@ -42,7 +42,7 @@ python = "3.14.10"
 # Used implicitly by jactionlint (check:actions) to lint workflow run: scripts;
 # it skips them silently when absent.
 shellcheck = "0.11.0"
-tflint = "0.65.0"
+tflint = "0.66.0"
 trivy = "0.76.2"
 typos = "1.52.0"
 
@@ -123,9 +123,9 @@ depends = [
 ]
 
 [tasks."check:network"]
-description = "Run the checks that download vulnerability data (pre-push)"
-# Both run Trivy, which downloads its vulnerability or misconfiguration database.
-depends = ["check:scan", "check:vuln"]
+description = "Run the checks that need network access (pre-push)"
+# Trivy downloads its vulnerability/misconfiguration DB; OpenTofu validates provider schemas.
+depends = ["check:scan", "check:tofu", "check:vuln"]
 
 [tasks."check:actions"]
 alias = "ca"
@@ -146,6 +146,7 @@ run = [
   "uv run --locked validate-pyproject pyproject.toml",
   "uv run --locked ruff format --check",
   "dprint check",
+  "tofu -chdir=infra fmt -check -recursive",
 ]
 
 [tasks."check:image"]
@@ -158,6 +159,7 @@ run = 'env -u TRIVY_CONFIG trivy image --input "$IMAGE_ARCHIVE" --platform "$IMA
 
 [tasks."check:image:deployed"]
 description = "Resolve and scan every serving or tagged Cloud Run revision with Trivy"
+# security.yml installs only python and trivy here (no uv); stdlib-only script.
 run = "python -m scripts.scan_deployed"
 
 [tasks."check:image:digest"]
@@ -258,7 +260,7 @@ run = [
 [tasks.clean]
 alias = "n"
 description = "Remove build artifacts, caches, and coverage files"
-run = "rm -rf .cache/ .coverage .pytest_cache/ .ruff_cache/ .ty_cache/ dist/ htmlcov/ tmp/ static/dist/styles.css"
+run = "rm -rf .coverage .pytest_cache/ .ruff_cache/ dist/ htmlcov/ tmp/ static/dist/styles.css"
 
 [tasks.coverage]
 alias = "v"
@@ -269,14 +271,12 @@ run = "uv run --locked coverage report"
 [tasks.deploy]
 description = "Deploy one immutable Artifact Registry digest and its commit SHA to Cloud Run"
 raw_args = true
-# On demand only, never from a hook or `all`: this mutates production. CI owns
-# the routine path (push to main); this is for manual rollout and rollback, so
-# it creates a named no-traffic candidate and verifies health/digest/commit before
-# routing traffic to that exact revision. OpenTofu
-# still owns the rest of the service shape. The typed boundary rejects tags,
-# foreign repositories, missing digests, non-SHA commits, and extra flags
-# before constructing fixed project/region/service gcloud argv.
-run = "uv run --locked python -m scripts.deploy"
+# Shared by CI (push to main) and manual rollout/rollback: gates the digest with
+# check:image:digest and test:image, creates a named no-traffic candidate and
+# verifies health/digest/commit before routing traffic to that exact revision,
+# removes candidate tags on failure or interruption, and verifies the promoted
+# release. OpenTofu owns the rest of the service shape.
+run = "uv run --locked --no-dev --group ops python -m scripts.deploy"
 
 [tasks.format]
 alias = "f"
@@ -349,10 +349,6 @@ run = 'NODE_PATH="$(mise where npm:playwright)/node_modules" env -u NO_COLOR pla
 description = "Smoke-test the already-built production OCI archive or remote digest"
 raw_args = true
 run = "uv run --locked --no-dev --group ops python -m scripts.image_smoke"
-
-[tasks."test:candidate"]
-description = "Verify the no-traffic CANDIDATE_TAG revision is IMAGE_REF/GITHUB_SHA and serves health/discovery"
-run = "uv run --locked --no-dev --group ops python -m scripts.verify_deployment candidate"
 
 [tasks."test:deployed"]
 description = "Verify IMAGE_REF and GITHUB_SHA own ready production traffic and public health"
