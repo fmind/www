@@ -4,7 +4,7 @@ import http.client
 import json
 import ssl
 import subprocess
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta, tzinfo
 from email.message import Message
 from urllib.error import HTTPError, URLError
 from zoneinfo import ZoneInfo
@@ -19,7 +19,6 @@ def event(
 ) -> analytics.Event:
     return analytics.Event(
         timestamp=datetime.fromisoformat(when),
-        insert_id=None,
         path=path,
         status=status,
         bot=bot,
@@ -140,13 +139,17 @@ def page(*rows: dict[str, object], total: int = 2, cursor: str = "") -> bytes:
     return json.dumps({"rows": rows, "totalRows": str(total), "pageToken": cursor}).encode()
 
 
+DAY = (date(2026, 9, 9),)
+
+
 def test_pagination_schema_order_and_duplicate_events() -> None:
     read = FakeRead(metadata(), page(wire_row(), cursor="next-page"), page(wire_row()), metadata())
-    events, duplicates = analytics.collect(read)
+    events, duplicates = analytics.collect(read, DAY)
     assert len(events) == 1
     assert duplicates == 1
     assert events[0].status == 200
     assert events[0].timestamp == datetime.fromtimestamp(1789000000.5, UTC)
+    assert [suffix for suffix, _ in read.calls] == ["$20260909", "$20260909/data", "$20260909/data", "$20260909"]
     assert read.calls[2][1]["pageToken"] == "next-page"
     assert set(read.calls[1][1]["selectedFields"].split(",")) == {
         "timestamp",
@@ -165,7 +168,7 @@ def test_pagination_schema_order_and_duplicate_events() -> None:
 @pytest.mark.parametrize(
     ("responses", "message"),
     [
-        ((metadata(100_001),), "row cap"),
+        ((metadata(analytics.MAX_ROWS + 1),), "row cap"),
         ((metadata(), page(wire_row(), total=3)), "changed"),
         ((metadata(), page(wire_row()), metadata()), "incomplete"),
         ((metadata(1), page(wire_row(), total=1), metadata(1, modified="2")), "changed"),
@@ -177,11 +180,90 @@ def test_pagination_schema_order_and_duplicate_events() -> None:
         ((metadata(), page(wire_row(msg="http_request"))), "Unexpected event"),
         ((metadata(), page(wire_row(status=None))), "Missing status"),
         ((metadata(), page(wire_row(payload=False))), "payload missing"),
+        ((metadata(0), metadata(1)), "changed"),
     ],
 )
 def test_incomplete_or_invalid_reads_fail_without_reporting(responses: tuple[bytes, ...], message: str) -> None:
     with pytest.raises(analytics.AnalyticsError, match=message):
-        analytics.collect(FakeRead(*responses))
+        analytics.collect(FakeRead(*responses), DAY)
+
+
+def test_reads_only_the_requested_partitions_and_skips_empty_ones() -> None:
+    days = (date(2026, 9, 8), date(2026, 9, 9), date(2026, 9, 10))
+    read = FakeRead(
+        metadata(1),
+        metadata(0),
+        metadata(1),
+        page(wire_row("first"), total=1),
+        metadata(1),
+        metadata(0),
+        page(wire_row("first"), total=1),
+        metadata(1),
+    )
+    events, duplicates = analytics.collect(read, days)
+    # The same insertId in two partitions is two events: a duplicate shares its timestamp, hence its partition.
+    assert (len(events), duplicates) == (2, 0)
+    assert [suffix for suffix, _ in read.calls] == [
+        "$20260908",
+        "$20260909",
+        "$20260910",
+        "$20260908/data",
+        "$20260908",
+        "$20260909",
+        "$20260910/data",
+        "$20260910",
+    ]
+
+
+def test_row_cap_applies_to_the_sum_of_partitions_before_any_data_read() -> None:
+    read = FakeRead(metadata(analytics.MAX_ROWS), metadata(1))
+    with pytest.raises(analytics.AnalyticsError, match="row cap"):
+        analytics.collect(read, (date(2026, 9, 8), date(2026, 9, 9)))
+    assert [suffix for suffix, _ in read.calls] == ["$20260908", "$20260909"]
+
+
+def test_page_cap_spans_partitions(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(analytics, "MAX_PAGES", 1)
+    read = FakeRead(metadata(1), metadata(1), page(wire_row("a"), total=1), metadata(1))
+    with pytest.raises(analytics.AnalyticsError, match="page cap"):
+        analytics.collect(read, (date(2026, 9, 8), date(2026, 9, 9)))
+
+
+@pytest.mark.parametrize(
+    ("zone", "end", "expected"),
+    [
+        # Paris midnight is 22:00 or 23:00 UTC the day before: the window never reaches the end date's partition.
+        ("Europe/Paris", date(2026, 11, 8), (date(2026, 11, 5), date(2026, 11, 7))),
+        ("Europe/Paris", date(2026, 7, 1), (date(2026, 6, 28), date(2026, 6, 30))),
+        ("UTC", date(2026, 11, 8), (date(2026, 11, 6), date(2026, 11, 7))),
+        # West of UTC, local midnight falls inside the end date's UTC day, so that partition is required.
+        ("America/New_York", date(2026, 11, 8), (date(2026, 11, 6), date(2026, 11, 8))),
+    ],
+)
+def test_partitions_cover_both_local_windows_in_utc_days(zone: str, end: date, expected: tuple[date, date]) -> None:
+    tz = ZoneInfo(zone)
+    days = analytics.partitions(analytics.boundary(end - timedelta(days=2), tz), analytics.boundary(end, tz))
+    assert (days[0], days[-1]) == expected
+    assert days == [expected[0] + timedelta(days=offset) for offset in range(len(days))]
+
+
+def test_main_reads_the_partitions_of_both_windows_and_the_day_before(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    requested: list[list[date]] = []
+
+    def collect(_read: object, days: list[date]) -> tuple[list[analytics.Event], int]:
+        requested.append(days)
+        # Full retained history: every partition holds traffic at noon UTC.
+        return [event(f"{day.isoformat()}T12:00:00+00:00") for day in days], 0
+
+    monkeypatch.setattr(analytics, "access_token", lambda: "secret-token")
+    monkeypatch.setattr(analytics, "collect", collect)
+    end = datetime.now(UTC).date() - timedelta(days=2)
+    assert analytics.main(["--days", "7", "--end-date", end.isoformat(), "--timezone", "UTC"]) == 0
+    # A UTC window starts on a partition boundary; the preceding day shows whether history predates it.
+    assert requested == [[end - timedelta(days=15 - offset) for offset in range(15)]]
+    assert json.loads(capsys.readouterr().out)["history_starts_after_comparison_start"] is False
 
 
 def test_reader_caps_bytes_and_does_not_echo_http_error_body(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -205,8 +287,8 @@ def test_reader_caps_bytes_and_does_not_echo_http_error_body(monkeypatch: pytest
             return b"x" * size
 
     monkeypatch.setattr(analytics, "urlopen", lambda *_args, **_kwargs: Response())
-    with pytest.raises(analytics.AnalyticsError, match="64 MiB"):
-        analytics.Reader("secret-token", downloaded=analytics.MAX_BYTES - 10)("/data", {})
+    with pytest.raises(analytics.AnalyticsError, match="3 GiB read cap"):
+        analytics.Reader("secret-token", downloaded=analytics.MAX_BYTES - 10)("$20260909/data", {})
 
 
 @pytest.mark.parametrize(
@@ -282,7 +364,15 @@ def test_auth_fails_closed_on_ambiguous_gcloud_identity(
 def test_main_keeps_both_windows_inside_retention_before_authenticating(
     monkeypatch: pytest.MonkeyPatch, days: int, end_offset: int, allowed: bool
 ) -> None:
-    today = datetime.now(UTC).date()
+    class FrozenDatetime(datetime):
+        """Pin main's clock, so the window checks cannot straddle a UTC midnight."""
+
+        @classmethod
+        def now(cls, tz: tzinfo | None = None) -> FrozenDatetime:
+            return cls(2026, 11, 8, 23, 59, 59, 999999, tzinfo=UTC).astimezone(tz)
+
+    monkeypatch.setattr(analytics, "datetime", FrozenDatetime)
+    today = date(2026, 11, 8)
     authenticated: list[bool] = []
 
     def token() -> str:
@@ -290,7 +380,7 @@ def test_main_keeps_both_windows_inside_retention_before_authenticating(
         return "secret-token"
 
     monkeypatch.setattr(analytics, "access_token", token)
-    monkeypatch.setattr(analytics, "collect", lambda _read: ([], 0))
+    monkeypatch.setattr(analytics, "collect", lambda _read, _days: ([], 0))
     end = (today - timedelta(days=end_offset)).isoformat()
     status = analytics.main(["--days", str(days), "--end-date", end, "--timezone", "UTC"])
     assert (status, authenticated) == ((0, [True]) if allowed else (1, []))
@@ -330,7 +420,7 @@ def test_main_only_emits_aggregates_and_invalid_timezone_never_authenticates(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     monkeypatch.setattr(analytics, "access_token", lambda: "secret-token")
-    monkeypatch.setattr(analytics, "collect", lambda _read: ([], 0))
+    monkeypatch.setattr(analytics, "collect", lambda _read, _days: ([], 0))
     assert analytics.main([]) == 0
     output = capsys.readouterr()
     assert json.loads(output.out)["retained_events_read"] == 0

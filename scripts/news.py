@@ -20,6 +20,7 @@ import argparse
 import base64
 import hashlib
 import html
+import http.client
 import io
 import json
 import os
@@ -30,11 +31,11 @@ import tarfile
 import tempfile
 import time
 import urllib.request
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
-from typing import Any
+from typing import IO, Any
 from urllib.parse import quote, urlparse
 from xml.etree import ElementTree
 from zoneinfo import ZoneInfo
@@ -52,7 +53,8 @@ from www.news import (
 
 EXCERPT_LIMIT = 1500
 MAX_BYTES = 1_200_000
-TIMEOUT_SECONDS = 8.0
+TIMEOUT_SECONDS = 8.0  # per socket operation
+DEADLINE_SECONDS = 20.0  # per source read, redirects included
 WORKERS = 8
 SHORTENERS = frozenset({"t.co", "bit.ly", "tinyurl.com", "lnkd.in", "buff.ly"})
 USER_AGENT = "Mozilla/5.0 (compatible; fmind-news; +https://www.fmind.dev/news/)"
@@ -60,16 +62,54 @@ USER_AGENT = "Mozilla/5.0 (compatible; fmind-news; +https://www.fmind.dev/news/)
 type Fetch = Callable[[str], tuple[str, str]]
 
 
+class HttpsOnlyRedirect(urllib.request.HTTPRedirectHandler):
+    """Refuse a redirect off HTTPS before urllib sends the next request (its default follows http and ftp)."""
+
+    def redirect_request(
+        self,
+        req: urllib.request.Request,
+        fp: IO[bytes],
+        code: int,
+        msg: str,
+        headers: http.client.HTTPMessage,
+        newurl: str,
+    ) -> urllib.request.Request | None:
+        if urlparse(newurl).scheme != "https":
+            fp.close()
+            raise ValueError(f"{req.full_url} redirected to non-HTTPS {newurl}")
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+OPENER = urllib.request.build_opener(HttpsOnlyRedirect)
+
+
 def fetch_text(url: str, max_bytes: int = MAX_BYTES) -> tuple[str, str]:
-    """Return the final URL and decoded body of one bounded public HTTPS read."""
+    """Return the final URL and decoded body of one bounded, deadline-limited HTTPS read."""
     if urlparse(url).scheme != "https":
         raise ValueError(f"refusing non-HTTPS URL {url!r}")
+    deadline = time.monotonic() + DEADLINE_SECONDS
     request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT, "Accept": "*/*"})  # noqa: S310
-    with urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS) as response:  # noqa: S310
-        final_url = response.geturl() or url
-        if urlparse(final_url).scheme != "https":
-            raise ValueError(f"{url} redirected to non-HTTPS {final_url}")
-        return final_url, response.read(max_bytes).decode("utf-8", errors="replace")
+    body = bytearray()
+    try:
+        with OPENER.open(request, timeout=TIMEOUT_SECONDS) as response:
+            # read1 returns as soon as any bytes arrive, so a trickling server meets the deadline check.
+            while len(body) < max_bytes and (chunk := response.read1(max_bytes - len(body))):
+                body += chunk
+                if time.monotonic() > deadline:
+                    raise TimeoutError(f"{url}: read exceeded {DEADLINE_SECONDS:g} s")
+            final_url = response.geturl() or url
+    except http.client.HTTPException as error:
+        # IncompleteRead, BadStatusLine, and LineTooLong are not OSErrors, and urllib does not wrap them.
+        raise OSError(f"{url}: {type(error).__name__}: {error}") from error
+    return final_url, body.decode("utf-8", errors="replace")
+
+
+def _json_object(body: str) -> dict[str, Any]:
+    """Parse an API body that must be a JSON object, so a list or null fails as a fetch error."""
+    data = json.loads(body)
+    if not isinstance(data, dict):
+        raise ValueError(f"expected a JSON object, got {type(data).__name__}")
+    return data
 
 
 def _clean(value: str) -> str:
@@ -103,7 +143,7 @@ def _minutes(seconds: int) -> str:
 
 def _youtube(url: str, fetch: Fetch) -> dict[str, str]:
     _, oembed = fetch(f"https://www.youtube.com/oembed?url={quote(url, safe='')}&format=json")
-    data = json.loads(oembed)
+    data = _json_object(oembed)
     author = _clean(data.get("author_name", ""))
     facts = {"title": _clean(data.get("title", "")), "description": f"Video by {author}" if author else ""}
     try:
@@ -122,7 +162,7 @@ def _youtube(url: str, fetch: Fetch) -> dict[str, str]:
 
 def _x(url: str, fetch: Fetch) -> dict[str, str]:
     _, oembed = fetch(f"https://publish.twitter.com/oembed?url={quote(url, safe='')}")
-    data = json.loads(oembed)
+    data = _json_object(oembed)
     author = _clean(data.get("author_name", ""))
     text = _clean(re.sub(r"<[^>]+>", " ", data.get("html", "")))
     return {"title": f"{author} on X" if author else "X post", "description": text[:600], "excerpt": text}
@@ -134,7 +174,7 @@ def _github(url: str, fetch: Fetch) -> dict[str, str]:
         return _page(url, fetch)
     owner, repo = parts[0], parts[1]
     _, body = fetch(f"https://api.github.com/repos/{quote(owner)}/{quote(repo)}")
-    data = json.loads(body)
+    data = _json_object(body)
     facts = [
         f"License: {spdx}."
         for spdx in [(data.get("license") or {}).get("spdx_id")]
@@ -172,21 +212,39 @@ def _arxiv(url: str, fetch: Fetch) -> dict[str, str]:
     }
 
 
+# The lookahead ends the tag name, so custom elements such as <nav-menu> or <main-content> do not match.
+_BOILERPLATE = re.compile(r"<(script|style|noscript|nav|header|footer|aside|svg|form)(?=[\s/>])[^>]*>", re.IGNORECASE)
+_SCOPE = re.compile(r"<(article|main)(?=[\s/>])[^>]*>", re.IGNORECASE)
+
+
+def _blocks(text: str, opener: re.Pattern[str]) -> Iterator[tuple[re.Match[str], re.Match[str]]]:
+    """Yield non-overlapping (opener, first closer) pairs, as `<(tag)...>.*?</\\1>` would, in linear time.
+
+    That regex rescans to the end for every unclosed opener, which is quadratic. Here an opener without a closer
+    marks its tag as unclosed, so each tag's closer searches cover disjoint spans of the page.
+    """
+    position, unclosed = 0, set[str]()
+    for start in opener.finditer(text):
+        tag = start[1].lower()
+        if start.start() < position or tag in unclosed:
+            continue
+        if (end := re.compile(rf"</{tag}\s*>", re.IGNORECASE).search(text, start.end())) is None:
+            unclosed.add(tag)
+            continue
+        position = end.end()
+        yield start, end
+
+
 def _page(url: str, fetch: Fetch) -> dict[str, str]:
     _, page = fetch(url)
     title = _first((*_meta("og:title"), r"<title[^>]*>(.*?)</title>"), page)
     description = _first((*_meta("og:description"), *_meta("description")), page)
-    body = re.sub(
-        r"<(script|style|noscript|nav|header|footer|aside|svg|form)[^>]*>.*?</\1>",
-        " ",
-        page,
-        flags=re.IGNORECASE | re.DOTALL,
-    )
-    scope = (
-        match[2]
-        if (match := re.search(r"<(article|main)\b[^>]*>(.*?)</\1>", body, re.IGNORECASE | re.DOTALL))
-        else body
-    )
+    parts, position = [], 0
+    for start, end in _blocks(page, _BOILERPLATE):
+        parts += (page[position : start.start()], " ")
+        position = end.end()
+    body = "".join((*parts, page[position:]))
+    scope = next((body[start.end() : end.start()] for start, end in _blocks(body, _SCOPE)), body)
     paragraphs = " ".join(re.findall(r"<p\b[^>]*>(.*?)</p>", scope, re.IGNORECASE | re.DOTALL))
     text = _clean(re.sub(r"<[^>]+>", " ", paragraphs or scope))
     words = len(text.split())

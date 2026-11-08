@@ -1,4 +1,4 @@
-"""Collect bounded website analytics using gcloud and free BigQuery table reads."""
+"""Collect bounded website analytics using gcloud and free BigQuery partition reads."""
 
 import argparse
 import http.client
@@ -7,24 +7,29 @@ import os
 import subprocess
 import sys
 from collections import Counter
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal, InvalidOperation
+from typing import Annotated, NamedTuple
 from urllib.error import HTTPError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError
 
 PROJECT = "www-fmind-dev"
 TABLE = f"{PROJECT}.website_analytics.run_googleapis_com_stderr"
 ENDPOINT = f"https://bigquery.googleapis.com/bigquery/v2/projects/{PROJECT}/datasets/website_analytics/tables/run_googleapis_com_stderr"
 PAYLOAD_FIELDS = ("msg", "path", "status", "bot", "referer", "utm_source", "utm_medium", "utm_campaign")
 SELECTION = ",".join(("timestamp", "insertId", *(f"jsonPayload.{name}" for name in PAYLOAD_FIELDS)))
-MAX_ROWS = 100_000
-MAX_BYTES = 64 * 1024 * 1024
+MAX_DAYS = 90
+# The caps bound one run of two adjacent MAX_DAYS windows, not the retained table: 181 UTC day partitions at
+# ~22,000 rows (late 2026 days averaged 19,000 and peaked at 40,000), ~750 JSON bytes and ~200 kept bytes per row.
+MAX_ROWS = 4_000_000
+MAX_BYTES = 3 * 1024**3
+MAX_PAGES = 1_000
 
 
 class AnalyticsError(RuntimeError):
@@ -44,6 +49,8 @@ class Schema(BaseModel):
 
 
 class Metadata(BaseModel):
+    """Table or partition metadata; a decorated partition reports only its own rows and changes."""
+
     table_schema: Schema = Field(alias="schema")
     num_rows: str = Field(alias="numRows")
     last_modified_time: str = Field(alias="lastModifiedTime")
@@ -63,19 +70,23 @@ class Page(BaseModel):
     page_token: str = Field(default="", alias="pageToken")
 
 
-class Event(BaseModel):
-    """Only the allowlisted analytics dimensions enter aggregation."""
+class Event(NamedTuple):
+    """Only the allowlisted analytics dimensions enter aggregation.
 
-    model_config = ConfigDict(strict=True)
+    A tuple with interned strings keeps a 90-day comparison (millions of rows) to about 200 bytes per event.
+    """
+
     timestamp: datetime
-    insert_id: str | None
     path: str
-    status: int = Field(ge=100, le=599)
+    status: Annotated[int, Field(ge=100, le=599)]
     bot: bool | None
     referer: str
     utm_source: str
     utm_medium: str
     utm_campaign: str
+
+
+EVENT = TypeAdapter(Event, config=ConfigDict(strict=True))
 
 
 def gcloud(*arguments: str) -> str:
@@ -151,12 +162,14 @@ class Reader:
             raise AnalyticsError("BigQuery read timed out or failed; no partial report produced.") from exc
         self.downloaded += len(body)
         if self.downloaded > MAX_BYTES:
-            raise AnalyticsError("Analytics exceeds the 64 MiB read cap; no partial report produced.")
+            raise AnalyticsError(
+                f"Analytics exceeds the {MAX_BYTES // 1024**3} GiB read cap; no partial report produced."
+            )
         return body
 
 
-def decode_event(row: Row, fields: list[SchemaField]) -> Event:
-    """Decode positional REST values against the projected live schema."""
+def decode_event(row: Row, fields: list[SchemaField]) -> tuple[Event, str | None]:
+    """Decode positional REST values against the projected live schema, returning the event and its insertId."""
     values = {field.name: cell.v for field, cell in zip(fields, row.f, strict=True)}
     payload = values["jsonPayload"]
     payload_fields = next(field.fields for field in fields if field.name == "jsonPayload")
@@ -174,59 +187,87 @@ def decode_event(row: Row, fields: list[SchemaField]) -> Event:
     status = Decimal(raw_status)
     if not status.is_finite() or status != status.to_integral_value():
         raise AnalyticsError("Invalid HTTP status in analytics data.")
-    return Event.model_validate(
-        {
-            "timestamp": datetime.fromtimestamp(float(raw_timestamp), UTC),
-            "insert_id": values["insertId"],
-            "status": int(status),
-            "bot": None if raw_bot is None else raw_bot == "true",
-            **{name: dimensions[name] for name in ("path", "referer", "utm_source", "utm_medium", "utm_campaign")},
-        }
-    )
+    # Paths, referrers, and campaigns repeat across rows; interning stores each distinct value once.
+    raw = (dimensions[name] for name in ("path", "referer", "utm_source", "utm_medium", "utm_campaign"))
+    path, referer, *campaign = (sys.intern(value) if isinstance(value, str) else value for value in raw)
+    timestamp = datetime.fromtimestamp(float(raw_timestamp), UTC)
+    bot = None if raw_bot is None else raw_bot == "true"
+    insert_id = values["insertId"]
+    if insert_id is not None and not isinstance(insert_id, str):
+        raise AnalyticsError("Invalid insertId in analytics data.")
+    return EVENT.validate_python((timestamp, path, int(status), bot, referer, *campaign)), insert_id
 
 
-def collect(read: Callable[[str, dict[str, str]], bytes]) -> tuple[list[Event], int]:
-    """Require all pages and stable metadata; a truncated read is never a sample."""
-    parameters: dict[str, str] = {"selectedFields": SELECTION}
-    before = Metadata.model_validate_json(read("", parameters))
-    fields = before.table_schema.fields
+def boundary(day: date, zone: ZoneInfo) -> datetime:
+    """Return the UTC instant of a local midnight."""
+    return datetime.combine(day, time.min, zone).astimezone(UTC)
+
+
+def partitions(start: datetime, end: datetime) -> list[date]:
+    """Return the UTC day partitions that hold [start, end).
+
+    A local window ending at Paris midnight needs the previous UTC day, never today's partition, which is still
+    being written. A window that ends inside today's UTC day reads that partition, and the metadata check rejects
+    it while rows still arrive.
+    """
+    first, last = start.astimezone(UTC).date(), (end - timedelta(microseconds=1)).astimezone(UTC).date()
+    return [first + timedelta(days=offset) for offset in range((last - first).days + 1)]
+
+
+def validate_schema(metadata: Metadata) -> list[SchemaField]:
+    fields = metadata.table_schema.fields
     if {field.name for field in fields} != {"timestamp", "insertId", "jsonPayload"}:
         raise AnalyticsError("Analytics table schema changed.")
     payload = next(field for field in fields if field.name == "jsonPayload")
     if {field.name for field in payload.fields} != set(PAYLOAD_FIELDS):
         raise AnalyticsError("Analytics payload schema changed.")
-    expected = int(before.num_rows)
-    if not 0 <= expected <= MAX_ROWS:
-        raise AnalyticsError("Analytics exceeds the 100,000 row cap; no partial report produced.")
+    return fields
+
+
+def collect(read: Callable[[str, dict[str, str]], bytes], days: Sequence[date]) -> tuple[list[Event], int]:
+    """Read whole day partitions with stable metadata; a truncated read is never a sample."""
+    parameters: dict[str, str] = {"selectedFields": SELECTION}
+    suffixes = [f"${day:%Y%m%d}" for day in days]
+    # Size every partition before reading any row, so the cap fails before the download starts.
+    befores = [Metadata.model_validate_json(read(suffix, parameters)) for suffix in suffixes]
+    schemas = [validate_schema(before) for before in befores]
+    if not 0 <= sum(int(before.num_rows) for before in befores) <= MAX_ROWS:
+        raise AnalyticsError(f"Analytics exceeds the {MAX_ROWS:,} row cap; no partial report produced.")
     events: list[Event] = []
-    seen: set[tuple[datetime, str]] = set()
     duplicates = 0
-    raw_count = 0
-    page_token = ""
-    for _ in range(100):
-        page = Page.model_validate_json(read("/data", {**parameters, "maxResults": "10000", "pageToken": page_token}))
-        raw_count += len(page.rows)
-        if int(page.total_rows) != expected or raw_count > expected:
-            raise AnalyticsError("Analytics table changed during the read; retry once when ingestion is settled.")
-        for row in page.rows:
-            event = decode_event(row, fields)
-            if event.insert_id:
-                key = (event.timestamp, event.insert_id)
-                if key in seen:
-                    duplicates += 1
-                    continue
-                seen.add(key)
-            events.append(event)
-        if not page.page_token:
-            break
-        if page.page_token == page_token:
-            raise AnalyticsError("Repeated analytics page token; no partial report produced.")
-        page_token = page.page_token
-    else:
-        raise AnalyticsError("Analytics exceeds the 100 page cap; no partial report produced.")
-    after = Metadata.model_validate_json(read("", parameters))
-    if raw_count != expected or before != after:
-        raise AnalyticsError("Analytics read incomplete or table changed; retry once when ingestion is settled.")
+    pages = 0
+    for suffix, before, fields in zip(suffixes, befores, schemas, strict=True):
+        expected = int(before.num_rows)
+        raw_count = 0
+        page_token = ""
+        # A duplicate shares its timestamp, hence its partition, so the keys need not outlive it.
+        seen: set[tuple[datetime, str]] = set()
+        while expected:
+            pages += 1
+            if pages > MAX_PAGES:
+                raise AnalyticsError(f"Analytics exceeds the {MAX_PAGES:,} page cap; no partial report produced.")
+            query = {**parameters, "maxResults": "10000", "pageToken": page_token}
+            page = Page.model_validate_json(read(f"{suffix}/data", query))
+            raw_count += len(page.rows)
+            if int(page.total_rows) != expected or raw_count > expected:
+                raise AnalyticsError("Analytics table changed during the read; retry once when ingestion is settled.")
+            for row in page.rows:
+                event, insert_id = decode_event(row, fields)
+                if insert_id:
+                    key = (event.timestamp, insert_id)
+                    if key in seen:
+                        duplicates += 1
+                        continue
+                    seen.add(key)
+                events.append(event)
+            if not page.page_token:
+                break
+            if page.page_token == page_token:
+                raise AnalyticsError("Repeated analytics page token; no partial report produced.")
+            page_token = page.page_token
+        after = Metadata.model_validate_json(read(suffix, parameters))
+        if raw_count != expected or before != after:
+            raise AnalyticsError("Analytics read incomplete or table changed; retry once when ingestion is settled.")
     return events, duplicates
 
 
@@ -276,12 +317,8 @@ def summarize(events: list[Event], *, end: date, days: int, zone: ZoneInfo, dupl
     """Compare adjacent complete local-date windows; do not assume human identity."""
     start = end - timedelta(days=days)
     previous_start = start - timedelta(days=days)
-
-    def boundary(day: date) -> datetime:
-        return datetime.combine(day, time.min, zone).astimezone(UTC)
-
-    current = [event for event in events if boundary(start) <= event.timestamp < boundary(end)]
-    previous = [event for event in events if boundary(previous_start) <= event.timestamp < boundary(start)]
+    current = [event for event in events if boundary(start, zone) <= event.timestamp < boundary(end, zone)]
+    previous = [event for event in events if boundary(previous_start, zone) <= event.timestamp < boundary(start, zone)]
     current_pages = Counter(event.path for event in current if successful(event))
     previous_pages = Counter(event.path for event in previous if successful(event))
     paths = sorted(
@@ -309,7 +346,7 @@ def summarize(events: list[Event], *, end: date, days: int, zone: ZoneInfo, dupl
         "duplicates_excluded": duplicates,
         "first_retained_event": first.isoformat() if first else None,
         "latest_retained_event": max(event.timestamp for event in events).isoformat() if events else None,
-        "history_starts_after_comparison_start": first is None or first > boundary(previous_start),
+        "history_starts_after_comparison_start": first is None or first > boundary(previous_start, zone),
         "current": breakdown(current, start, days, zone),
         "previous": breakdown(previous, previous_start, days, zone),
         "largest_page_changes": changes,
@@ -318,7 +355,7 @@ def summarize(events: list[Event], *, end: date, days: int, zone: ZoneInfo, dupl
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--days", type=int, choices=range(1, 91), default=7, metavar="1..90")
+    parser.add_argument("--days", type=int, choices=range(1, MAX_DAYS + 1), default=7, metavar=f"1..{MAX_DAYS}")
     parser.add_argument("--end-date", type=date.fromisoformat, help="Exclusive local date; default: today")
     parser.add_argument("--timezone", default="Europe/Paris")
     args = parser.parse_args(argv)
@@ -328,7 +365,11 @@ def main(argv: list[str] | None = None) -> int:
         end = args.end_date or today
         if end > today or end - timedelta(days=2 * args.days) < today - timedelta(days=180):
             raise AnalyticsError("Both complete reporting windows must be within the last 180 days.")
-        events, duplicates = collect(Reader(access_token()))
+        # Start one microsecond early: where local midnight is UTC midnight, the preceding UTC day is the only
+        # evidence that retained history predates the comparison; elsewhere the set of partitions is unchanged.
+        first = boundary(end - timedelta(days=2 * args.days), zone) - timedelta(microseconds=1)
+        window = partitions(first, boundary(end, zone))
+        events, duplicates = collect(Reader(access_token()), window)
         report = summarize(events, end=end, days=args.days, zone=zone, duplicates=duplicates)
     except (
         AnalyticsError,

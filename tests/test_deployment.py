@@ -25,6 +25,7 @@ GATES = (
     ("mise", "run", "test:image", VALID_IMAGE),
 )
 VERIFY_CREATED_REVISION = deploy.verify_created_revision
+VERIFY_PROMOTED_RELEASE = deploy.verify_promoted_release
 SCOPE = (
     "www-fmind-dev",
     "--project",
@@ -34,11 +35,14 @@ SCOPE = (
     "--region",
     "europe-west1",
 )
+# Removes only the manual tag of an unpromoted candidate; it never moves traffic.
+CLEANUP = ("gcloud", "run", "services", "update-traffic", *SCOPE, "--remove-tags=manual-candidate", "--quiet")
 
 
 @pytest.fixture(autouse=True)
 def offline_verification(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(deploy, "verify_created_revision", lambda *_: None)
+    monkeypatch.setattr(deploy, "verify_promoted_release", lambda *_: None)
 
 
 class RecordingRunner:
@@ -95,6 +99,7 @@ def test_valid_release_restamps_commit_and_routes_traffic_to_the_new_revision() 
             "--remove-tags=manual-candidate,candidate",
             "--quiet",
         ),
+        CLEANUP,
     )
 
 
@@ -193,14 +198,27 @@ def test_failed_update_preserves_exit_status_and_never_moves_traffic() -> None:
     runner = RecordingRunner(0, 0, 9)
 
     assert main((VALID_IMAGE, VALID_COMMIT), target=TARGET, runner=runner) == 9
-    assert runner.gcloud_steps == ["update"]
+    # A failed update may still leave a tagged revision; the cleanup removes the tag without routing traffic.
+    assert runner.commands[-1] == CLEANUP
+    assert runner.gcloud_steps == ["update", "update-traffic"]
 
 
-def test_failed_traffic_promotion_is_reported() -> None:
+def test_failed_traffic_promotion_is_reported_and_drops_the_manual_tag() -> None:
     runner = RecordingRunner(0, 0, 0, 7)
 
     assert main((VALID_IMAGE, VALID_COMMIT), target=TARGET, runner=runner) == 7
-    assert runner.gcloud_steps == ["update", "update-traffic"]
+    assert runner.gcloud_steps == ["update", "update-traffic", "update-traffic"]
+    assert runner.commands[-1] == CLEANUP
+
+
+def test_failed_tag_cleanup_is_reported_without_masking_the_failure(capsys: pytest.CaptureFixture[str]) -> None:
+    runner = RecordingRunner(0, 0, 9, 4)
+
+    assert main((VALID_IMAGE, VALID_COMMIT), target=TARGET, runner=runner) == 9
+    assert (
+        capsys.readouterr().err
+        == "removing the manual-candidate tag failed; remove it by hand, since its tag URL stays public\n"
+    )
 
 
 def test_concurrent_revision_after_verification_never_receives_manual_traffic() -> None:
@@ -248,8 +266,46 @@ def test_failed_candidate_verification_never_promotes_or_exposes_diagnostics(
         raise ValueError("private provider diagnostics")
 
     assert main((VALID_IMAGE, VALID_COMMIT), target=TARGET, runner=runner, verifier=fail) == 1
-    assert runner.gcloud_steps == ["update"]
+    # The failed candidate loses its public tag URL now, as in CI, instead of at the next manual rollout.
+    assert runner.commands[-1] == CLEANUP
+    assert not any(argument.startswith("--to-revisions") for command in runner.commands for argument in command)
     assert capsys.readouterr().err == "candidate verification failed: ValueError; traffic was not promoted\n"
+
+
+def test_promoted_release_is_verified_without_exposing_diagnostics(capsys: pytest.CaptureFixture[str]) -> None:
+    runner = RecordingRunner()
+    checked: list[tuple[object, ...]] = []
+
+    def fail(*arguments: object) -> None:
+        checked.append(arguments)
+        assert runner.gcloud_steps == ["update", "update-traffic"]
+        raise ValueError("private provider diagnostics")
+
+    assert main((VALID_IMAGE, VALID_COMMIT), target=TARGET, runner=runner, post_verifier=fail) == 1
+    assert checked[0][:3] == (TARGET, VALID_IMAGE, VALID_COMMIT)
+    assert f"--to-revisions={checked[0][3]}=100" in runner.commands[-1]
+    assert capsys.readouterr().err == (
+        "promoted release verification failed: ValueError; traffic stays on the new revision,"
+        " so inspect it or redeploy the preceding qualified digest\n"
+    )
+
+
+@pytest.mark.parametrize("replaced", [False, True])
+def test_promoted_release_check_reuses_test_deployed(monkeypatch: pytest.MonkeyPatch, replaced: bool) -> None:
+    expected = "www-fmind-dev-manual-test"
+    monkeypatch.setattr(verify_deployment, "describe_service", lambda _: {})
+    serving = "www-fmind-dev-concurrent" if replaced else expected
+    monkeypatch.setattr(verify_deployment, "verify_service", lambda *_args: serving)
+    probes: list[tuple[str, str]] = []
+    monkeypatch.setattr(verify_deployment, "probe", lambda origin, **_: probes.append(("probe", origin)))
+    monkeypatch.setattr(verify_deployment, "probe_mcp", lambda origin, **_: probes.append(("mcp", origin)))
+    if replaced:
+        with pytest.raises(ValueError, match="replaced"):
+            VERIFY_PROMOTED_RELEASE(TARGET, VALID_IMAGE, VALID_COMMIT, expected)
+        assert not probes
+    else:
+        VERIFY_PROMOTED_RELEASE(TARGET, VALID_IMAGE, VALID_COMMIT, expected)
+        assert probes == [("probe", "https://www.fmind.dev"), ("mcp", "https://www.fmind.dev")]
 
 
 @pytest.mark.parametrize("suffix", ["bad,value", "UPPER", "a" * 64])

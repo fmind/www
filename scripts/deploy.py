@@ -92,7 +92,8 @@ def build_deploy_commands(
     """Validate one digest and its commit, then return the fixed gcloud argv sequence.
 
     Create a uniquely named no-traffic candidate, then promote only that name.
-    The caller must verify the candidate between these two commands.
+    The caller must verify the candidate between these two commands, and run the
+    third, which only removes the manual tag, when the candidate is not promoted.
     """
     if len(arguments) != 2:
         raise DeploymentUsageError("exactly one image reference and one commit SHA are required")
@@ -139,6 +140,8 @@ def build_deploy_commands(
             f"--remove-tags={MANUAL_TAG},{CI_TAG}",
             "--quiet",
         ),
+        # Like CI after a failed or cancelled candidate: an unpromoted revision loses its public tag URL now.
+        ("gcloud", "run", "services", "update-traffic", *scope, f"--remove-tags={MANUAL_TAG}", "--quiet"),
     )
 
 
@@ -154,14 +157,29 @@ def verify_created_revision(target: DeploymentTarget, image: str, commit: str, e
     probe(url, timeout=65)
 
 
+def verify_promoted_release(target: DeploymentTarget, image: str, commit: str, expected_revision: str) -> None:
+    """Run the `test:deployed` checks: the promoted revision owns all traffic and serves the public origin."""
+    from scripts.verify_deployment import PUBLIC_ORIGIN, describe_service, probe, probe_mcp, verify_service
+
+    if verify_service(describe_service(target), image, commit) != expected_revision:
+        raise DeploymentUsageError("another deployment replaced the manual release after promotion")
+    # Promotion can route the first public request to a cold instance; allow the 60s startup budget.
+    probe(PUBLIC_ORIGIN, timeout=65)
+    probe_mcp(PUBLIC_ORIGIN, timeout=15)
+
+
 def main(
     arguments: Sequence[str] | None = None,
     *,
     target: DeploymentTarget | None = None,
     runner: Runner | None = None,
     verifier: Verifier | None = None,
+    post_verifier: Verifier | None = None,
 ) -> int:
-    """Validate first, gate the digest, then run each gcloud step, stopping at the first failure."""
+    """Validate, gate the digest, then run each gcloud step, stopping at the first failure.
+
+    An unpromoted candidate loses its manual tag; a promoted one gets the `test:deployed` checks.
+    """
     try:
         deployment_target = target or DeploymentTarget.from_environment()
         release_arguments = tuple(sys.argv[1:] if arguments is None else arguments)
@@ -179,21 +197,32 @@ def main(
             if returncode := execute(gate):
                 sys.stderr.write(f"image gate {gate[2]} failed; nothing was deployed\n")
                 return returncode
-        if returncode := execute(commands[0]):
+        release = (deployment_target, *release_arguments, f"{deployment_target.service_name}-{suffix}")
+        if not (returncode := execute(commands[0])):
+            try:
+                (verifier or verify_created_revision)(*release)
+            except Exception as error:
+                # Provider/HTTP diagnostics may contain private data. Fail closed
+                # and report the cause's type without reflecting its unsafe text.
+                sys.stderr.write(f"candidate verification failed: {type(error).__name__}; traffic was not promoted\n")
+                returncode = 1
+            else:
+                returncode = execute(commands[1])
+        if returncode:
+            if execute(commands[2]):
+                sys.stderr.write(
+                    f"removing the {MANUAL_TAG} tag failed; remove it by hand, since its tag URL stays public\n"
+                )
             return returncode
         try:
-            (verifier or verify_created_revision)(
-                deployment_target,
-                release_arguments[0],
-                release_arguments[1],
-                f"{deployment_target.service_name}-{suffix}",
-            )
+            (post_verifier or verify_promoted_release)(*release)
         except Exception as error:
-            # Provider/HTTP diagnostics may contain private data. Fail closed
-            # and report the cause's type without reflecting its unsafe text.
-            sys.stderr.write(f"candidate verification failed: {type(error).__name__}; traffic was not promoted\n")
+            sys.stderr.write(
+                f"promoted release verification failed: {type(error).__name__}; traffic stays on the new revision,"
+                " so inspect it or redeploy the preceding qualified digest\n"
+            )
             return 1
-        return execute(commands[1])
+        return 0
     except FileNotFoundError as error:
         sys.stderr.write(
             f"deployment failed: {error.filename or 'a required command'} is not installed or executable\n"

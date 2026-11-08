@@ -1,11 +1,15 @@
 """The news preparation script, with every network read replaced by a fake."""
 
 import base64
+import http.client
+import io
 import json
 import os
 import re
 import subprocess
 import sys
+import time
+import urllib.request
 from collections.abc import Mapping
 from datetime import date
 from pathlib import Path
@@ -208,6 +212,117 @@ def test_empty_arxiv_feed_is_a_fetch_error() -> None:
 def test_fetch_text_refuses_plain_http() -> None:
     with pytest.raises(ValueError, match="refusing non-HTTPS URL"):
         news.fetch_text("http://example.com/")
+
+
+@pytest.mark.parametrize("target", ["http://127.0.0.1:8080/admin", "ftp://example.com/file"])
+def test_redirects_off_https_are_refused_before_the_next_request(target: str) -> None:
+    handler = news.HttpsOnlyRedirect()
+    request = urllib.request.Request("https://example.com/start")
+    response = io.BytesIO(b"moved")
+
+    with pytest.raises(ValueError, match="redirected to non-HTTPS"):
+        handler.redirect_request(request, response, 302, "Found", http.client.HTTPMessage(), target)
+    assert response.closed
+    followed = handler.redirect_request(
+        request, io.BytesIO(), 302, "Found", http.client.HTTPMessage(), "https://example.com/next"
+    )
+    assert followed is not None
+    assert followed.full_url == "https://example.com/next"
+
+
+class FakeResponse:
+    """Stand in for an HTTPResponse that streams chunks or fails mid-body."""
+
+    def __init__(self, *chunks: bytes | Exception) -> None:
+        self.chunks = list(chunks)
+
+    def __enter__(self) -> FakeResponse:
+        return self
+
+    def __exit__(self, *_args: object) -> None:
+        pass
+
+    def read1(self, size: int) -> bytes:
+        chunk = self.chunks.pop(0) if self.chunks else b""
+        if isinstance(chunk, Exception):
+            raise chunk
+        return chunk[:size]
+
+    def geturl(self) -> str:
+        return "https://example.com/final"
+
+
+def test_fetch_text_reads_a_bounded_body_through_the_https_only_opener(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(news.OPENER, "open", lambda *_args, **_kwargs: FakeResponse(b"abc", b"def", b"ghi"))
+
+    assert news.fetch_text("https://example.com/", max_bytes=5) == ("https://example.com/final", "abcde")
+
+
+def test_fetch_text_enforces_a_total_deadline_on_trickling_bodies(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(news, "DEADLINE_SECONDS", -1.0)  # already past after the first chunk
+    monkeypatch.setattr(news.OPENER, "open", lambda *_args, **_kwargs: FakeResponse(b"a", b"b", b"c"))
+
+    with pytest.raises(TimeoutError, match="read exceeded"):
+        news.fetch_text("https://example.com/")
+
+
+@pytest.mark.parametrize(
+    "failure",
+    [http.client.IncompleteRead(b"partial"), http.client.BadStatusLine("HTTP/9"), http.client.LineTooLong("header")],
+    ids=("incomplete", "status-line", "line-too-long"),
+)
+def test_malformed_http_responses_are_fetch_errors(
+    monkeypatch: pytest.MonkeyPatch, failure: http.client.HTTPException
+) -> None:
+    monkeypatch.setattr(news.OPENER, "open", lambda *_args, **_kwargs: FakeResponse(b"<p>", failure))
+
+    facts = news.source_facts("https://example.com/broken")
+
+    assert facts["status"] == "fetch_error"
+    assert facts["error"].startswith(f"OSError: https://example.com/broken: {type(failure).__name__}")
+
+
+@pytest.mark.parametrize(
+    ("url", "api"),
+    [
+        ("https://github.com/org/tool", "https://api.github.com/repos/org/tool"),
+        (
+            "https://www.youtube.com/watch?v=abc",
+            "https://www.youtube.com/oembed?url=https%3A%2F%2Fwww.youtube.com%2Fwatch%3Fv%3Dabc&format=json",
+        ),
+        ("https://x.com/a/status/1", "https://publish.twitter.com/oembed?url=https%3A%2F%2Fx.com%2Fa%2Fstatus%2F1"),
+    ],
+    ids=("github", "youtube", "x"),
+)
+@pytest.mark.parametrize("body", ["[]", "null"])
+def test_non_object_api_bodies_are_fetch_errors(url: str, api: str, body: str) -> None:
+    facts = news.source_facts(url, FakeWeb({api: body}))
+
+    assert facts["status"] == "fetch_error"
+    assert facts["error"].startswith("ValueError: expected a JSON object")
+
+
+def test_page_keeps_custom_elements_that_share_a_boilerplate_prefix() -> None:
+    page = (
+        "<main-content><p>outside</p></main-content><article>"
+        "<p>Hello <nav-menu>menu</nav-menu> world</p><formatted-text>kept</formatted-text>"
+        "<nav class='site'>dropped</nav ><p>more</p></article><nav>z</nav>"
+    )
+
+    facts = news.source_facts("https://example.com/a", FakeWeb({"https://example.com/a": page}))
+
+    assert facts["excerpt"] == "Hello menu world more"
+
+
+def test_page_strips_unclosed_openers_in_linear_time() -> None:
+    # Each unclosed opener used to rescan to the end of the page: about 20 minutes at this size.
+    page = "<svg><main><nav>" * 70_000 + "<article><p>body text</p></article>"
+    started = time.monotonic()
+
+    facts = news.source_facts("https://example.com/a", FakeWeb({"https://example.com/a": page}))
+
+    assert time.monotonic() - started < 2
+    assert facts["excerpt"] == "body text"
 
 
 def test_main_prints_json_and_names_invalid_content(
