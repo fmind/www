@@ -129,11 +129,16 @@ class Article:
 
     date: datetime = _ZERO_DATE
     updated: datetime | None = None
+    # The body as Markdown exports publish it: root-relative link destinations are absolute.
     markdown: str = ""
+    # Indexed body text: what readers see, without link or image destinations.
+    search_text: str = ""
     description: str = ""
     title: str = ""
     slug: str = ""
     html: str = ""
+    # Every anchored heading, in order, and the h2 subset the page's section menu lists.
+    headings: tuple[ArticleSection, ...] = ()
     sections: tuple[ArticleSection, ...] = ()
     url: str = ""
     image_url: str = ""
@@ -225,8 +230,6 @@ class PageMetadata:
     # The one Atom feed advertised in <head>; news pages advertise the news feed instead of articles.
     feed_path: str = "/articles/feed.xml"
     feed_title: str = "Fmind articles"
-    # Raw Markdown alternate for pages other than articles, which derive theirs from `article`.
-    markdown_path: str = ""
 
 
 @dataclass(frozen=True, slots=True)

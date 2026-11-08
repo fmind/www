@@ -4,7 +4,6 @@ import json
 import re
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
-from html.parser import HTMLParser
 from xml.etree import ElementTree
 
 from pydantic import TypeAdapter
@@ -18,15 +17,14 @@ from www.data import (
     METADATA,
     OPEN_SOURCE,
     PAPERS,
+    SERVICES,
     SITE_PAGES,
     SPECIALIZATIONS,
     THESIS,
     YOUTUBE_SERIES,
-    get_services,
 )
-from www.markdown import rewrite_markdown_links
 from www.models import Article, ArticleIndexView, ArticleSummary, ArticleYear, Portfolio
-from www.news import NEWS_FEED_PATH
+from www.news import NEWS_FEED_PATH, utc_stamp, xml_document, xml_sub
 from www.search import SearchIndex, normalize_search_query
 from www.tags import TAGS, sort_tags
 
@@ -39,22 +37,6 @@ _ATOM = "http://www.w3.org/2005/Atom"
 _MEDIA = "http://search.yahoo.com/mrss/"
 ElementTree.register_namespace("media", _MEDIA)
 _SITEMAP = "http://www.sitemaps.org/schemas/sitemap/0.9"
-
-
-def _sub(parent: ElementTree.Element, name: str, text: str = "", **attributes: str) -> ElementTree.Element:
-    child = ElementTree.SubElement(parent, name, attributes)
-    child.text = text
-    return child
-
-
-def _xml(element: ElementTree.Element) -> str:
-    # Indented output reads well when a browser or feed reader shows the raw XML.
-    ElementTree.indent(element)
-    return '<?xml version="1.0" encoding="UTF-8"?>\n' + ElementTree.tostring(element, encoding="unicode") + "\n"
-
-
-def _atom_time(value: datetime) -> str:
-    return value.astimezone(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
 
 
 _ROOT_RELATIVE_ATTRIBUTE = re.compile(r'\b(href|src)="/(?!/)')
@@ -77,34 +59,34 @@ def absolute_article_html(body: str) -> str:
 
 def render_atom_feed(articles: Sequence[Article]) -> str:
     feed = ElementTree.Element("feed", xmlns=_ATOM)
-    _sub(feed, "title", "Fmind articles")
-    _sub(feed, "id", f"{METADATA.site_url}/articles/")
+    xml_sub(feed, "title", "Fmind articles")
+    xml_sub(feed, "id", f"{METADATA.site_url}/articles/")
     updated = max((article.modified_date() for article in articles), default=datetime(1970, 1, 1, tzinfo=UTC))
-    _sub(feed, "updated", _atom_time(updated))
-    _sub(feed, "link", href=f"{METADATA.site_url}/articles/feed.xml", rel="self", type="application/atom+xml")
-    _sub(feed, "link", href=f"{METADATA.site_url}/articles/", rel="alternate", type="text/html")
-    _sub(feed, "icon", f"{METADATA.site_url}/logo.png")
-    author = _sub(feed, "author")
-    _sub(author, "name", METADATA.name)
-    _sub(author, "uri", f"{METADATA.site_url}/")
+    xml_sub(feed, "updated", utc_stamp(updated))
+    xml_sub(feed, "link", href=f"{METADATA.site_url}/articles/feed.xml", rel="self", type="application/atom+xml")
+    xml_sub(feed, "link", href=f"{METADATA.site_url}/articles/", rel="alternate", type="text/html")
+    xml_sub(feed, "icon", f"{METADATA.site_url}/logo.png")
+    author = xml_sub(feed, "author")
+    xml_sub(author, "name", METADATA.name)
+    xml_sub(author, "uri", f"{METADATA.site_url}/")
     for index, article in enumerate(articles):
-        entry = _sub(feed, "entry")
-        _sub(entry, "title", article.title)
-        _sub(entry, "id", article.url)
-        _sub(entry, "published", _atom_time(article.date))
-        _sub(entry, "updated", _atom_time(article.modified_date()))
-        _sub(entry, "link", href=article.url, rel="alternate", type="text/html")
+        entry = xml_sub(feed, "entry")
+        xml_sub(entry, "title", article.title)
+        xml_sub(entry, "id", article.url)
+        xml_sub(entry, "published", utc_stamp(article.date))
+        xml_sub(entry, "updated", utc_stamp(article.modified_date()))
+        xml_sub(entry, "link", href=article.url, rel="alternate", type="text/html")
         # Every entry gets a reader thumbnail, including the ones past the full-content limit.
-        _sub(entry, f"{{{_MEDIA}}}thumbnail", url=article.card_image_url)
+        xml_sub(entry, f"{{{_MEDIA}}}thumbnail", url=article.card_image_url)
         for tag in article.tags:
             # Feed readers filter and group by category; terms are the site's closed tag vocabulary.
-            _sub(entry, "category", term=tag, scheme=f"{METADATA.site_url}/articles/?tag=", label=tag)
+            xml_sub(entry, "category", term=tag, scheme=f"{METADATA.site_url}/articles/?tag=", label=tag)
         if index < ATOM_FULL_CONTENT_LIMIT:
             # Feed readers need the article URL when following a section link.
             body = absolute_article_html(article.html).replace('href="#', f'href="{article.url}#')
-            _sub(entry, "content", body, type="html")
-        _sub(entry, "summary", article.description, type="text")
-    return _xml(feed)
+            xml_sub(entry, "content", body, type="html")
+        xml_sub(entry, "summary", article.description, type="text")
+    return xml_document(feed)
 
 
 def render_sitemap(articles: Sequence[Article], news_modified: datetime | None = None) -> str:
@@ -122,15 +104,15 @@ def render_sitemap(articles: Sequence[Article], news_modified: datetime | None =
         *((page.url, None) for page in SITE_PAGES),
     )
     for location, modified in locations:
-        url = _sub(root, "url")
-        _sub(url, "loc", location)
+        url = xml_sub(root, "url")
+        xml_sub(url, "loc", location)
         if modified is not None:
-            _sub(url, "lastmod", modified.date().isoformat())
+            xml_sub(url, "lastmod", modified.date().isoformat())
     for article in articles:
-        url = _sub(root, "url")
-        _sub(url, "loc", article.url)
-        _sub(url, "lastmod", article.modified_date().date().isoformat())
-    return _xml(root)
+        url = xml_sub(root, "url")
+        xml_sub(url, "loc", article.url)
+        xml_sub(url, "lastmod", article.modified_date().date().isoformat())
+    return xml_document(root)
 
 
 def render_llms_txt(articles: Sequence[Article]) -> str:
@@ -148,7 +130,7 @@ def render_llms_txt(articles: Sequence[Article]) -> str:
         "",
         *(
             f"- **{service.title}**: {service.description} {service.badge}. [{service.cta_text}]({service.cta_url})"
-            for service in get_services()
+            for service in SERVICES
         ),
         "",
         f"- [Professional profile and experience]({METADATA.site_url}/#about)",
@@ -167,7 +149,7 @@ def render_llms_txt(articles: Sequence[Article]) -> str:
         f"- [MCP server]({METADATA.site_url}/agents#mcp): Read-only portfolio tools, resources, and prompts at `{METADATA.site_url}/mcp` (Streamable HTTP, POST only).",
         f"- [JSON profile]({METADATA.site_url}/api/profile): Canonical portfolio and article index.",
         f"- [Profile schema]({METADATA.site_url}/api/profile/schema.json): JSON Schema for validating the profile response.",
-        f"- [MCP discovery]({METADATA.site_url}/mcp/server-card): Available tools, prompts, and portfolio resource URI.",
+        f"- [MCP discovery]({METADATA.site_url}/.well-known/mcp/server-card.json): Available tools, prompts, and portfolio resource URI.",
         f"- [Bulk article export]({METADATA.site_url}/llms-full.txt): This index plus every public article in Markdown. Use only when you need the whole collection and your reader can handle its size; otherwise search and read individual articles.",
         f"- Article source: append `.md` to any article slug ({METADATA.site_url}/articles/<slug>.md) for its raw Markdown.",
         "- If your reader rejects `text/markdown`, read the regular article URL as HTML; the full article requires no JavaScript.",
@@ -239,15 +221,6 @@ def article_index_data(
     return ArticleIndexView(active_tag=active_tag, tags=tags, years=tuple(groups))
 
 
-def absolute_markdown_links(markdown: str) -> str:
-    def absolute(destination: str) -> str:
-        if destination.startswith("/") and not destination.startswith("//"):
-            return METADATA.site_url + destination
-        return destination
-
-    return rewrite_markdown_links(markdown, absolute)
-
-
 def render_article_markdown(article: Article) -> str:
     lines = [
         f"# {article.title}",
@@ -266,7 +239,7 @@ def render_article_markdown(article: Article) -> str:
             f"- URL: {article.url}",
         )
     )
-    lines.extend(("", absolute_markdown_links(article.markdown)))
+    lines.extend(("", article.markdown))
     return "\n".join(lines) + "\n"
 
 
@@ -290,7 +263,7 @@ def portfolio_snapshot(articles: Sequence[ArticleSummary]) -> Portfolio:
         site_pages=SITE_PAGES,
         open_source=OPEN_SOURCE,
         youtube_series=YOUTUBE_SERIES,
-        services=get_services(),
+        services=SERVICES,
     )
 
 
@@ -309,29 +282,9 @@ def render_profile_schema() -> bytes:
     return (json.dumps(schema, ensure_ascii=False, indent=2) + "\n").encode()
 
 
-class _ArticleSections(HTMLParser):
-    """Read the section links already generated by the canonical HTML renderer."""
-
-    def __init__(self, url: str) -> None:
-        super().__init__()
-        self.url = url
-        self.sections: list[dict[str, str]] = []
-
-    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
-        attributes = dict(attrs)
-        if tag == "a" and "heading-anchor" in (attributes.get("class") or "").split():
-            self.sections.append(
-                {
-                    "title": (attributes.get("aria-label") or "").removeprefix("Link to section: "),
-                    "url": self.url + (attributes.get("href") or ""),
-                }
-            )
-
-
 def article_sections(article: Article) -> tuple[dict[str, str], ...]:
-    parser = _ArticleSections(article.url)
-    parser.feed(article.html)
-    return tuple(parser.sections)
+    """List every heading anchor that the HTML renderer generated, at any level."""
+    return tuple({"title": heading.label, "url": f"{article.url}#{heading.identifier}"} for heading in article.headings)
 
 
 def render_home_markdown(articles: tuple[ArticleSummary, ...]) -> bytes:

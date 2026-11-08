@@ -23,10 +23,10 @@ from www.data import (
     EXPERTISE,
     LEADERSHIP,
     OPEN_SOURCE,
+    SERVICES,
     SITE_PAGES,
     SPECIALIZATIONS,
     YOUTUBE_SERIES,
-    get_services,
     get_structured_data,
     markdown_to_html,
 )
@@ -250,7 +250,7 @@ def test_renderer_renders_all_six_pages_with_real_domain_contexts() -> None:
                 "specializations": SPECIALIZATIONS,
                 "open_source": OPEN_SOURCE,
                 "youtube_series": YOUTUBE_SERIES,
-                "services": get_services(),
+                "services": SERVICES,
             },
         ),
         PageTemplate.ARTICLES: renderer.render(
@@ -312,6 +312,13 @@ def test_renderer_renders_all_six_pages_with_real_domain_contexts() -> None:
         assert '<meta name="color-scheme" content="light"/>' in html
         assert "{{" not in html
         assert markers[template] in html
+        # One server card URL everywhere: the well-known path the API catalog advertises.
+        assert 'href="/mcp/server-card"' not in html
+        assert 'href="/.well-known/mcp/server-card.json">MCP</a>' in html
+    # Logos inside a link or card that already names the company or credential are decorative.
+    home = rendered[PageTemplate.HOME]
+    assert re.search(r'src="/static/img/(?:companies|certifications)/[^"]+" alt=""', home)
+    assert not re.search(r'src="/static/img/(?:companies|certifications)/[^"]+" alt="[^"]', home)
 
 
 def test_startup_markup_is_validated_once_but_unknown_markup_remains_guarded(monkeypatch: pytest.MonkeyPatch) -> None:

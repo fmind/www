@@ -11,7 +11,7 @@ def article(slug: str, title: str, description: str, body: str, *tags: str) -> A
         slug=slug,
         title=title,
         description=description,
-        markdown=body,
+        search_text=body,
         tags=tags,
         date=datetime(2026, 1, 1, tzinfo=UTC),
     )

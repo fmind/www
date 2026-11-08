@@ -4,7 +4,7 @@ import html
 import os
 import re
 import tomllib
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from pathlib import Path, PurePosixPath
@@ -19,6 +19,7 @@ from PIL import Image, UnidentifiedImageError
 
 from www.data import METADATA
 from www.highlighting import highlight_code
+from www.markdown import rewrite_markdown_links
 from www.models import DERIVATIVE_WIDTHS, SOURCE_EXTENSIONS, Article, ArticleSection, ArticleSummary
 from www.tags import is_tag, tag_names
 
@@ -160,7 +161,7 @@ def _string(metadata: Mapping[str, object], field: str, *, required: bool = Fals
     if not isinstance(value, str):
         raise ArticleError(f"{field} must be a string")
     if required and not value:
-        raise ArticleError("title, description, date, and slug are required")
+        raise ArticleError(f"{field} is required")
     return value
 
 
@@ -232,14 +233,16 @@ def _html_inline(content: str) -> Token:
     return token
 
 
-def _normalize_headings(tokens: Sequence[Token]) -> tuple[ArticleSection, ...]:
+def _normalize_headings(tokens: Sequence[Token]) -> tuple[tuple[ArticleSection, ...], tuple[ArticleSection, ...]]:
+    """Anchor every heading and return all headings, then the h2 sections alone."""
+    headings: list[ArticleSection] = []
     sections: list[ArticleSection] = []
-    headings = [token for token in tokens if token.type == "heading_open"]
-    if headings:
-        shallowest = min(int(token.tag[1]) for token in headings)
+    openings = [token for token in tokens if token.type == "heading_open"]
+    if openings:
+        shallowest = min(int(token.tag[1]) for token in openings)
         if shallowest != 2:
             shift = 2 - shallowest
-            for token in headings:
+            for token in openings:
                 token.tag = f"h{min(6, int(token.tag[1]) + shift)}"
             for token in tokens:
                 if token.type == "heading_close":
@@ -269,8 +272,10 @@ def _normalize_headings(tokens: Sequence[Token]) -> tuple[ArticleSection, ...]:
         # Name the anchor with the rendered heading text: the raw source would
         # expose Markdown link syntax and URLs to screen readers and MCP sections.
         label = " ".join(_heading_text(inline.children or []).split())
+        heading = ArticleSection(identifier=identifier, label=label)
+        headings.append(heading)
         if token.tag == "h2":
-            sections.append(ArticleSection(identifier=identifier, label=label))
+            sections.append(heading)
         # Append a separate link so authored links inside headings never nest.
         link = Token("link_open", "a", 1)
         link.attrSet("href", f"#{identifier}")
@@ -290,13 +295,44 @@ def _normalize_headings(tokens: Sequence[Token]) -> tuple[ArticleSection, ...]:
             marker,
             Token("link_close", "a", -1),
         ]
-    return tuple(sections)
+    return tuple(headings), tuple(sections)
 
 
-def _render_markdown(markdown: str) -> tuple[str, tuple[ArticleSection, ...], tuple[tuple[str, str], ...]]:
+def _absolute_destination(destination: str) -> str:
+    if destination.startswith("/") and not destination.startswith("//"):
+        return METADATA.site_url + destination
+    return destination
+
+
+def _search_words(tokens: Sequence[Token]) -> Iterator[str]:
+    """Yield the text readers see, without link or image destinations."""
+    for token in tokens:
+        if token.children:
+            # Inline content and image alt text; heading anchors add only html_inline markup.
+            yield from _search_words(token.children)
+        elif token.type in {"text", "code_inline"}:
+            yield token.content
+        elif token.type in {"fence", "code_block"}:
+            yield token.info
+            yield token.content
+
+
+@dataclass(frozen=True, slots=True)
+class _RenderedMarkdown:
+    html: str
+    headings: tuple[ArticleSection, ...]
+    sections: tuple[ArticleSection, ...]
+    media: tuple[tuple[str, str], ...]
+    search_text: str
+    # The Markdown export: the source with root-relative link destinations made absolute.
+    markdown: str
+
+
+def _render_markdown(markdown: str) -> _RenderedMarkdown:
+    """Parse the body once and derive the page HTML, search text, and Markdown export."""
     environment: EnvType = {}
     tokens = _ARTICLE_MARKDOWN.parse(markdown, environment)
-    sections = _normalize_headings(tokens)
+    headings, sections = _normalize_headings(tokens)
     rendered = _ARTICLE_MARKDOWN.renderer.render(tokens, _ARTICLE_MARKDOWN.options, environment)
     # Read sources and alt text from the Markdown tokens after `_image_rule` set the
     # final alt: caption folding later empties a figure's HTML alt on purpose.
@@ -307,8 +343,16 @@ def _render_markdown(markdown: str) -> tuple[str, tuple[ArticleSection, ...], tu
         for child in token.children or ()
         if child.type == "image"
     )
-    # Strikethrough uses the semantic HTML5 element that published pages carry.
-    return rendered.replace("<s>", "<del>").replace("</s>", "</del>"), sections, media
+    return _RenderedMarkdown(
+        # Strikethrough uses the semantic HTML5 element that published pages carry.
+        html=rendered.replace("<s>", "<del>").replace("</s>", "</del>"),
+        headings=headings,
+        sections=sections,
+        media=media,
+        search_text=" ".join(_search_words(tokens)),
+        # Rewrite after rendering: the inline rewriter updates the footnote counters in `environment`.
+        markdown=rewrite_markdown_links(markdown, _absolute_destination, tokens, environment),
+    )
 
 
 def _caption_text(fragment: str) -> str:
@@ -497,13 +541,13 @@ def parse_article(name: str, data: bytes, static_dir: Path = Path("static")) -> 
         image_path = _cover(static_dir, slug)
         card_image_path = _card_cover(static_dir, slug)
         markdown = markdown_bytes.decode("utf-8")
-        rendered, sections, media = _render_markdown(markdown)
-        _validate_body_media(static_dir, media)
+        rendered = _render_markdown(markdown)
+        _validate_body_media(static_dir, rendered.media)
         # The body shows the cover with reviewed alt text (pub writes its `card alt`); social cards and
         # JSON-LD reuse it, so one description serves every surface. The title covers a body without it.
         cover_prefix = f"{_MEDIA_PREFIX}{slug}/cover."
-        cover_alt = next((alt for source, alt in media if source.startswith(cover_prefix)), "")
-        body = enhance_body_images(rendered, static_dir)
+        cover_alt = next((alt for source, alt in rendered.media if source.startswith(cover_prefix)), "")
+        body = enhance_body_images(rendered.html, static_dir)
         word_count = len(markdown.split())
         reading_minutes = max(1, (word_count + WORDS_PER_MINUTE - 1) // WORDS_PER_MINUTE)
         article_url = f"{METADATA.site_url}/articles/{slug}/"
@@ -520,9 +564,11 @@ def parse_article(name: str, data: bytes, static_dir: Path = Path("static")) -> 
             card_image_url=METADATA.site_url + card_image_path,
             image_alt=" ".join(cover_alt.split()) or title,
             reading_minutes=reading_minutes,
-            markdown=markdown,
+            markdown=rendered.markdown,
+            search_text=rendered.search_text,
             html=body,
-            sections=sections,
+            headings=rendered.headings,
+            sections=rendered.sections,
         )
     except ArticleError as error:
         if str(error).startswith(f'parse "{name}"'):

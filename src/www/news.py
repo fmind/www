@@ -143,6 +143,20 @@ def utc_stamp(value: datetime) -> str:
     return value.astimezone(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
 
 
+def xml_sub(parent: ElementTree.Element, name: str, text: str = "", **attributes: str) -> ElementTree.Element:
+    """Append one feed or sitemap element with its text and attributes."""
+    child = ElementTree.SubElement(parent, name, attributes)
+    child.text = text
+    return child
+
+
+def xml_document(element: ElementTree.Element) -> str:
+    """Serialize a feed or sitemap with a declaration and a final newline."""
+    # Indented output reads well when a browser or feed reader shows the raw XML.
+    ElementTree.indent(element)
+    return '<?xml version="1.0" encoding="UTF-8"?>\n' + ElementTree.tostring(element, encoding="unicode") + "\n"
+
+
 def _split_front_matter(slug: str, text: str, edition_date: date) -> tuple[datetime, str, int]:
     """Return the update time (the edition date when absent), the Markdown body, and the body's first line."""
     published = datetime(edition_date.year, edition_date.month, edition_date.day, tzinfo=UTC)
@@ -310,34 +324,27 @@ def render_news_feed(editions: Sequence[NewsEdition]) -> str:
     """One Atom entry per edition, so a busy day never floods a reader with separate link entries."""
     atom = "http://www.w3.org/2005/Atom"
     feed = ElementTree.Element("feed", xmlns=atom)
-
-    def sub(parent: ElementTree.Element, name: str, text: str = "", **attributes: str) -> ElementTree.Element:
-        child = ElementTree.SubElement(parent, name, attributes)
-        child.text = text
-        return child
-
-    sub(feed, "title", "Fmind news")
-    sub(feed, "subtitle", f"Daily curated links on {NEWS_TOPICS}.")
-    sub(feed, "id", f"{METADATA.site_url}/news/")
+    xml_sub(feed, "title", "Fmind news")
+    xml_sub(feed, "subtitle", f"Daily curated links on {NEWS_TOPICS}.")
+    xml_sub(feed, "id", f"{METADATA.site_url}/news/")
     entries = editions[:FEED_EDITION_LIMIT]
     # A correction moves an entry's `updated`, so feed readers fetch it again.
     latest = max((edition.modified() for edition in entries), default=datetime(1970, 1, 1, tzinfo=UTC))
-    sub(feed, "updated", utc_stamp(latest))
-    sub(feed, "link", href=f"{METADATA.site_url}{NEWS_FEED_PATH}", rel="self", type="application/atom+xml")
-    sub(feed, "link", href=f"{METADATA.site_url}/news/", rel="alternate", type="text/html")
+    xml_sub(feed, "updated", utc_stamp(latest))
+    xml_sub(feed, "link", href=f"{METADATA.site_url}{NEWS_FEED_PATH}", rel="self", type="application/atom+xml")
+    xml_sub(feed, "link", href=f"{METADATA.site_url}/news/", rel="alternate", type="text/html")
     # Atom `icon` is the square branding image feed readers show next to the feed name.
-    sub(feed, "icon", f"{METADATA.site_url}/logo.png")
-    author = sub(feed, "author")
-    sub(author, "name", METADATA.name)
-    sub(author, "uri", f"{METADATA.site_url}/")
+    xml_sub(feed, "icon", f"{METADATA.site_url}/logo.png")
+    author = xml_sub(feed, "author")
+    xml_sub(author, "name", METADATA.name)
+    xml_sub(author, "uri", f"{METADATA.site_url}/")
     for edition in entries:
-        entry = sub(feed, "entry")
-        sub(entry, "title", f"News: {edition.title}")
-        sub(entry, "id", edition.url)
-        sub(entry, "published", utc_stamp(edition.published()))
-        sub(entry, "updated", utc_stamp(edition.modified()))
-        sub(entry, "link", href=edition.url, rel="alternate", type="text/html")
-        sub(entry, "content", _edition_html(edition), type="html")
-        sub(entry, "summary", edition.description, type="text")
-    ElementTree.indent(feed)
-    return '<?xml version="1.0" encoding="UTF-8"?>\n' + ElementTree.tostring(feed, encoding="unicode") + "\n"
+        entry = xml_sub(feed, "entry")
+        xml_sub(entry, "title", f"News: {edition.title}")
+        xml_sub(entry, "id", edition.url)
+        xml_sub(entry, "published", utc_stamp(edition.published()))
+        xml_sub(entry, "updated", utc_stamp(edition.modified()))
+        xml_sub(entry, "link", href=edition.url, rel="alternate", type="text/html")
+        xml_sub(entry, "content", _edition_html(edition), type="html")
+        xml_sub(entry, "summary", edition.description, type="text")
+    return xml_document(feed)

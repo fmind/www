@@ -62,7 +62,7 @@ class SearchIndex:
                 (article.title, TITLE_BOOST),
                 (" ".join(article.tags), TAG_BOOST),
                 (article.description, DESCRIPTION_BOOST),
-                (article.markdown, BODY_BOOST),
+                (article.search_text, BODY_BOOST),
             ):
                 terms.update({term: count * boost for term, count in Counter(tokenize(text)).items()})
             length = sum(terms.values())

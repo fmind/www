@@ -99,6 +99,10 @@ def test_parse_article_rejects_unknown_frontmatter_with_source_line(tmp_path: Pa
         ({"description": '"A teaser cut off by an import..."'}, "complete sentence"),
         ({"tags": '["Agent", "LLM", "Agent"]'}, "duplicate tag 'Agent'"),
         ({"cover_alt": '"A robot reading a map"'}, "unknown key 'cover_alt'"),
+        ({"draft": '"false"'}, "draft must be a boolean"),
+        ({"tags": "[]"}, "at least one tag is required"),
+        ({"tags": "[1]"}, "tags must be an array of strings"),
+        ({"slug": '"other"'}, "filename must match slug 'other'"),
     ],
 )
 def test_parse_article_rejects_invalid_metadata(tmp_path: Path, metadata: dict[str, str], message: str) -> None:
@@ -533,3 +537,96 @@ def test_social_image_alt_reuses_the_body_cover_alt_and_falls_back_to_the_title(
     # Only the cover describes the social image; other figures never stand in for it.
     assert other_image.image_alt == other_image.title
     assert plain.image_alt == plain.title
+
+
+@pytest.mark.parametrize(
+    ("source", "expected"),
+    [
+        ("[root](/articles/)", "[root](https://www.fmind.dev/articles/)"),
+        ("[root](</articles/>)", "[root](<https://www.fmind.dev/articles/>)"),
+        ("[root][r]\n\n[r]: /articles/\n", "[root](https://www.fmind.dev/articles/)\n\n[r]: /articles/\n"),
+        ("![root](/static/cover.webp)", "![root](https://www.fmind.dev/static/cover.webp)"),
+        ("[external](//example.org/path)", "[external](//example.org/path)"),
+        ("`[literal](/keep/)`", "`[literal](/keep/)`"),
+        ("```markdown\n[literal](/keep/)\n```", "```markdown\n[literal](/keep/)\n```"),
+        ("    [literal](/keep/)\n", "    [literal](/keep/)\n"),
+        ("`unclosed\n\n[root](/articles/)\n\n`", "`unclosed\n\n[root](https://www.fmind.dev/articles/)\n\n`"),
+        (
+            '![c]\n\n[c]: /cover.webp (Say "hi")\n',
+            '![c](https://www.fmind.dev/cover.webp "Say \\"hi\\"")\n\n[c]: /cover.webp (Say "hi")\n',
+        ),
+        ("![![nested](/keep/)](/cover.webp)", "![![nested](/keep/)](https://www.fmind.dev/cover.webp)"),
+        # Articles render raw HTML as text, so the link inside is a real link.
+        (
+            "<script>\n[literal](/keep/)\n</script>\n",
+            "<script>\n[literal](https://www.fmind.dev/keep/)\n</script>\n",
+        ),
+        ("A claim[^1].\n\n[^1]: /articles/\n", "A claim[^1].\n\n[^1]: /articles/\n"),
+        (
+            "A claim[^1].\n\n[^1]: Note.\n\n    See [x](/articles/).\n",
+            "A claim[^1].\n\n[^1]: Note.\n\n    See [x](https://www.fmind.dev/articles/).\n",
+        ),
+        ("Claim^[See [x](/articles/).]\n", "Claim^[See [x](https://www.fmind.dev/articles/).]\n"),
+        (
+            "| a | b |\n|---|---|\n| [x](/one/) | [y](/two/) |\n",
+            "| a | b |\n|---|---|\n| [x](https://www.fmind.dev/one/) | [y](https://www.fmind.dev/two/) |\n",
+        ),
+        ("", ""),
+        # Each table row is one source span: cells that share it must not repeat edits.
+        (
+            "| [a](/a/) | [b](/b/) |\n|---|---|\n",
+            "| [a](https://www.fmind.dev/a/) | [b](https://www.fmind.dev/b/) |\n|---|---|\n",
+        ),
+    ],
+)
+def test_markdown_export_rewrites_only_rendered_links(source: str, expected: str) -> None:
+    # The export reuses the page renderer's parse, so it rewrites exactly the links the page renders.
+    assert content_module._render_markdown(source).markdown == expected  # noqa: SLF001
+
+
+def test_search_text_keeps_visible_words_and_drops_link_and_image_destinations() -> None:
+    rendered = content_module._render_markdown(  # noqa: SLF001
+        "## Heading\n\n[watch](https://youtube.com/x) `code` ![Alt words](/static/img/a.webp)"
+        " [ref][r]^[inline note]\n\n```python\nprint()\n```\n\n[r]: https://medium.com/y\n"
+    )
+
+    words = rendered.search_text.split()
+    for word in ("Heading", "watch", "code", "Alt", "words", "ref", "inline", "note", "python", "print()"):
+        assert word in words
+    for hidden in ("youtube", "medium", "static", "webp", "https", "svg", "span"):
+        assert hidden not in rendered.search_text
+
+
+@pytest.mark.parametrize("field", ["title", "description", "date", "slug"])
+def test_parse_article_names_the_missing_required_field(tmp_path: Path, field: str) -> None:
+    with pytest.raises(ArticleError, match=f'^parse "content/articles/example.md": {field} is required$'):
+        parse_article("content/articles/example.md", source(**{field: '""'}), assets(tmp_path))
+
+
+def test_mcp_sections_list_every_heading_level_with_page_anchors(tmp_path: Path) -> None:
+    from www.publications import article_sections
+
+    item = parse_article(
+        "content/articles/example.md", source("# Top\n\n## Setup\n\n### Setup\n\n#### Deep"), assets(tmp_path)
+    )
+
+    assert [section["url"].removeprefix(item.url) for section in article_sections(item)] == [
+        "#top",
+        "#setup",
+        "#setup-1",
+        "#deep",
+    ]
+    for section in article_sections(item):
+        assert f'href="{section["url"].removeprefix(item.url)}" class="heading-anchor"' in item.html
+
+
+def test_article_search_matches_link_text_but_not_its_destination(tmp_path: Path) -> None:
+    from www.search import SearchIndex
+
+    item = parse_article(
+        "content/articles/example.md", source("Please [watch](https://youtube.com/x)."), assets(tmp_path)
+    )
+    index = SearchIndex((item,))
+
+    assert index.search("watch") == (item,)
+    assert index.search("youtube") == ()

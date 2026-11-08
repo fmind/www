@@ -1,14 +1,11 @@
 from datetime import UTC, datetime
 from xml.etree import ElementTree
 
-import pytest
-
 from www.data import METADATA, YOUTUBE_SERIES
 from www.models import Article
 from www.publications import (
     ATOM_FULL_CONTENT_LIMIT,
     absolute_article_html,
-    absolute_markdown_links,
     article_markdown_index,
     related_article_index,
     related_articles,
@@ -35,7 +32,7 @@ def article(
         tags=tags,
         url=f"{METADATA.site_url}/articles/{slug}/",
         card_image_url=f"{METADATA.site_url}/static/img/articles/{slug}/cover-800.webp",
-        markdown="Body with [root](/articles/).",
+        markdown="Body with [root](https://www.fmind.dev/articles/).",
         html='<p><a href="/articles/">Body</a><img src="/static/x.webp"></p>',
         reading_minutes=3,
     )
@@ -100,6 +97,7 @@ def test_llms_and_article_markdown_surfaces_preserve_citation_metadata() -> None
     markdown = render_article_markdown(item)
 
     assert "## Machine-readable portfolio" in index
+    assert f"- [MCP discovery]({METADATA.site_url}/.well-known/mcp/server-card.json): " in index
     channels = index.split("## Channels\n", 1)[1].split("\n## ", 1)[0]
     for social in METADATA.socials:
         assert f"- [{social.name}]({social.url})" in channels
@@ -114,7 +112,7 @@ def test_llms_and_article_markdown_surfaces_preserve_citation_metadata() -> None
     assert "- Author: [Médéric Hurier (Fmind)](https://www.fmind.dev/)" in markdown
     assert "- Updated: 2026-02-01" in markdown
     assert f"- URL: {item.url}" in markdown
-    assert f"]({METADATA.site_url}/articles/)" in markdown
+    assert f"\n\n{item.markdown}\n" in markdown
     assert article_markdown_index((item,))[item.slug] == markdown
 
 
@@ -149,45 +147,6 @@ def test_absolute_article_html_only_rewrites_root_relative_urls() -> None:
     assert f'srcset="{METADATA.site_url}/y-800.webp 800w, {METADATA.site_url}/y-1280.webp 1280w"' in rendered
     assert 'href="https://example.com"' in rendered
     assert 'src="//cdn.example/z" srcset="//cdn.example/z 1x"' in rendered
-
-
-@pytest.mark.parametrize(
-    ("source", "expected"),
-    [
-        ("[root](/articles/)", "[root](https://www.fmind.dev/articles/)"),
-        ("[root](</articles/>)", "[root](<https://www.fmind.dev/articles/>)"),
-        ("[root][r]\n\n[r]: /articles/\n", "[root](https://www.fmind.dev/articles/)\n\n[r]: /articles/\n"),
-        ("![root](/static/cover.webp)", "![root](https://www.fmind.dev/static/cover.webp)"),
-        ("[external](//example.org/path)", "[external](//example.org/path)"),
-        ("`[literal](/keep/)`", "`[literal](/keep/)`"),
-        ("```markdown\n[literal](/keep/)\n```", "```markdown\n[literal](/keep/)\n```"),
-        ("    [literal](/keep/)\n", "    [literal](/keep/)\n"),
-        ("`unclosed\n\n[root](/articles/)\n\n`", "`unclosed\n\n[root](https://www.fmind.dev/articles/)\n\n`"),
-        (
-            '![c]\n\n[c]: /cover.webp (Say "hi")\n',
-            '![c](https://www.fmind.dev/cover.webp "Say \\"hi\\"")\n\n[c]: /cover.webp (Say "hi")\n',
-        ),
-        ("![![nested](/keep/)](/cover.webp)", "![![nested](/keep/)](https://www.fmind.dev/cover.webp)"),
-        # Articles render raw HTML as text, so the link inside is a real link.
-        (
-            "<script>\n[literal](/keep/)\n</script>\n",
-            "<script>\n[literal](https://www.fmind.dev/keep/)\n</script>\n",
-        ),
-        ("A claim[^1].\n\n[^1]: /articles/\n", "A claim[^1].\n\n[^1]: /articles/\n"),
-        (
-            "A claim[^1].\n\n[^1]: Note.\n\n    See [x](/articles/).\n",
-            "A claim[^1].\n\n[^1]: Note.\n\n    See [x](https://www.fmind.dev/articles/).\n",
-        ),
-        ("Claim^[See [x](/articles/).]\n", "Claim^[See [x](https://www.fmind.dev/articles/).]\n"),
-        (
-            "| a | b |\n|---|---|\n| [x](/one/) | [y](/two/) |\n",
-            "| a | b |\n|---|---|\n| [x](https://www.fmind.dev/one/) | [y](https://www.fmind.dev/two/) |\n",
-        ),
-        ("", ""),
-    ],
-)
-def test_markdown_response_rewrites_only_rendered_links(source: str, expected: str) -> None:
-    assert absolute_markdown_links(source) == expected
 
 
 def test_atom_section_links_target_the_article() -> None:

@@ -1,6 +1,6 @@
 """CommonMark-aware, source-preserving link rewriting for Markdown responses."""
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 
 from markdown_it import MarkdownIt
@@ -8,20 +8,19 @@ from markdown_it.rules_inline.image import image as image_rule
 from markdown_it.rules_inline.link import link as link_rule
 from markdown_it.rules_inline.state_inline import StateInline
 from markdown_it.token import Token
+from markdown_it.utils import EnvType
 from mdit_py_plugins.footnote import footnote_plugin
 
 LinkRewriter = Callable[[str], str]
 
 
 def _parser() -> MarkdownIt:
-    """Return a fresh parser so per-call rule instrumentation is isolated.
+    """Return a fresh inline parser so per-call rule instrumentation is isolated.
 
-    Block syntax matches the article renderer (raw HTML off, footnotes on), so
-    exports rewrite the links the HTML page renders. Tables stay off: every
-    cell maps to its row's line, so cell segments would repeat edits. Inline
-    footnotes (^[...]) stay off too: their bodies parse as a nested substring
-    the link tracker cannot place, while as plain brackets their links stay in
-    the top-level segment and are rewritten.
+    Raw HTML stays off, as in the article renderer. Inline footnotes (^[...])
+    stay off: their bodies parse as a nested substring the link tracker cannot
+    place, while as plain brackets their links stay in the top-level segment
+    and are rewritten.
     """
     return MarkdownIt("commonmark", {"html": False}).use(footnote_plugin, inline=False)
 
@@ -126,32 +125,37 @@ class _InlineRewriter:
 
         return tracked
 
-    def edits(self, segment: str, env: dict[str, object]) -> list[_Edit]:
+    def edits(self, segment: str, env: EnvType) -> list[_Edit]:
         self._segment, self._edits = segment, []
         tokens: list[Token] = []
         self._markdown.inline.parse(segment, self._markdown, env, tokens)
         return self._edits
 
 
-def rewrite_markdown_links(text: str, rewrite: LinkRewriter) -> str:
-    """Rewrite parsed link destinations without changing prose or code source."""
+def rewrite_markdown_links(text: str, rewrite: LinkRewriter, tokens: Sequence[Token], env: EnvType) -> str:
+    """Rewrite parsed link destinations without changing prose or code source.
+
+    `tokens` and `env` come from the article renderer's parse of `text`, so the
+    export rewrites the links the HTML page renders without a second block parse.
+    """
     if not text:
         return text
-    env: dict[str, object] = {}
-    tokens = _parser().parse(text, env)
     offsets = [0, *(index + 1 for index, character in enumerate(text) if character == "\n"), len(text)]
+    # Table cells share their row's line map, so each source span is rewritten once.
+    spans = dict.fromkeys(tuple(token.map) for token in tokens if token.type == "inline" and token.map is not None)
 
     inline = _InlineRewriter(rewrite)
     edits: list[_Edit] = []
-    for token in tokens:
-        if token.type != "inline" or token.map is None:
-            continue
+    for start_line, end_line in spans:
         # Inline syntax cannot cross block boundaries. Parsing one larger span
         # lets an unmatched backtick hide real links in a later paragraph.
-        start, end = (offsets[line] for line in token.map)
-        edits.extend(
-            _Edit(start + edit.start, start + edit.end, edit.replacement) for edit in inline.edits(text[start:end], env)
-        )
+        start, end = offsets[start_line], offsets[end_line]
+        segment = text[start:end]
+        # Link and image rules only start at "[", so other segments hold no edits.
+        if "[" in segment:
+            edits.extend(
+                _Edit(start + edit.start, start + edit.end, edit.replacement) for edit in inline.edits(segment, env)
+            )
 
     for edit in sorted(edits, key=lambda item: item.start, reverse=True):
         text = text[: edit.start] + edit.replacement + text[edit.end :]

@@ -1013,10 +1013,12 @@ test("Fmind palette reaches page surfaces, controls, charts, and code", async ({
 
   await page.goto(calculator + "?mode=advanced");
   for (
-    const [selector, color] of [[".stroke-primary", "rgb(23, 78, 166)"], [".stroke-info", "rgb(0, 99, 109)"], [
-      ".stroke-warning",
-      "rgb(147, 73, 0)",
-    ], [".stroke-secondary", "rgb(104, 29, 168)"]]
+    const [selector, color] of [
+      [".stroke-primary", "rgb(23, 78, 166)"],
+      [".stroke-info", "rgb(0, 99, 109)"],
+      [".stroke-warning", "rgb(147, 73, 0)"],
+      [".stroke-secondary", "rgb(104, 29, 168)"],
+    ]
   ) {
     await expect(page.locator(selector).first()).toHaveCSS("stroke", color);
   }
@@ -1063,7 +1065,7 @@ test("footer stays compact with ordered discovery links", async ({ page }) => {
   expect(await links.evaluateAll((items) => items.map((item) => item.getAttribute("href"))))
     .toEqual([
       "/articles/feed.xml",
-      "/mcp/server-card",
+      "/.well-known/mcp/server-card.json",
       "/scan",
       "/connect",
       "/api/profile",
@@ -1127,10 +1129,15 @@ test("narrow screens reflow and keep navigation reachable", async ({ page }, tes
   await page.goto("/");
   await page.screenshot({ path: testInfo.outputPath("home-320.png") });
   for (
-    const [width, wordmarkVisible] of [[390, false], [480, true], [540, true], [640, false], [820, true], [840, true], [
-      1024,
-      true,
-    ]]
+    const [width, wordmarkVisible] of [
+      [390, false],
+      [480, true],
+      [540, true],
+      [640, false],
+      [820, true],
+      [840, true],
+      [1024, true],
+    ]
   ) {
     await page.setViewportSize({ width, height: 740 });
     const primary = page.getByRole("navigation", { name: "Primary navigation" });

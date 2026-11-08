@@ -10,11 +10,9 @@
       <link rel="alternate" type="application/json" href="/api/profile" title="Machine-readable portfolio"/>
       <link rel="alternate" type="text/plain" href="/llms.txt" title="LLM-ready portfolio summary"/>
       <link rel="alternate" type="text/plain" href="/llms-full.txt" title="Bulk portfolio and article export"/>
-      <link rel="alternate" type="application/mcp-server-card+json" href="/mcp/server-card" title="Model Context Protocol server card"/>
+      <link rel="alternate" type="application/mcp-server-card+json" href="/.well-known/mcp/server-card.json" title="Model Context Protocol server card"/>
       {% if page.article %}
         <link rel="alternate" type="text/markdown" href="/articles/{{ page.article.slug }}.md" title="Article source (Markdown)"/>
-      {% elif page.markdown_path %}
-        <link rel="alternate" type="text/markdown" href="{{ page.markdown_path }}" title="Page source (Markdown)"/>
       {% endif %}
     {% endif %}
     <meta name="theme-color" content="#174ea6"/>
