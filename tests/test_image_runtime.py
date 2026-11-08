@@ -357,8 +357,12 @@ def test_http_contract_probe_matches_the_real_application_wire(
             headers: dict[str, str] | None = None,
         ) -> HTTPResponse:
             del port
-            response = client.request(method, path, content=body, headers=headers)
-            return HTTPResponse(response.status_code, dict(response.headers), response.content)
+            # Raw wire bytes, like http.client: the SDK transport decodes Content-Encoding itself.
+            # http.client asks for identity unless the caller negotiates an encoding.
+            wire_headers = {"accept-encoding": "identity", **(headers or {})}
+            with client.stream(method, path, content=body, headers=wire_headers) as response:
+                raw = b"".join(response.iter_raw())
+            return HTTPResponse(response.status_code, dict(response.headers), raw)
 
         monkeypatch.setattr("scripts.image_smoke._request", request)
         _assert_http_contracts(49152)

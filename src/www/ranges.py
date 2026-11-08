@@ -1,4 +1,4 @@
-"""Bounded asynchronous byte-range responses for regular static files."""
+"""HTTP validators and bounded asynchronous byte-range responses for regular static files."""
 
 import asyncio
 import os
@@ -27,6 +27,26 @@ class _MalformedRangeError(ValueError):
 
 class _NoOverlapError(ValueError):
     """The byte-range starts beyond the current representation."""
+
+
+def etag_matches(header: str, current: str) -> bool:
+    """Apply weak comparison to a comma-separated If-None-Match field."""
+    return any(
+        candidate == "*" or candidate.removeprefix("W/") == current.removeprefix("W/")
+        for item in header.split(",")
+        if (candidate := item.strip())
+    )
+
+
+def strong_etag_matches(header: str, current: str) -> bool:
+    """Match one current strong validator in an If-Match field."""
+    value = header.strip()
+    if value == "*":
+        return True
+    candidates = tuple(item.strip() for item in value.split(",") if item.strip())
+    if "*" in candidates:
+        return False
+    return any(candidate == current and not candidate.startswith("W/") for candidate in candidates)
 
 
 @dataclass(frozen=True, slots=True)

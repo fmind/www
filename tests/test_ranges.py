@@ -1,6 +1,7 @@
 """Static file byte-range response tests."""
 
 import asyncio
+from io import BytesIO
 from pathlib import Path
 from typing import Any, cast
 from unittest.mock import Mock
@@ -14,7 +15,7 @@ from litestar.types import ASGIApp, HTTPRequestEvent, HTTPResponseStartEvent, Me
 
 from www.config import Config
 from www.middleware import SiteMiddleware
-from www.ranges import range_file_response
+from www.ranges import _stream, range_file_response
 
 _BODY = b"0123456789abcdef"
 _CACHE_CONTROL = "public, max-age=86400, must-revalidate"
@@ -200,7 +201,20 @@ def test_empty_file_ignores_a_non_overlapping_range(tmp_path: Path) -> None:
     assert "content-range" not in response.headers
 
 
-@pytest.mark.parametrize("range_header", ["bytes=bogus", "bytes=10-5", "bytes=0-1,bogus"])
+@pytest.mark.parametrize(
+    "range_header",
+    [
+        "bytes=bogus",
+        "bytes=10-5",
+        "bytes=0-1,bogus",
+        "bytes=-",
+        "bytes=--5",
+        "bytes=x-5",
+        "bytes=0-x",
+        # 19 digits, but above the signed 64-bit range.
+        "bytes=9223372036854775808-",
+    ],
+)
 def test_malformed_ranges_return_unsized_416(asset: Path, range_header: str) -> None:
     with _client(asset) as client:
         response = client.get("/video.mp4", headers={"range": range_header})
@@ -209,6 +223,18 @@ def test_malformed_ranges_return_unsized_416(asset: Path, range_header: str) -> 
     assert response.content == b"invalid range\n"
     assert response.headers["content-length"] == "14"
     assert "content-range" not in response.headers
+
+
+def test_a_file_that_shrinks_mid_stream_fails_instead_of_sending_a_short_body() -> None:
+    sent: list[Message] = []
+
+    async def send(message: Message) -> None:
+        sent.append(message)
+
+    # The response already promised 10 bytes; the server must abort, not end the body early.
+    with pytest.raises(OSError, match="changed while it was being served"):
+        asyncio.run(_stream(BytesIO(b"abc"), 10, send, final=True))
+    assert sent == [{"type": "http.response.body", "body": b"abc", "more_body": True}]
 
 
 def test_oversized_decimal_is_rejected_without_escaping_the_range_boundary(asset: Path) -> None:

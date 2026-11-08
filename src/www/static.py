@@ -10,8 +10,7 @@ from litestar.response import Response
 from litestar.types import ASGIApp
 
 from www.assets import ApplicationAssets
-from www.middleware import etag_matches, strong_etag_matches
-from www.ranges import range_file_response
+from www.ranges import etag_matches, range_file_response, strong_etag_matches
 
 
 async def static_asset_response(

@@ -1,11 +1,12 @@
 """Litestar application assembly for every human and machine surface."""
 
 import hashlib
-from collections.abc import AsyncGenerator
-from contextlib import asynccontextmanager
+from collections.abc import AsyncGenerator, Generator
+from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from time import perf_counter
 from typing import Any
 from urllib.parse import quote
 
@@ -31,16 +32,16 @@ from www.data import (
     LEADERSHIP,
     METADATA,
     OPEN_SOURCE,
+    SERVICES,
     SITE_PAGES,
     SPECIALIZATIONS,
     YOUTUBE_SERIES,
-    get_services,
     get_structured_data,
     markdown_to_html,
 )
 from www.log import configure_logging
 from www.mcp import create_mcp_http_app, create_mcp_server, render_mcp_server_card
-from www.middleware import Logger, SiteMiddleware, etag_matches, trace_fields
+from www.middleware import Logger, SiteMiddleware, trace_fields
 from www.models import PageMetadata
 from www.news import (
     NEWS_FEED_PATH,
@@ -79,6 +80,7 @@ from www.publications import (
     render_profile_schema,
     render_sitemap,
 )
+from www.ranges import etag_matches
 from www.rendering import PageTemplate, Renderer
 from www.search import SearchIndex
 from www.sites.calculator import build_llm_self_hosting_view
@@ -93,8 +95,9 @@ _NO_CACHE = "no-cache"
 # Static ETags and byte ranges describe the on-disk representation. Compressing
 # it afterward invalidates both contracts. The page stylesheet is served from
 # memory at /styles.css with a weak ETag, so it still benefits from Brotli.
-# The MCP mount streams its own responses; its server card is a weak-ETag snapshot.
-_COMPRESSION_EXCLUDE = r"^/(?:mcp(?:$|/(?!server-card$))|static/|(?:(?:logo|banner)\.png|portrait\.jpg)$)"
+# The MCP mount answers single JSON bodies (json_response=True, no subscriptions/listen),
+# so it compresses like other responses.
+_COMPRESSION_EXCLUDE = r"^/(?:static/|(?:(?:logo|banner)\.png|portrait\.jpg)$)"
 _READ_METHODS = (HttpMethod.GET, HttpMethod.HEAD)
 
 # A plain alias, not a `type` statement: Litestar 2.25+ must resolve handler
@@ -153,8 +156,27 @@ def _snapshot_response(
     return _static_response(snapshot.body, content_type, cache_control, cors=cors, extra_headers=headers)
 
 
+def _markdown_response(
+    request: AppRequest, snapshot: _Snapshot, canonical_url: str, *, negotiated: bool, noindex: bool = False
+) -> Response[bytes]:
+    """Serve a Markdown representation that credits its canonical HTML page."""
+    headers = {"link": f'<{canonical_url}>; rel="canonical"'}
+    if negotiated:
+        headers["vary"] = "Accept"
+    if noindex:
+        headers["x-robots-tag"] = "noindex"
+    return _snapshot_response(
+        request, snapshot, "text/markdown; charset=utf-8", _HOUR_CACHE, cors=True, extra_headers=headers
+    )
+
+
 def _redirect(path: str) -> Redirect:
     return Redirect(path, status_code=301)
+
+
+def _redirect_keeping_query(request: AppRequest, path: str) -> Redirect:
+    query = _raw_query(request)
+    return _redirect(path + (f"?{query}" if query else ""))
 
 
 def _request_nonce(request: AppRequest) -> str:
@@ -171,13 +193,19 @@ def _request_path(request: AppRequest) -> str:
     return request.scope["state"]["request_path"]
 
 
-def _security_policy() -> bytes:
-    now = datetime.now(UTC)
+@contextmanager
+def _timed(phases: dict[str, float], name: str) -> Generator[None]:
+    """Record one startup phase's wall time in seconds."""
+    started = perf_counter()
     try:
-        expires = now.replace(year=now.year + 1)
-    except ValueError:
-        # A policy generated on leap day remains valid for a complete year.
-        expires = now.replace(year=now.year + 1, month=3, day=1)
+        yield
+    finally:
+        phases[name] = round(perf_counter() - started, 3)
+
+
+def _security_policy() -> bytes:
+    # RFC 9116 section 2.5.5 recommends an expiry less than a year ahead.
+    expires = datetime.now(UTC) + timedelta(days=364)
     timestamp = expires.isoformat(timespec="seconds").replace("+00:00", "Z")
     body = "\n".join(
         (
@@ -207,26 +235,57 @@ def create_app(
     logger: Logger | None = None,
 ) -> Litestar:
     """Build one fail-fast application from immutable startup snapshots."""
+    started = perf_counter()
+    # Wall seconds per startup phase, logged once so cold starts show where time goes.
+    phases: dict[str, float] = {}
     runtime_config = config or Config.load()
-    application_assets = assets or load_application_assets(static_dir)
-    article_collection = collection or load_articles(content_dir, static_dir)
     site_logger = logger or configure_logging(runtime_config)
-    editions = load_news(news_dir) if news is None else news
+    with _timed(phases, "assets"):
+        application_assets = assets or load_application_assets(static_dir)
+    with _timed(phases, "articles"):
+        article_collection = collection or load_articles(content_dir, static_dir)
+    with _timed(phases, "news"):
+        editions = load_news(news_dir) if news is None else news
 
     public_articles = visible_articles(article_collection.all)
     page_articles = visible_articles(
         article_collection.all,
         include_drafts=runtime_config.environment is Environment.DEVELOPMENT,
     )
+    # Drafts are routable only in development, exactly like the archive.
+    routable_articles = {article.slug: article for article in page_articles}
     summaries = article_summaries(public_articles)
-    public_search = SearchIndex(public_articles)
-    # Public pages and MCP can share the immutable index. Only a development
-    # preview containing drafts needs a second copy of the full-text counters.
-    page_search = public_search if page_articles == public_articles else SearchIndex(page_articles)
-    related = related_article_index(page_articles)
-    markdown_by_slug = article_markdown_index(article_collection.all)
-    markdown_snapshots = {slug: _Snapshot.of(text.encode()) for slug, text in markdown_by_slug.items()}
+    with _timed(phases, "search"):
+        public_search = SearchIndex(public_articles)
+        # Public pages and MCP can share the immutable index. Only a development
+        # preview containing drafts needs a second copy of the full-text counters.
+        page_search = public_search if page_articles == public_articles else SearchIndex(page_articles)
+    with _timed(phases, "publications"):
+        related = related_article_index(page_articles)
+        markdown_by_slug = article_markdown_index(article_collection.all)
+        markdown_snapshots = {slug: _Snapshot.of(text.encode()) for slug, text in markdown_by_slug.items()}
+        profile = _Snapshot.of(render_profile_json(summaries))
+        profile_schema = _Snapshot.of(render_profile_schema())
+        feed = _Snapshot.of(render_atom_feed(public_articles).encode())
+        news_modified = max((edition.modified() for edition in editions), default=None)
+        sitemap = _Snapshot.of(render_sitemap(public_articles, news_modified).encode())
+        llms = render_llms_txt(public_articles)
+        llms_full = _Snapshot.of(render_llms_full(llms, public_articles, markdown_by_slug).encode())
+        llms_index_snapshot = _Snapshot.of(llms.encode())
+        home_markdown = _Snapshot.of(render_home_markdown(summaries))
+        api_catalog = _Snapshot.of(render_api_catalog())
+        skill_body, skill_index = (_Snapshot.of(body) for body in public_skill())
+        root_files = {path: _Snapshot.of(response.body) for path, response in application_assets.root_files.items()}
+        news_markdown = {edition.slug: _Snapshot.of(render_news_markdown(edition).encode()) for edition in editions}
+        news_feed = _Snapshot.of(render_news_feed(editions).encode())
+        # Weak: compression may re-encode the body, but the CSS it carries is identical.
+        stylesheet_snapshot = _Snapshot(
+            application_assets.stylesheet.encode(), f'W/"{application_assets.stylesheet_digest}"'
+        )
+    server_card: _Snapshot | None = None
 
+    # Page metadata and validated JSON-LD feed the renderer, so they count toward its phase.
+    renderer_started = perf_counter()
     home_structured_data = get_structured_data()
     home_page = home_metadata(home_structured_data)
     connect_page = connect_metadata()
@@ -244,8 +303,6 @@ def create_app(
     editions_by_slug = {edition.slug: edition for edition in editions}
     edition_metadata_by_slug = {edition.slug: news_edition_metadata(edition) for edition in editions}
     edition_neighbours = adjacent_editions(editions)
-    news_markdown = {edition.slug: _Snapshot.of(render_news_markdown(edition).encode()) for edition in editions}
-    news_feed = _Snapshot.of(render_news_feed(editions).encode())
     news_context: dict[str, object] = {"index": split_news_index(editions), "news_feed_path": NEWS_FEED_PATH}
     article_metadata_by_slug = {
         slug: article_metadata(article, get_structured_data(article))
@@ -272,6 +329,7 @@ def create_app(
             *(page.structured_data for page in article_metadata_by_slug.values()),
         ),
     )
+    phases["renderer"] = round(perf_counter() - renderer_started, 3)
     home_context: dict[str, object] = {
         "biography_html": biography_html,
         "expertise": EXPERTISE,
@@ -281,22 +339,8 @@ def create_app(
         "specializations": SPECIALIZATIONS,
         "open_source": OPEN_SOURCE,
         "youtube_series": YOUTUBE_SERIES,
-        "services": get_services(),
+        "services": SERVICES,
     }
-
-    profile = _Snapshot.of(render_profile_json(summaries))
-    profile_schema = _Snapshot.of(render_profile_schema())
-    feed = _Snapshot.of(render_atom_feed(public_articles).encode())
-    news_modified = max((edition.modified() for edition in editions), default=None)
-    sitemap = _Snapshot.of(render_sitemap(public_articles, news_modified).encode())
-    llms = render_llms_txt(public_articles)
-    llms_full = _Snapshot.of(render_llms_full(llms, public_articles, markdown_by_slug).encode())
-    llms_index_snapshot = _Snapshot.of(llms.encode())
-    home_markdown = _Snapshot.of(render_home_markdown(summaries))
-    api_catalog = _Snapshot.of(render_api_catalog())
-    skill_body, skill_index = (_Snapshot.of(body) for body in public_skill())
-    root_files = {path: _Snapshot.of(response.body) for path, response in application_assets.root_files.items()}
-    server_card: _Snapshot | None = None
 
     def render_page(
         request: AppRequest,
@@ -323,25 +367,15 @@ def create_app(
     @route("/static", http_method=_READ_METHODS, sync_to_thread=False)
     def static_root(request: AppRequest) -> Redirect | Response[bytes]:
         if not _request_path(request).endswith("/"):
-            query = _raw_query(request)
-            return _redirect("/static/" + (f"?{query}" if query else ""))
+            return _redirect_keeping_query(request, "/static/")
         return _static_response(b"404 page not found\n", "text/plain; charset=utf-8", _NO_CACHE, status_code=404)
-
-    stylesheet_body = application_assets.stylesheet.encode()
-    stylesheet_digest = application_assets.stylesheet_digest
-    # Weak: compression may re-encode the body, but the CSS it carries is identical.
-    stylesheet_etag = f'W/"{stylesheet_digest}"'
 
     @route(STYLESHEET_PATH, http_method=_READ_METHODS, sync_to_thread=False)
     def stylesheet(request: AppRequest) -> Response[bytes]:
         # Only the current content-addressed URL is immutable; any other version revalidates.
-        immutable = request.query_params.getall("v", []) == [stylesheet_digest]
+        immutable = request.query_params.getall("v", []) == [application_assets.stylesheet_digest]
         cache_control = "public, max-age=31536000, immutable" if immutable else _DAY_CACHE
-        if etag_matches(request.headers.get("if-none-match", ""), stylesheet_etag):
-            return Response(b"", headers={"cache-control": cache_control, "etag": stylesheet_etag}, status_code=304)
-        return _static_response(
-            stylesheet_body, "text/css; charset=utf-8", cache_control, extra_headers={"etag": stylesheet_etag}
-        )
+        return _snapshot_response(request, stylesheet_snapshot, "text/css; charset=utf-8", cache_control)
 
     # Cloud Run reserves some paths ending in "z"; keep one portable probe URL.
     @route("/health", http_method=_READ_METHODS, sync_to_thread=False)
@@ -427,18 +461,7 @@ def create_app(
             if edition is None:
                 return render_not_found(request)
             if prefers_markdown(request.headers.get("accept", "")):
-                return _snapshot_response(
-                    request,
-                    news_markdown[slug],
-                    "text/markdown; charset=utf-8",
-                    _HOUR_CACHE,
-                    cors=True,
-                    extra_headers={
-                        "vary": "Accept",
-                        "link": f'<{edition.url}>; rel="canonical"',
-                        "x-robots-tag": "noindex",
-                    },
-                )
+                return _markdown_response(request, news_markdown[slug], edition.url, negotiated=True, noindex=True)
             older, newer = edition_neighbours[slug]
             response = render_page(
                 request,
@@ -453,14 +476,7 @@ def create_app(
             edition = editions_by_slug.get(slug.removesuffix(".md"))
             if edition is None:
                 return render_not_found(request)
-            return _snapshot_response(
-                request,
-                news_markdown[edition.slug],
-                "text/markdown; charset=utf-8",
-                _HOUR_CACHE,
-                cors=True,
-                extra_headers={"link": f'<{edition.url}>; rel="canonical"', "x-robots-tag": "noindex"},
-            )
+            return _markdown_response(request, news_markdown[edition.slug], edition.url, negotiated=False, noindex=True)
         return _redirect(f"/news/{quote(slug, safe='')}/")
 
     @route("/agents", http_method=_READ_METHODS, sync_to_thread=True)
@@ -523,8 +539,7 @@ def create_app(
     @route("/articles", http_method=_READ_METHODS, sync_to_thread=True)
     def articles_index(request: AppRequest) -> Redirect | Response[str]:
         if not _request_path(request).endswith("/"):
-            query = _raw_query(request)
-            return _redirect("/articles/" + (f"?{query}" if query else ""))
+            return _redirect_keeping_query(request, "/articles/")
         view = article_index_data(
             page_articles,
             page_search,
@@ -543,21 +558,11 @@ def create_app(
         slug: FromPath[str], request: AppRequest
     ) -> Redirect | Response[bytes] | Response[str]:
         if _request_path(request).endswith("/"):
-            article = article_collection.by_slug.get(slug)
-            if article is None or (article.draft and runtime_config.environment is Environment.PRODUCTION):
+            article = routable_articles.get(slug)
+            if article is None:
                 return render_not_found(request)
             if prefers_markdown(request.headers.get("accept", "")):
-                return _snapshot_response(
-                    request,
-                    markdown_snapshots[slug],
-                    "text/markdown; charset=utf-8",
-                    _HOUR_CACHE,
-                    cors=True,
-                    extra_headers={
-                        "vary": "Accept",
-                        "link": f'<{article.url}>; rel="canonical"',
-                    },
-                )
+                return _markdown_response(request, markdown_snapshots[slug], article.url, negotiated=True)
             related_sites = tuple(page for page in SITE_PAGES if page.relates_to(article.slug))
             response = render_page(
                 request,
@@ -574,22 +579,12 @@ def create_app(
             response.headers["link"] = f'<{article.markdown_path()}>; rel="alternate"; type="text/markdown"'
             return response
         if slug.endswith(".md"):
-            article_slug = slug.removesuffix(".md")
-            article = article_collection.by_slug.get(article_slug)
-            if article is None or (article.draft and runtime_config.environment is Environment.PRODUCTION):
+            article = routable_articles.get(slug.removesuffix(".md"))
+            if article is None:
                 return render_not_found(request)
             # The fixed export is a duplicate representation; search engines credit the article page.
-            return _snapshot_response(
-                request,
-                markdown_snapshots[article_slug],
-                "text/markdown; charset=utf-8",
-                _HOUR_CACHE,
-                cors=True,
-                extra_headers={"link": f'<{article.url}>; rel="canonical"'},
-            )
-        query = _raw_query(request)
-        target = f"/articles/{quote(slug, safe='')}/"
-        return _redirect(target + (f"?{query}" if query else ""))
+            return _markdown_response(request, markdown_snapshots[article.slug], article.url, negotiated=False)
+        return _redirect_keeping_query(request, f"/articles/{quote(slug, safe='')}/")
 
     @route("/sites", http_method=_READ_METHODS, sync_to_thread=True)
     def sites_index(request: AppRequest) -> Redirect | Response[str]:
@@ -605,9 +600,7 @@ def create_app(
     @route("/sites/{slug:str}", http_method=_READ_METHODS, sync_to_thread=True)
     def site_page(slug: FromPath[str], request: AppRequest) -> Redirect | Response[str]:
         if not _request_path(request).endswith("/"):
-            query = _raw_query(request)
-            target = f"/sites/{quote(slug, safe='')}/"
-            return _redirect(target + (f"?{query}" if query else ""))
+            return _redirect_keeping_query(request, f"/sites/{quote(slug, safe='')}/")
         page = site_pages_by_slug.get(slug)
         if page is None:
             return render_not_found(request)
@@ -656,8 +649,9 @@ def create_app(
         # Litestar wraps a multi-path sync handler once per path, so offload explicitly.
         return await sync_to_thread(render_not_found, request)
 
-    mcp_server = create_mcp_server(summaries, public_search, public_articles, markdown_by_slug)
-    mcp_app = create_mcp_http_app(mcp_server)
+    with _timed(phases, "mcp"):
+        mcp_server = create_mcp_server(summaries, public_search, public_articles, markdown_by_slug)
+        mcp_app = create_mcp_http_app(mcp_server)
     mcp_route = asgi("/mcp", is_mount=True, copy_scope=True)(mcp_app)
     tracer_provider = configure_telemetry()
     plugins = (
@@ -710,7 +704,7 @@ def create_app(
             "error_type": type(exc).__name__,
             "exc_info": exc,
         }
-        error_values.update(trace_fields())
+        error_values.update(trace_fields(state.get("cloud_trace", "")))
         site_logger.error(
             "unhandled request failure",
             **error_values,
@@ -763,6 +757,8 @@ def create_app(
     # its full ASGI handler so routing errors and mounted MCP responses receive
     # the same security, analytics, and access-log boundary as normal pages.
     application.asgi_handler = SiteMiddleware(application.asgi_handler, runtime_config, site_logger)
+    phases["total"] = round(perf_counter() - started, 3)
+    site_logger.info("application startup timed", phase_seconds=phases)
     return application
 
 

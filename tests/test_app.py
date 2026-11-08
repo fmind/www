@@ -6,7 +6,7 @@ import logging
 import re
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field, replace
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from io import BytesIO
 from pathlib import Path
 from types import MappingProxyType
@@ -28,7 +28,7 @@ from www.assets import ApplicationAssets
 from www.config import Config, Environment
 from www.content import ArticleCollection, article_summaries, load_articles, visible_articles
 from www.data import METADATA, OPEN_SOURCE, SAME_AS_PROFILES, SITE_PAGES
-from www.middleware import ANALYTICS_LOG_NAME
+from www.middleware import ANALYTICS_LOG_NAME, CLOUD_TRACE_LOG_KEY
 from www.rendering import Renderer
 
 type AppClient = TestClient[Any]
@@ -576,7 +576,8 @@ def test_security_policy_has_a_live_rfc3339_expiry(client: AppClient) -> None:
             line.removeprefix("Expires: ") for line in response.text.splitlines() if line.startswith("Expires: ")
         )
         assert response.status_code == 200
-        assert datetime.fromisoformat(expiry) > datetime.now(UTC)
+        # RFC 9116 section 2.5.5 recommends less than a year ahead.
+        assert datetime.now(UTC) < datetime.fromisoformat(expiry) < datetime.now(UTC) + timedelta(days=365)
         assert f"Contact: mailto:{METADATA.email}" in response.text
         assert response.headers["cache-control"] == "public, max-age=86400, must-revalidate"
 
@@ -921,6 +922,48 @@ def test_unexpected_failure_log_carries_the_active_trace_context(
     assert len(error["span_id"]) == 16
 
 
+def test_unexpected_failure_log_joins_the_cloud_run_request_trace(
+    monkeypatch: pytest.MonkeyPatch,
+    snapshots: tuple[ApplicationAssets, ArticleCollection],
+) -> None:
+    def fail_render(*_: object, **__: object) -> str:
+        raise RuntimeError("untraced render failure")
+
+    monkeypatch.setattr(app_module, "configure_telemetry", lambda: None)
+    monkeypatch.setattr(app_module.Renderer, "render", fail_render)
+    logger = RecordingLogger()
+    failing_app = create_app(
+        config=Config(environment=Environment.PRODUCTION, google_cloud_project="example-project"),
+        assets=snapshots[0],
+        collection=snapshots[1],
+        logger=logger,
+    )
+    trace_id = "4bf92f3577b34da6a3ce929d0e0e4736"
+
+    with TestClient(failing_app, base_url="https://www.fmind.dev", raise_server_exceptions=False) as test_client:
+        response = test_client.get("/", headers={"x-cloud-trace-context": f"{trace_id}/1;o=1"})
+        assert response.status_code == 500
+
+    expected = f"projects/example-project/traces/{trace_id}"
+    error = next(values for event, values in logger.records if event == "unhandled request failure")
+    request_log = next(values for event, values in logger.records if event == "http request processed")
+    assert error[CLOUD_TRACE_LOG_KEY] == request_log[CLOUD_TRACE_LOG_KEY] == expected
+    assert "trace_id" not in error
+
+
+def test_startup_logs_one_record_with_every_phase_duration(
+    snapshots: tuple[ApplicationAssets, ArticleCollection],
+) -> None:
+    logger = RecordingLogger()
+    create_app(assets=snapshots[0], collection=snapshots[1], logger=logger)
+
+    assert [event for event, _ in logger.records] == ["application startup timed"]
+    phases = logger.records[0][1]["phase_seconds"]
+    assert set(phases) == {"assets", "articles", "news", "search", "publications", "renderer", "mcp", "total"}
+    assert all(isinstance(seconds, float) and seconds >= 0 for seconds in phases.values())
+    assert phases["total"] >= max(seconds for phase, seconds in phases.items() if phase != "total")
+
+
 def test_mcp_mount_is_stateless_bounded_and_origin_protected(
     client: AppClient,
     snapshots: tuple[ApplicationAssets, ArticleCollection],
@@ -939,7 +982,8 @@ def test_mcp_mount_is_stateless_bounded_and_origin_protected(
         }
         assert response.headers["cache-control"] == "no-cache, no-transform"
         assert response.headers["vary"] == "Accept-Encoding"
-        assert "content-encoding" not in response.headers
+        # Single JSON bodies compress like every other dynamic response.
+        assert response.headers["content-encoding"] == "gzip"
 
     rejected = client.post(
         "/mcp",
@@ -977,6 +1021,18 @@ def test_mcp_mount_is_stateless_bounded_and_origin_protected(
         assert test_client.post("/mcp", json=initialize, headers=headers).status_code == 200
     request_log = next(values for event, values in logger.records if event == "http request processed")
     assert request_log["path"] == "/mcp"
+
+
+def test_mcp_tool_listings_compress_with_brotli(client: AppClient) -> None:
+    response = client.post(
+        "/mcp",
+        json={"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}},
+        headers={**MCP_ACCEPT, "accept-encoding": "br", "mcp-protocol-version": "2025-11-25"},
+    )
+
+    assert response.status_code == 200
+    assert response.headers["content-encoding"] == "br"
+    assert response.json()["result"]["tools"]
 
 
 @pytest.mark.parametrize("path", ["/mcp", "/mcp/"])
@@ -1075,7 +1131,9 @@ def test_mcp_caller_mistakes_are_invalid_params_without_error_logs(
             "tools/call",
             {"name": "compare_mcp_context_cost", "arguments": {"server": ["memory"], "requests": 5}},
         )["result"]
+        unknown_tool = call(test_client, "tools/call", {"name": "nope", "arguments": {}})["error"]
 
+    assert unknown_tool == {"code": -32602, "message": "Unknown tool: nope"}
     assert [error["code"] for error in prompt_errors] == [-32602, -32602, -32602]
     assert "brief" in prompt_errors[0]["message"]
     assert "nope" in prompt_errors[2]["message"]
@@ -1264,6 +1322,9 @@ def test_google_analytics_waits_for_consent_on_the_production_host(client: AppCl
     privacy = client.get("/privacy").text
     assert "Google Analytics, only with your consent" in privacy
     assert "Cookie settings" in privacy
+    # Operational request logs keep IPs and user agents; the policy must say so.
+    assert "Server logs" in privacy
+    assert "deleted automatically after 30 days" in privacy
 
 
 def test_every_page_template_satisfies_the_inline_csp(client: AppClient) -> None:

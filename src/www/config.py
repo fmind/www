@@ -1,9 +1,13 @@
 """Typed environment configuration parsed once at process startup."""
 
 import os
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
+
+# Google Cloud project IDs: 6-30 lowercase letters, digits, or hyphens, starting with a letter.
+_PROJECT_ID = re.compile(r"[a-z][a-z0-9-]{4,28}[a-z0-9]")
 
 
 class Environment(StrEnum):
@@ -19,6 +23,8 @@ class Config:
 
     environment: Environment = Environment.DEVELOPMENT
     port: int = 8080
+    # Empty outside Cloud Run: logs then omit Cloud Logging's request trace field.
+    google_cloud_project: str = ""
 
     @classmethod
     def load(cls, environ: Mapping[str, str] | None = None) -> Config:
@@ -41,4 +47,9 @@ class Config:
         if not 1 <= port <= 65535:
             msg = f"invalid PORT {port} (want 1-65535)"
             raise ValueError(msg)
-        return cls(environment=environment, port=port)
+
+        project = values.get("GOOGLE_CLOUD_PROJECT", "")
+        if project and not _PROJECT_ID.fullmatch(project):
+            msg = f"invalid GOOGLE_CLOUD_PROJECT {project!r} (want a 6-30 character Google Cloud project ID)"
+            raise ValueError(msg)
+        return cls(environment=environment, port=port, google_cloud_project=project)

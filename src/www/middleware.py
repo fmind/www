@@ -65,6 +65,11 @@ _SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
 _SAME_ORIGIN_FETCH_SITES = frozenset({"", "same-origin", "none"})
 _MCP_PATHS = frozenset({"/mcp", "/mcp/"})
 _REPEATED_SLASHES = re.compile(r"/{2,}")
+# Cloud Logging joins a log entry to its request log through this special field.
+CLOUD_TRACE_LOG_KEY = "logging.googleapis.com/trace"
+_TRACEPARENT = re.compile(r"00-([0-9a-f]{32})-[0-9a-f]{16}-[0-9a-f]{2}")
+_CLOUD_TRACE_CONTEXT = re.compile(r"([0-9a-f]{32})/[0-9]{1,20}(?:;o=[0-9])?")
+_NULL_TRACE_ID = "0" * 32
 
 
 class Logger(Protocol):
@@ -112,35 +117,26 @@ def is_bot(user_agent: str) -> bool:
     return not normalized or any(token in normalized for token in _BOT_TOKENS)
 
 
-def etag_matches(header: str, current: str) -> bool:
-    """Apply weak comparison to a comma-separated If-None-Match field."""
-    return any(
-        candidate == "*" or candidate.removeprefix("W/") == current.removeprefix("W/")
-        for item in header.split(",")
-        if (candidate := item.strip())
-    )
+def request_trace_id(headers: Headers) -> str:
+    """Return the request's W3C or Cloud Run trace ID, or "" when neither header is well formed.
+
+    Clients can set both headers, so accept only an exact, non-zero 32-digit lowercase hex ID.
+    """
+    for name, pattern in (("traceparent", _TRACEPARENT), ("x-cloud-trace-context", _CLOUD_TRACE_CONTEXT)):
+        match = pattern.fullmatch(headers.get(name, ""))
+        if match and match[1] != _NULL_TRACE_ID:
+            return match[1]
+    return ""
 
 
-def strong_etag_matches(header: str, current: str) -> bool:
-    """Match one current strong validator in an If-Match field."""
-    value = header.strip()
-    if value == "*":
-        return True
-    candidates = tuple(item.strip() for item in value.split(",") if item.strip())
-    if "*" in candidates:
-        return False
-    return any(candidate == current and not candidate.startswith("W/") for candidate in candidates)
-
-
-def trace_fields() -> dict[str, str]:
-    """Return Cloud Logging correlation fields for the active valid span."""
+def trace_fields(cloud_trace: str = "") -> dict[str, str]:
+    """Return log correlation fields: the Cloud Logging request trace and any active OpenTelemetry span."""
+    fields = {CLOUD_TRACE_LOG_KEY: cloud_trace} if cloud_trace else {}
     span_context = trace.get_current_span().get_span_context()
-    if not span_context.is_valid:
-        return {}
-    return {
-        "trace_id": format(span_context.trace_id, "032x"),
-        "span_id": format(span_context.span_id, "016x"),
-    }
+    if span_context.is_valid:
+        fields["trace_id"] = format(span_context.trace_id, "032x")
+        fields["span_id"] = format(span_context.span_id, "016x")
+    return fields
 
 
 def _vary_accept_encoding(headers: MutableScopeHeaders) -> None:
@@ -200,6 +196,7 @@ class SiteMiddleware:
     def __init__(self, app: ASGIApp, config: Config, logger: Logger) -> None:
         self.app = app
         self.environment = config.environment
+        self.project = config.google_cloud_project
         self.logger = logger
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
@@ -217,6 +214,10 @@ class SiteMiddleware:
         path = _REPEATED_SLASHES.sub("/", scope.get("path", ""))
         state["request_path"] = path
         request_headers = Headers.from_scope(scope)
+        # Correlate operational logs with the Cloud Run request log; analytics never carry it.
+        trace_id = request_trace_id(request_headers) if self.project else ""
+        cloud_trace = f"projects/{self.project}/traces/{trace_id}" if trace_id else ""
+        state["cloud_trace"] = cloud_trace
         host = request_headers.get("host", "").partition(":")[0].lower()
         if self.environment is Environment.PRODUCTION and host == CANONICAL_APEX:
             await self._redirect(scope, send, nonce)
@@ -243,7 +244,7 @@ class SiteMiddleware:
                     "size_bytes": size_bytes,
                     "duration_ms": round((perf_counter() - started_at) * 1000, 3),
                 }
-                log_values.update(trace_fields())
+                log_values.update(trace_fields(cloud_trace))
                 self.logger.info("http request processed", **log_values)
 
             # HEAD probes (link checkers, unfurlers) fetch no page, so they are not pageviews.

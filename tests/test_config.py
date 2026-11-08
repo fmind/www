@@ -15,9 +15,9 @@ def test_load_defaults() -> None:
 
 
 def test_load_production() -> None:
-    config = Config.load({"ENVIRONMENT": "production", "PORT": "9090"})
+    config = Config.load({"ENVIRONMENT": "production", "PORT": "9090", "GOOGLE_CLOUD_PROJECT": "example-project"})
 
-    assert config == Config(environment=Environment.PRODUCTION, port=9090)
+    assert config == Config(environment=Environment.PRODUCTION, port=9090, google_cloud_project="example-project")
 
 
 @pytest.mark.parametrize(
@@ -28,6 +28,12 @@ def test_load_production() -> None:
         ({"PORT": ""}, "invalid PORT"),
         ({"PORT": "not-a-port"}, "invalid PORT"),
         ({"PORT": "70000"}, "invalid PORT"),
+        # The project names the Cloud Logging trace resource, so reject anything but a project ID.
+        ({"GOOGLE_CLOUD_PROJECT": "short"}, "invalid GOOGLE_CLOUD_PROJECT"),
+        ({"GOOGLE_CLOUD_PROJECT": "Example-Project"}, "invalid GOOGLE_CLOUD_PROJECT"),
+        ({"GOOGLE_CLOUD_PROJECT": "example-project-"}, "invalid GOOGLE_CLOUD_PROJECT"),
+        ({"GOOGLE_CLOUD_PROJECT": "example/traces/x"}, "invalid GOOGLE_CLOUD_PROJECT"),
+        ({"GOOGLE_CLOUD_PROJECT": "a" * 31}, "invalid GOOGLE_CLOUD_PROJECT"),
     ],
 )
 def test_load_rejects_invalid_values(environ: dict[str, str], message: str) -> None:
