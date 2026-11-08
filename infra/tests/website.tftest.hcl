@@ -222,3 +222,94 @@ run "budget_alert_contract" {
     error_message = "The project needs a monthly gross-cost budget with 50/90/100% actual and 100% forecast alerts."
   }
 }
+
+# README: Deployment names this the qualified runtime; changing it needs a new qualification.
+run "runtime_contract" {
+  command = plan
+
+  assert {
+    condition = (
+      google_cloud_run_v2_service.web.template[0].timeout == "30s" &&
+      google_cloud_run_v2_service.web.template[0].max_instance_request_concurrency == 32 &&
+      google_cloud_run_v2_service.web.template[0].containers[0].resources[0].limits["cpu"] == "1" &&
+      google_cloud_run_v2_service.web.template[0].containers[0].resources[0].limits["memory"] == "512Mi" &&
+      google_cloud_run_v2_service.web.template[0].containers[0].liveness_probe[0].http_get[0].path == "/health"
+    )
+    error_message = "The qualified runtime is 1 CPU, 512 MiB, concurrency 32, a 30-second timeout, and a /health liveness probe."
+  }
+
+  assert {
+    condition = contains([for env in google_cloud_run_v2_service.web.template[0].containers[0].env :
+      "${env.name}=${env.value}"
+    ], "GOOGLE_CLOUD_PROJECT=www-fmind-dev")
+    error_message = "Logs need GOOGLE_CLOUD_PROJECT to name their trace for request correlation."
+  }
+}
+
+run "alerting_contract" {
+  command = plan
+
+  override_resource {
+    target = google_monitoring_uptime_check_config.health
+    values = { uptime_check_id = "www-check" }
+  }
+  override_resource {
+    target = google_monitoring_uptime_check_config.apex
+    values = { uptime_check_id = "apex-check" }
+  }
+
+  assert {
+    condition = (
+      google_monitoring_uptime_check_config.health.monitored_resource[0].labels["host"] == "www.fmind.dev" &&
+      google_monitoring_uptime_check_config.health.http_check[0].validate_ssl &&
+      google_monitoring_uptime_check_config.apex.monitored_resource[0].labels["host"] == "fmind.dev" &&
+      google_monitoring_uptime_check_config.apex.http_check[0].validate_ssl &&
+      google_monitoring_uptime_check_config.apex.http_check[0].path == "/health" &&
+      [for code in google_monitoring_uptime_check_config.apex.http_check[0].accepted_response_status_codes : code.status_value] == [301]
+    )
+    error_message = "Both hosts need a TLS-validating uptime check; the apex check accepts only its 301 redirect."
+  }
+
+  assert {
+    condition = alltrue([for policy in [google_monitoring_alert_policy.uptime_health, google_monitoring_alert_policy.tls_expiry] :
+      strcontains(policy.conditions[0].condition_threshold[0].filter, "metric.label.check_id = one_of(\"www-check\", \"apex-check\")") &&
+      policy.conditions[0].condition_threshold[0].aggregations[0].group_by_fields == tolist(["resource.label.host"])
+    ])
+    error_message = "Uptime and certificate alerts must cover both hosts and alert per host."
+  }
+
+  assert {
+    condition = (
+      google_monitoring_alert_policy.uptime_health.conditions[0].condition_threshold[0].comparison == "COMPARISON_GT" &&
+      google_monitoring_alert_policy.uptime_health.conditions[0].condition_threshold[0].threshold_value == 1 &&
+      google_monitoring_alert_policy.uptime_health.conditions[0].condition_threshold[0].aggregations[0].cross_series_reducer == "REDUCE_COUNT_FALSE"
+    )
+    error_message = "The uptime alert must page only when two or more probe locations fail."
+  }
+
+  assert {
+    condition = (
+      endswith(google_monitoring_alert_policy.tls_expiry.conditions[0].condition_threshold[0].filter, "metric.type = \"monitoring.googleapis.com/uptime_check/time_until_ssl_cert_expires\"") &&
+      google_monitoring_alert_policy.tls_expiry.conditions[0].condition_threshold[0].comparison == "COMPARISON_LT" &&
+      google_monitoring_alert_policy.tls_expiry.conditions[0].condition_threshold[0].threshold_value == 21 &&
+      google_monitoring_alert_policy.tls_expiry.conditions[0].condition_threshold[0].aggregations[0].cross_series_reducer == "REDUCE_MIN"
+    )
+    error_message = "A managed certificate with fewer than 21 days left must alert before it expires."
+  }
+
+  assert {
+    condition     = strcontains(google_monitoring_alert_policy.error_logs.conditions[0].condition_matched_log[0].filter, "(severity>=ERROR OR httpRequest.status=429)")
+    error_message = "Cloud Run logs capacity aborts (429) at WARNING; the log alert must still match them."
+  }
+
+  assert {
+    condition = alltrue([for policy in [
+      google_monitoring_alert_policy.uptime_health,
+      google_monitoring_alert_policy.tls_expiry,
+      google_monitoring_alert_policy.cloudrun_5xx_errors,
+      google_monitoring_alert_policy.error_logs,
+      ] : policy.severity != null && length(policy.documentation) == 1 && length(policy.documentation[0].content) > 0
+    ])
+    error_message = "Every alert policy needs a severity and a runbook."
+  }
+}

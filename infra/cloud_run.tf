@@ -59,6 +59,12 @@ resource "google_cloud_run_v2_service" "web" {
         name  = "ENVIRONMENT"
         value = "production"
       }
+      # Cloud Run does not set the project ID; logs need it to name their trace
+      # (projects/<id>/traces/<trace-id>) for request correlation.
+      env {
+        name  = "GOOGLE_CLOUD_PROJECT"
+        value = var.project_id
+      }
       startup_probe {
         initial_delay_seconds = 0
         timeout_seconds       = 3

@@ -1,8 +1,10 @@
 # https://docs.cloud.google.com/service-usage/docs/enable-disable
 # Google Cloud service APIs activation and dependencies.
 #
-# The application image contains only public assets and holds no secrets, so Secret
-# Manager is not enabled.
+# OpenTofu enables only the APIs this configuration needs. The application image
+# contains only public assets and holds no secrets, so it needs no Secret Manager.
+# APIs enabled outside OpenTofu (Google defaults, dependencies, or past manual
+# work) are not managed here; disabling unused ones is a reviewed owner action.
 
 resource "google_project_service" "artifactregistry" {
   project            = var.project_id
