@@ -1,11 +1,12 @@
 """Self-hosting calculator inputs."""
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import replace
 from decimal import Decimal
 from hashlib import sha256
 from math import ceil, isfinite
 from re import fullmatch
+from typing import Any
 from urllib.parse import urlencode
 
 from .capacity import MONTHLY_HOURS, replicas_for_demand
@@ -29,6 +30,9 @@ from .models import (
 
 type QueryValue = str | Sequence[str]
 type Query = Mapping[str, QueryValue]
+
+# DEFAULT_HOSTING_INPUTS describes this workload; unmatched presets and token mixes fall back to it.
+_DEFAULT_PRESET = next(preset for preset in DEMAND_PRESETS if preset.id == "small-team")
 
 
 def _first(query: Query, key: str) -> str | None:
@@ -174,6 +178,53 @@ def _parse_bounded_count(
     return fallback if value == marker else float(value)
 
 
+# (attribute, query key, parser, minimum, maximum); each parser takes the current value as its fallback.
+type _BoundedField = tuple[str, str, Callable[[Query, str, Any, Any, Any, list[str]], float], float, float]
+
+# Fleet and demand fields in form order, so validation messages follow the form.
+_FLEET_FIELDS: tuple[_BoundedField, ...] = (
+    ("replicas", "replicas", _parse_bounded_int, 1, 100_000),
+    ("duty_cycle_percent", "duty", _parse_bounded_float, 0.1, 100),
+    ("memory_overhead_pct", "overhead", _parse_bounded_float, 0, 50),
+    ("tokens_per_second", "throughput", _parse_bounded_float, 0.1, 1_000_000),
+    ("target_utilization", "utilization", _parse_bounded_float, 1, 95),
+    ("output_tokens_request", "tokens", _parse_bounded_count, 1, 1_000_000),
+    ("input_tokens_request", "input-tokens", _parse_bounded_count, 1, 1_000_000),
+    ("requests_per_day", "requests", _parse_bounded_float, 1, 10_000_000),
+    ("active_days", "days", _parse_bounded_count, 1, 31),
+)
+_SERVING_FIELDS: tuple[_BoundedField, ...] = (
+    ("cache_requests", "cache-requests", _parse_bounded_int, 1, 1_000_000),
+    ("concurrency", "concurrency", _parse_bounded_int, 1, 100_000),
+    ("measured_concurrency", "measured-concurrency", _parse_bounded_int, 0, 100_000),
+)
+_WORKLOAD_FIELDS: tuple[_BoundedField, ...] = (
+    ("cache_prefix_tokens", "cache-prefix", _parse_bounded_count, 0, 1_000_000),
+    ("tasks_per_month", "tasks", _parse_bounded_count, 1, 10_000_000),
+    ("target_first_token", "target-first", _parse_bounded_float, 0.1, 3600),
+    ("target_completion", "target-complete", _parse_bounded_float, 0.1, 86_400),
+    ("measured_first_token", "measured-first", _parse_bounded_float, 0, 3600),
+    ("measured_completion", "measured-complete", _parse_bounded_float, 0, 86_400),
+    ("review_hourly_usd", "review-rate", _parse_bounded_float, 0, 10_000),
+)
+
+
+def _parse_fields(
+    query: Query,
+    inputs: HostingInputs,
+    fields: Sequence[_BoundedField],
+    validation: list[str],
+) -> HostingInputs:
+    """Parse bounded fields in order; each falls back to its current value."""
+    return replace(
+        inputs,
+        **{
+            attribute: parse(query, key, getattr(inputs, attribute), minimum, maximum, validation)
+            for attribute, key, parse, minimum, maximum in fields
+        },
+    )
+
+
 def _apply_demand_preset(
     preset_id: str | None,
     inputs: HostingInputs,
@@ -199,9 +250,7 @@ def parse_inputs(query: Query) -> tuple[HostingInputs, tuple[str, ...]]:
     if "platform" in query:
         validation.append("Operations budget is no longer included; totals cover GPU compute and the GKE fee")
     defaults = DEFAULT_HOSTING_INPUTS
-    preset = next(
-        (item for item in DEMAND_PRESETS if item.id == (_first(query, "preset") or "small-team")), DEMAND_PRESETS[1]
-    )
+    preset = next((item for item in DEMAND_PRESETS if item.id == _first(query, "preset")), _DEFAULT_PRESET)
     advanced_keys = (scenario_parameters(defaults).keys() | {"quality", "pilot", "confirm-pilot"}) - {
         "model",
         "billing",
@@ -225,105 +274,46 @@ def parse_inputs(query: Query) -> tuple[HostingInputs, tuple[str, ...]]:
         query["node"] = "a4"
         if not _first(query, "billing"):
             query["billing"] = legacy_plan
-    model_id = _parse_choice(
-        query, "model", defaults.model_id, frozenset(model.id for model in FRONTIER_MODELS), validation
-    )
-    demand_window_hours = (
-        float(_parse_choice(query, "window", str(int(preset.window_hours)), frozenset(("24", "8", "1")), validation))
-        if mode == "simple" and _first(query, "window") != "auto"
-        else preset.window_hours
-        if mode == "simple"
-        else _parse_bounded_float(query, "window", defaults.demand_window_hours, 0.1, 24, validation)
-    )
-    quantization_id = _parse_choice(
-        query,
-        "quant",
-        find_model(model_id).default_quantization,
-        frozenset(quant.id for quant in QUANTIZATIONS) | {"auto"},
-        validation,
-    )
-    if quantization_id == "auto":
-        quantization_id = find_model(model_id).default_quantization
-    inputs = replace(
-        defaults,
-        mode=mode,
-        model_id=model_id,
-        node_pool_id=_parse_choice(
-            query, "node", defaults.node_pool_id, frozenset(node.id for node in GKE_NODE_POOLS) | {"auto"}, validation
-        ),
-        quantization_id=quantization_id,
-        demand_window_hours=demand_window_hours,
-        replicas=_parse_bounded_int(query, "replicas", defaults.replicas, 1, 100_000, validation),
-        duty_cycle_percent=_parse_bounded_float(
-            query,
-            "duty",
-            defaults.duty_cycle_percent,
-            0.1,
-            100,
-            validation,
-        ),
-        memory_overhead_pct=_parse_bounded_float(
-            query,
-            "overhead",
-            defaults.memory_overhead_pct,
-            0,
-            50,
-            validation,
-        ),
-        tokens_per_second=_parse_bounded_float(
-            query,
-            "throughput",
-            defaults.tokens_per_second,
-            0.1,
-            1_000_000,
-            validation,
-        ),
-        target_utilization=_parse_bounded_float(
-            query,
-            "utilization",
-            defaults.target_utilization,
-            1,
-            95,
-            validation,
-        ),
-        output_tokens_request=_parse_bounded_count(
-            query,
-            "tokens",
-            defaults.output_tokens_request,
-            1,
-            1_000_000,
-            validation,
-        ),
-        input_tokens_request=_parse_bounded_count(
-            query,
-            "input-tokens",
-            defaults.input_tokens_request,
-            1,
-            1_000_000,
-            validation,
-        ),
-        requests_per_day=(
-            _parse_bounded_float(query, "requests", defaults.requests_per_day, 1, 10_000_000, validation)
-            if mode == "advanced"
-            else defaults.requests_per_day
-        ),
-        active_days=_parse_bounded_count(
-            query,
-            "days",
-            defaults.active_days,
-            1,
-            31,
-            validation,
-        ),
+    model = find_model(
+        _parse_choice(query, "model", defaults.model_id, frozenset(item.id for item in FRONTIER_MODELS), validation)
     )
     if mode == "simple":
+        # Simple mode ignores advanced fields: the message above covers them, so their values are not parsed.
         inputs = replace(
             defaults,
             mode=mode,
-            model_id=inputs.model_id,
-            demand_window_hours=inputs.demand_window_hours,
-            quantization_id=find_model(inputs.model_id).default_quantization,
+            model_id=model.id,
+            demand_window_hours=preset.window_hours
+            if _first(query, "window") == "auto"
+            else float(
+                _parse_choice(query, "window", str(int(preset.window_hours)), frozenset(("24", "8", "1")), validation)
+            ),
+            quantization_id=model.default_quantization,
         )
+    else:
+        demand_window_hours = _parse_bounded_float(query, "window", defaults.demand_window_hours, 0.1, 24, validation)
+        quantization_id = _parse_choice(
+            query,
+            "quant",
+            model.default_quantization,
+            frozenset(quant.id for quant in QUANTIZATIONS) | {"auto"},
+            validation,
+        )
+        inputs = replace(
+            defaults,
+            mode=mode,
+            model_id=model.id,
+            demand_window_hours=demand_window_hours,
+            quantization_id=model.default_quantization if quantization_id == "auto" else quantization_id,
+            node_pool_id=_parse_choice(
+                query,
+                "node",
+                defaults.node_pool_id,
+                frozenset(node.id for node in GKE_NODE_POOLS) | {"auto"},
+                validation,
+            ),
+        )
+        inputs = _parse_fields(query, inputs, _FLEET_FIELDS, validation)
     inputs = _apply_demand_preset(_first(query, "preset"), inputs, validation)
     if mode == "simple":
         inputs = replace(
@@ -336,7 +326,7 @@ def parse_inputs(query: Query) -> tuple[HostingInputs, tuple[str, ...]]:
             else 100,
         )
         inputs = replace(inputs, replicas=replicas_for_demand(inputs))
-    if mode == "advanced":
+    else:
         inputs = _parse_hosting_options(query, inputs, validation)
     raw_plan = _first(query, "billing")
     if mode == "simple" or _first(query, "node") in (None, "auto"):
@@ -386,86 +376,12 @@ def _parse_hosting_options(
         frozenset(mode.value for mode in APIMode),
         validation,
     )
+    inputs = _parse_fields(query, replace(inputs, api_mode=APIMode(api_mode)), _SERVING_FIELDS, validation)
     inputs = replace(
         inputs,
-        api_mode=APIMode(api_mode),
-        cache_requests=_parse_bounded_int(
-            query,
-            "cache-requests",
-            inputs.cache_requests,
-            1,
-            1_000_000,
-            validation,
-        ),
-        concurrency=_parse_bounded_int(
-            query,
-            "concurrency",
-            inputs.concurrency,
-            1,
-            100_000,
-            validation,
-        ),
-        measured_concurrency=_parse_bounded_int(
-            query,
-            "measured-concurrency",
-            inputs.measured_concurrency,
-            0,
-            100_000,
-            validation,
-        ),
+        quality_enabled=_parse_choice(query, "quality", "off", frozenset(("on", "off")), validation) == "on",
     )
-    inputs = replace(
-        inputs,
-        quality_enabled=(
-            _parse_choice(
-                query,
-                "quality",
-                "off",
-                frozenset(("on", "off")),
-                validation,
-            )
-            == "on"
-        ),
-    )
-    count_fields = (
-        ("cache_prefix_tokens", "cache-prefix", 0, 1_000_000),
-        ("tasks_per_month", "tasks", 1, 10_000_000),
-    )
-    for attribute, key, minimum, maximum in count_fields:
-        inputs = replace(
-            inputs,
-            **{
-                attribute: _parse_bounded_count(
-                    query,
-                    key,
-                    getattr(inputs, attribute),
-                    minimum,
-                    maximum,
-                    validation,
-                ),
-            },
-        )
-    float_fields = (
-        ("target_first_token", "target-first", 0.1, 3600),
-        ("target_completion", "target-complete", 0.1, 86_400),
-        ("measured_first_token", "measured-first", 0, 3600),
-        ("measured_completion", "measured-complete", 0, 86_400),
-        ("review_hourly_usd", "review-rate", 0, 10_000),
-    )
-    for attribute, key, minimum, maximum in float_fields:
-        inputs = replace(
-            inputs,
-            **{
-                attribute: _parse_bounded_float(
-                    query,
-                    key,
-                    getattr(inputs, attribute),
-                    minimum,
-                    maximum,
-                    validation,
-                ),
-            },
-        )
+    inputs = _parse_fields(query, inputs, _WORKLOAD_FIELDS, validation)
     qualities: list[TaskQuality] = []
     for index, quality in enumerate(inputs.quality):
         prefix = f"quality-{index}-"
@@ -567,7 +483,7 @@ def configuration_issue(inputs: HostingInputs, *, check_workload: bool = True) -
             and inputs.input_tokens_request + inputs.output_tokens_request > context_limit
         ):
             return f"The verified {model.name} recipe on {node.name} is limited to {context_limit:,} context tokens"
-    required = weight_memory_gb(model, quantization) * (1 + inputs.memory_overhead_pct / 100)
+    required = required_memory_gb(model, quantization, inputs.memory_overhead_pct)
     if ceil(required / node.vram_gb) > 1 and not node.multi_host:
         return (
             f"{model.name} does not fit on one {node.name}; this catalog does not support sharding across those nodes"
@@ -618,7 +534,7 @@ def automatic_node(
     """Minimize published compute cost under the shared throughput assumption."""
     quant = find_quantization(inputs.quantization_id)
     model = find_model(inputs.model_id)
-    required = weight_memory_gb(model, quant) * (1 + inputs.memory_overhead_pct / 100)
+    required = required_memory_gb(model, quant, inputs.memory_overhead_pct)
     candidates = [
         node
         for node in pools
@@ -652,6 +568,11 @@ def weight_memory_gb(model: FrontierModel, quantization: Quantization) -> float:
         (size for precision, size in model.checkpoint_memory if precision == quantization.id),
         model.parameters_b * quantization.bytes_per_param,
     )
+
+
+def required_memory_gb(model: FrontierModel, quantization: Quantization, overhead_pct: float) -> float:
+    """Checkpoint weights plus the runtime memory reserve."""
+    return weight_memory_gb(model, quantization) * (1 + overhead_pct / 100)
 
 
 def nodes_for_model(model: FrontierModel, node: GKENodePool, required_memory: float) -> int:
@@ -701,14 +622,13 @@ def _bind_pilot_measurements(
         return replace(inputs, pilot_config="")
     if saved:
         validation.append("The pilot measurements belong to a different serving configuration; they were cleared")
-        return replace(
-            inputs,
-            measured_concurrency=0,
-            measured_first_token=0,
-            measured_completion=0,
-            pilot_config="",
-        )
+        return without_pilot_evidence(inputs)
     return inputs
+
+
+def without_pilot_evidence(inputs: HostingInputs) -> HostingInputs:
+    """Drop pilot measurements that do not belong to this configuration."""
+    return replace(inputs, measured_concurrency=0, measured_first_token=0, measured_completion=0, pilot_config="")
 
 
 def _float_for_url(value: float) -> str:
@@ -728,7 +648,7 @@ def demand_preset(inputs: HostingInputs) -> DemandPreset:
             if (inputs.active_days, inputs.input_tokens_request, inputs.output_tokens_request)
             == (preset.active_days, preset.input_tokens, preset.output_tokens)
         ),
-        DEMAND_PRESETS[1],
+        _DEFAULT_PRESET,
     )
 
 

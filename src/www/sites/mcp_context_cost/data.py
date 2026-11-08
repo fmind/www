@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 SNAPSHOT_DATE = "2026-10-13"
 BENCHMARK_COMMIT = "e83ad9431e41ffd745384a04c49b95d8e1090691"
+BENCHMARK_TREE_URL = f"https://github.com/fmind/mcp-context-benchmark/tree/{BENCHMARK_COMMIT}"
 BENCHMARK_URL = f"https://github.com/fmind/mcp-context-benchmark/blob/{BENCHMARK_COMMIT}/results.json"
 
 

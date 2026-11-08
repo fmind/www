@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from enum import StrEnum
+from typing import Literal
 
 
 class APIMode(StrEnum):
@@ -60,6 +61,11 @@ class GKENodePool:
     prices: tuple[NodePrice, ...]
     operational: str
     multi_host: bool = False
+
+    @property
+    def chip(self) -> Literal["GPU", "TPU"]:
+        """Accelerator unit; Cloud TPU machines name their TPU chips in `gpu`."""
+        return "TPU" if "TPU" in self.gpu else "GPU"
 
     def price(self, plan: BillingPlan) -> NodePrice:
         for price in self.prices:
@@ -356,6 +362,7 @@ class LLMSelfHostingView:
     latency_detail: str
     model_source_url: str
     gke_source_url: str
+    cluster_hourly_usd: float
     price_source_url: str
     current_pilot_config: str
     comparison_ready: bool

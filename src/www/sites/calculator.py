@@ -15,10 +15,12 @@ from .data import (
     QUANTIZATIONS,
 )
 from .economics import (
+    CLUSTER_HOURLY_USD,
     api_monthly_cost,
     api_request_issue,
     current_api_baselines,
     estimate_hosting,
+    hosting_verdict,
     pilot_measurements_complete,
     utc_date,
 )
@@ -36,6 +38,7 @@ from .inputs import (
     parse_inputs,
     pilot_configuration_id,
     scenario_parameters,
+    without_pilot_evidence,
 )
 from .models import (
     AcceleratorComparison,
@@ -213,15 +216,16 @@ def _demand_label(inputs: HostingInputs) -> str:
     if inputs.mode == "simple":
         preset = demand_preset(inputs)
         return preset.name + (" · custom volume" if inputs.requests_per_day != preset.requests_per_day else "")
-    for preset in DEMAND_PRESETS:
-        if (
-            inputs.requests_per_day == preset.requests_per_day
-            and inputs.active_days == preset.active_days
-            and inputs.input_tokens_request == preset.input_tokens
-            and inputs.output_tokens_request == preset.output_tokens
-        ):
-            return preset.name
-    return "Custom demand"
+    # Unlike demand_preset, advanced mode also matches volume and names a custom mix.
+    demand = (inputs.requests_per_day, inputs.active_days, inputs.input_tokens_request, inputs.output_tokens_request)
+    return next(
+        (
+            preset.name
+            for preset in DEMAND_PRESETS
+            if demand == (preset.requests_per_day, preset.active_days, preset.input_tokens, preset.output_tokens)
+        ),
+        "Custom demand",
+    )
 
 
 def _hosting_latency(inputs: HostingInputs) -> tuple[str, str]:
@@ -251,19 +255,16 @@ def _hosting_latency(inputs: HostingInputs) -> tuple[str, str]:
     )
 
 
-def _sensitivity_verdict(estimate: HostingEstimate, cheapest: float | None) -> str:
-    """Name the first blocker so the verdict agrees with the cell's qualified styling."""
-    if estimate.compatibility_issue:
-        return "Unsupported configuration"
-    if estimate.context_issue:
-        return "Exceeds model context"
-    if not estimate.topology_confirmed:
-        return "Needs a multi-host pilot"
-    if not estimate.demand_fits or not estimate.daily_demand_fits:
-        return "Fleet too small"
-    if cheapest is None:
-        return "No API accepts this request"
-    return "Fleet has a cost case" if estimate.total_monthly_usd <= cheapest else "API costs less"
+# hosting_verdict names the first blocker, so a cell's verdict agrees with its qualified styling.
+_SENSITIVITY_VERDICTS = {
+    "unsupported": "Unsupported configuration",
+    "context": "Exceeds model context",
+    "topology": "Needs a multi-host pilot",
+    "capacity": "Fleet too small",
+    "no-api": "No API accepts this request",
+    "api-cheaper": "API costs less",
+    "fleet-case": "Fleet has a cost case",
+}
 
 
 def _hosting_sensitivity(
@@ -281,14 +282,9 @@ def _hosting_sensitivity(
                 requests_per_day=min(10_000_000, max(1, inputs.requests_per_day * demand)),
                 tokens_per_second=min(1_000_000, max(0.1, inputs.tokens_per_second * speed)),
             )
+            # Unbound measurements stay, as on the page itself; bound ones must match the cell.
             if inputs.pilot_config and pilot_configuration_id(scenario) != inputs.pilot_config:
-                scenario = replace(
-                    scenario,
-                    measured_concurrency=0,
-                    measured_first_token=0,
-                    measured_completion=0,
-                    pilot_config="",
-                )
+                scenario = without_pilot_evidence(scenario)
             estimate = estimate_hosting(
                 find_model(inputs.model_id),
                 find_node_pool(inputs.node_pool_id),
@@ -307,7 +303,7 @@ def _hosting_sensitivity(
             cells.append(
                 SensitivityCell(
                     url=hosting_url(scenario),
-                    verdict=_sensitivity_verdict(estimate, cheapest),
+                    verdict=_SENSITIVITY_VERDICTS[hosting_verdict(estimate, cheapest)],
                     inputs=scenario,
                     capacity_pct=estimate.demand_capacity_pct,
                     cheapest_api_usd=cheapest,
@@ -324,8 +320,8 @@ def _hosting_accelerators(
 ) -> tuple[AcceleratorComparison, ...]:
     """Compare the lowest-cost compatible GPU and Cloud TPU fleets for this demand."""
     families = (
-        ("GPU", tuple(pool for pool in GKE_NODE_POOLS if "TPU" not in pool.gpu)),
-        ("Cloud TPU", tuple(pool for pool in GKE_NODE_POOLS if "TPU" in pool.gpu)),
+        ("GPU", tuple(pool for pool in GKE_NODE_POOLS if pool.chip == "GPU")),
+        ("Cloud TPU", tuple(pool for pool in GKE_NODE_POOLS if pool.chip == "TPU")),
     )
     default_quant_id = (
         inputs.quantization_id
@@ -376,13 +372,7 @@ def _hosting_accelerators(
             billing_plan=chosen_plan,
         )
         if pilot_configuration_id(scenario) != pilot_configuration_id(inputs):
-            scenario = replace(
-                scenario,
-                pilot_config="",
-                measured_concurrency=0,
-                measured_first_token=0,
-                measured_completion=0,
-            )
+            scenario = without_pilot_evidence(scenario)
         estimate = estimate_hosting(model, chosen_node, chosen_quant, scenario)
         if not matched_hardware:
             # pools[0] is only a placeholder: report a reason shared by every machine that offers the plan.
@@ -470,10 +460,8 @@ def build_llm_self_hosting_view(
         except ValueError:
             precision_node = node
         scenario = replace(scenario, node_pool_id=precision_node.id)
-        if pilot_configuration_id(scenario) != pilot_configuration_id(inputs):
-            scenario = replace(
-                scenario, pilot_config="", measured_concurrency=0, measured_first_token=0, measured_completion=0
-            )
+        if pilot_configuration_id(scenario) != current_pilot_config:
+            scenario = without_pilot_evidence(scenario)
         precisions.append(
             PrecisionComparison(
                 item, estimate_hosting(model, precision_node, item, scenario), precision_node, hosting_url(scenario)
@@ -516,6 +504,7 @@ def build_llm_self_hosting_view(
             (url for precision, url in model.checkpoint_urls if precision == quantization.id), model.weights_url
         ),
         gke_source_url=GKE_SOURCE_URL,
+        cluster_hourly_usd=CLUSTER_HOURLY_USD,
         price_source_url=PRICE_SOURCE_URL,
         current_pilot_config=current_pilot_config,
         comparison_ready=estimate.qualified and any(not row.request_issue for row in apis),

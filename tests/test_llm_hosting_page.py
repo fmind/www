@@ -16,8 +16,11 @@ import www.sites.inputs as hosting_inputs
 from tests.llm_hosting_support import view
 from www.sites.agent import compare_hosting
 from www.sites.calculator import build_llm_self_hosting_view
-from www.sites.data import API_BASELINES, DEFAULT_HOSTING_INPUTS, DEMAND_PRESETS, FRONTIER_MODELS
+from www.sites.data import API_BASELINES, DEFAULT_HOSTING_INPUTS, DEMAND_PRESETS, FRONTIER_MODELS, GKE_NODE_POOLS
+from www.sites.economics import CLUSTER_HOURLY_USD
+from www.sites.formatting import format_usd2
 from www.sites.inputs import find_node_pool, hosting_url, scenario_parameters
+from www.sites.models import BillingPlan
 
 PAGE = "/sites/llm-self-hosting/?mode=advanced"
 
@@ -118,6 +121,20 @@ def test_chart_styles_scale_with_the_baseline_count(client: AppClient, monkeypat
     assert response.status_code == 200
     assert "one fixed GKE fleet and 7 managed APIs" in response.text
     assert response.text.count('<polyline points="') == 8
+
+
+def test_method_and_sources_render_catalog_prices(client: AppClient) -> None:
+    html = client.get(PAGE).text
+
+    fee = format_usd2(CLUSTER_HOURLY_USD)
+    assert f"{fee}/hour GKE cluster fee" in html
+    assert f"{fee} per cluster-hour management fee" in html
+    # The TPU source note names on-demand chip prices; keep it in step with the catalog rates.
+    for node in (pool for pool in GKE_NODE_POOLS if pool.chip == "TPU"):
+        hourly = node.price(BillingPlan.ON_DEMAND).hourly_usd
+        chip_price = f"{node.gpu_count} × {format_usd2(hourly / node.gpu_count)}/chip-hour"  # noqa: RUF001
+        assert chip_price in node.operational
+        assert f"{node.id}, {chip_price}" in html
 
 
 def test_page_semantics_have_one_status_and_valid_figures(client: AppClient) -> None:

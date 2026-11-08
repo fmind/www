@@ -20,7 +20,7 @@ from www.sites.data import DEFAULT_HOSTING_INPUTS, MODEL_SNAPSHOT
 from www.sites.economics import current_api_baselines, utc_date
 from www.sites.formatting import format_decimal
 
-from .data import SERVERS, SNAPSHOT_DATE, ServerSnapshot
+from .data import BENCHMARK_TREE_URL, SERVERS, SNAPSHOT_DATE, ServerSnapshot
 
 PATH = "/sites/mcp-context-cost/"
 DAYS_PER_MONTH = 30
@@ -69,6 +69,7 @@ class ContextView:
     scenario_url: str
     snapshot_date: str
     price_date: str
+    benchmark_url: str
 
 
 type Query = Mapping[str, str | Sequence[str]]
@@ -150,6 +151,7 @@ def build_context_view(
         scenario_url=METADATA.site_url + scenario_url(tuple(server.id for server in chosen), requests_per_day),
         snapshot_date=SNAPSHOT_DATE,
         price_date=MODEL_SNAPSHOT,
+        benchmark_url=BENCHMARK_TREE_URL,
     )
 
 

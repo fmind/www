@@ -32,7 +32,7 @@ from www.sites.formatting import (
     hosting_decision_title,
     task_cost_max,
 )
-from www.sites.inputs import configuration_issue, find_node_pool, find_quantization, hosting_url
+from www.sites.inputs import configuration_issue, find_node_pool, find_quantization, hosting_url, parse_inputs
 from www.sites.models import APIRates, BillingPlan, FrontierModel
 
 # Fleet sizing, billing plans, demand presets, and input validation.
@@ -233,6 +233,40 @@ def test_template_decision_helpers_preserve_capacity_before_cost() -> None:
     assert hosting_decision_title(hosting_candidate) == "Self-hosting has a cost case to test"
 
 
+def test_page_decision_and_own_sensitivity_cell_share_one_verdict() -> None:
+    queries = (
+        {"model": "kimi-k3", "node": "g4-standard-48"},
+        {"input-tokens": "900000"},
+        {"model": "kimi-k3"},
+        {"preset": "service", "throughput": "0.1"},
+        {"tokens": "200000", "requests": "1"},
+        {},
+        {
+            "requests": "1000000",
+            "days": "30",
+            "input-tokens": "1000",
+            "tokens": "300",
+            "throughput": "10000",
+            "window": "24",
+        },
+    )
+    pairs = set()
+    for query in queries:
+        result = view(query)
+        # The middle cell is the visitor's own demand and speed.
+        pairs.add((hosting_decision_title(result), result.sensitivity[1].cells[1].verdict))
+
+    assert pairs == {
+        ("This configuration is not supported", "Unsupported configuration"),
+        ("The request exceeds this model's context limit", "Exceeds model context"),
+        ("Confirm this multi-host configuration with a pilot", "Needs a multi-host pilot"),
+        ("This fleet cannot cover the modeled demand", "Fleet too small"),
+        ("No managed API baseline accepts this request", "No API accepts this request"),
+        ("Start with an API on cost grounds", "API costs less"),
+        ("Self-hosting has a cost case to test", "Fleet has a cost case"),
+    }
+
+
 def test_template_quantity_and_task_scale_helpers() -> None:
     result = view()
 
@@ -244,7 +278,7 @@ def test_template_quantity_and_task_scale_helpers() -> None:
 @pytest.mark.parametrize("node", GKE_NODE_POOLS, ids=lambda node: node.id)
 def test_every_published_billing_plan_charges_whole_nodes_and_keeps_idle_commitments(node) -> None:
     # The default model has no TPU recipe; Gemma 4 is verified on both Cloud TPU families.
-    model = {"model": "gemma-4-26b-a4b"} if "TPU" in node.gpu else {}
+    model = {"model": "gemma-4-26b-a4b"} if node.chip == "TPU" else {}
     for price in node.prices:
         full = view(model | {"node": node.id, "billing": price.plan.value, "replicas": "2"})
         partial = view(model | {"node": node.id, "billing": price.plan.value, "replicas": "2", "duty": "25"})
@@ -791,13 +825,13 @@ def test_mcp_comparisons_cannot_borrow_another_configuration_pilot(model: str) -
     assert result.estimate.topology_confirmed
     for row in result.model_comparisons:
         if row.estimate.nodes_per_replica > 1:
-            assert row.estimate.topology_confirmed == (row.model.id == model)
-            if row.model.id != model:
+            assert row.estimate.topology_confirmed == (row.model_id == model)
+            if row.model_id != model:
                 assert not row.estimate.qualified
     for precision in result.precision_comparisons:
         if precision.estimate.nodes_per_replica > 1:
-            assert precision.estimate.topology_confirmed == (precision.quantization.id == result.inputs.quantization_id)
-            if precision.quantization.id != result.inputs.quantization_id:
+            assert precision.estimate.topology_confirmed == (precision.quantization_id == result.inputs.quantization_id)
+            if precision.quantization_id != result.inputs.quantization_id:
                 assert not precision.estimate.qualified
 
 
@@ -1379,6 +1413,29 @@ def test_claude_cache_minimum_and_freshness_match_refreshed_sources() -> None:
             assert "Standard rates applied" not in row.mode_note
 
 
+def test_simple_mode_reports_ignored_advanced_values_once() -> None:
+    query = {"mode": "simple", "replicas": "0", "duty": "abc", "quant": "bogus", "node": "bogus"}
+    inputs, validation = parse_inputs(query)
+
+    # The values are ignored, so only the mode message is reported, not each value's range.
+    assert validation == ("Advanced parameters require advanced mode; simple defaults were used",)
+    assert inputs == parse_inputs({"mode": "simple"})[0]
+    with pytest.raises(ValueError, match=r"^Invalid calculator parameters: Advanced parameters require advanced mode$"):
+        compare_hosting(query)
+
+
+def test_zero_acceptance_cost_is_documented_for_agents() -> None:
+    result = compare_hosting({"mode": "advanced", "quality": "on", "quality-0-acceptance": "0"})
+
+    assert (result.tasks[0].accepted, result.tasks[0].per_accepted_usd) == (0, 0)
+    assert any("per_accepted_usd 0" in limitation for limitation in result.limitations)
+
+
+def test_accelerator_chip_names_the_cloud_tpu_family() -> None:
+    assert {pool.id for pool in GKE_NODE_POOLS if pool.chip == "TPU"} == {"ct6e-standard-8t", "tpu7x-standard-4t"}
+    assert all(pool.chip == "GPU" for pool in GKE_NODE_POOLS if "NVIDIA" in pool.gpu)
+
+
 def test_simple_mode_rejects_advanced_overrides_for_agents() -> None:
     with pytest.raises(ValueError, match="Advanced parameters require advanced mode"):
         compare_hosting({"mode": "simple", "quant": "nvfp4"})
@@ -1638,3 +1695,15 @@ def test_removed_int4_precision_is_rejected_visibly() -> None:
     # Models must list released checkpoints; no default list can claim formats they lack.
     with pytest.raises(TypeError, match="supported_quantizations"):
         FrontierModel("example", "Example", "Example", 1, 1, 1, "MIT", "Permissive", "https://example.com")  # ty: ignore[missing-argument]
+
+
+def test_agent_comparison_rows_reference_catalog_ids_instead_of_repeating_entries() -> None:
+    result = compare_hosting({})
+    models = {model.id for model in result.models}
+    nodes = {node.id for node in result.node_pools}
+    quantizations = {quantization.id for quantization in result.quantizations}
+    rows = (*result.model_comparisons, *result.precision_comparisons, *result.accelerator_comparisons)
+    assert {row.model_id for row in result.model_comparisons} == models
+    assert all(row.node_id in nodes and row.quantization_id in quantizations for row in rows)
+    # The empty discovery call stays small enough for agent context (it was 62 KB compact).
+    assert len(result.model_dump_json()) < 48_000

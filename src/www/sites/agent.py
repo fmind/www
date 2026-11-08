@@ -11,18 +11,46 @@ from www.sites.capacity import MONTHLY_HOURS
 from www.sites.data import DEFAULT_HOSTING_INPUTS
 from www.sites.inputs import hosting_url, parse_inputs, scenario_parameters
 from www.sites.models import (
-    AcceleratorComparison,
     APIComparison,
     DemandPreset,
     FrontierModel,
     GKENodePool,
     HostingEstimate,
     HostingInputs,
-    ModelComparison,
-    PrecisionComparison,
     Quantization,
     TaskComparison,
 )
+
+
+# Comparison rows name catalog entries by id: repeating the full model, machine, and
+# quantization objects in every row made one default call about 158 KB of agent context.
+class ModelRow(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    model_id: str
+    quantization_id: str
+    node_id: str
+    estimate: HostingEstimate
+    decision: str
+
+
+class PrecisionRow(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    quantization_id: str
+    node_id: str
+    estimate: HostingEstimate
+    url: str
+
+
+class AcceleratorRow(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    family: str
+    quantization_id: str
+    node_id: str
+    estimate: HostingEstimate
+    url: str
 
 
 class HostingResult(BaseModel):
@@ -37,9 +65,9 @@ class HostingResult(BaseModel):
     node_pools: tuple[GKENodePool, ...]
     quantizations: tuple[Quantization, ...]
     presets: tuple[DemandPreset, ...]
-    model_comparisons: tuple[ModelComparison, ...]
-    precision_comparisons: tuple[PrecisionComparison, ...]
-    accelerator_comparisons: tuple[AcceleratorComparison, ...]
+    model_comparisons: tuple[ModelRow, ...]
+    precision_comparisons: tuple[PrecisionRow, ...]
+    accelerator_comparisons: tuple[AcceleratorRow, ...]
     tasks: tuple[TaskComparison, ...]
     comparison_ready: bool
     validation: tuple[str, ...]
@@ -89,9 +117,30 @@ def compare_hosting(parameters: dict[str, str]) -> HostingResult:
         node_pools=view.node_pools,
         quantizations=view.quantizations,
         presets=view.presets,
-        model_comparisons=view.comparison,
-        precision_comparisons=view.precisions,
-        accelerator_comparisons=view.accelerators,
+        model_comparisons=tuple(
+            ModelRow(
+                model_id=row.model.id,
+                quantization_id=row.quantization.id,
+                node_id=row.node.id,
+                estimate=row.estimate,
+                decision=row.decision,
+            )
+            for row in view.comparison
+        ),
+        precision_comparisons=tuple(
+            PrecisionRow(quantization_id=row.quantization.id, node_id=row.node.id, estimate=row.estimate, url=row.url)
+            for row in view.precisions
+        ),
+        accelerator_comparisons=tuple(
+            AcceleratorRow(
+                family=row.family,
+                quantization_id=row.quantization.id,
+                node_id=row.node.id,
+                estimate=row.estimate,
+                url=row.url,
+            )
+            for row in view.accelerators
+        ),
         tasks=view.tasks if view.inputs.quality_enabled else (),
         comparison_ready=view.comparison_ready,
         validation=view.validation,
@@ -117,6 +166,8 @@ def compare_hosting(parameters: dict[str, str]) -> HostingResult:
             "Totals include GPU compute and the GKE fee; additional disks, network, load balancers, licenses, and operations are excluded.",
             "Committed machines are billed for the full term even when idle; regional availability needs a quote.",
             "Pilot and task-quality inputs are caller-supplied evidence, not measurements performed by this server.",
+            # Kept numeric so the published output schema stays stable for existing callers.
+            "A task row with accepted 0 reports per_accepted_usd 0: cost per accepted task is undefined there, not free.",
             "Usage windows constrain average output rate, not bursts or latency. Running hours are scheduled inside active windows; startup needs a pilot.",
             "Simple mode sizes replicas and schedules batch presets; interactive presets stay on 24/7. Advanced mode keeps the fleet fixed. Break-even holds it fixed.",
         ),

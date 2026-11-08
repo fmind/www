@@ -3,12 +3,19 @@
 from dataclasses import asdict, replace
 from datetime import UTC, datetime
 from math import ceil, floor
+from typing import Literal
 
 from .capacity import MONTHLY_HOURS, serving_capacity
 from .data import (
     API_BASELINES,
 )
-from .inputs import configuration_issue, nodes_for_model, pilot_configuration_id, weight_memory_gb
+from .inputs import (
+    configuration_issue,
+    nodes_for_model,
+    pilot_configuration_id,
+    required_memory_gb,
+    weight_memory_gb,
+)
 from .models import (
     APIBaseline,
     APIMode,
@@ -21,6 +28,26 @@ from .models import (
 
 CLUSTER_HOURLY_USD = 0.10
 
+type HostingVerdict = Literal["unsupported", "context", "topology", "capacity", "no-api", "api-cheaper", "fleet-case"]
+
+
+def hosting_verdict(estimate: HostingEstimate, cheapest_api_usd: float | None) -> HostingVerdict:
+    """Name the first blocker, else the cost conclusion against the cheapest API that accepts the request.
+
+    The page decision and the sensitivity cells share this order, so they never disagree.
+    """
+    if estimate.compatibility_issue:
+        return "unsupported"
+    if estimate.context_issue:
+        return "context"
+    if not estimate.topology_confirmed:
+        return "topology"
+    if not estimate.demand_fits or not estimate.daily_demand_fits:
+        return "capacity"
+    if cheapest_api_usd is None:
+        return "no-api"
+    return "api-cheaper" if cheapest_api_usd < estimate.total_monthly_usd else "fleet-case"
+
 
 def estimate_hosting(
     model: FrontierModel,
@@ -29,7 +56,7 @@ def estimate_hosting(
     inputs: HostingInputs,
 ) -> HostingEstimate:
     weight_memory = weight_memory_gb(model, quantization)
-    required_memory = weight_memory * (1 + inputs.memory_overhead_pct / 100)
+    required_memory = required_memory_gb(model, quantization, inputs.memory_overhead_pct)
     nodes_per_replica = nodes_for_model(model, node, required_memory)
     total_nodes = nodes_per_replica * inputs.replicas
     duty = inputs.duty_cycle_percent / 100

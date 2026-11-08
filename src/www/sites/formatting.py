@@ -3,7 +3,9 @@
 from collections.abc import Sequence
 from math import floor
 
+from .economics import HostingVerdict, hosting_verdict
 from .models import (
+    APIComparison,
     LLMSelfHostingView,
     TaskComparison,
 )
@@ -78,54 +80,56 @@ def task_cost_max(rows: Sequence[TaskComparison]) -> float:
     return max((row.per_accepted_usd for row in rows if row.fits), default=0.01)
 
 
+_DECISION_TITLES = {
+    "unsupported": "This configuration is not supported",
+    "context": "The request exceeds this model's context limit",
+    "topology": "Confirm this multi-host configuration with a pilot",
+    "capacity": "This fleet cannot cover the modeled demand",
+    "no-api": "No managed API baseline accepts this request",
+    "api-cheaper": "Start with an API on cost grounds",
+    "fleet-case": "Self-hosting has a cost case to test",
+}
+_DECISION_COPY = {
+    "topology": (
+        "The model spans more than one host. Record latency and completion measurements on this exact serving "
+        "configuration before using its capacity or cost verdict."
+    ),
+    "capacity": (
+        "Do not treat the current fleet bill as a quote for all this work. Increase replicas, measure a faster "
+        "configuration, or reduce demand, then recalculate. A monthly average cannot establish peak-time capacity."
+    ),
+    "no-api": "Reduce the input or output budget before comparing this fleet with managed APIs.",
+    "fleet-case": (
+        "The modeled fleet bill is below these API baselines at your demand. This is a candidate for a pilot: verify "
+        "quality, sustained throughput, memory, model terms, and an operating owner before committing capacity."
+    ),
+}
+
+
+def _decision(view: LLMSelfHostingView) -> tuple[HostingVerdict, APIComparison | None]:
+    cheapest = min((row for row in view.apis if not row.request_issue), key=lambda row: row.monthly_usd, default=None)
+    return hosting_verdict(view.estimate, None if cheapest is None else cheapest.monthly_usd), cheapest
+
+
 def hosting_decision_title(view: LLMSelfHostingView) -> str:
     """Summarize the immediate economic conclusion without hiding capacity."""
-    if view.estimate.compatibility_issue:
-        return "This configuration is not supported"
-    if view.estimate.context_issue:
-        return "The request exceeds this model's context limit"
-    if not view.estimate.topology_confirmed:
-        return "Confirm this multi-host configuration with a pilot"
-    if not view.estimate.demand_fits or not view.estimate.daily_demand_fits:
-        return "This fleet cannot cover the modeled demand"
-    available = tuple(row for row in view.apis if not row.request_issue)
-    if not available:
-        return "No managed API baseline accepts this request"
-    if min(row.monthly_usd for row in available) < view.estimate.total_monthly_usd:
-        return "Start with an API on cost grounds"
-    return "Self-hosting has a cost case to test"
+    return _DECISION_TITLES[_decision(view)[0]]
 
 
 def hosting_decision_copy(view: LLMSelfHostingView) -> str:
     """Explain the capacity and cost conclusion in decision-ready language."""
-    if view.estimate.compatibility_issue:
+    verdict, cheapest = _decision(view)
+    if verdict == "unsupported":
         return (
             view.estimate.compatibility_issue
             + ". Choose compatible hardware or the model's published checkpoint format."
         )
-    if view.estimate.context_issue:
+    if verdict == "context":
         return view.estimate.context_issue + ". Reduce the request or choose a model with a larger context window."
-    if not view.estimate.topology_confirmed:
-        return (
-            "The model spans more than one host. Record latency and completion measurements on this exact serving "
-            "configuration before using its capacity or cost verdict."
-        )
-    if not view.estimate.demand_fits or not view.estimate.daily_demand_fits:
-        return (
-            "Do not treat the current fleet bill as a quote for all this work. Increase replicas, measure a faster "
-            "configuration, or reduce demand, then recalculate. A monthly average cannot establish peak-time capacity."
-        )
-    available = tuple(row for row in view.apis if not row.request_issue)
-    if not available:
-        return "Reduce the input or output budget before comparing this fleet with managed APIs."
-    cheapest = min(available, key=lambda row: row.monthly_usd)
-    if cheapest.monthly_usd < view.estimate.total_monthly_usd:
+    if verdict == "api-cheaper" and cheapest:
         return (
             f"{cheapest.baseline.name} starts at {format_budget(cheapest.monthly_usd)}/month for this token budget. "
             "Self-hosting may still be worth paying for control, residency, or customization. "
             "Test task quality before choosing."
         )
-    return (
-        "The modeled fleet bill is below these API baselines at your demand. This is a candidate for a pilot: verify "
-        "quality, sustained throughput, memory, model terms, and an operating owner before committing capacity."
-    )
+    return _DECISION_COPY[verdict]

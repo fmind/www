@@ -27,7 +27,7 @@ from www.sites.mcp_context_cost.calculator import (
     parse_query,
     view_from_query,
 )
-from www.sites.mcp_context_cost.data import SERVERS
+from www.sites.mcp_context_cost.data import BENCHMARK_COMMIT, BENCHMARK_TREE_URL, SERVERS
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 BEFORE_REVIEW = datetime(2026, 10, 14, tzinfo=UTC)
@@ -52,6 +52,7 @@ def test_measured_catalogs_match_the_retained_snapshot(tmp_path: Path, monkeypat
     snapshot = json.loads((REPO_ROOT / "src/www/sites/mcp_context_cost/measurements.json").read_text())
     lock = REPO_ROOT / "scripts/mcp_context_cost/measurement-package-lock.json"
     assert sha256(lock.read_bytes()).hexdigest() == snapshot["package_lock_sha256"]
+    assert snapshot["benchmark_commit"] == BENCHMARK_COMMIT
     github, *others = SERVERS
     assert (github.tools, github.tokens) == (snapshot["github"]["tools"], snapshot["github"]["input_schema_tokens"])
     assert [(item.id, item.tools, item.tokens) for item in others] == [
@@ -154,6 +155,7 @@ def test_page_metadata_validation_redirects_and_404(client: TestClient) -> None:
     assert '<form id="calculator" method="get"' in response.text
     assert response.text.count('name="server"') == len(SERVERS)
     assert response.text.count(" checked/>") == len(SERVERS)
+    assert f'href="{BENCHMARK_TREE_URL}"' in response.text
     # Every section stays open: no disclosure widgets.
     assert "<details" not in response.text
     assert client.head(PATH).status_code == 200
