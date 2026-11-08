@@ -6,7 +6,7 @@ Report vulnerabilities privately to <contact@fmind.dev> with the affected URL/co
 
 CI deployment and the manual `mise run deploy` both scan and smoke-test the immutable digest before Cloud Run receives it, then verify the new revision on a no-traffic tagged URL before promoting that exact revision. Fixable HIGH/CRITICAL vulnerabilities and secrets block rollout. The CI deploy job holds the Workload Identity token, so it reads no BuildKit or Trivy cache that another job could write. The weekly [security workflow](.github/workflows/security.yml) scans every serving or tagged revision digest through a separate read-only identity and retains unfiltered advisory evidence for 30 days. Passing the filtered gate does not mean zero advisories.
 
-Trivy may warn about third-party SBOM metadata or [fallback severity sources](https://trivy.dev/docs/v0.76/guide/scanner/vulnerability/#severity-selection). Review the full findings and package inventory; do not silence diagnostics, narrow severity sources, or add ignores merely to produce a quiet log.
+Trivy may warn about [fallback severity sources](https://trivy.dev/docs/v0.76/guide/scanner/vulnerability/#severity-selection). `mise.toml` skips only pip's vendored SBOM, which is absent from the final image (justified there). Review the full findings and package inventory; do not add other silences, narrow severity sources, or add ignores merely to produce a quiet log.
 
 ## Current advisory review
 
@@ -24,7 +24,7 @@ The current candidate uses `python:3.14.10-slim@sha256:af8a5aa14780025dbfbcfbc81
 | libacl: CVE-2026-54369                                                     | No ACL manipulation of caller-owned trees; runtime assets are root-owned and the process is unprivileged. |
 | util-linux: CVE-2026-76642, CVE-2026-78408, CVE-2026-78409, CVE-2026-78410 | No request path invokes mount helpers, nsenter, or mount post-hooks; the image strips setuid/setgid bits. |
 
-Recheck the [Debian Security Tracker](https://security-tracker.debian.org/tracker/) and exact serving scan before relying on these assessments. They are reachability reviews, not CVE suppressions. Retired scan histories remain in Git history and CI artifacts.
+Recheck the [Debian Security Tracker](https://security-tracker.debian.org/tracker/) and exact serving scan before relying on these assessments. They are reachability reviews, not CVE suppressions. Retired scan histories remain in Git history; CI advisory artifacts expire after 30 days.
 
 To renew this review, run `gh workflow run security.yml` and take `<run-id>` from the run URL it prints. If it prints none, use the run from `gh run list --workflow security.yml --event workflow_dispatch --limit 1 --json databaseId,createdAt` only when its `createdAt` is later than your dispatch; an older run holds stale evidence. Wait with `gh run watch <run-id> --exit-status`: a failure can be a new fixable finding, and the evidence is still uploaded. Then run `gh run download <run-id> -n deployed-image-advisories -D <temporary-directory>`. Its `digests.txt` lists each serving or tagged revision digest, and `<revision>.json` holds that image's unfiltered HIGH/CRITICAL findings. Compare the CVE and instance set with the table, recheck the Debian tracker, then update the digests, counts, and dates above.
 

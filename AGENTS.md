@@ -10,7 +10,7 @@ Python 3.14, Litestar, strict Jinja, Tailwind/DaisyUI, and Granian. No client fr
 - **Run affected out-of-gate checks**: network link checks, cross-browser tests, and Lighthouse are separate tasks; run those relevant to the change.
 - **Keep scratch out of the tracked tree**: tasks write their outputs only to the ignored `tmp/`; ad hoc scratch and review reports go to OS temporary directories, and no review report is committed.
 - **A `main` push deploys production**: pushing needs deploy authority; published tags are immutable.
-- **Keep the approved visual style**: the site's current style (shadows, gradients, hover motion, paired buttons, and its Tailwind/DaisyUI theme) is an approved exception to `~/.agents/DESIGN.md`; DESIGN.md still governs new pages and components where the site has no established pattern.
+- **Keep the approved visual style**: the site's current style (shadows, gradients, hover motion, paired buttons, and its Tailwind/DaisyUI theme) is an approved exception to [DESIGN.md](https://github.com/fmind/theme/blob/main/DESIGN.md); DESIGN.md still governs new pages and components where the site has no established pattern.
 - **Get consent before restyling**: layout, style, component, or home-page structure changes need the owner's OK on a proposal branch with before/after screenshots. Content edits inside existing components are fine; new pages reuse existing components unchanged.
 - **Keep Cloud Run scale-to-zero**: service and revision minimum instances 0, maximum 5, and request-based CPU (`cpu_idle = true`). Raising capacity or enabling always-on instances needs explicit owner authorization.
 - **CI owns only digest and traffic**: OpenTofu owns service settings. A `main` deployment must scan and smoke-test its pushed immutable digest, verify a no-traffic `candidate` revision, then promote exactly that revision and verify ready revision, traffic, and health; review error logs separately with the owner identity.
@@ -21,7 +21,7 @@ Python 3.14, Litestar, strict Jinja, Tailwind/DaisyUI, and Granian. No client fr
 - `app.py`: startup snapshot, routes, middleware composition, MCP lifespan, teardown.
 - `mcp.py`: read-only tools, finite HTTP transport, capabilities, and discovery. Every non-POST method returns 405 with `Allow: POST`, so GET/HEAD never open idle notification streams; retain SDK host/origin validation.
 - `content.py`, `assets.py`, `search.py`: validated publications, static inventory/hashes, BM25 article search.
-- `news.py`: daily Markdown news editions in `content/news/` (Highlights and More sections, optional `updated` front matter for corrections and same-day additions, strict link lines and plain 30-word descriptions, duplicate-link rejection, `noindex` edition pages) and their Atom feed and Markdown exports; `scripts/news.py` prepares pasted links, and drafts and publishes a Chat edition (tool-less agy writer; the push holds only that file on top of `origin/main`).
+- `news.py`: validated daily editions in `content/news/` and their Atom feed and Markdown exports; `scripts/news.py` prepares links, and drafts and publishes Chat editions. The [news skill](.agents/skills/news/SKILL.md) owns the format and rules.
 - `publications.py`: canonical profile JSON/schema, feeds, sitemap, LLM text; shared by HTTP and MCP.
 - `agent_discovery.py`, `agent_skills/`: API catalog, representation negotiation, packaged visitor skill/index; separate from `.agents/` maintenance skills.
 - `connect.py`: public vCard; `/connect` is discoverable, `/scan` is a noindex QR utility.
