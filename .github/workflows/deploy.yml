@@ -92,6 +92,9 @@ jobs:
           version: 2026.11.3 # pinned mise; bump deliberately with mise.lock tooling
           install: true
           cache: true
+          # Key tools on the lockfiles only: task edits in mise.toml must not force fresh
+          # GitHub downloads (a 2026-11-08 release-asset outage blocked deploys that way).
+          cache_key: "{{cache_key_prefix}}-{{platform}}-{{version}}-p{{cache_period}}-${{ hashFiles('mise.lock', '.mise/locks/**') }}"
       - name: Install dependencies
         # `all` installs Chromium itself; installing it here would repeat that.
         run: mise run install:python
@@ -130,6 +133,9 @@ jobs:
           version: 2026.11.3 # pinned mise; bump deliberately with mise.lock tooling
           install: true
           cache: true
+          # Key tools on the lockfiles only: task edits in mise.toml must not force fresh
+          # GitHub downloads (a 2026-11-08 release-asset outage blocked deploys that way).
+          cache_key: "{{cache_key_prefix}}-{{platform}}-{{version}}-p{{cache_period}}-${{ hashFiles('mise.lock', '.mise/locks/**') }}"
       - name: Install dependencies
         run: mise run install:python
       - name: Install Chromium
@@ -161,6 +167,9 @@ jobs:
           version: 2026.11.3 # pinned mise; bump deliberately with mise.lock tooling
           install: true
           cache: true
+          # Key tools on the lockfiles only: task edits in mise.toml must not force fresh
+          # GitHub downloads (a 2026-11-08 release-asset outage blocked deploys that way).
+          cache_key: "{{cache_key_prefix}}-{{platform}}-{{version}}-p{{cache_period}}-${{ hashFiles('mise.lock', '.mise/locks/**') }}"
       - name: Install dependencies
         run: mise run install:python
       - name: Set up Docker Buildx

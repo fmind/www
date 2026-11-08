@@ -31,6 +31,9 @@ jobs:
           version: 2026.11.3 # pinned mise; bump deliberately with mise.lock tooling
           install: false
           cache: true
+          # Key tools on the lockfiles only: task edits in mise.toml must not force fresh
+          # GitHub downloads (a 2026-11-08 release-asset outage blocked deploys that way).
+          cache_key: "{{cache_key_prefix}}-{{platform}}-{{version}}-p{{cache_period}}-${{ hashFiles('mise.lock', '.mise/locks/**') }}"
       - name: Install pinned tools
         run: mise install --locked -y aqua:astral-sh/uv python node github:dobicinaitis/tailwind-cli-extra npm:playwright
       - name: Install Python dependencies
@@ -73,6 +76,9 @@ jobs:
           version: 2026.11.3 # pinned mise; bump deliberately with mise.lock tooling
           install: false
           cache: true
+          # Key tools on the lockfiles only: task edits in mise.toml must not force fresh
+          # GitHub downloads (a 2026-11-08 release-asset outage blocked deploys that way).
+          cache_key: "{{cache_key_prefix}}-{{platform}}-{{version}}-p{{cache_period}}-${{ hashFiles('mise.lock', '.mise/locks/**') }}"
       - name: Install pinned tools
         run: mise install --locked -y aqua:astral-sh/uv python node github:dobicinaitis/tailwind-cli-extra npm:playwright npm:lighthouse
       - name: Install Python dependencies
