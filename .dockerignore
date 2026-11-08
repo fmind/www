@@ -22,6 +22,7 @@ CHANGELOG.md
 Dockerfile
 SECURITY.md
 dist
+static-hashes.json
 dprint.json
 gha-creds-*.json
 htmlcov

@@ -1,11 +1,12 @@
 """Static asset startup invariants."""
 
+import json
 from pathlib import Path
 from typing import cast
 
 import pytest
 
-from www.assets import ROOT_FILE_SOURCES, ApplicationAssets, load_application_assets
+from www.assets import ROOT_FILE_SOURCES, STATIC_MANIFEST, ApplicationAssets, hash_static_files, load_application_assets
 
 FONT_FILES = (
     "fonts/GoogleSans-Variable.woff2",
@@ -123,4 +124,33 @@ def test_load_assets_fails_when_the_stylesheet_drops_a_font_face(tmp_path: Path)
     (static / "dist" / "styles.css").write_text("body{color:red}", encoding="utf-8")
 
     with pytest.raises(RuntimeError, match=r"no @font-face for /static/fonts/GoogleSans-Variable\.woff2"):
+        load_application_assets(static)
+
+
+def test_build_manifest_replaces_startup_hashing_and_fails_closed_on_drift(tmp_path: Path) -> None:
+    static = static_tree(tmp_path)
+    hashed = load_application_assets(static).hashes
+    manifest = tmp_path / STATIC_MANIFEST
+    manifest.write_text(json.dumps(hash_static_files(static)), encoding="utf-8")
+
+    assert load_application_assets(static).hashes == hashed
+
+    extra = static / "img" / "late.webp"
+    extra.parent.mkdir(exist_ok=True)
+    extra.write_bytes(b"late")
+    with pytest.raises(RuntimeError, match="does not match"):
+        load_application_assets(static)
+    extra.unlink()
+
+    robots = static / "robots.txt"
+    robots.write_text(robots.read_text(encoding="utf-8") + "# resized\n", encoding="utf-8")
+    with pytest.raises(RuntimeError, match="does not match"):
+        load_application_assets(static)
+
+
+@pytest.mark.parametrize("content", ["not json", "[]", '{"/static/robots.txt": {"hash": "XYZ", "size": 1}}'])
+def test_malformed_build_manifest_fails_startup(tmp_path: Path, content: str) -> None:
+    static = static_tree(tmp_path)
+    (tmp_path / STATIC_MANIFEST).write_text(content, encoding="utf-8")
+    with pytest.raises(RuntimeError, match="static manifest"):
         load_application_assets(static)

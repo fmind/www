@@ -17,6 +17,7 @@
 .venv/
 __pycache__/
 dist/
+static-hashes.json
 gha-creds-*.json
 htmlcov/
 infra/.terraform/

@@ -32,7 +32,8 @@ COPY . /app
 RUN --mount=type=cache,target=/root/.cache/uv \
   uv sync --locked --no-dev --no-editable \
   && tailwindcss-extra -i assets/css/input.css -o static/dist/styles.css --minify \
-  && chmod -R u=rwX,go=rX /app/.venv /app/content /app/static
+  && /app/.venv/bin/python -m www.assets static static-hashes.json \
+  && chmod -R u=rwX,go=rX /app/.venv /app/content /app/static /app/static-hashes.json
 
 FROM python:3.14.10-slim@sha256:af8a5aa14780025dbfbcfbc81bd8a91ebd87711dd5b0f48ed71090949dd7cb1d AS runner
 ENV ENVIRONMENT=production
@@ -59,4 +60,6 @@ EXPOSE 8080
 COPY --from=build /app/.venv /app/.venv
 COPY --from=build /app/content /app/content
 COPY --from=build /app/static /app/static
+# Startup checks static file metadata against these build-time hashes (www.assets).
+COPY --from=build /app/static-hashes.json /app/static-hashes.json
 ENTRYPOINT ["www"]
