@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import cast
 
 import pytest
+from PIL import Image
 
 from www.assets import ROOT_FILE_SOURCES, STATIC_MANIFEST, ApplicationAssets, hash_static_files, load_application_assets
 
@@ -154,3 +155,28 @@ def test_malformed_build_manifest_fails_startup(tmp_path: Path, content: str) ->
     (tmp_path / STATIC_MANIFEST).write_text(content, encoding="utf-8")
     with pytest.raises(RuntimeError, match="static manifest"):
         load_application_assets(static)
+
+
+def test_build_manifest_records_raster_dimensions_and_rejects_bad_ones(tmp_path: Path) -> None:
+    static = static_tree(tmp_path)
+    (static / "img").mkdir()
+    Image.new("RGB", (7, 3)).save(static / "img" / "figure.png")
+    entries = hash_static_files(static)
+    assert (entries["/static/img/figure.png"]["width"], entries["/static/img/figure.png"]["height"]) == (7, 3)
+    assert "width" not in entries["/static/robots.txt"]
+
+    manifest = tmp_path / STATIC_MANIFEST
+    manifest.write_text(json.dumps(entries), encoding="utf-8")
+    assert load_application_assets(static).image_sizes == {"/static/img/figure.png": (7, 3)}
+
+    entries["/static/img/figure.png"]["width"] = 0
+    manifest.write_text(json.dumps(entries), encoding="utf-8")
+    with pytest.raises(RuntimeError, match="does not match"):
+        load_application_assets(static)
+
+
+def test_build_manifest_fails_on_an_undecodable_raster(tmp_path: Path) -> None:
+    static = static_tree(tmp_path)
+    (static / "broken.webp").write_bytes(b"not an image")
+    with pytest.raises(RuntimeError, match=r"read image dimensions of .*broken\.webp"):
+        hash_static_files(static)

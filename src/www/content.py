@@ -449,13 +449,21 @@ def _webp_size(path: Path) -> tuple[int, int] | None:
         return dimensions
 
 
-def _image_size(static_dir: Path, source: str) -> tuple[int, int]:
+def image_dimensions(path: Path) -> tuple[int, int]:
+    """Return raster dimensions, reading only bounded WebP metadata when possible."""
+    if dimensions := _webp_size(path):
+        return dimensions
+    with Image.open(path) as image:
+        return image.size
+
+
+def _image_size(static_dir: Path, source: str, known: Mapping[str, tuple[int, int]] | None = None) -> tuple[int, int]:
     path = _asset_path(static_dir, source)
+    # The image build records dimensions so a cold start need not read lazily fetched media.
+    if known and (dimensions := known.get(source)):
+        return dimensions
     try:
-        if dimensions := _webp_size(path):
-            return dimensions
-        with Image.open(path) as image:
-            return image.size
+        return image_dimensions(path)
     except (OSError, UnidentifiedImageError) as error:
         raise ArticleError(f"decode body image {source.removeprefix('/')!r}: {error}") from error
 
@@ -475,7 +483,7 @@ def _source_set(static_dir: Path, source: str, source_width: int) -> tuple[str, 
     return ", ".join(candidates), FIGURE_SIZES
 
 
-def enhance_body_images(body: str, static_dir: Path) -> str:
+def enhance_body_images(body: str, static_dir: Path, image_sizes: Mapping[str, tuple[int, int]] | None = None) -> str:
     body = _VIDEO.sub(
         r'<video muted loop playsinline autoplay controls aria-label="\2"><source src="\1" type="video/mp4">Your browser does not support embedded video.</video>',
         body,
@@ -490,7 +498,7 @@ def enhance_body_images(body: str, static_dir: Path) -> str:
     def replace(match: re.Match[str]) -> str:
         nonlocal position
         source = match.group(1)
-        width, height = _image_size(static_dir, source)
+        width, height = _image_size(static_dir, source, image_sizes)
         srcset, sizes = _source_set(static_dir, source, width)
         # The first figure may be visible, but text can push it far below the fold.
         # Let the browser prioritize it instead of competing with fonts and CSS.
@@ -502,7 +510,12 @@ def enhance_body_images(body: str, static_dir: Path) -> str:
     return _IMAGE.sub(replace, body)
 
 
-def parse_article(name: str, data: bytes, static_dir: Path = Path("static")) -> Article:
+def parse_article(
+    name: str,
+    data: bytes,
+    static_dir: Path = Path("static"),
+    image_sizes: Mapping[str, tuple[int, int]] | None = None,
+) -> Article:
     try:
         header, markdown_bytes = split_frontmatter(data)
         metadata = _read_frontmatter(name, header)
@@ -547,7 +560,7 @@ def parse_article(name: str, data: bytes, static_dir: Path = Path("static")) -> 
         # JSON-LD reuse it, so one description serves every surface. The title covers a body without it.
         cover_prefix = f"{_MEDIA_PREFIX}{slug}/cover."
         cover_alt = next((alt for source, alt in rendered.media if source.startswith(cover_prefix)), "")
-        body = enhance_body_images(rendered.html, static_dir)
+        body = enhance_body_images(rendered.html, static_dir, image_sizes)
         word_count = len(markdown.split())
         reading_minutes = max(1, (word_count + WORDS_PER_MINUTE - 1) // WORDS_PER_MINUTE)
         article_url = f"{METADATA.site_url}/articles/{slug}/"
@@ -578,14 +591,18 @@ def parse_article(name: str, data: bytes, static_dir: Path = Path("static")) -> 
         raise ArticleError(f'parse "{name}": body must be UTF-8: {error}') from error
 
 
-def load_articles(content_dir: Path = Path("content/articles"), static_dir: Path = Path("static")) -> ArticleCollection:
+def load_articles(
+    content_dir: Path = Path("content/articles"),
+    static_dir: Path = Path("static"),
+    image_sizes: Mapping[str, tuple[int, int]] | None = None,
+) -> ArticleCollection:
     names = tuple(sorted(content_dir.glob("*.md")))
     if not names:
         raise ArticleError(f'list articles: no files match "{content_dir}/*.md"')
     by_slug: dict[str, Article] = {}
     articles: list[Article] = []
     for path in names:
-        article = parse_article(path.as_posix(), path.read_bytes(), static_dir)
+        article = parse_article(path.as_posix(), path.read_bytes(), static_dir, image_sizes)
         if article.slug in by_slug:
             raise ArticleError(f'parse "{path}": duplicate slug {article.slug!r}')
         articles.append(article)

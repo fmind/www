@@ -243,7 +243,7 @@ def create_app(
     with _timed(phases, "assets"):
         application_assets = assets or load_application_assets(static_dir)
     with _timed(phases, "articles"):
-        article_collection = collection or load_articles(content_dir, static_dir)
+        article_collection = collection or load_articles(content_dir, static_dir, application_assets.image_sizes)
     with _timed(phases, "news"):
         editions = load_news(news_dir) if news is None else news
 

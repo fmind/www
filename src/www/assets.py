@@ -4,11 +4,14 @@ import json
 import re
 import sys
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from hashlib import file_digest, sha256
 from pathlib import Path
 from types import MappingProxyType
 
+from PIL import UnidentifiedImageError
+
+from www.content import image_dimensions
 from www.highlighting import highlight_css
 
 
@@ -28,11 +31,14 @@ class ApplicationAssets:
     root_files: Mapping[str, StaticResponse]
     hashes: Mapping[str, str]
     stylesheet: str
+    # Build-time raster dimensions by /static/ route; empty without a manifest (local runs).
+    image_sizes: Mapping[str, tuple[int, int]] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         """Detach the published snapshot from caller-owned mutable mappings."""
         object.__setattr__(self, "root_files", MappingProxyType(dict(self.root_files)))
         object.__setattr__(self, "hashes", MappingProxyType(dict(self.hashes)))
+        object.__setattr__(self, "image_sizes", MappingProxyType(dict(self.image_sizes)))
 
     @property
     def stylesheet_digest(self) -> str:
@@ -90,6 +96,7 @@ def _validate_required_fonts(static_dir: Path) -> None:
 # the manifest reduces startup to listing file metadata.
 STATIC_MANIFEST = "static-hashes.json"
 _SHORT_HASH = re.compile(r"[0-9a-f]{8}")
+_RASTER_SUFFIXES = frozenset({".gif", ".jpeg", ".jpg", ".png", ".webp"})
 
 
 def _static_files(static_dir: Path) -> dict[str, Path]:
@@ -110,16 +117,26 @@ def hash_static_files(static_dir: Path) -> dict[str, dict[str, int | str]]:
             with path.open("rb") as source:
                 digest = file_digest(source, "sha256").hexdigest()[:8]
             entries[route] = {"hash": digest, "size": path.stat().st_size}
+            if path.suffix.lower() in _RASTER_SUFFIXES:
+                try:
+                    entries[route]["width"], entries[route]["height"] = image_dimensions(path)
+                except UnidentifiedImageError as error:
+                    msg = f"read image dimensions of {path}: {error}"
+                    raise RuntimeError(msg) from error
     except OSError as error:
         msg = f"hash static assets under {static_dir}: {error}"
         raise RuntimeError(msg) from error
     return entries
 
 
-def _static_hashes(static_dir: Path, manifest: Path) -> dict[str, str]:
+def _positive(value: object) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool) and value > 0
+
+
+def _static_inventory(static_dir: Path, manifest: Path) -> tuple[dict[str, str], dict[str, tuple[int, int]]]:
     """Use the build manifest when present, failing closed if the files differ from it."""
     if not manifest.is_file():
-        return {route: str(entry["hash"]) for route, entry in hash_static_files(static_dir).items()}
+        return {route: str(entry["hash"]) for route, entry in hash_static_files(static_dir).items()}, {}
     try:
         entries = json.loads(manifest.read_text(encoding="utf-8"))
         sizes = {route: path.stat().st_size for route, path in _static_files(static_dir).items()}
@@ -131,12 +148,18 @@ def _static_hashes(static_dir: Path, manifest: Path) -> dict[str, str]:
         and isinstance(entry.get("hash"), str)
         and _SHORT_HASH.fullmatch(entry["hash"])
         and entry.get("size") == sizes.get(route)
+        and (
+            ("width" not in entry and "height" not in entry)
+            or (_positive(entry.get("width")) and _positive(entry.get("height")))
+        )
         for route, entry in entries.items()
     )
     if not valid or entries.keys() != sizes.keys():
         msg = f"static manifest {manifest} does not match {static_dir}; rebuild the image or delete the manifest"
         raise RuntimeError(msg)
-    return {route: entry["hash"] for route, entry in entries.items()}
+    hashes = {route: entry["hash"] for route, entry in entries.items()}
+    dimensions = {route: (entry["width"], entry["height"]) for route, entry in entries.items() if "width" in entry}
+    return hashes, dimensions
 
 
 def load_application_assets(static_dir: Path = Path("static")) -> ApplicationAssets:
@@ -150,7 +173,7 @@ def load_application_assets(static_dir: Path = Path("static")) -> ApplicationAss
 
     _validate_required_fonts(static_dir)
 
-    hashes = _static_hashes(static_dir, static_dir.parent / STATIC_MANIFEST)
+    hashes, image_sizes = _static_inventory(static_dir, static_dir.parent / STATIC_MANIFEST)
 
     root_files: dict[str, StaticResponse] = {}
     for route, (relative, content_type) in ROOT_FILE_SOURCES.items():
@@ -165,6 +188,7 @@ def load_application_assets(static_dir: Path = Path("static")) -> ApplicationAss
         root_files=root_files,
         hashes=hashes,
         stylesheet=_version_font_urls(stylesheet, hashes) + highlight_css(),
+        image_sizes=image_sizes,
     )
 
 

@@ -630,3 +630,10 @@ def test_article_search_matches_link_text_but_not_its_destination(tmp_path: Path
 
     assert index.search("watch") == (item,)
     assert index.search("youtube") == ()
+
+
+def test_known_image_sizes_skip_reading_media_but_keep_path_validation(tmp_path: Path) -> None:
+    known = {"/static/missing.webp": (10, 5)}
+    assert content_module._image_size(tmp_path, "/static/missing.webp", known) == (10, 5)  # noqa: SLF001
+    with pytest.raises(ArticleError, match="escapes the static asset tree"):
+        content_module._image_size(tmp_path, "/static/../outside.webp", {"/static/../outside.webp": (1, 1)})  # noqa: SLF001
