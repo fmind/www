@@ -44,6 +44,6 @@ Python 3.14, Litestar, strict Jinja, Tailwind/DaisyUI, and Granian. No client fr
 - **Keep portrait masters private**: keep them outside `static/`; export with `build:portrait`.
 - **Keep analytics cookieless or consented**: first-party analytics stay cookieless and aggregate (180-day expiry, empty `country` until a trusted geography boundary exists). Google Analytics 4 (`google_analytics_id`) loads only on www.fmind.dev after an explicit Accept in `partials/consent.html` (Reject equally prominent, no ad features or Google signals); keep `/privacy` and CSP Google hosts in step.
 - **Keep the scheduled image scanner read-only**: maintain advisory triage in `SECURITY.md`.
-- **Keep the CLI contract**: the PyPI `fmind` CLI (github.com/fmind/cli) consumes the `/api/profile` keys in its `PROFILE_SHAPE`, `/articles/<slug>.md`, and the `/mcp` transport; release a CLI update before removing or renaming any of them.
+- **Keep the CLI contract**: the PyPI `fmind` CLI (github.com/fmind/cli) consumes the `/api/profile` keys in its `PROFILE_SHAPE`, the `/api/news` keys in its `NEWS_SHAPE`, `/articles/<slug>.md`, and the `/mcp` transport; release a CLI update before removing or renaming any of them.
 
 Task procedures live in `.agents/skills/` (`article`, `news`, `site`, `infra`, `release`, `website-analytics`, `finops-analytics`).
