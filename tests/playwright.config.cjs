@@ -8,8 +8,10 @@ module.exports = defineConfig({
   outputDir: "../tmp/browser-results",
   // A committed test.only would silently narrow the CI gate; the other configs inherit this.
   forbidOnly: !!process.env.CI,
-  // Each context is isolated and the shared server only serves immutable data.
-  workers: process.env.CI ? 4 : 2,
+  // Each context is isolated and the shared server only serves immutable data. Without
+  // fullyParallel, one spec file across two projects never uses more than two workers;
+  // the cross-browser config inherits two because four on a CI runner starve WebKit.
+  workers: 2,
   reporter: "list",
   use: {
     baseURL,

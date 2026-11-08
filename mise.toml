@@ -14,6 +14,8 @@ REGION = "europe-west1"
 # the final image and lists no PURLs, so skipping it hides nothing that ships. Applies to
 # every Trivy run through mise, including CI and scheduled scans.
 TRIVY_SKIP_FILES = "**/pip/_vendor/bom.cdx.json"
+# Keep CI and hook logs free of vulnerability database download bars.
+TRIVY_NO_PROGRESS = "true"
 
 [settings.task]
 run_auto_install = false
@@ -37,6 +39,8 @@ node = "26.13.0"
 opentofu = "1.13.9"
 # Keep the qualified Python 3.14 runtime; 3.15 is a separate compatibility migration.
 python = "3.14.10"
+# Used implicitly by jactionlint (check:actions) to lint workflow run: scripts;
+# it skips them silently when absent.
 shellcheck = "0.11.0"
 tflint = "0.65.0"
 trivy = "0.76.2"
@@ -170,6 +174,9 @@ run = "uv run --locked python -m scripts.build_images --check"
 [tasks."check:leaks"]
 alias = "cs"
 description = "Audit recent commits and the working tree for leaked secrets (betterleaks)"
+# The Lighthouse harness test briefly creates and removes a symlink fixture under tmp/;
+# scanning concurrently logs a spurious lstat error, so let it finish first.
+wait_for = ["check:lighthouse"]
 run = [
   'betterleaks git --redact=100 --log-opts="--max-count=100" --verbose --no-banner',
   "betterleaks dir . --config assets/betterleaks-dir.toml --redact=100 --verbose --no-banner",
@@ -323,7 +330,7 @@ run = ["uv sync --locked --all-groups", "lefthook install"]
 alias = "t"
 description = "Run offline tests with the branch-coverage gate"
 depends = ["build:css"]
-run = "uv run --locked pytest --cov --cov-fail-under=85"
+run = "uv run --locked pytest --cov --cov-fail-under=91"
 
 [tasks."test:browser"]
 description = "Exercise navigation, articles, and calculators in Chromium"

@@ -40,7 +40,6 @@ jobs:
         id: detect
         env:
           EVENT_NAME: ${{ github.event_name }}
-          BASE_REF: ${{ github.base_ref }}
           CURRENT_SHA: ${{ github.sha }}
           GH_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}
@@ -50,10 +49,11 @@ jobs:
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
             echo "Manual dispatch: running full verification suite"
           elif [ "$EVENT_NAME" = "pull_request" ]; then
-            git fetch origin "$BASE_REF" --depth=100 || true
-            base_ref="origin/$BASE_REF"
-            if git rev-parse --verify "$base_ref" >/dev/null 2>&1; then
-              files="$(git diff --name-only "$base_ref"...HEAD || true)"
+            # The checkout is the PR merge commit, whose first parent is the base tip, so no fetch
+            # is needed (persist-credentials is off and this private repository rejects anonymous
+            # fetches). A missing merge parent or a diff failure keeps the full suite.
+            if git rev-parse --verify -q HEAD^2 >/dev/null; then
+              files="$(git diff --name-only HEAD^1 HEAD || true)"
               if [ -n "$files" ] && ! echo "$files" | grep -v '^content/' >/dev/null; then
                 echo "Only content/** changed in pull request"
                 code="false"

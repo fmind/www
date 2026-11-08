@@ -13,16 +13,18 @@ test("portfolio and contact pages render and reflow", async ({ page }) => {
     await expect(page.locator("h1")).toHaveCount(1);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     for (const image of await page.locator("img").all()) {
-      // Deferred sections can change size when first rendered. Scroll again
-      // after layout settles, using the standard API supported by all engines.
-      await expect(async () => {
-        await image.evaluate((element) => element.scrollIntoView({ block: "center" }));
-        await expect(image).toBeInViewport({ timeout: 500 });
-      }).toPass({ timeout: 5000 });
+      // Deferred sections can change size when first rendered, so scroll again on every
+      // attempt until the lazy image loads. A plain evaluate replaces toBeInViewport, whose
+      // IntersectionObserver probe has blocked WebKit for seconds past its own timeout.
       await expect
-        .poll(() => image.evaluate((element) => element.complete && element.naturalWidth > 0), {
-          timeout: imageLoadTimeout,
-        })
+        .poll(
+          () =>
+            image.evaluate((element) => {
+              element.scrollIntoView({ block: "center" });
+              return element.complete && element.naturalWidth > 0;
+            }),
+          { timeout: imageLoadTimeout },
+        )
         .toBe(true);
     }
   }
