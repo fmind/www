@@ -21,6 +21,7 @@ from mcp_types import (
     Tool,
     ToolAnnotations,
 )
+from mcp_types.version import LATEST_MODERN_VERSION
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
@@ -38,10 +39,10 @@ from www.data import (
     METADATA,
     OPEN_SOURCE,
     PAPERS,
+    SERVICES,
     SPECIALIZATIONS,
     THESIS,
     YOUTUBE_SERIES,
-    get_services,
 )
 from www.models import (
     Article,
@@ -71,11 +72,19 @@ from www.sites.mcp_context_cost.calculator import (
 )
 from www.tags import tag_names
 
-MCP_PROTOCOL_VERSION = "2026-07-28"
+# The card advertises the newest stateless revision the installed SDK serves.
+MCP_PROTOCOL_VERSION = LATEST_MODERN_VERSION
 MCP_PROFILE_URI = "portfolio://profile.json"
 MCP_CACHE_TTL_MS = 3_600_000
 DEFAULT_SEARCH_RESULTS = 10
 MAXIMUM_SEARCH_RESULTS = 50
+# Bound text that results echo or interpolate; a brief may paste a whole job description.
+TAG_LIMIT = 64
+BRIEF_LIMIT = 10_000
+AUDIENCE_LIMIT = 200
+
+_TITLE = f"{METADATA.name} ({METADATA.alternate_name}) — {METADATA.job_title} Portfolio"
+_WEBSITE_URL = f"{METADATA.site_url}/"
 
 _ICON_URL = f"{METADATA.site_url}/static/img/favicons/icon-192.png"
 _DESCRIPTION = f"{METADATA.description} Read-only access to the public profile, services, articles, and sites."
@@ -110,14 +119,17 @@ class _PortfolioMCPServer(MCPServer[None]):
     async def call_tool(
         self, name: str, arguments: dict[str, Any], context: Context[None, Any] | None = None
     ) -> CallToolResult | InputRequiredResult:
+        tool = next((tool for tool in await super().list_tools() if tool.name == name), None)
+        if tool is None:
+            # The spec lists unknown tools, like unknown prompts, as protocol errors
+            # (-32602); the SDK would answer with an isError tool result instead.
+            raise MCPError(INVALID_PARAMS, f"Unknown tool: {name}")
         # The SDK ignores unknown keys, so a misspelled argument would silently
         # apply its default. Fail like an invalid value: an isError tool result.
-        tool = next((tool for tool in await super().list_tools() if tool.name == name), None)
-        if tool is not None:
-            known = tool.input_schema.get("properties", {})
-            if unknown := sorted(set(arguments) - set(known)):
-                expected = ", ".join(known) or "no arguments"
-                raise ToolError(f"Unknown argument(s) for {name}: {', '.join(unknown)}; expected: {expected}")
+        known = tool.input_schema.get("properties", {})
+        if unknown := sorted(set(arguments) - set(known)):
+            expected = ", ".join(known) or "no arguments"
+            raise ToolError(f"Unknown argument(s) for {name}: {', '.join(unknown)}; expected: {expected}")
         return await super().call_tool(name, arguments, context)
 
     @override
@@ -230,14 +242,14 @@ def create_mcp_server(
     }
     server: MCPServer[None] = _PortfolioMCPServer(
         name="www",
-        title=f"{METADATA.name} ({METADATA.alternate_name}) — {METADATA.job_title} Portfolio",
+        title=_TITLE,
         description=_DESCRIPTION,
         instructions=(
             f"Query the portfolio of {METADATA.name} ({METADATA.alternate_name}): {METADATA.headline_primary}. "
             "Explore profile, leadership, work experience, credentials, publications, projects, and services. "
             "Search and read published articles with citations, or compare LLM hosting and MCP context costs using the calculators."
         ),
-        website_url=f"{METADATA.site_url}/",
+        website_url=_WEBSITE_URL,
         icons=_ICONS,
         version=build_version(),
         cache_hints=_CACHE_HINTS,
@@ -324,7 +336,8 @@ def create_mcp_server(
         tag: Annotated[
             str | None,
             Field(
-                description=f"optionally keep only articles with this tag, case-insensitive: {', '.join(tag_names())}"
+                max_length=TAG_LIMIT,
+                description=f"optionally keep only articles with this tag, case-insensitive: {', '.join(tag_names())}",
             ),
         ] = None,
     ) -> SearchArticlesResult:
@@ -361,7 +374,7 @@ def create_mcp_server(
         structured_output=True,
     )
     def services() -> ServicesResult:
-        return ServicesResult(services=get_services())
+        return ServicesResult(services=SERVICES)
 
     @server.tool(
         name="get_article",
@@ -434,7 +447,13 @@ def create_mcp_server(
     def assess_fit(
         brief: Annotated[
             str,
-            Field(description="The responsibilities, outcomes, constraints, and required expertise to assess."),
+            Field(
+                max_length=BRIEF_LIMIT,
+                description=(
+                    "The responsibilities, outcomes, constraints, and required expertise to assess "
+                    f"(at most {BRIEF_LIMIT:,} characters)."
+                ),
+            ),
         ],
     ) -> str:
         return (
@@ -452,9 +471,11 @@ def create_mcp_server(
         audience: Annotated[
             str,
             Field(
+                max_length=AUDIENCE_LIMIT,
                 description=(
-                    "Who will read the briefing, such as an executive, engineering leader, or conference organizer."
-                )
+                    "Who will read the briefing, such as an executive, engineering leader, or conference organizer "
+                    f"(at most {AUDIENCE_LIMIT} characters)."
+                ),
             ),
         ],
     ) -> str:
@@ -489,9 +510,9 @@ async def render_mcp_server_card(server: MCPServer[None]) -> bytes:
         "protocolVersion": MCP_PROTOCOL_VERSION,
         "serverInfo": {
             "name": "www",
-            "title": f"{METADATA.name} ({METADATA.alternate_name}) — {METADATA.job_title} Portfolio",
+            "title": _TITLE,
             "version": build_version(),
-            "websiteUrl": f"{METADATA.site_url}/",
+            "websiteUrl": _WEBSITE_URL,
         },
         "description": _DESCRIPTION,
         "iconUrl": _ICON_URL,

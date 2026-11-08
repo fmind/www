@@ -389,27 +389,26 @@ SITE_PAGES = (
 )
 
 
-def get_services() -> tuple[Service, ...]:
-    return (
-        Service(
-            "🏢",
-            "AI Architecture & Advisory",
-            "Get help assessing and designing AI agent platforms, MLOps infrastructure, and security, with a plan for delivery and operations.",
-            "🔴 Not available for new missions",
-            "error",
-            "Send Email",
-            f"mailto:{METADATA.email}",
-        ),
-        Service(
-            "🎓",
-            "Mentoring",
-            "Book a paid one-hour session for an architecture review, project advice, or career mentoring in AI and MLOps.",
-            "💰 Paid session — 1 hour",
-            "info",
-            "Book Mentoring",
-            METADATA.calendar_url,
-        ),
-    )
+SERVICES: tuple[Service, ...] = (
+    Service(
+        "🏢",
+        "AI Architecture & Advisory",
+        "Get help assessing and designing AI agent platforms, MLOps infrastructure, and security, with a plan for delivery and operations.",
+        "🔴 Not available for new missions",
+        "error",
+        "Send Email",
+        f"mailto:{METADATA.email}",
+    ),
+    Service(
+        "🎓",
+        "Mentoring",
+        "Book a paid one-hour session for an architecture review, project advice, or career mentoring in AI and MLOps.",
+        "💰 Paid session — 1 hour",
+        "info",
+        "Book Mentoring",
+        METADATA.calendar_url,
+    ),
+)
 
 
 def article_filter_url(tag: str = "", query: str = "") -> str:

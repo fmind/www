@@ -7,9 +7,10 @@ from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 from mcp.shared.exceptions import MCPError
 from mcp_types import INVALID_PARAMS, CallToolResult, InputRequiredResult, TextContent
+from mcp_types.version import LATEST_MODERN_VERSION
 
 from www.content import article_summaries, load_articles, visible_articles
-from www.mcp import create_mcp_server, render_mcp_server_card
+from www.mcp import AUDIENCE_LIMIT, BRIEF_LIMIT, TAG_LIMIT, create_mcp_server, render_mcp_server_card
 from www.publications import article_markdown_index, render_profile_json
 from www.search import SEARCH_QUERY_LIMIT, SearchIndex
 
@@ -70,6 +71,7 @@ async def test_server_lists_ten_read_only_tools_and_two_prompts(mcp_server: MCPS
     )
     assert search_tool.input_schema["properties"]["limit"]["default"] == 10
     assert search_tool.input_schema["properties"]["limit"]["maximum"] == 50
+    assert search_tool.input_schema["properties"]["tag"]["anyOf"][0]["maxLength"] == 64
     assert [prompt.name for prompt in prompts] == ["assess_fit", "brief_me"]
     assert [
         [argument.model_dump(by_alias=True, exclude_none=True) for argument in prompt.arguments or []]
@@ -79,7 +81,10 @@ async def test_server_lists_ten_read_only_tools_and_two_prompts(mcp_server: MCPS
             {
                 "name": "brief",
                 "title": "Role or project brief",
-                "description": "The responsibilities, outcomes, constraints, and required expertise to assess.",
+                "description": (
+                    "The responsibilities, outcomes, constraints, and required expertise to assess "
+                    "(at most 10,000 characters)."
+                ),
                 "required": True,
             }
         ],
@@ -88,7 +93,8 @@ async def test_server_lists_ten_read_only_tools_and_two_prompts(mcp_server: MCPS
                 "name": "audience",
                 "title": "Audience",
                 "description": (
-                    "Who will read the briefing, such as an executive, engineering leader, or conference organizer."
+                    "Who will read the briefing, such as an executive, engineering leader, or conference organizer "
+                    "(at most 200 characters)."
                 ),
                 "required": True,
             }
@@ -177,6 +183,10 @@ async def test_search_tool_filters_by_a_known_tag(mcp_server: MCPServer[None]) -
 
     with pytest.raises(ToolError, match="unknown tag 'Agents'; use one of: Agent, Coding"):
         await mcp_server.call_tool("search_articles", {"query": "agent", "tag": "Agents"})
+    # The unknown-tag error echoes its input, so the input stays bounded.
+    with pytest.raises(ToolError, match="tag") as caught:
+        await mcp_server.call_tool("search_articles", {"query": "agent", "tag": "x" * (TAG_LIMIT + 1)})
+    assert "x" * (TAG_LIMIT + 1) not in str(caught.value)
 
 
 @pytest.mark.anyio
@@ -193,8 +203,10 @@ async def test_tools_reject_unknown_arguments_and_advertise_closed_schemas(mcp_s
     ):
         with pytest.raises(ToolError, match=rf"Unknown argument\(s\) for {name}: "):
             await mcp_server.call_tool(name, arguments)
-    with pytest.raises(ToolError, match="Unknown tool: nope"):
+    # Unknown tools are protocol errors, as unknown prompts are, not isError tool results.
+    with pytest.raises(MCPError, match="Unknown tool: nope") as caught:
         await mcp_server.call_tool("nope", {})
+    assert caught.value.code == INVALID_PARAMS
 
 
 @pytest.mark.anyio
@@ -203,6 +215,17 @@ async def test_prompt_caller_mistakes_are_invalid_params(mcp_server: MCPServer[N
         with pytest.raises(MCPError) as caught:
             await mcp_server.get_prompt(name, arguments)
         assert caught.value.code == INVALID_PARAMS
+    # Prompts interpolate their text arguments, so oversized ones fail without echoing the value.
+    for name, argument, limit in (("assess_fit", "brief", BRIEF_LIMIT), ("brief_me", "audience", AUDIENCE_LIMIT)):
+        with pytest.raises(MCPError) as caught:
+            await mcp_server.get_prompt(name, {argument: "x" * (limit + 1)})
+        assert caught.value.code == INVALID_PARAMS
+        assert "x" * (limit + 1) not in caught.value.message
+    for name, arguments in (
+        ("assess_fit", {"brief": "x" * BRIEF_LIMIT}),
+        ("brief_me", {"audience": "x" * AUDIENCE_LIMIT}),
+    ):
+        assert not isinstance(await mcp_server.get_prompt(name, arguments), InputRequiredResult)
 
 
 @pytest.mark.anyio
@@ -246,7 +269,8 @@ async def test_server_card_describes_the_same_transport_and_primitives(mcp_serve
         tool.model_dump(include={"name", "title", "description"}) for tool in await mcp_server.list_tools()
     ]
 
-    assert card["protocolVersion"] == "2026-07-28"
+    # The card follows the SDK's newest stateless revision instead of a copied literal.
+    assert card["protocolVersion"] == LATEST_MODERN_VERSION == "2026-07-28"
     assert card["transport"] == {
         "type": "streamable-http",
         "endpoint": "https://www.fmind.dev/mcp",
