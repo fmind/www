@@ -628,7 +628,19 @@ test(
     // A style pass forced before the stylesheet arrives leaves content-visibility content with
     // browser-default styles; when it renders, every transition runs at once from those defaults.
     // A fresh context per page keeps the stylesheet uncached, as on a first visit.
-    for (const path of ["/articles/", "/"]) {
+    // Every page layout: content-visibility on content that keeps hover transitions fails here.
+    const paths = [
+      "/articles/",
+      "/",
+      "/articles/cag-vs-rag-choosing-the-right-strategy-for-your-ai-application/",
+      "/news/",
+      "/agents",
+      "/privacy",
+      "/sites/",
+      "/sites/llm-self-hosting/",
+      "/sites/mcp-context-cost/",
+    ];
+    for (const path of paths) {
       const context = await browser.newContext({ ...testInfo.project.use, baseURL });
       try {
         const page = await context.newPage();
@@ -641,6 +653,11 @@ test(
           }, true);
         });
         await page.goto(path);
+        // Count only what scrolling renders. Load-time transitions are a separate local timing
+        // effect that production does not show.
+        await page.evaluate(() => {
+          window.startedTransitions = [];
+        });
         await page.evaluate(async () => {
           for (let top = 0; top < document.documentElement.scrollHeight; top += window.innerHeight / 2) {
             window.scrollTo({ top, behavior: "instant" });
