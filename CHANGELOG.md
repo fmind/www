@@ -2,6 +2,92 @@
 
 All notable changes to this project are documented in this file.
 
+## [2.8.0] - 2026-11-08
+
+### 🚀 Features
+
+- _(sites)_ Size each catalog model on its own machine
+- _(news)_ Import 166 daily news editions
+- _(news)_ Serve daily editions at /news with an Atom feed and curation skill
+- _(news)_ Markdown editions with highlights and noindex edition pages
+- _(news)_ Move a corrected edition's feed update time with updated front matter
+- _(news)_ Show the past week as highlight cards and older editions as links
+- _(news)_ Reject long descriptions, label archive days, and align past-week cards
+- _(news)_ Show editions as ranked cards, list the archive one day per line, and open past-week cards whole
+- _(news)_ Add 2026-11-04 edition
+- _(news)_ Add 2026-11-05 edition
+- _(feeds)_ Indent XML and add the logo icon and article thumbnails
+- _(news)_ State manual curation in index description
+- _(news)_ Add 2026-11-06 edition
+- _(news)_ Draft and publish Chat editions without agent Git access
+- _(articles)_ Describe every cover image for social cards
+- _(web)_ Cache fonts immutably and tighten SEO and accessibility
+- _(app)_ Correlate logs with request traces and time startup phases
+- _(privacy)_ Disclose the 30-day server request logs
+- _(infra)_ Monitor the apex domain, TLS expiry, and capacity aborts
+
+### 🐛 Bug Fixes
+
+- _(content)_ Replace teaser descriptions and duplicated opening headings
+- _(content)_ Keep article links on fmind.dev and drop Medium leftovers
+- _(news)_ Drop a link-shared Drive guide of unverified provenance
+- _(news)_ Shorten 45 archive descriptions to the 30-word limit
+- _(news)_ Shorten the remaining 102 descriptions to the 30-word limit
+- _(news)_ Keep drafted links exact and reach readers with same-day additions
+- _(mcp)_ Reject unknown tools as invalid params and bound arguments
+- _(scripts)_ Read only needed analytics partitions and bound news fetches
+
+### ⚡ Performance
+
+- _(content)_ Parse each article once and index only visible text
+- _(assets)_ Hash static files at image build instead of every cold start
+
+### ♻️ Refactor
+
+- Rely on Python 3.14 lazy annotations
+- Move article image derivatives out of the runtime package
+- _(content)_ Remove Hugo-era Goldmark and Chroma emulation
+- _(app)_ Serve every unknown path from one not-found route
+- _(lighthouse)_ Audit only the portfolio set
+- _(articles)_ Reuse the body cover alt for social cards
+- _(sites)_ Dedupe calculator logic and slim the MCP hosting result
+
+### 📚 Documentation
+
+- _(news)_ Preview editions as a single ranked list
+- _(security)_ Renew the advisory review for the 2026-11-07 serving image
+- Sync README, AGENTS, SECURITY, and skills with the review fixes
+- _(articles)_ Match search intent in the Poetry vs uv and agent platform snippets
+
+### 🧪 Testing
+
+- _(browser)_ Wait longer for production images in cross-browser journeys
+- _(lighthouse)_ Audit the news index on desktop and mobile
+- _(cross-browser)_ Give remote runs 60 s for WebKit startup
+- _(browser)_ Deflake resize assertion and double CI test concurrency
+- Isolate tests from the Git environment a hook exports
+- _(cross-browser)_ Keep two workers on CI runners
+
+### ⚙️ Build & CI
+
+- _(deploy)_ Parallelize verification jobs and add content path gating
+- _(image)_ Make the local image platform configurable
+- _(deploy)_ Compare content-only pushes with the last verified deployment
+- Upgrade mise, mise-action, login-action, BuildKit, and Cloud SDK pins
+- _(image)_ Refresh Python base, uv, and Tailwind pins
+- Fix WebKit image wait, PR content detection, and build waste
+- Key mise tool caches on lockfiles instead of mise.toml
+
+### 🧹 Miscellaneous
+
+- _(deps)_ Upgrade mise, its action, the Python base image, and locked tools
+- Remove syndication leftovers and tidy scripts and docs
+- _(mise)_ Lock tools for linux-arm64
+- _(deps)_ Upgrade mise tools to latest
+- _(deps)_ Upgrade Python dependencies to latest
+- _(deps)_ Upgrade watchdog to 7.1.0
+- _(infra)_ Upgrade Google providers to 8.10.0 and declare the STS API
+
 ## [2.7.1] - 2026-11-02
 
 ### 🚀 Features
