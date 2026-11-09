@@ -9,7 +9,6 @@ import re
 import shutil
 import subprocess
 import sys
-import time
 import urllib.request
 from collections.abc import Mapping
 from datetime import date
@@ -342,15 +341,24 @@ def test_page_keeps_custom_elements_that_share_a_boilerplate_prefix() -> None:
     assert facts["excerpt"] == "Hello menu world more"
 
 
-def test_page_strips_unclosed_openers_in_linear_time() -> None:
-    # Each unclosed opener used to rescan to the end of the page: about 20 minutes at this size.
-    page = "<svg><main><nav>" * 70_000 + "<article><p>body text</p></article>"
-    started = time.monotonic()
+def test_page_searches_each_unclosed_tag_for_a_closer_only_once(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Each unclosed opener used to rescan to the end of the page: about 20 minutes for 70,000 repeats.
+    # Counting the closer searches checks that bound without a wall clock.
+    page = "<svg><main><nav>" * 1_000 + "<article><p>body text</p></article>"
+    compile_pattern = re.compile
+    closers: list[str] = []
+
+    def recording_compile(pattern: str, flags: int = 0) -> re.Pattern[str]:
+        if pattern.startswith("</"):
+            closers.append(pattern)
+        return compile_pattern(pattern, flags)
+
+    monkeypatch.setattr(news.re, "compile", recording_compile)
 
     facts = news.source_facts("https://example.com/a", FakeWeb({"https://example.com/a": page}))
 
-    assert time.monotonic() - started < 2
     assert facts["excerpt"] == "body text"
+    assert closers == [r"</svg\s*>", r"</nav\s*>", r"</main\s*>", r"</article\s*>"]
 
 
 def test_main_prints_json_and_names_invalid_content(
