@@ -5,24 +5,24 @@ import json
 import logging
 import re
 from collections.abc import Callable, Iterator
-from dataclasses import dataclass, field, replace
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from io import BytesIO
 from pathlib import Path
 from types import MappingProxyType
-from typing import Any, cast
-from urllib.parse import unquote
+from typing import Any
 
 import pytest
 from litestar import Litestar
 from litestar.plugins.opentelemetry import OpenTelemetryPlugin
 from litestar.testing import TestClient
-from litestar.types import HTTPDisconnectEvent, HTTPRequestEvent, Message, Scope
+from litestar.types import HTTPDisconnectEvent, HTTPRequestEvent, Message
 from opentelemetry.sdk.trace import TracerProvider
 from PIL import Image
 
 import www.app as app_module
 import www.publications as publications_module
+from tests.conftest import LOCAL_BASE_URL, MCP_ACCEPT, MCP_MODERN_PROTOCOL, RecordingLogger, asgi_scope, mcp_post
 from www.app import app, create_app
 from www.assets import ApplicationAssets
 from www.config import Config, Environment
@@ -44,9 +44,6 @@ MCP_INITIALIZE = {
         "clientInfo": {"name": "test", "version": "1.0"},
     },
 }
-MCP_ACCEPT = {"accept": "application/json, text/event-stream"}
-# MCP validates Host and has no test-only entry, so its clients call it as a local client does.
-LOCAL_BASE_URL = "http://127.0.0.1"
 
 FONT_PATHS = (
     "/static/fonts/GoogleSans-Variable.woff2",
@@ -54,21 +51,15 @@ FONT_PATHS = (
 )
 
 
-@dataclass
-class RecordingLogger:
-    records: list[tuple[str, dict[str, Any]]] = field(default_factory=list)
-
-    def info(self, event: str, **values: Any) -> None:
-        self.records.append((event, values))
-
-    def error(self, event: str, **values: Any) -> None:
-        self.records.append((event, values))
-
-
 @pytest.fixture(scope="module")
 def client() -> Iterator[AppClient]:
+    # Not the shared client: these tests serve the module-level application that production imports.
     with TestClient(app, base_url=LOCAL_BASE_URL) as test_client:
         yield test_client
+
+
+def json_ld(html: str) -> dict[str, Any]:
+    return json.loads(html.split('<script type="application/ld+json">', 1)[1].split("</script>", 1)[0])
 
 
 def test_startup_renders_article_markdown_once_for_all_public_consumers(
@@ -89,19 +80,7 @@ def test_startup_renders_article_markdown_once_for_all_public_consumers(
         article = next(item for item in collection.all if not item.draft)
         markdown = client.get(article.markdown_path()).text
         assert markdown in client.get("/llms-full.txt").text
-        result = client.post(
-            "/mcp",
-            headers={"accept": "application/json, text/event-stream"},
-            json={
-                "jsonrpc": "2.0",
-                "id": 1,
-                "method": "tools/call",
-                "params": {
-                    "name": "get_article",
-                    "arguments": {"slug": article.slug},
-                },
-            },
-        ).json()
+        result = mcp_post(client, "tools/call", {"name": "get_article", "arguments": {"slug": article.slug}}).json()
         assert result["result"]["structuredContent"]["markdown"] == markdown
     assert sorted(rendered) == sorted(item.slug for item in collection.all)
 
@@ -204,7 +183,7 @@ def test_identity_location_and_services_are_discoverable(client: AppClient) -> N
         assert phrase in profile["metadata"]["description"]
     home = client.get("/").text
     assert "Based in Luxembourg" in home
-    graph = json.loads(home.split('<script type="application/ld+json">', 1)[1].split("</script>", 1)[0])["@graph"]
+    graph = json_ld(home)["@graph"]
     person = next(item for item in graph if item["@type"] == "Person")
     assert person["name"] == "Médéric Hurier"
     assert person["alternateName"] == "Fmind"
@@ -471,7 +450,7 @@ def test_public_social_profiles_match_the_selected_channels(client: AppClient) -
         "YouTube",
     }
     html = client.get("/").text
-    graph = json.loads(html.split('<script type="application/ld+json">', 1)[1].split("</script>", 1)[0])
+    graph = json_ld(html)
     person = next(item for item in graph["@graph"] if item["@type"] == "Person")
     channels = {item["url"] for item in profile["metadata"]["socials"]}
     assert set(person["sameAs"]) == channels | set(SAME_AS_PROFILES)
@@ -505,7 +484,7 @@ def test_expertise_is_consistent_for_people_search_and_agents(client: AppClient)
     profile = client.get("/api/profile").json()
     assert [card["title"] for card in profile["expertise"]] == titles
     html = client.get("/").text
-    graph = json.loads(html.split('<script type="application/ld+json">', 1)[1].split("</script>", 1)[0])
+    graph = json_ld(html)
     person = next(item for item in graph["@graph"] if item["@type"] == "Person")
     assert person["hasOccupation"]["skills"] == titles
     for path in ("/llms.txt", "/llms-full.txt"):
@@ -1054,11 +1033,7 @@ def test_mcp_endpoint_is_stateless_bounded_and_origin_protected(
 
 
 def test_mcp_tool_listings_compress_with_brotli(client: AppClient) -> None:
-    response = client.post(
-        "/mcp",
-        json={"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}},
-        headers={**MCP_ACCEPT, "accept-encoding": "br", "mcp-protocol-version": "2025-11-25"},
-    )
+    response = mcp_post(client, "tools/list", {}, protocol="2025-11-25", headers={"accept-encoding": "br"})
 
     assert response.status_code == 200
     assert response.headers["content-encoding"] == "br"
@@ -1121,26 +1096,14 @@ def mcp_log_records() -> Iterator[list[logging.LogRecord]]:
         mcp_logger.setLevel(previous_level)
 
 
-@pytest.mark.parametrize("protocol", ["2025-11-25", "2026-07-28"])
+@pytest.mark.parametrize("protocol", ["2025-11-25", MCP_MODERN_PROTOCOL])
 def test_mcp_caller_mistakes_are_invalid_params_without_error_logs(
     make_app: Callable[[], Litestar], protocol: str, mcp_log_records: list[logging.LogRecord]
 ) -> None:
-    modern = protocol == "2026-07-28"
+    modern = protocol == MCP_MODERN_PROTOCOL
 
     def call(test_client: AppClient, method: str, params: dict[str, Any]) -> dict[str, Any]:
-        headers = {**MCP_ACCEPT, "mcp-protocol-version": protocol}
-        if modern:
-            headers |= {"mcp-method": method, "mcp-name": params["name"]}
-            params = {
-                **params,
-                "_meta": {
-                    "io.modelcontextprotocol/protocolVersion": protocol,
-                    "io.modelcontextprotocol/clientCapabilities": {},
-                },
-            }
-        response = test_client.post(
-            "/mcp", json={"jsonrpc": "2.0", "id": 1, "method": method, "params": params}, headers=headers
-        )
+        response = mcp_post(test_client, method, params, protocol=protocol)
         body = response.json()
         # The modern transport maps protocol errors to HTTP statuses (-32602 is 400).
         assert response.status_code == (400 if modern and "error" in body else 200)
@@ -1181,21 +1144,7 @@ def test_slash_aliases_share_mcp_policy_and_canonical_log_paths(
 
     async def request(method: str, raw_path: bytes, headers: list[tuple[bytes, bytes]]) -> tuple[int, dict[str, str]]:
         # Raw scopes: HTTPX would read //mcp as a protocol-relative URL.
-        scope = {
-            "type": "http",
-            "asgi": {"version": "3.0", "spec_version": "2.3"},
-            "http_version": "1.1",
-            "method": method,
-            "scheme": "https",
-            "path": unquote(raw_path.decode("ascii")),
-            "raw_path": raw_path,
-            "query_string": b"",
-            "root_path": "",
-            "headers": [(b"host", b"www.fmind.dev"), *headers],
-            "client": ("192.0.2.1", 1234),
-            "server": ("www.fmind.dev", 443),
-            "state": {},
-        }
+        scope = asgi_scope(method, raw_path, headers=[(b"host", b"www.fmind.dev"), *headers], host="www.fmind.dev")
         body = json.dumps(MCP_INITIALIZE).encode() if method == "POST" else b""
         messages: list[Message] = []
         received = False
@@ -1210,7 +1159,7 @@ def test_slash_aliases_share_mcp_policy_and_canonical_log_paths(
         async def send(message: Message) -> None:
             messages.append(message)
 
-        await production(cast(Scope, scope), receive, send)
+        await production(scope, receive, send)
         start = next(message for message in messages if message["type"] == "http.response.start")
         assert start["type"] == "http.response.start"
         return start["status"], {name.decode(): value.decode("latin-1") for name, value in start["headers"]}
@@ -1372,32 +1321,18 @@ def test_every_page_template_satisfies_the_inline_csp(
 
 
 def test_mcp_serves_no_subscription_streams(client: AppClient) -> None:
-    meta = {
-        "io.modelcontextprotocol/protocolVersion": "2026-07-28",
-        "io.modelcontextprotocol/clientCapabilities": {},
-    }
-
-    def post(method: str, params: dict[str, Any]) -> Any:
-        return client.post(
-            "/mcp",
-            json={"jsonrpc": "2.0", "id": 1, "method": method, "params": {**params, "_meta": meta}},
-            headers={
-                "accept": "application/json, text/event-stream",
-                "mcp-protocol-version": "2026-07-28",
-                "mcp-method": method,
-            },
-        )
-
     # The SDK derives these flags from whether subscriptions/listen is served, so this
     # assertion fails before the listen request below could hold an endless stream.
-    discovered = post("server/discover", {}).json()["result"]["capabilities"]
+    discovered = mcp_post(client, "server/discover", {}, protocol=MCP_MODERN_PROTOCOL).json()["result"]["capabilities"]
     assert discovered == {
         "prompts": {"listChanged": False},
         "resources": {"listChanged": False, "subscribe": False},
         "tools": {"listChanged": False},
     }
 
-    listen = post("subscriptions/listen", {"notifications": {"toolsListChanged": True}})
+    listen = mcp_post(
+        client, "subscriptions/listen", {"notifications": {"toolsListChanged": True}}, protocol=MCP_MODERN_PROTOCOL
+    )
     assert listen.headers["content-type"].startswith("application/json")
     assert listen.json()["error"]["code"] == -32601
 

@@ -14,6 +14,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 from mcp_types import CallToolResult
 from pydantic import TypeAdapter
 
+from tests.conftest import mcp_post
 from www.agent_discovery import AGENT_SKILL_PATH, prefers_markdown
 from www.assets import ApplicationAssets
 from www.content import ArticleCollection, article_summaries, visible_articles
@@ -164,16 +165,7 @@ def test_guide_is_discoverable_and_deferred_features_remain_absent(client: TestC
 
 
 def call_tool(client: TestClient[Any], name: str, arguments: dict[str, object]) -> dict[str, Any]:
-    response = client.post(
-        "/mcp",
-        headers={"accept": "application/json, text/event-stream"},
-        json={
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "tools/call",
-            "params": {"name": name, "arguments": arguments},
-        },
-    )
+    response = mcp_post(client, "tools/call", {"name": name, "arguments": arguments})
     assert response.status_code == 200
     return response.json()["result"]
 

@@ -1,6 +1,5 @@
 """HTTP boundary and privacy tests."""
 
-from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, cast
 
@@ -12,6 +11,7 @@ from litestar.response import Response
 from litestar.testing import TestClient
 from litestar.types import ASGIApp, HTTPDisconnectEvent, Message, Receive, Scope, Send
 
+from tests.conftest import RecordingLogger, asgi_scope
 from www.config import Config, Environment
 from www.middleware import (
     CLOUD_TRACE_LOG_KEY,
@@ -27,15 +27,12 @@ from www.ranges import etag_matches, strong_etag_matches
 TRACE_ID = "4bf92f3577b34da6a3ce929d0e0e4736"
 
 
-@dataclass
-class RecordingLogger:
-    records: list[tuple[str, dict[str, Any]]] = field(default_factory=list)
+async def _disconnected() -> HTTPDisconnectEvent:
+    return {"type": "http.disconnect"}
 
-    def info(self, event: str, **values: Any) -> None:
-        self.records.append((event, values))
 
-    def error(self, event: str, **values: Any) -> None:
-        self.records.append((event, values))
+async def _discard(_message: Message) -> None:
+    return None
 
 
 def client(
@@ -256,33 +253,8 @@ async def test_escaping_exception_is_finalized_as_a_server_error() -> None:
         Config(environment=Environment.DEVELOPMENT),
         logger,
     )
-    scope = cast(
-        Scope,
-        {
-            "type": "http",
-            "asgi": {"version": "3.0", "spec_version": "2.3"},
-            "http_version": "1.1",
-            "method": "GET",
-            "scheme": "https",
-            "path": "/boom",
-            "raw_path": b"/boom",
-            "query_string": b"",
-            "root_path": "",
-            "headers": [],
-            "client": ("127.0.0.1", 12345),
-            "server": ("testserver.local", 443),
-            "state": {},
-        },
-    )
-
-    async def receive() -> HTTPDisconnectEvent:
-        return {"type": "http.disconnect"}
-
-    async def send(_message: Message) -> None:
-        return None
-
     with pytest.raises(RuntimeError, match="request failed"):
-        await middleware(scope, receive, send)
+        await middleware(asgi_scope(raw_path=b"/boom"), _disconnected, _discard)
 
     assert len(logger.records) == 1
     event, values = logger.records[0]
@@ -305,33 +277,8 @@ async def test_pathsend_response_logs_the_file_size_before_returning() -> None:
         sent.append(f"{len(logger.records)} records")
 
     middleware = SiteMiddleware(cast(ASGIApp, file_app), Config(environment=Environment.DEVELOPMENT), logger)
-    scope = cast(
-        Scope,
-        {
-            "type": "http",
-            "asgi": {"version": "3.0", "spec_version": "2.3"},
-            "http_version": "1.1",
-            "method": "GET",
-            "scheme": "https",
-            "path": "/logo.png",
-            "raw_path": b"/logo.png",
-            "query_string": b"",
-            "root_path": "",
-            "headers": [],
-            "client": ("127.0.0.1", 12345),
-            "server": ("testserver.local", 443),
-            "state": {},
-            "extensions": {"http.response.pathsend": {}},
-        },
-    )
-
-    async def receive() -> HTTPDisconnectEvent:
-        return {"type": "http.disconnect"}
-
-    async def send(_message: Message) -> None:
-        return None
-
-    await middleware(scope, receive, send)
+    scope = asgi_scope(raw_path=b"/logo.png", extensions={"http.response.pathsend": {}})
+    await middleware(scope, _disconnected, _discard)
 
     assert sent == ["1 records"]
     assert [event for event, _ in logger.records] == ["http request processed"]

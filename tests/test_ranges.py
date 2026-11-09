@@ -3,7 +3,7 @@
 import asyncio
 from io import BytesIO
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 from unittest.mock import Mock
 
 import pytest
@@ -11,8 +11,9 @@ from litestar import Litestar, route
 from litestar.enums import HttpMethod
 from litestar.middleware import DefineMiddleware
 from litestar.testing import TestClient
-from litestar.types import ASGIApp, HTTPRequestEvent, Message, Scope
+from litestar.types import ASGIApp, HTTPRequestEvent, Message
 
+from tests.conftest import asgi_scope
 from www.config import Config
 from www.middleware import SiteMiddleware
 from www.ranges import _stream, range_file_response
@@ -314,23 +315,5 @@ async def _invoke(
     async def send(message: Message) -> None:
         messages.append(message)
 
-    scope = cast(
-        "Scope",
-        {
-            "type": "http",
-            "asgi": {"version": "3.0", "spec_version": "2.3"},
-            "http_version": "1.1",
-            "method": "GET",
-            "scheme": "http",
-            "path": "/large.bin",
-            "raw_path": b"/large.bin",
-            "query_string": b"",
-            "root_path": "",
-            "headers": headers or [],
-            "extensions": extensions,
-            "client": ("127.0.0.1", 1),
-            "server": ("testserver", 80),
-        },
-    )
-    await app(scope, receive, send)
+    await app(asgi_scope(raw_path=b"/large.bin", headers=headers or [], extensions=extensions), receive, send)
     return messages
