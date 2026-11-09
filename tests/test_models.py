@@ -5,8 +5,8 @@ from typing import Any, cast
 import pytest
 
 from www.data import BIOGRAPHY, METADATA, SITE_PAGES, article_filter_url, get_structured_data, markdown_to_html
-from www.models import Article, ArticleIndexView, Tag, utc_midnight
-from www.tags import TAGS, is_tag, sort_tags, tag_names, validate_tag_vocabulary
+from www.models import Article, ArticleIndexView, utc_midnight
+from www.tags import TAGS, is_tag, sort_tags, tag_names
 
 
 def article() -> Article:
@@ -76,31 +76,11 @@ def test_closed_tag_vocabulary_and_site_relation_are_stable() -> None:
     assert SITE_PAGES[0].relates_to("the-affordable-ai-agents")
 
 
-@pytest.mark.parametrize(
-    ("tag", "message"),
-    [
-        (Tag("", "Description."), "tag name must not be empty"),
-        (Tag("   ", "Description."), "tag name must not be empty"),
-        (Tag(" Agent", "Description."), "tag name must be trimmed"),
-        (Tag("Agent", ""), "tag description must not be empty"),
-        (Tag("Agent", "\t"), "tag description must not be empty"),
-        (Tag("Agent", "Description. "), "tag description must be trimmed"),
-    ],
-)
-def test_tag_vocabulary_rejects_blank_or_untrimmed_fields(tag: Tag, message: str) -> None:
-    with pytest.raises(ValueError, match=message):
-        validate_tag_vocabulary((tag,))
+def test_tag_vocabulary_is_trimmed_described_and_unique() -> None:
+    names = tag_names()
 
-
-def test_tag_vocabulary_rejects_duplicate_names_hidden_by_set_equality() -> None:
-    tags = (
-        Tag("Agent", "First description."),
-        Tag("Agent", "Second description."),
-    )
-
-    assert {tag.name for tag in tags} == {"Agent"}
-    with pytest.raises(ValueError, match="duplicate tag name: 'Agent'"):
-        validate_tag_vocabulary(tags)
+    assert all(text and text == text.strip() for tag in TAGS for text in (tag.name, tag.description))
+    assert len(set(names)) == len(names)
 
 
 def test_template_helpers_keep_safe_markdown_filters_and_json_ld() -> None:

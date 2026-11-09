@@ -12,7 +12,7 @@
 
 @source "../../src/www/templates/**/*.html";
 
-@source inline("badge-{warning,info,success,error} text-{warning,info,success,error}-content");
+@source inline("badge-{info,error} text-{info,error}-content");
 
 /* Palette: fmind/theme DESIGN.md color tokens. Dark shades carry text; light
    shades carry surfaces. The logo and primary accent share the same blue. */
@@ -355,10 +355,6 @@ html:has(#consent:not([hidden])) body > footer {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  html {
-    scroll-behavior: auto;
-  }
-
   *,
   *::before,
   *::after {

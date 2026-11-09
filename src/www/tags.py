@@ -2,24 +2,6 @@
 
 from www.models import Tag
 
-
-def validate_tag_vocabulary(tags: tuple[Tag, ...]) -> None:
-    """Reject malformed tag metadata before helpers derive lookup state."""
-    seen: set[str] = set()
-    for index, tag in enumerate(tags):
-        if not tag.name.strip():
-            raise ValueError(f"tag name must not be empty at index {index}")
-        if tag.name != tag.name.strip():
-            raise ValueError(f"tag name must be trimmed at index {index}: {tag.name!r}")
-        if tag.name in seen:
-            raise ValueError(f"duplicate tag name: {tag.name!r}")
-        if not tag.description.strip():
-            raise ValueError(f"tag description must not be empty for {tag.name!r}")
-        if tag.description != tag.description.strip():
-            raise ValueError(f"tag description must be trimmed for {tag.name!r}")
-        seen.add(tag.name)
-
-
 TAGS = (
     Tag("Agent", "AI agents, agent platforms, and agent protocols."),
     Tag("Coding", "Coding agents, agentic development workflows, and developer tooling."),
@@ -32,7 +14,6 @@ TAGS = (
     Tag("Demo", "Hands-on builds, experiments, and end-to-end walkthroughs."),
     Tag("Guide", "Courses, tutorials, and principles for practitioners."),
 )
-validate_tag_vocabulary(TAGS)
 _TAG_ORDER = {tag.name: index for index, tag in enumerate(TAGS)}
 
 
