@@ -6,13 +6,16 @@ import pytest
 
 from www.assets import ApplicationAssets
 from www.content import ArticleCollection
-from www.data import METADATA, SITE_PAGES, get_structured_data
+from www.data import BADGES, METADATA, SITE_PAGES, get_structured_data
 from www.models import ArticleIndexView, PageMetadata
+from www.news import NEWS_FEED_PATH, parse_edition
 from www.pages import (
     agents_metadata,
     article_index_metadata,
     connect_metadata,
     home_metadata,
+    news_edition_metadata,
+    news_index_metadata,
     not_found_metadata,
     privacy_metadata,
     scan_metadata,
@@ -40,6 +43,28 @@ def test_home_and_not_found_metadata_have_opposite_indexing() -> None:
     assert home_metadata(structured).is_home
     assert not_found_metadata().no_index
     assert not_found_metadata().structured_data == "", "a missing page must not claim to be the profile"
+
+
+def test_person_claims_only_active_credentials() -> None:
+    person = next(node for node in json.loads(get_structured_data())["@graph"] if node["@type"] == "Person")
+
+    # The home page labels the other badges "Past credential".
+    assert [credential["url"] for credential in person["hasCredential"]] == [
+        badge.url for badge in BADGES if badge.active
+    ]
+
+
+def test_news_edition_metadata_is_noindex_without_structured_data() -> None:
+    edition = parse_edition("2026-11-03", "- [Title](https://example.com/a): About a.\n")
+    metadata = news_edition_metadata(edition)
+
+    assert metadata.no_index
+    assert metadata.structured_data == "", "a noindex edition needs no JSON-LD graph"
+    assert (metadata.title, metadata.canonical) == ("News: November 3, 2026 | Fmind", edition.url)
+    assert (metadata.feed_path, metadata.feed_title) == (NEWS_FEED_PATH, "Fmind news")
+    assert metadata.image_url == news_index_metadata().image_url
+    # The indexed /news/ page keeps its graph.
+    assert json.loads(news_index_metadata().structured_data)["@graph"][-1]["@type"] == "CollectionPage"
 
 
 @pytest.mark.parametrize(

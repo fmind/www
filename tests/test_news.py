@@ -432,6 +432,7 @@ def test_news_edition_page_links_neighbours_and_markdown(news_client: AppClient)
     # Editions stay out of search results; /news/ and the feed lead readers to them.
     assert '<meta name="robots" content="noindex, follow"/>' in page
     assert '<link rel="canonical"' not in page
+    assert "application/ld+json" not in page
     assert 'aria-label="Links of November 2, 2026"' in page
     assert ">Highlights<" not in page
     # Titles and descriptions are text, never markup.

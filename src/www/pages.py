@@ -150,15 +150,17 @@ def news_index_metadata() -> PageMetadata:
 
 
 def news_edition_metadata(edition: NewsEdition) -> PageMetadata:
-    page = _web_page(
-        "CollectionPage",
+    return replace(
+        _WEBSITE,
         title=f"News: {edition.title} | Fmind",
         description=edition.description,
         canonical=edition.url,
-        # Editions are short link summaries: readers follow them from /news/ and the feed, search engines do not index them.
+        # Editions are short link summaries: readers follow them from /news/ and the feed, search engines do not
+        # index them, so they carry no JSON-LD graph (like the 404 page).
         no_index=True,
+        feed_path=NEWS_FEED_PATH,
+        feed_title="Fmind news",
     )
-    return replace(page, feed_path=NEWS_FEED_PATH, feed_title="Fmind news")
 
 
 def site_structured_data(page: SitePage) -> str:

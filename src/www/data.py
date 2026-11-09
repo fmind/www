@@ -444,6 +444,8 @@ def _identity_graph() -> list[dict[str, object]]:
             "recognizedBy": {"@type": "Organization", "name": badge.issuer},
         }
         for badge in BADGES
+        # The page labels the others "Past credential"; structured data claims only current ones.
+        if badge.active
     ]
     person = {
         "@id": person_id,
