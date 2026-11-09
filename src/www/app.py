@@ -452,13 +452,18 @@ def create_app(
 
     @route("/llms.txt", http_method=_READ_METHODS, sync_to_thread=False)
     def llms_index(request: AppRequest) -> Response[bytes]:
-        return _snapshot_response(request, llms_index_snapshot, "text/plain; charset=utf-8", _HOUR_CACHE)
+        return _snapshot_response(request, llms_index_snapshot, "text/plain; charset=utf-8", _HOUR_CACHE, cors=True)
 
     @route("/llms-full.txt", http_method=_READ_METHODS, sync_to_thread=False)
     def llms_full_index(request: AppRequest) -> Response[bytes]:
         # Agents read the bulk export; search engines should index the individual articles instead.
         return _snapshot_response(
-            request, llms_full, "text/plain; charset=utf-8", _HOUR_CACHE, extra_headers={"x-robots-tag": "noindex"}
+            request,
+            llms_full,
+            "text/plain; charset=utf-8",
+            _HOUR_CACHE,
+            cors=True,
+            extra_headers={"x-robots-tag": "noindex"},
         )
 
     @route("/sitemap.xml", http_method=_READ_METHODS, sync_to_thread=False)

@@ -55,7 +55,7 @@
       <li><a href="/.well-known/api-catalog">GET /.well-known/api-catalog</a>: RFC 9727 linkset identifying the public interfaces and their documentation.</li>
       <li><a href="/health">GET /health</a>: process health as JSON, not proof of content freshness.</li>
     </ul>
-    <p>These GET endpoints also accept HEAD. Profile and news JSON and their schemas, article, news, and negotiated Markdown, the API catalog, MCP server cards, and the agent skill index and file permit cross-origin reads; <code>/llms.txt</code>, <code>/llms-full.txt</code>, and <code>/health</code> do not. No authentication or registration endpoint is needed for these public resources.</p>
+    <p>These GET endpoints also accept HEAD. Profile and news JSON and their schemas, article, news, and negotiated Markdown, <code>/llms.txt</code>, <code>/llms-full.txt</code>, the API catalog, MCP server cards, and the agent skill index and file permit cross-origin reads; <code>/health</code> does not. No authentication or registration endpoint is needed for these public resources.</p>
     <h2 id="skill">Reusable research skill</h2>
     <p>Download the <a href="/.well-known/agent-skills/fmind-research/SKILL.md">Fmind research skill</a> for a search, read, cite, and compare workflow. The <a href="/.well-known/agent-skills/index.json">discovery index</a> follows the Agent Skills Discovery v0.2.0 draft and includes a SHA-256 digest of the exact file. Verify the digest and review the instructions before installing it in your assistant. The skill contains no executable scripts.</p>
     <h2>Data boundaries</h2>

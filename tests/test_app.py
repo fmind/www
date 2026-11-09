@@ -363,12 +363,12 @@ def test_machine_surfaces_keep_content_cache_and_cors_contracts(client: AppClien
     cases = (
         ("/health", "application/json; charset=utf-8", None, None, b'{"status":"ok"}'),
         ("/robots.txt", "text/plain; charset=utf-8", "public, max-age=86400, must-revalidate", None, b"User-agent"),
-        ("/llms.txt", "text/plain; charset=utf-8", "public, max-age=3600, must-revalidate", None, b"## Articles"),
+        ("/llms.txt", "text/plain; charset=utf-8", "public, max-age=3600, must-revalidate", "*", b"## Articles"),
         (
             "/llms-full.txt",
             "text/plain; charset=utf-8",
             "public, max-age=3600, must-revalidate",
-            None,
+            "*",
             b"## Full articles",
         ),
         ("/sitemap.xml", "application/xml; charset=utf-8", "public, max-age=3600, must-revalidate", None, b"<urlset"),
