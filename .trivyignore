@@ -1,5 +1,8 @@
 # Docs: https://trivy.dev/docs/latest/configuration/filtering/#trivyignore
-# Reviewed misconfiguration exceptions for `mise run check:scan`.
+# Reviewed Trivy exceptions. Trivy loads this file by default, so it applies to every
+# Trivy run from the repository root (`check:scan`, `check:vuln`, and the image gates)
+# unless a run passes another `--ignorefile`, as the unfiltered evidence scan in
+# scripts/scan_deployed.py does.
 # Every entry states why the finding does not apply here — an unexplained id is
 # technical debt, and a check silenced without a reason is worse than no check.
 

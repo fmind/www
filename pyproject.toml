@@ -3,7 +3,7 @@
 [project]
 name = "www"
 version = "2.9.0"
-description = "Fmind freelance AI architecture portfolio, technical articles, and read-only MCP server"
+description = "Fmind freelance AI architecture portfolio, technical articles, daily tech news, decision tools, and read-only MCP server"
 readme = "README.md"
 requires-python = ">=3.14"
 license = "MIT"
@@ -34,7 +34,6 @@ dev = [
   "granian[reload]>=2.8.2,<3",
   "jsonschema>=4.26.0,<5",
   "pytest-cov>=7.1.0,<8",
-  "pytest-watcher>=0.6.3,<0.7",
   "pytest>=9.1.1,<10",
   "ruff>=0.17.1,<0.18",
   "ty>=0.0.78,<0.1",
@@ -55,7 +54,6 @@ extend-exclude = ["*.md"]
 [tool.ruff.format]
 docstring-code-format = true
 line-ending = "lf"
-quote-style = "double"
 
 [tool.ruff.lint]
 select = [

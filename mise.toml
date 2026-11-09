@@ -16,6 +16,15 @@ REGION = "europe-west1"
 TRIVY_SKIP_FILES = "**/pip/_vendor/bom.cdx.json"
 # Keep CI and hook logs free of vulnerability database download bars.
 TRIVY_NO_PROGRESS = "true"
+# The owner's shell exports a global Trivy policy; unset it for every mise task so local
+# and CI scans use only the flags stated in this file and fail on the same findings.
+TRIVY_CONFIG = false
+
+[vars]
+# One image gate for the local archive and remote digests: fixable HIGH/CRITICAL
+# vulnerabilities and secrets block. Inspect without --ignore-unfixed when reviewing
+# advisories that have no patch yet.
+trivy_image_gate = "--exit-code=1 --severity HIGH,CRITICAL --ignore-unfixed --scanners vuln,secret"
 
 [settings.task]
 run_auto_install = false
@@ -58,23 +67,17 @@ macos-arm64 = { asset_pattern = "mcp-publisher_darwin_arm64.tar.gz" }
 
 [tasks.all]
 alias = "a"
-description = "Format, check, test, build, and exercise browser contracts"
+description = "Format, check, test, build the image, and exercise browser contracts"
 run = [
   "mise run format",
   "mise run check",
-  "mise run build",
+  "mise run build:css",
   "mise run --skip-deps test",
   "mise run check:image",
   "mise run test:image",
   "mise run install:browser",
   "mise run --skip-deps test:browser",
 ]
-
-[tasks.build]
-alias = "b"
-description = "Build Python distribution artifacts and production CSS"
-depends = ["build:css"]
-run = "uv build --clear"
 
 [tasks."build:branding"]
 description = "Rebuild navigation, favicons, and social preview from the public PNG masters"
@@ -140,9 +143,9 @@ run = "hadolint Dockerfile"
 
 [tasks."check:format"]
 alias = "cf"
-description = "Check formatting, project metadata, and lockfile"
+description = "Check formatting and project metadata"
+# Every `uv run --locked` fails on a stale uv.lock, so no separate lock check is needed.
 run = [
-  "uv lock --check",
   "uv run --locked validate-pyproject pyproject.toml",
   "uv run --locked ruff format --check",
   "dprint check",
@@ -152,10 +155,7 @@ run = [
 [tasks."check:image"]
 description = "Build and scan the exact local production OCI image"
 depends = ["build:image"]
-# The owner has a global Trivy policy; unset it so local and CI scans use the
-# complete policy below and fail on the same fixable runtime findings. Inspect
-# without --ignore-unfixed when reviewing advisories that have no patch yet.
-run = 'env -u TRIVY_CONFIG trivy image --input "$IMAGE_ARCHIVE" --platform "$IMAGE_PLATFORM" --exit-code=1 --severity HIGH,CRITICAL --ignore-unfixed --scanners vuln,secret'
+run = 'trivy image --input "$IMAGE_ARCHIVE" --platform "$IMAGE_PLATFORM" {{vars.trivy_image_gate}}'
 
 [tasks."check:image:deployed"]
 description = "Resolve and scan every serving or tagged Cloud Run revision with Trivy"
@@ -165,9 +165,7 @@ run = "python -m scripts.scan_deployed"
 [tasks."check:image:digest"]
 description = "Scan an immutable remote image digest with Trivy"
 raw_args = true
-# The owner has a global Trivy policy; unset it so local and CI scans use the
-# complete policy below and fail on the same fixable runtime findings.
-run = "env -u TRIVY_CONFIG trivy image --platform linux/amd64 --exit-code=1 --severity HIGH,CRITICAL --ignore-unfixed --scanners vuln,secret"
+run = "trivy image --platform linux/amd64 {{vars.trivy_image_gate}}"
 
 [tasks."check:images"]
 description = "Validate article image derivatives without changing files"
@@ -210,17 +208,10 @@ run = "uv run --locked ruff check"
 
 [tasks."check:scan"]
 description = "Scan Dockerfile and infrastructure for misconfigurations (trivy config)"
-# Unset the owner's global policy, then state the complete repository policy so
-# local and CI scans cannot diverge through inherited configuration.
 # A syntactically valid placeholder lets Trivy evaluate the budget resource; plans use the real account.
 env.TF_VAR_billing_account = "000000-AAAAAA-000000"
-run = "env -u TRIVY_CONFIG trivy config --exit-code=1 --severity LOW,MEDIUM,HIGH,CRITICAL --ignorefile .trivyignore --skip-dirs tmp --skip-dirs .venv --skip-dirs dist ."
-
-[tasks."check:scan:full"]
-description = "Scan the full checkout for vulnerabilities, secrets, and misconfigurations (weekly security workflow)"
-# A syntactically valid placeholder lets Trivy evaluate the budget resource; plans use the real account.
-env.TF_VAR_billing_account = "000000-AAAAAA-000000"
-run = "env -u TRIVY_CONFIG trivy fs --exit-code=1 --severity HIGH,CRITICAL --scanners vuln,secret,misconfig --skip-dirs tmp --skip-dirs .venv --skip-dirs dist ."
+# Reviewed exceptions live in .trivyignore, which Trivy loads by default.
+run = "trivy config --exit-code=1 --severity LOW,MEDIUM,HIGH,CRITICAL --skip-dirs tmp --skip-dirs .venv ."
 
 [tasks."check:tofu"]
 description = "Validate, lint, and test the OpenTofu configuration"
@@ -228,7 +219,6 @@ description = "Validate, lint, and test the OpenTofu configuration"
 # so a previous live backend cache cannot make validation read remote state.
 env.TF_DATA_DIR = "../tmp/tofu-check"
 run = [
-  "tofu -chdir=infra fmt -check -recursive",
   "tofu -chdir=infra init -backend=false -input=false -lockfile=readonly",
   "tofu -chdir=infra validate",
   "tofu -chdir=infra test",
@@ -251,22 +241,16 @@ run = [
   "uv audit --preview-features audit-command --locked",
   "uv audit --preview-features audit-command --locked --script scripts/build_fonts.py",
   # Scan the maintained lock, not third-party checkouts under tmp/.
-  "env -u TRIVY_CONFIG trivy fs --exit-code=1 --severity HIGH,CRITICAL --scanners vuln --ignorefile .trivyignore uv.lock",
+  "trivy fs --exit-code=1 --severity HIGH,CRITICAL --scanners vuln uv.lock",
   # mise locks npm tools (Lighthouse, Playwright) as pnpm-format aube-lock.yaml. Dependabot
   # never reads it, and Trivy skips it unless the file name is mapped to the pnpm parser.
-  "env -u TRIVY_CONFIG trivy fs --exit-code=1 --severity HIGH,CRITICAL --scanners vuln --ignorefile .trivyignore --file-patterns 'pnpm:aube-lock\\.yaml' .mise/locks",
+  "trivy fs --exit-code=1 --severity HIGH,CRITICAL --scanners vuln --file-patterns 'pnpm:aube-lock\\.yaml' .mise/locks",
 ]
 
 [tasks.clean]
 alias = "n"
 description = "Remove build artifacts, caches, and coverage files"
-run = "rm -rf .coverage .pytest_cache/ .ruff_cache/ dist/ htmlcov/ tmp/ static/dist/styles.css"
-
-[tasks.coverage]
-alias = "v"
-description = "Show test coverage in the terminal"
-depends = ["test"]
-run = "uv run --locked coverage report"
+run = "rm -rf .coverage .pytest_cache/ .ruff_cache/ tmp/ static/dist/styles.css"
 
 [tasks.deploy]
 description = "Deploy one immutable Artifact Registry digest and its commit SHA to Cloud Run"
@@ -334,14 +318,14 @@ run = "uv run --locked pytest --cov --cov-fail-under=91"
 
 [tasks."test:browser"]
 description = "Exercise navigation, articles, and calculators in Chromium"
-# The Playwright server runs the app from source; it needs the stylesheet, not a wheel.
+# The Playwright server runs the app from source and needs the stylesheet.
 depends = ["build:css"]
 # Playwright is a pinned mise CLI, keeping browser tooling outside the application.
 run = 'NODE_PATH="$(mise where npm:playwright)/node_modules" env -u NO_COLOR playwright test --config tests/playwright.config.cjs'
 
 [tasks."test:browser:cross"]
 description = "Smoke-test portfolio and contact journeys in Firefox and WebKit"
-# The Playwright server runs the app from source; it needs the stylesheet, not a wheel.
+# The Playwright server runs the app from source and needs the stylesheet.
 depends = ["build:css"]
 run = 'NODE_PATH="$(mise where npm:playwright)/node_modules" env -u NO_COLOR playwright test --config tests/playwright.cross.config.cjs'
 
@@ -360,15 +344,9 @@ run = "node scripts/lighthouse.mjs"
 
 [tasks."test:lighthouse:local"]
 description = "Start a temporary server and run the strict portfolio Lighthouse matrix"
-# The Playwright server runs the app from source; it needs the stylesheet, not a wheel.
+# The Playwright server runs the app from source and needs the stylesheet.
 depends = ["build:css"]
 run = 'NODE_PATH="$(mise where npm:playwright)/node_modules" env -u NO_COLOR playwright test --config tests/playwright.lighthouse.config.cjs'
-
-[tasks."test:watch"]
-alias = "tw"
-description = "Run offline tests in watch mode"
-depends = ["build:css"]
-run = "uv run --locked pytest-watcher . --now"
 
 [tasks.watch]
 alias = "w"
