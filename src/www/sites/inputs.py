@@ -151,21 +151,6 @@ def _parse_bounded_int(
     return value
 
 
-def _parse_bounded_count(
-    query: Query,
-    key: str,
-    fallback: float,
-    minimum: int,
-    maximum: int,
-    validation: list[str],
-) -> float:
-    """Parse a whole quantity stored as a float, matching the form's integer step."""
-    # The out-of-range marker distinguishes a missing or rejected value from a parsed one.
-    marker = minimum - 1
-    value = _parse_bounded_int(query, key, marker, minimum, maximum, validation)
-    return fallback if value == marker else float(value)
-
-
 # (attribute, query key, parser, minimum, maximum); each parser takes the current value as its fallback.
 type _BoundedField = tuple[str, str, Callable[[Query, str, Any, Any, Any, list[str]], float], float, float]
 
@@ -176,16 +161,16 @@ _FLEET_FIELDS: tuple[_BoundedField, ...] = (
     ("memory_overhead_pct", "overhead", _parse_bounded_float, 0, 50),
     ("tokens_per_second", "throughput", _parse_bounded_float, 0.1, 1_000_000),
     ("target_utilization", "utilization", _parse_bounded_float, 1, 95),
-    ("output_tokens_request", "tokens", _parse_bounded_count, 1, 1_000_000),
-    ("input_tokens_request", "input-tokens", _parse_bounded_count, 1, 1_000_000),
+    ("output_tokens_request", "tokens", _parse_bounded_int, 1, 1_000_000),
+    ("input_tokens_request", "input-tokens", _parse_bounded_int, 1, 1_000_000),
     ("requests_per_day", "requests", _parse_bounded_float, 1, 10_000_000),
-    ("active_days", "days", _parse_bounded_count, 1, 31),
+    ("active_days", "days", _parse_bounded_int, 1, 31),
 )
 _OPTION_FIELDS: tuple[_BoundedField, ...] = (
     ("cache_requests", "cache-requests", _parse_bounded_int, 1, 1_000_000),
     ("concurrency", "concurrency", _parse_bounded_int, 1, 100_000),
     ("measured_concurrency", "measured-concurrency", _parse_bounded_int, 0, 100_000),
-    ("cache_prefix_tokens", "cache-prefix", _parse_bounded_count, 0, 1_000_000),
+    ("cache_prefix_tokens", "cache-prefix", _parse_bounded_int, 0, 1_000_000),
     ("target_first_token", "target-first", _parse_bounded_float, 0.1, 3600),
     ("target_completion", "target-complete", _parse_bounded_float, 0.1, 86_400),
     ("measured_first_token", "measured-first", _parse_bounded_float, 0, 3600),
@@ -540,8 +525,8 @@ def pilot_configuration_id(inputs: HostingInputs) -> str:
         str(inputs.replicas),
         _float_for_url(inputs.memory_overhead_pct),
         _float_for_url(inputs.tokens_per_second),
-        _float_for_url(inputs.input_tokens_request),
-        _float_for_url(inputs.output_tokens_request),
+        str(inputs.input_tokens_request),
+        str(inputs.output_tokens_request),
         str(inputs.concurrency),
     )
     return "v1-" + sha256("\0".join(values).encode()).hexdigest()[:24]
@@ -620,12 +605,12 @@ def scenario_parameters(inputs: HostingInputs) -> dict[str, str]:
         "overhead": _float_for_url(inputs.memory_overhead_pct),
         "throughput": _float_for_url(inputs.tokens_per_second),
         "utilization": _float_for_url(inputs.target_utilization),
-        "tokens": _float_for_url(inputs.output_tokens_request),
-        "input-tokens": _float_for_url(inputs.input_tokens_request),
+        "tokens": str(inputs.output_tokens_request),
+        "input-tokens": str(inputs.input_tokens_request),
         "requests": _float_for_url(inputs.requests_per_day),
-        "days": _float_for_url(inputs.active_days),
+        "days": str(inputs.active_days),
         "window": _float_for_url(inputs.demand_window_hours),
-        "cache-prefix": _float_for_url(inputs.cache_prefix_tokens),
+        "cache-prefix": str(inputs.cache_prefix_tokens),
         "target-first": _float_for_url(inputs.target_first_token),
         "target-complete": _float_for_url(inputs.target_completion),
         "measured-first": _float_for_url(inputs.measured_first_token),

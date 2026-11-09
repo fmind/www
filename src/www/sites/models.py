@@ -89,9 +89,9 @@ class DemandPreset:
     name: str
     description: str
     requests_per_day: float
-    active_days: float
-    input_tokens: float
-    output_tokens: float
+    active_days: int
+    input_tokens: int
+    output_tokens: int
     window_hours: float = 24
     scheduled: bool = False
 
@@ -163,13 +163,13 @@ class HostingInputs:
     memory_overhead_pct: float
     tokens_per_second: float
     target_utilization: float
-    output_tokens_request: float
-    input_tokens_request: float
+    output_tokens_request: int
+    input_tokens_request: int
     requests_per_day: float
-    active_days: float
+    active_days: int
     demand_window_hours: float
     api_mode: APIMode
-    cache_prefix_tokens: float
+    cache_prefix_tokens: int
     cache_requests: int
     concurrency: int
     target_first_token: float

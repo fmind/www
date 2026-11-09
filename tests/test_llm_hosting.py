@@ -623,7 +623,11 @@ QUALIFIED_VERDICTS = {"Fleet has a cost case", "API costs less", "No API accepts
 
 @pytest.mark.parametrize("parameter", ["days", "tokens", "input-tokens", "cache-prefix"])
 def test_whole_quantities_reject_fractions_for_agents(parameter: str) -> None:
-    assert view({parameter: "21"}).validation == ()
+    result = view({parameter: "21"})
+    assert result.validation == ()
+    # Whole quantities are integers end to end: shared URLs never gain a decimal point.
+    assert scenario_parameters(result.inputs)[parameter] == "21"
+    assert f'"{parameter}":"21"' in compare_hosting({parameter: "21"}).model_dump_json()
     with pytest.raises(ValueError, match=rf"\({parameter}\) must be a whole number"):
         compare_hosting({parameter: "21.5"})
 
