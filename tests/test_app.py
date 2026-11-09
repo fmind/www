@@ -45,6 +45,8 @@ MCP_INITIALIZE = {
     },
 }
 MCP_ACCEPT = {"accept": "application/json, text/event-stream"}
+# MCP validates Host and has no test-only entry, so its clients call it as a local client does.
+LOCAL_BASE_URL = "http://127.0.0.1"
 
 FONT_PATHS = (
     "/static/fonts/GoogleSans-Variable.woff2",
@@ -65,7 +67,7 @@ class RecordingLogger:
 
 @pytest.fixture(scope="module")
 def client() -> Iterator[AppClient]:
-    with TestClient(app) as test_client:
+    with TestClient(app, base_url=LOCAL_BASE_URL) as test_client:
         yield test_client
 
 
@@ -83,7 +85,7 @@ def test_startup_renders_article_markdown_once_for_all_public_consumers(
         return original(article)
 
     monkeypatch.setattr(publications_module, "render_article_markdown", render)
-    with TestClient(make_app()) as client:
+    with TestClient(make_app(), base_url=LOCAL_BASE_URL) as client:
         article = next(item for item in collection.all if not item.draft)
         markdown = client.get(article.markdown_path()).text
         assert markdown in client.get("/llms-full.txt").text
@@ -999,9 +1001,11 @@ def test_mcp_endpoint_is_stateless_bounded_and_origin_protected(
     )
     assert rejected.status_code == 403
 
-    # Production redirects the apex to www first, so the endpoint never serves that host or origin.
-    assert client.post("/mcp", json=initialize, headers={**headers, "host": "fmind.dev"}).status_code == 421
-    assert client.post("/mcp", json=initialize, headers={**headers, "origin": "https://fmind.dev"}).status_code == 403
+    # Production redirects the apex to www first, and no test-only host is allowed in production.
+    for host in ("fmind.dev", "testserver.local"):
+        assert client.post("/mcp", json=initialize, headers={**headers, "host": host}).status_code == 421
+    for origin in ("https://fmind.dev", "http://testserver.local"):
+        assert client.post("/mcp", json=initialize, headers={**headers, "origin": origin}).status_code == 403
 
     for fetch_site in ("cross-site", "same-site"):
         rejected = client.post(
@@ -1028,7 +1032,7 @@ def test_mcp_endpoint_is_stateless_bounded_and_origin_protected(
 
     logger = RecordingLogger()
     logged_app = make_app(logger=logger)
-    with TestClient(logged_app) as test_client:
+    with TestClient(logged_app, base_url=LOCAL_BASE_URL) as test_client:
         assert test_client.post("/mcp", json=initialize, headers=headers).status_code == 200
     request_log = next(values for event, values in logger.records if event == "http request processed")
     assert request_log["path"] == "/mcp"
@@ -1127,7 +1131,7 @@ def test_mcp_caller_mistakes_are_invalid_params_without_error_logs(
         assert response.status_code == (400 if modern and "error" in body else 200)
         return body
 
-    with TestClient(make_app()) as test_client:
+    with TestClient(make_app(), base_url=LOCAL_BASE_URL) as test_client:
         prompt_errors = [
             call(test_client, "prompts/get", {"name": "assess_fit", "arguments": {}})["error"],
             call(test_client, "prompts/get", {"name": "brief_me", "arguments": {"audience": "x", "extra": "y"}})[

@@ -346,7 +346,7 @@ def test_http_contract_probe_matches_the_real_application_wire(
 
     # The MCP SDK deliberately makes each transport manager single-use. Build
     # an isolated application just as a fresh server process does.
-    with TestClient(make_app()) as client:
+    with TestClient(make_app(), base_url="http://127.0.0.1") as client:
 
         def request(
             port: int,

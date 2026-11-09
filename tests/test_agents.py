@@ -27,7 +27,8 @@ from www.sites.models import HostingEstimate, HostingInputs
 
 @pytest.fixture(scope="module")
 def client(make_app: Callable[[], Litestar]) -> Iterator[TestClient[Any]]:
-    with TestClient(make_app()) as instance:
+    # MCP validates Host and has no test-only entry: call it as a local client does.
+    with TestClient(make_app(), base_url="http://127.0.0.1") as instance:
         yield instance
 
 

@@ -668,8 +668,6 @@ def create_mcp_http_app(server: MCPServer[None]) -> Starlette:
         allowed_hosts=[
             "www.fmind.dev",
             "www.fmind.dev:*",
-            "testserver.local",
-            "testserver.local:*",
             "localhost",
             "localhost:*",
             "127.0.0.1",
@@ -677,8 +675,6 @@ def create_mcp_http_app(server: MCPServer[None]) -> Starlette:
         ],
         allowed_origins=[
             "https://www.fmind.dev",
-            "http://testserver.local",
-            "http://testserver.local:*",
             "http://localhost",
             "http://localhost:*",
             "http://127.0.0.1",
