@@ -964,6 +964,17 @@ def test_unexpected_failure_log_joins_the_cloud_run_request_trace(
     assert "trace_id" not in error
 
 
+def test_startup_fails_when_a_registered_site_page_has_no_view(
+    monkeypatch: pytest.MonkeyPatch, make_app: Callable[..., Litestar]
+) -> None:
+    orphan = replace(SITE_PAGES[0], slug="orphan-tool", url=f"{METADATA.site_url}/sites/orphan-tool/")
+    monkeypatch.setattr(app_module, "SITE_PAGES", (*SITE_PAGES, orphan))
+
+    # Without the startup check the page would be listed on /sites/ and answer 404.
+    with pytest.raises(RuntimeError, match="unmatched: orphan-tool"):
+        make_app(logger=RecordingLogger())
+
+
 def test_startup_logs_one_record_with_every_phase_duration(
     snapshots: tuple[ApplicationAssets, ArticleCollection],
 ) -> None:

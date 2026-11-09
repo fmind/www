@@ -1,7 +1,7 @@
 """Litestar application assembly for every human and machine surface."""
 
 import hashlib
-from collections.abc import AsyncGenerator, Generator
+from collections.abc import AsyncGenerator, Callable, Generator
 from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -107,6 +107,18 @@ _READ_METHODS = (HttpMethod.GET, HttpMethod.HEAD)
 # A plain alias, not a `type` statement: Litestar 2.25+ must resolve handler
 # `request` annotations to Request at runtime to accept the reserved kwarg.
 AppRequest = Request[Any, Any, Any]
+
+# The template and server-owned view of each page registered in data.SITE_PAGES.
+_SITE_VIEWS: dict[str, tuple[PageTemplate, Callable[[AppRequest], object]]] = {
+    "llm-self-hosting": (
+        PageTemplate.LLM_SELF_HOSTING,
+        lambda request: build_llm_self_hosting_view(request.query_params),
+    ),
+    "mcp-context-cost": (
+        PageTemplate.MCP_CONTEXT_COST,
+        lambda request: view_from_query(request.query_params.dict()),
+    ),
+}
 
 
 def _static_response(
@@ -320,6 +332,11 @@ def create_app(
     privacy_page = privacy_metadata()
     site_index_page = site_index_metadata()
     site_pages_by_slug = {page.slug: page for page in SITE_PAGES}
+    if unmatched := sorted(site_pages_by_slug.keys() ^ _SITE_VIEWS.keys()):
+        msg = (
+            f"data.SITE_PAGES and the site views in app.py must list the same slugs; unmatched: {', '.join(unmatched)}"
+        )
+        raise RuntimeError(msg)
     site_metadata_by_slug = {
         slug: site_page_metadata(page, site_structured_data(page)) for slug, page in site_pages_by_slug.items()
     }
@@ -611,26 +628,10 @@ def create_app(
     def site_page(slug: FromPath[str], request: AppRequest) -> Redirect | Response[str]:
         if not _request_path(request).endswith("/"):
             return _redirect_keeping_query(request, f"/sites/{quote(slug, safe='')}/")
-        page = site_pages_by_slug.get(slug)
-        if page is None:
+        if slug not in site_pages_by_slug:
             return render_not_found(request)
-        if slug == "mcp-context-cost":
-            return render_page(
-                request,
-                PageTemplate.MCP_CONTEXT_COST,
-                site_metadata_by_slug[slug],
-                {"view": view_from_query(request.query_params.dict())},
-            )
-        if slug != "llm-self-hosting":
-            return render_not_found(request)
-        return render_page(
-            request,
-            PageTemplate.LLM_SELF_HOSTING,
-            site_metadata_by_slug[slug],
-            {
-                "view": build_llm_self_hosting_view(request.query_params),
-            },
-        )
+        template, build_view = _SITE_VIEWS[slug]
+        return render_page(request, template, site_metadata_by_slug[slug], {"view": build_view(request)})
 
     @route("/", http_method=_READ_METHODS, sync_to_thread=True)
     def home(request: AppRequest) -> Response[str] | Response[bytes]:
