@@ -11,7 +11,7 @@ from litestar import Litestar, route
 from litestar.enums import HttpMethod
 from litestar.middleware import DefineMiddleware
 from litestar.testing import TestClient
-from litestar.types import ASGIApp, HTTPRequestEvent, HTTPResponseStartEvent, Message, Scope
+from litestar.types import ASGIApp, HTTPRequestEvent, Message, Scope
 
 from www.config import Config
 from www.middleware import SiteMiddleware
@@ -69,21 +69,15 @@ def test_full_get_and_head_keep_static_and_outer_security_headers(asset: Path) -
     assert head.headers["accept-ranges"] == "bytes"
 
 
-def test_full_get_uses_server_pathsend_when_explicitly_enabled(asset: Path) -> None:
-    messages = asyncio.run(
-        _invoke(
-            range_file_response(
-                asset,
-                content_type=_CONTENT_TYPE,
-                cache_control=_CACHE_CONTROL,
-                etag=_ETAG,
-                use_pathsend=True,
-            ),
-            extensions={"http.response.pathsend": {}},
-        )
-    )
+def test_full_get_uses_server_pathsend_when_offered(asset: Path) -> None:
+    response = range_file_response(asset, content_type=_CONTENT_TYPE, cache_control=_CACHE_CONTROL, etag=_ETAG)
+    extensions: dict[str, dict[object, object]] = {"http.response.pathsend": {}}
+    full = asyncio.run(_invoke(response, extensions=extensions))
+    partial = asyncio.run(_invoke(response, headers=[(b"range", b"bytes=0-3")], extensions=extensions))
 
-    assert messages[-1] == {"type": "http.response.pathsend", "path": str(asset)}
+    assert full[-1] == {"type": "http.response.pathsend", "path": str(asset)}
+    # The server would send the whole file, so a range streams its own bytes.
+    assert partial[-1] == {"type": "http.response.body", "body": b"0123", "more_body": False}
 
 
 @pytest.mark.parametrize(
@@ -129,10 +123,6 @@ def test_if_range_requires_the_exact_strong_etag(asset: Path) -> None:
             "/video.mp4",
             headers={"range": "bytes=2-5", "if-range": _ETAG},
         )
-        matching_multiple = client.get(
-            "/video.mp4",
-            headers={"range": "bytes=0-1,10-11", "if-range": _ETAG},
-        )
         stale = client.get(
             "/video.mp4",
             headers={"range": "bytes=2-5", "if-range": '"stale"'},
@@ -148,12 +138,6 @@ def test_if_range_requires_the_exact_strong_etag(asset: Path) -> None:
 
     assert matching.status_code == 206
     assert matching.content == b"2345"
-    expected_multiple = _multipart_body(
-        matching_multiple.headers["content-type"],
-        [("bytes 0-1/16", b"01"), ("bytes 10-11/16", b"ab")],
-    )
-    assert matching_multiple.status_code == 206
-    assert matching_multiple.content == expected_multiple
     for response in (stale, weak, ignored_invalid):
         assert response.status_code == 200
         assert response.content == _BODY
@@ -206,11 +190,13 @@ def test_empty_file_ignores_a_non_overlapping_range(tmp_path: Path) -> None:
     [
         "bytes=bogus",
         "bytes=10-5",
-        "bytes=0-1,bogus",
         "bytes=-",
         "bytes=--5",
         "bytes=x-5",
         "bytes=0-x",
+        # RFC 9110 positions are digits only, without a sign.
+        "bytes=+1-5",
+        "bytes=-+5",
         # 19 digits, but above the signed 64-bit range.
         "bytes=9223372036854775808-",
     ],
@@ -233,7 +219,7 @@ def test_a_file_that_shrinks_mid_stream_fails_instead_of_sending_a_short_body() 
 
     # The response already promised 10 bytes; the server must abort, not end the body early.
     with pytest.raises(OSError, match="changed while it was being served"):
-        asyncio.run(_stream(BytesIO(b"abc"), 10, send, final=True))
+        asyncio.run(_stream(BytesIO(b"abc"), 10, send))
     assert sent == [{"type": "http.response.body", "body": b"abc", "more_body": True}]
 
 
@@ -246,68 +232,27 @@ def test_oversized_decimal_is_rejected_without_escaping_the_range_boundary(asset
     assert "content-range" not in response.headers
 
 
-def test_multiple_byte_ranges_return_multipart_in_request_order(asset: Path) -> None:
-    with _client(asset) as client:
-        response = client.get("/video.mp4", headers={"range": "bytes=0-3, 10-11"})
-
-    assert response.status_code == 206
-    assert response.headers["accept-ranges"] == "bytes"
-    assert "content-range" not in response.headers
-    expected = _multipart_body(
-        response.headers["content-type"],
-        [("bytes 0-3/16", b"0123"), ("bytes 10-11/16", b"ab")],
-    )
-    assert response.content == expected
-    assert response.headers["content-length"] == str(len(expected))
-
-
-def test_eight_satisfiable_ranges_are_allowed(asset: Path) -> None:
-    selected_offsets = range(0, len(_BODY), 2)
-    range_header = "bytes=-0,99-," + ",".join(f"{offset}-{offset}" for offset in selected_offsets)
-
-    with _client(asset) as client:
-        response = client.get("/video.mp4", headers={"range": range_header})
-
-    expected = _multipart_body(
-        response.headers["content-type"],
-        [(f"bytes {offset}-{offset}/16", _BODY[offset : offset + 1]) for offset in selected_offsets],
-    )
-    assert response.status_code == 206
-    assert response.content == expected
-
-
-def test_multiple_ranges_drop_non_overlaps_and_empty_members(asset: Path) -> None:
-    with _client(asset) as client:
-        one_overlap = client.get("/video.mp4", headers={"range": "bytes=99-,2-5"})
-        empty_members = client.get("/video.mp4", headers={"range": "bytes=,0-1,,4-5,"})
-
-    assert one_overlap.status_code == 206
-    assert one_overlap.content == b"2345"
-    assert one_overlap.headers["content-range"] == "bytes 2-5/16"
-
-    expected = _multipart_body(
-        empty_members.headers["content-type"],
-        [("bytes 0-1/16", b"01"), ("bytes 4-5/16", b"45")],
-    )
-    assert empty_members.status_code == 206
-    assert empty_members.content == expected
-
-
 @pytest.mark.parametrize(
     "range_header",
     [
-        "bytes=0-15,0-0",
-        "bytes=0-3,0-3",
+        "bytes=0-3, 10-11",
+        "bytes=99-,2-5",
+        "bytes=0-1,bogus",
+        "bytes=0-3,",
         "bytes=" + ",".join(f"{index}-{index}" for index in range(9)),
     ],
-    ids=("overlap", "repeat", "more-than-eight"),
+    ids=("two", "one-overlap", "malformed-member", "empty-member", "nine"),
 )
-def test_overlapping_repeated_or_excessive_ranges_are_rejected(asset: Path, range_header: str) -> None:
+def test_range_lists_are_ignored_and_get_the_full_representation(asset: Path, range_header: str) -> None:
+    # RFC 9110 section 14.2 lets a server ignore Range; there is no multipart/byteranges response.
     with _client(asset) as client:
-        response = client.get("/video.mp4", headers={"range": range_header})
+        response = client.get("/video.mp4", headers={"range": range_header, "if-range": _ETAG})
 
-    assert response.status_code == 416
-    assert response.content == b"invalid range\n"
+    assert response.status_code == 200
+    assert response.content == _BODY
+    assert response.headers["accept-ranges"] == "bytes"
+    assert response.headers["content-length"] == str(len(_BODY))
+    assert response.headers["content-type"] == _CONTENT_TYPE
     assert "content-range" not in response.headers
 
 
@@ -347,53 +292,11 @@ def test_large_file_is_emitted_in_bounded_chunks(tmp_path: Path) -> None:
     assert [message.get("more_body", False) for message in body_messages] == [True, True, False]
 
 
-def test_large_multipart_ranges_are_emitted_in_bounded_chunks(tmp_path: Path) -> None:
-    body = bytes(range(256)) * 8_193
-    path = tmp_path / "large.bin"
-    path.write_bytes(body)
-
-    messages = asyncio.run(
-        _invoke(
-            range_file_response(path, content_type=_CONTENT_TYPE, cache_control="no-cache", etag=_ETAG),
-            headers=[(b"range", b"bytes=0-1100000,1100001-2097407")],
-        )
-    )
-    start = cast("HTTPResponseStartEvent", messages[0])
-    body_messages = [message for message in messages if message["type"] == "http.response.body"]
-    response_headers = {key.decode("ascii"): value.decode("latin-1") for key, value in start["headers"]}
-    expected = _multipart_body(
-        response_headers["content-type"],
-        [("bytes 0-1100000/2097408", body[:1_100_001]), ("bytes 1100001-2097407/2097408", body[1_100_001:])],
-    )
-
-    assert start["status"] == 206
-    assert b"".join(message.get("body", b"") for message in body_messages) == expected
-    assert max(len(message.get("body", b"")) for message in body_messages) <= 1024 * 1024
-    assert [message.get("more_body", False) for message in body_messages][-1] is False
-
-
 def test_non_regular_path_is_rejected_before_response_start(tmp_path: Path) -> None:
     response = range_file_response(tmp_path, content_type=_CONTENT_TYPE, cache_control="no-cache", etag=_ETAG)
 
     with pytest.raises(ValueError, match="not a regular file"):
         asyncio.run(_invoke(response))
-
-
-def _multipart_body(content_type: str, parts: list[tuple[str, bytes]]) -> bytes:
-    prefix, separator, boundary = content_type.partition("boundary=")
-    assert prefix == "multipart/byteranges; "
-    assert separator
-    assert boundary
-    encoded_boundary = boundary.encode("ascii")
-    body = bytearray()
-    for index, (content_range, content) in enumerate(parts):
-        body.extend(b"\r\n" if index else b"")
-        body.extend(b"--" + encoded_boundary + b"\r\n")
-        body.extend(f"Content-Range: {content_range}\r\n".encode("ascii"))
-        body.extend(f"Content-Type: {_CONTENT_TYPE}\r\n\r\n".encode("latin-1"))
-        body.extend(content)
-    body.extend(b"\r\n--" + encoded_boundary + b"--\r\n")
-    return bytes(body)
 
 
 async def _invoke(

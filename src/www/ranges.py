@@ -13,10 +13,9 @@ from litestar.types import ASGIApp, Message, Receive, Scope, Send
 # One MiB matches Litestar's file-response default. Smaller reads turn a page
 # with several multi-megabyte illustrations into hundreds of thread-pool hops,
 # which can starve later static and navigation requests during a full archive
-# traversal. Eight concurrent responses still bound buffered file data to 8 MiB.
+# traversal.
 _CHUNK_SIZE = 1024 * 1024
 _MAX_INT64 = (1 << 63) - 1
-_MAX_RANGES = 8
 _INVALID_RANGE_BODY = b"invalid range\n"
 _NO_OVERLAP_BODY = b"invalid range: failed to overlap\n"
 
@@ -68,108 +67,73 @@ def range_file_response(
     content_type: str,
     cache_control: str,
     etag: str,
-    use_pathsend: bool = False,
 ) -> ASGIApp:
-    """Return an ASGI app that streams one local file with byte-range support."""
+    """Return an ASGI app that streams one local file with single byte-range support.
+
+    A full GET uses the server's pathsend extension when offered, so the route
+    must be excluded from compression, which needs ordinary response-body events.
+    """
 
     async def response(scope: Scope, receive: Receive, send: Send) -> None:
         del receive
-        if scope["type"] != "http":
-            msg = "range file responses require an HTTP scope"
-            raise RuntimeError(msg)
-
         file = await asyncio.to_thread(_open_regular_file, path)
         try:
             size = os.fstat(file.fileno()).st_size
             request_headers = Headers.from_scope(scope)
-            range_header = request_headers.get("range")
             if_range = request_headers.get("if-range")
             method = scope.get("method", "GET")
 
             # RFC 9110: only GET supports Range; unknown units are ignored and
             # unit names are case-insensitive. If-Range requires a strong ETag.
+            # Section 14.2 lets a server ignore Range, so a list of ranges gets
+            # the full representation instead of multipart/byteranges.
+            unit, _, specifier = request_headers.get("range", "").partition("=")
             honor_range = (
                 method == "GET"
-                and range_header is not None
-                and range_header.partition("=")[0].lower() == "bytes"
+                and unit.lower() == "bytes"
+                and "," not in specifier
                 and _if_range_matches(if_range, etag)
             )
 
-            ranges: list[_ByteRange] | None = None
-            if honor_range and range_header is not None:
+            byte_range: _ByteRange | None = None
+            if honor_range:
                 try:
-                    requested_ranges = _parse_ranges(range_header, size)
+                    byte_range = _parse_range(specifier, size)
                 except _NoOverlapError:
                     if size:
                         await _send_error(send, _NO_OVERLAP_BODY, size)
                         return
                     # An empty representation can satisfy clients that always send Range.
-                    requested_ranges = []
                 except _MalformedRangeError:
                     await _send_error(send, _INVALID_RANGE_BODY)
                     return
 
-                # Parsing already rejects overlaps and bounds every range to the file.
-                ranges = requested_ranges
-
+            partial = byte_range is not None
+            if byte_range is None:
+                byte_range = _ByteRange(start=0, length=size)
             response_headers = [
                 (b"accept-ranges", b"bytes"),
                 (b"cache-control", cache_control.encode("latin-1")),
                 (b"etag", etag.encode("latin-1")),
+                (b"content-length", str(byte_range.length).encode("ascii")),
+                (b"content-type", content_type.encode("latin-1")),
             ]
+            if partial:
+                response_headers.append((b"content-range", byte_range.content_range(size).encode("ascii")))
 
-            if ranges and len(ranges) > 1:
-                boundary = os.urandom(30).hex()
-                length = _multipart_length(boundary, ranges, content_type, size)
-                response_headers.extend(
-                    [
-                        (b"content-length", str(length).encode("ascii")),
-                        (b"content-type", f"multipart/byteranges; boundary={boundary}".encode("ascii")),
-                    ]
-                )
-                status_code = 206
-            elif ranges:
-                byte_range = ranges[0]
-                length = byte_range.length
-                response_headers.extend(
-                    [
-                        (b"content-length", str(length).encode("ascii")),
-                        (b"content-type", content_type.encode("latin-1")),
-                        (b"content-range", byte_range.content_range(size).encode("ascii")),
-                    ]
-                )
-                status_code = 206
-            else:
-                byte_range = _ByteRange(start=0, length=size)
-                length = size
-                response_headers.extend(
-                    [
-                        (b"content-length", str(length).encode("ascii")),
-                        (b"content-type", content_type.encode("latin-1")),
-                    ]
-                )
-                status_code = 200
-
-            await send({"type": "http.response.start", "status": status_code, "headers": response_headers})
-            if method == "HEAD" or length == 0:
+            await send({"type": "http.response.start", "status": 206 if partial else 200, "headers": response_headers})
+            if method == "HEAD" or byte_range.length == 0:
                 await send({"type": "http.response.body", "body": b"", "more_body": False})
                 return
 
-            extensions = scope.get("extensions") or {}
-            if not ranges and use_pathsend and "http.response.pathsend" in extensions:
+            if not partial and "http.response.pathsend" in (scope.get("extensions") or {}):
                 # Granian hands the file to the kernel instead of paying one
-                # event-loop/thread-pool round trip per chunk. The outer app
-                # enables this only for files excluded from compression because
-                # compression middleware requires ordinary response-body events.
+                # event-loop/thread-pool round trip per chunk.
                 await send(cast(Message, {"type": "http.response.pathsend", "path": str(path)}))
                 return
 
-            if ranges and len(ranges) > 1:
-                await _stream_multipart(file, ranges, boundary, content_type, size, send)
-                return
-
             await asyncio.to_thread(file.seek, byte_range.start)
-            await _stream(file, byte_range.length, send, final=True)
+            await _stream(file, byte_range.length, send)
         finally:
             await asyncio.to_thread(file.close)
 
@@ -191,35 +155,14 @@ def _open_regular_file(path: Path) -> BinaryIO:
         raise
 
 
-async def _stream(file: BinaryIO, remaining: int, send: Send, *, final: bool) -> None:
+async def _stream(file: BinaryIO, remaining: int, send: Send) -> None:
     while remaining:
         chunk = await asyncio.to_thread(file.read, min(remaining, _CHUNK_SIZE))
         if not chunk:
             msg = "static asset changed while it was being served"
             raise OSError(msg)
         remaining -= len(chunk)
-        await send({"type": "http.response.body", "body": chunk, "more_body": remaining > 0 or not final})
-
-
-async def _stream_multipart(
-    file: BinaryIO,
-    ranges: list[_ByteRange],
-    boundary: str,
-    content_type: str,
-    size: int,
-    send: Send,
-) -> None:
-    for index, byte_range in enumerate(ranges):
-        await send(
-            {
-                "type": "http.response.body",
-                "body": _multipart_preamble(boundary, byte_range, content_type, size, first=index == 0),
-                "more_body": True,
-            }
-        )
-        await asyncio.to_thread(file.seek, byte_range.start)
-        await _stream(file, byte_range.length, send, final=False)
-    await send({"type": "http.response.body", "body": _multipart_epilogue(boundary), "more_body": False})
+        await send({"type": "http.response.body", "body": chunk, "more_body": remaining > 0})
 
 
 async def _send_error(send: Send, body: bytes, size: int | None = None) -> None:
@@ -233,54 +176,33 @@ async def _send_error(send: Send, body: bytes, size: int | None = None) -> None:
     await send({"type": "http.response.body", "body": body, "more_body": False})
 
 
-def _parse_ranges(value: str, size: int) -> list[_ByteRange]:
-    ranges: list[_ByteRange] = []
-    no_overlap = False
-    for raw_specifier in value.partition("=")[2].split(","):
-        specifier = raw_specifier.strip(" \t")
-        if not specifier:
-            continue
-        if "-" not in specifier:
-            raise _MalformedRangeError
-
-        first, last = (part.strip(" \t") for part in specifier.split("-", 1))
-        if first:
-            start = _parse_decimal(first)
-            if start >= size:
-                no_overlap = True
-                continue
-            end = _parse_decimal(last) if last else size - 1
-            if end < start:
-                raise _MalformedRangeError
-            end = min(end, size - 1)
-            _append_range(ranges, _ByteRange(start=start, length=end - start + 1))
-            continue
-
-        if not last or last.startswith("-"):
-            raise _MalformedRangeError
-        suffix_length = min(_parse_decimal(last), size)
-        if suffix_length == 0:
-            no_overlap = True
-            continue
-        _append_range(ranges, _ByteRange(start=size - suffix_length, length=suffix_length))
-
-    if no_overlap and not ranges:
-        raise _NoOverlapError
-    return ranges
-
-
-def _append_range(ranges: list[_ByteRange], candidate: _ByteRange) -> None:
-    # Bound both parser work and multipart amplification before response
-    # construction; repeated or intersecting intervals provide no new bytes.
-    if len(ranges) >= _MAX_RANGES or any(
-        candidate.start <= existing.end and existing.start <= candidate.end for existing in ranges
-    ):
+def _parse_range(value: str, size: int) -> _ByteRange | None:
+    """Parse one byte-range-spec; an empty one selects nothing and is ignored."""
+    specifier = value.strip(" \t")
+    if not specifier:
+        return None
+    if "-" not in specifier:
         raise _MalformedRangeError
-    ranges.append(candidate)
+
+    first, last = (part.strip(" \t") for part in specifier.split("-", 1))
+    if first:
+        start = _parse_decimal(first)
+        if start >= size:
+            raise _NoOverlapError
+        end = _parse_decimal(last) if last else size - 1
+        if end < start:
+            raise _MalformedRangeError
+        return _ByteRange(start=start, length=min(end, size - 1) - start + 1)
+
+    if not last or last.startswith("-"):
+        raise _MalformedRangeError
+    suffix_length = min(_parse_decimal(last), size)
+    if suffix_length == 0:
+        raise _NoOverlapError
+    return _ByteRange(start=size - suffix_length, length=suffix_length)
 
 
-def _parse_decimal(value: str) -> int:
-    digits = value.removeprefix("+")
+def _parse_decimal(digits: str) -> int:
     if not digits or not digits.isascii() or not digits.isdigit():
         raise _MalformedRangeError
     significant_digits = digits.lstrip("0") or "0"
@@ -299,30 +221,3 @@ def _if_range_matches(value: str | None, etag: str) -> bool:
     if candidate.startswith("W/") or not candidate.startswith('"'):
         return False
     return candidate == etag
-
-
-def _multipart_preamble(
-    boundary: str,
-    byte_range: _ByteRange,
-    content_type: str,
-    size: int,
-    *,
-    first: bool,
-) -> bytes:
-    separator = "" if first else "\r\n"
-    return (
-        f"{separator}--{boundary}\r\n"
-        f"Content-Range: {byte_range.content_range(size)}\r\n"
-        f"Content-Type: {content_type}\r\n\r\n"
-    ).encode("latin-1")
-
-
-def _multipart_epilogue(boundary: str) -> bytes:
-    return f"\r\n--{boundary}--\r\n".encode("ascii")
-
-
-def _multipart_length(boundary: str, ranges: list[_ByteRange], content_type: str, size: int) -> int:
-    return sum(
-        len(_multipart_preamble(boundary, byte_range, content_type, size, first=index == 0)) + byte_range.length
-        for index, byte_range in enumerate(ranges)
-    ) + len(_multipart_epilogue(boundary))
