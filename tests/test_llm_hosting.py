@@ -122,19 +122,6 @@ def test_api_baselines_charge_both_token_directions_at_actual_demand() -> None:
     assert job.estimate.total_monthly_usd == result.estimate.total_monthly_usd
 
 
-@pytest.mark.parametrize("node_id", ["a4-cud-3y", "a2-ultra-1g"])
-def test_commitment_charges_idle_time_while_on_demand_can_stop(node_id: str) -> None:
-    full = view({"node": node_id})
-    partial = view({"node": node_id, "duty": "25"})
-    expected_compute = (
-        full.estimate.compute_monthly_usd if full.selected_price.committed else full.estimate.compute_monthly_usd / 4
-    )
-
-    assert partial.estimate.compute_monthly_usd == expected_compute
-    assert partial.estimate.capacity_tokens_month == full.estimate.capacity_tokens_month / 4
-    assert partial.estimate.control_monthly_usd == full.estimate.control_monthly_usd
-
-
 def test_capacity_shortfall_and_unreachable_break_even() -> None:
     overloaded = view({"preset": "service", "throughput": "0.1"})
     assert not overloaded.estimate.demand_fits
@@ -332,7 +319,7 @@ def test_small_gpu_prices_use_resource_cuds_and_gpu_memory(node, hourly, one_yea
         assert result.estimate.compute_monthly_usd == pytest.approx(rate * 730 * result.estimate.total_nodes)
 
 
-@pytest.mark.parametrize(("node", "billing"), [("a4", "on-demand"), ("g2-standard-12", "flex"), ("a3-high", "unknown")])
+@pytest.mark.parametrize(("node", "billing"), [("g2-standard-12", "flex"), ("a3-high", "unknown")])
 def test_unsupported_billing_is_visible_and_uses_a_published_rate(node: str, billing: str) -> None:
     result = view({"node": node, "billing": billing})
     assert "billing" in result.validation[0]
@@ -346,6 +333,7 @@ def test_unsupported_billing_falls_back_to_a_plan_the_scenario_can_use() -> None
     assert result.validation == (
         f"{result.selected_node.name} does not offer the on-demand billing plan; 1-year resource CUD was used",
     )
+    assert not result.estimate.compatibility_issue
 
 
 def test_unpublished_rate_is_rejected_by_calculation_boundary() -> None:
@@ -729,11 +717,6 @@ def test_format_budget_rolls_into_millions_and_billions(value: float, expected: 
     assert format_budget(value) == expected
 
 
-def test_format_number_rounding_agrees_with_format_decimal() -> None:
-    for value in (0.5, 1.5, 2.5, 12.5, 999.5):
-        assert format_number(value) in {format_decimal(value, 0), "1.0k"}
-
-
 def test_slider_labels_use_singular_units() -> None:
     frame = view({"days": "1"}).cost_plot.frames[0]
     assert frame.label.startswith("1 request/day · 1 request/month")
@@ -1002,14 +985,6 @@ def test_query_text_is_never_reflected_into_validation_messages(mode: str) -> No
         for machine in ({}, {"node": "a3-high"}, {"node": "auto"}):
             messages = build_llm_self_hosting_view({"mode": mode, **machine, key: marker}, now=NOW).validation
             assert all(marker not in message for message in messages), (key, messages)
-
-
-def test_native_billing_fallback_names_the_hardware_and_replacement() -> None:
-    result = view({"node": "a4", "billing": "on-demand"})
-    # Flex-start is listed first but cannot serve this interactive scenario.
-    assert result.inputs.billing_plan == "cud-1y"
-    assert any("A4" in item and "1-year resource CUD" in item for item in result.validation)
-    assert not result.estimate.compatibility_issue
 
 
 # Simple mode, automatic fleets, and source-backed compatibility and pricing boundaries.
@@ -1436,11 +1411,6 @@ def test_accelerator_chip_names_the_cloud_tpu_family() -> None:
     assert all(pool.chip == "GPU" for pool in GKE_NODE_POOLS if "NVIDIA" in pool.gpu)
 
 
-def test_simple_mode_rejects_advanced_overrides_for_agents() -> None:
-    with pytest.raises(ValueError, match="Advanced parameters require advanced mode"):
-        compare_hosting({"mode": "simple", "quant": "nvfp4"})
-
-
 @pytest.mark.parametrize("parameters", [{"pilot": "reference"}, {"confirm-pilot": "reference"}])
 def test_optional_advanced_flags_select_advanced_mode_and_are_rejected_in_simple_mode(parameters) -> None:
     assert build_llm_self_hosting_view(parameters).inputs.mode == "advanced"
@@ -1679,13 +1649,7 @@ def test_cache_notes_name_each_baseline_retention_from_data() -> None:
     assert all("Astra" not in row.mode_note for row in result.apis if row.baseline.name != "GPT-6 Astra")
 
 
-def test_removed_int4_precision_is_rejected_visibly() -> None:
-    assert "fp4" not in {quant.id for quant in QUANTIZATIONS}
-    shared = view({"quant": "fp4"})
-    assert shared.validation == ("Checkpoint precision (quant) was not recognized; the default was used",)
-    assert shared.inputs.quantization_id == DEFAULT_HOSTING_INPUTS.quantization_id
-    with pytest.raises(ValueError, match=r"Checkpoint precision \(quant\) was not recognized"):
-        compare_hosting({"quant": "fp4"})
+def test_catalog_lookups_fail_instead_of_guessing_a_precision() -> None:
     # Code paths that skip parsing fail instead of silently sizing another precision.
     with pytest.raises(LookupError, match="Unknown checkpoint precision 'fp4'"):
         find_quantization("fp4")

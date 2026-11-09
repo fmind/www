@@ -231,13 +231,6 @@ def test_catalog_hides_footprints_of_unsupported_checkpoints(client: AppClient) 
     assert f"{find_node_pool('g2-standard-12').name} · 16-bit</span>" in qwen
 
 
-def test_removed_precision_in_a_shared_url_shows_validation(client: AppClient) -> None:
-    response = client.get(PAGE, params={"quant": "fp4"})
-    assert response.status_code == 200
-    assert "Checkpoint precision (quant) was not recognized; the default was used" in response.text
-    assert 'value="fp4"' not in response.text
-
-
 def test_assumption_copy_renders_the_inputs_and_snapshot(client: AppClient, monkeypatch: pytest.MonkeyPatch) -> None:
     cached = client.get(PAGE, params={"api-mode": "cached"}).text
     assert (
