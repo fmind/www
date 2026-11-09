@@ -2,7 +2,7 @@
 
 from dataclasses import replace
 from datetime import UTC, datetime
-from math import isclose, isfinite, isnan
+from math import isclose
 from urllib.parse import parse_qs, urlparse, urlsplit
 
 import pytest
@@ -30,9 +30,15 @@ from www.sites.formatting import (
     format_usd2,
     hosting_decision_copy,
     hosting_decision_title,
-    task_cost_max,
 )
-from www.sites.inputs import configuration_issue, find_node_pool, find_quantization, hosting_url, parse_inputs
+from www.sites.inputs import (
+    configuration_issue,
+    find_node_pool,
+    find_quantization,
+    hosting_url,
+    parse_inputs,
+    scenario_parameters,
+)
 from www.sites.models import APIRates, BillingPlan, FrontierModel
 
 # Fleet sizing, billing plans, demand presets, and input validation.
@@ -267,12 +273,9 @@ def test_page_decision_and_own_sensitivity_cell_share_one_verdict() -> None:
     }
 
 
-def test_template_quantity_and_task_scale_helpers() -> None:
-    result = view()
-
+def test_template_quantity_helper_pluralizes() -> None:
     assert format_count(1, "node") == "1 node"
     assert format_count(2, "GPU") == "2 GPUs"
-    assert task_cost_max(result.tasks) == max(row.per_accepted_usd for row in result.tasks if row.fits)
 
 
 @pytest.mark.parametrize("node", GKE_NODE_POOLS, ids=lambda node: node.id)
@@ -425,9 +428,8 @@ def test_price_expiry_and_review_are_visible() -> None:
 def test_scenario_links_preserve_every_assumption() -> None:
     result = view(
         {
-            "quality": "on",
             "api-mode": "cached",
-            "quality-2-calls": "2.5",
+            "overhead": "12.5",
             "measured-first": "1.3",
             "cache-requests": "7",
         },
@@ -513,28 +515,6 @@ def test_selected_node_describes_hardware_separately_from_billing() -> None:
     assert result.selected_node.gpu == "1\u00d7 NVIDIA A100 80GB"
 
 
-def test_accepted_task_cost_includes_retries_review_and_capacity() -> None:
-    result = view(
-        {
-            "quality": "on",
-            "tasks": "1000",
-            "review-rate": "60",
-            "quality-1-acceptance": "50",
-            "quality-1-calls": "2",
-            "quality-1-review": "3",
-        },
-    )
-    row = result.tasks[1]
-    assert row.requests == 2000
-    assert row.accepted == 500
-    assert row.model_usd == 7.5
-    assert row.review_usd == 3000
-    assert row.per_accepted_usd == 6.015
-
-    overloaded = view({"tasks": "10000000", "quality-0-calls": "100"})
-    assert not overloaded.tasks[0].fits
-
-
 def test_latency_does_not_follow_monthly_capacity() -> None:
     result = view()
     assert result.estimate.demand_fits
@@ -559,21 +539,14 @@ def test_optional_input_validation_uses_explicit_defaults() -> None:
             "api-mode": "free",
             "cache-requests": "0",
             "measured-first": "NaN",
-            "quality-0-acceptance": "-1",
-            "quality-1-calls": "0.5",
-            "quality": "yes",
         },
     )
 
-    assert len(result.validation) == 6
     assert result.inputs == DEFAULT_HOSTING_INPUTS
     assert result.validation == (
         "API pricing mode (api-mode) was not recognized; the default was used",
         "Calls per cache group (cache-requests) must be a whole number between 1 and 1,000,000; the default was used",
-        "quality was not recognized; the default was used",
         "Measured p95 first token (measured-first) must be between 0 and 3,600; the default was used",
-        "quality-0-acceptance must be between 0 and 100; the default was used",
-        "quality-1-calls must be between 1 and 100; the default was used",
     )
 
 
@@ -586,36 +559,43 @@ def test_integer_syntax_boundary(invalid: str) -> None:
 
 
 def test_scenario_url_uses_shortest_round_trip_decimal_without_exponents() -> None:
-    result = view({"quality-0-acceptance": "0.0000001"})
+    # repr(1e-7) is "1e-07"; shared URLs must spell it out.
+    result = view({"overhead": "0.0000001"})
 
     raw = hosting_url(result.inputs)
-    assert "quality-0-acceptance=0.0000001" in raw
+    assert "overhead=0.0000001" in raw
     assert view(parse_qs(urlparse(raw).query)).inputs == result.inputs
 
 
-@pytest.mark.parametrize("acceptance", ["1e-8", "1e-304", "1e-310", "1e-1000"])
-def test_tiny_acceptance_is_rejected_before_cost_arithmetic(acceptance: str) -> None:
-    result = view({"quality": "on", "quality-0-acceptance": acceptance})
+def test_removed_quality_lab_parameters_are_ignored_on_the_page_and_rejected_by_mcp() -> None:
+    # Advanced URLs shared before the quality lab was removed carried all of these keys.
+    legacy = {"quality": "on", "tasks": "250", "review-rate": "60"} | {
+        f"quality-{index}-{name}": value
+        for index in range(6)
+        for name, value in (("acceptance", "1e-310"), ("calls", "2.5"), ("review", "oops"))
+    }
+    current = {"requests": "500", "replicas": "2"}
 
-    assert result.validation == ("quality-0-acceptance must be zero or at least 0.0000001; the default was used",)
-    assert result.inputs.quality[0].acceptance_percent == DEFAULT_HOSTING_INPUTS.quality[0].acceptance_percent
-    assert all(isfinite(task.per_accepted_usd) for task in result.tasks)
+    result = view(current | legacy)
+
+    assert not result.validation
+    assert result.inputs == view(current).inputs
+    assert not legacy.keys() & scenario_parameters(result.inputs).keys()
+    # A removed key alone no longer selects advanced mode, and still reports nothing.
+    simple, validation = parse_inputs({"quality": "on", "tasks": "250"})
+    assert (simple.mode, validation) == ("simple", ())
+    for key, value in legacy.items():
+        with pytest.raises(ValueError, match="Unknown calculator parameter"):
+            compare_hosting({key: value})
+    assert "tasks" not in compare_hosting({}).model_dump()
 
 
-def test_zero_acceptance_and_inconsistent_latency_do_not_imply_success() -> None:
-    result = view(
-        {
-            "quality": "on",
-            "quality-0-acceptance": "0",
-            "measured-first": "10",
-            "measured-complete": "5",
-            "measured-concurrency": "8",
-        },
+def test_inconsistent_latency_measurements_are_cleared() -> None:
+    result = view({"measured-first": "10", "measured-complete": "5", "measured-concurrency": "8"})
+
+    assert result.validation == (
+        "Recorded first-token time cannot exceed completion time; both measurements were cleared",
     )
-
-    assert result.tasks[0].accepted == 0
-    assert not isnan(result.tasks[0].per_accepted_usd)
-    assert len(result.validation) == 1
     assert result.inputs.measured_first_token == 0
     assert result.latency_title == "Responsiveness is still unproved"
 
@@ -641,7 +621,7 @@ def test_template_formatting_helpers(function, value: tuple[float, ...], expecte
 QUALIFIED_VERDICTS = {"Fleet has a cost case", "API costs less", "No API accepts this request"}
 
 
-@pytest.mark.parametrize("parameter", ["days", "tokens", "input-tokens", "cache-prefix", "tasks"])
+@pytest.mark.parametrize("parameter", ["days", "tokens", "input-tokens", "cache-prefix"])
 def test_whole_quantities_reject_fractions_for_agents(parameter: str) -> None:
     assert view({parameter: "21"}).validation == ()
     with pytest.raises(ValueError, match=rf"\({parameter}\) must be a whole number"):
@@ -754,8 +734,6 @@ def test_context_budget_is_retained_but_cannot_produce_a_hosting_verdict() -> No
     assert result.estimate.context_issue in result.validation
     assert "context" in hosting_decision_title(result).lower()
     assert all(not cell.fits for row in result.sensitivity for cell in row.cells)
-    assert not result.tasks[0].fits
-    assert result.tasks[0].request_issue
 
 
 def test_context_limit_is_inclusive_of_input_and_output() -> None:
@@ -770,7 +748,6 @@ def test_l4_memory_spanning_hosts_requires_a_configuration_pilot() -> None:
     assert not result.estimate.qualified
     assert "not supported" in hosting_decision_title(result).lower()
     assert not result.comparison_ready
-    assert not result.tasks[0].fits
     assert all(not cell.fits for row in result.sensitivity for cell in row.cells)
     confirmed = view(
         {
@@ -835,17 +812,10 @@ def test_mcp_comparisons_cannot_borrow_another_configuration_pilot(model: str) -
                 assert not precision.estimate.qualified
 
 
-def test_task_profile_capacity_is_independent_from_top_level_demand() -> None:
-    result = view({"requests": "10000000"})
-    assert not result.estimate.demand_fits
-    assert result.tasks[0].fits
-
-
 @pytest.mark.parametrize("tokens", ["128001", "1000000"])
 def test_api_output_limits_disable_unavailable_comparisons(tokens: str) -> None:
     result = view({"tokens": tokens})
     assert all(api.request_issue for api in result.apis)
-    assert all(task.request_issue for task in result.tasks[1:])
     assert not result.comparison_ready
 
 
@@ -1070,10 +1040,6 @@ def test_simple_usage_window_sizes_capacity_without_inflating_volume_or_api_bill
     fixed_peak = build_llm_self_hosting_view({"mode": "advanced", "preset": "scheduled-workflow", "window": "1"})
     frame = fixed_peak.cost_plot.frames[fixed_peak.cost_plot.selected]
     assert "beyond this fleet's capacity" in frame.summary
-    task_scenario = build_llm_self_hosting_view(
-        {"mode": "advanced", "preset": "scheduled-workflow", "window": "1", "tasks": "10000"}
-    )
-    assert not task_scenario.tasks[0].fits
     assert any(row.break_even_fits for row in peak.apis)
 
 
@@ -1424,13 +1390,6 @@ def test_simple_mode_reports_ignored_advanced_values_once() -> None:
         compare_hosting(query)
 
 
-def test_zero_acceptance_cost_is_documented_for_agents() -> None:
-    result = compare_hosting({"mode": "advanced", "quality": "on", "quality-0-acceptance": "0"})
-
-    assert (result.tasks[0].accepted, result.tasks[0].per_accepted_usd) == (0, 0)
-    assert any("per_accepted_usd 0" in limitation for limitation in result.limitations)
-
-
 def test_accelerator_chip_names_the_cloud_tpu_family() -> None:
     assert {pool.id for pool in GKE_NODE_POOLS if pool.chip == "TPU"} == {"ct6e-standard-8t", "tpu7x-standard-4t"}
     assert all(pool.chip == "GPU" for pool in GKE_NODE_POOLS if "NVIDIA" in pool.gpu)
@@ -1441,21 +1400,18 @@ def test_simple_mode_rejects_advanced_overrides_for_agents() -> None:
         compare_hosting({"mode": "simple", "quant": "nvfp4"})
 
 
-@pytest.mark.parametrize("parameters", [{"quality": "on"}, {"pilot": "reference"}, {"confirm-pilot": "reference"}])
+@pytest.mark.parametrize("parameters", [{"pilot": "reference"}, {"confirm-pilot": "reference"}])
 def test_optional_advanced_flags_select_advanced_mode_and_are_rejected_in_simple_mode(parameters) -> None:
     assert build_llm_self_hosting_view(parameters).inputs.mode == "advanced"
     with pytest.raises(ValueError, match="Advanced parameters require advanced mode"):
         compare_hosting(parameters | {"mode": "simple"})
 
 
-def test_daily_capacity_gate_reaches_charts_break_even_and_task_workloads() -> None:
-    result = build_llm_self_hosting_view(
-        {"requests": "100000", "days": "1", "tokens": "600", "quality": "on", "tasks": "100000"}
-    )
+def test_daily_capacity_gate_reaches_charts_and_break_even() -> None:
+    result = build_llm_self_hosting_view({"requests": "100000", "days": "1", "tokens": "600"})
     assert not result.estimate.daily_demand_fits
     frame = result.cost_plot.frames[result.cost_plot.selected]
     assert "beyond this fleet's capacity" in frame.summary
-    assert not result.tasks[0].fits
     for row in result.apis:
         assert row.break_even_fits == (row.break_even_requests <= result.estimate.capacity_requests_day)
 

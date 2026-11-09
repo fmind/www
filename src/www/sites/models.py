@@ -154,13 +154,6 @@ class APIBaseline:
 
 
 @dataclass(frozen=True, slots=True)
-class TaskQuality:
-    acceptance_percent: float
-    calls_per_task: float
-    review_minutes: float
-
-
-@dataclass(frozen=True, slots=True)
 class HostingInputs:
     model_id: str
     node_pool_id: str
@@ -184,10 +177,6 @@ class HostingInputs:
     measured_concurrency: int
     measured_first_token: float
     measured_completion: float
-    tasks_per_month: float
-    review_hourly_usd: float
-    quality: tuple[TaskQuality, ...]
-    quality_enabled: bool
     billing_plan: BillingPlan = BillingPlan.ON_DEMAND
     pilot_config: str = ""
     mode: str = "advanced"
@@ -261,20 +250,6 @@ class ModelComparison:
     node: GKENodePool
     estimate: HostingEstimate
     decision: str
-
-
-@dataclass(frozen=True, slots=True)
-class TaskComparison:
-    id: str
-    name: str
-    quality: TaskQuality
-    requests: float
-    accepted: float
-    model_usd: float
-    review_usd: float
-    per_accepted_usd: float
-    fits: bool
-    request_issue: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -357,7 +332,6 @@ class LLMSelfHostingView:
     budget_high_usd: float
     cost_plot: CostPlot
     sensitivity: tuple[SensitivityRow, ...]
-    tasks: tuple[TaskComparison, ...]
     latency_title: str
     latency_detail: str
     model_source_url: str

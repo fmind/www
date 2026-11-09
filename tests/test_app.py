@@ -353,12 +353,6 @@ def test_scan_shares_the_permanent_contact_destination_without_search_indexing(c
         assert f"{METADATA.site_url}/scan" not in client.get(path).text
 
 
-def test_tiny_task_acceptance_renders_validation_instead_of_a_server_error(client: AppClient) -> None:
-    response = client.get("/sites/llm-self-hosting/?mode=advanced&quality=on&quality-0-acceptance=1e-310")
-    assert response.status_code == 200
-    assert "quality-0-acceptance must be zero or at least 0.0000001" in response.text
-
-
 def test_machine_surfaces_keep_content_cache_and_cors_contracts(client: AppClient) -> None:
     cases = (
         ("/health", "application/json; charset=utf-8", None, None, b'{"status":"ok"}'),

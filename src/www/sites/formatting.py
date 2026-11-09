@@ -1,14 +1,9 @@
 """Self-hosting calculator formatting."""
 
-from collections.abc import Sequence
 from math import floor
 
 from .economics import HostingVerdict, hosting_verdict
-from .models import (
-    APIComparison,
-    LLMSelfHostingView,
-    TaskComparison,
-)
+from .models import APIComparison, LLMSelfHostingView
 
 
 def _round_away_from_zero(value: float) -> float:
@@ -73,11 +68,6 @@ def format_count(value: int, noun: str) -> str:
     """Format a whole quantity with a simple English plural."""
     suffix = "" if value == 1 else "s"
     return f"{format_decimal(float(value), 0)} {noun}{suffix}"
-
-
-def task_cost_max(rows: Sequence[TaskComparison]) -> float:
-    """Return the non-zero scale used by the accepted-task comparison bars."""
-    return max((row.per_accepted_usd for row in rows if row.fits), default=0.01)
 
 
 _DECISION_TITLES = {

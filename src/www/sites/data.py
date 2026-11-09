@@ -9,7 +9,6 @@ from .models import (
     HostingInputs,
     NodePrice,
     Quantization,
-    TaskQuality,
 )
 
 # These immutable source snapshots preserve the published typography verbatim.
@@ -598,8 +597,4 @@ DEFAULT_HOSTING_INPUTS = HostingInputs(
     measured_concurrency=0,
     measured_first_token=0,
     measured_completion=0,
-    tasks_per_month=1000,
-    review_hourly_usd=40,
-    quality=tuple(TaskQuality(90, 1, 1) for _ in range(len(API_BASELINES) + 1)),
-    quality_enabled=False,
 )

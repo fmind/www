@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "macros/sites.html" import api_options, basic_form, comparison_table, cost_explorer, demand_form, fleet_form, info_section, latency, model_size, precision_guide, quality, results, sensitivity, setup_assumptions, site_breadcrumb, validation_alert %}
+{% from "macros/sites.html" import api_options, basic_form, comparison_table, cost_explorer, demand_form, fleet_form, info_section, latency, model_size, precision_guide, results, sensitivity, setup_assumptions, site_breadcrumb, validation_alert %}
 {% block content %}
   {# The status stays outside the swapped region so assistive technology observes it before updates. #}
   <p data-update-status class="sr-only" role="status"></p>
@@ -14,7 +14,6 @@
         {% if view.inputs.mode == "advanced" %}<nav aria-label="On this page" class="flex flex-wrap gap-x-6 gap-y-3 mt-6 text-sm font-semibold">
           {% if not view.estimate.compatibility_issue %}<a class="link link-primary" href="#cost-explorer">Explore the figures</a>{% endif %}
           <a class="link link-primary" href="#precision-guide">Understand 4, 8, and 16-bit</a>
-          <a class="link link-primary" href="#quality-lab">Evaluate value</a>
         </nav>{% endif %}
       </header>
       {{ validation_alert(view.validation) }}
@@ -53,7 +52,6 @@
           </tbody>
         {% endcall %}
       </section>
-      {{ quality(view) }}
       {% endif %}
       {% if view.inputs.mode == "simple" %}{{ setup_assumptions(view) }}{% endif %}
       {% call info_section("hosting-method", "Method and limitations") %}

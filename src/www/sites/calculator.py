@@ -55,7 +55,6 @@ from .models import (
     PrecisionComparison,
     SensitivityCell,
     SensitivityRow,
-    TaskComparison,
 )
 
 # Source-faithful UI copy intentionally uses multiplication signs.
@@ -124,48 +123,6 @@ def _compare_apis(
                 ),
                 mode_note=_api_mode_note(inputs, baseline),
                 request_issue=api_request_issue(inputs, baseline),
-            ),
-        )
-    return tuple(rows)
-
-
-def _hosting_tasks(
-    inputs: HostingInputs,
-    estimate: HostingEstimate,
-    baselines: tuple[APIBaseline, ...],
-) -> tuple[TaskComparison, ...]:
-    rows: list[TaskComparison] = []
-    for index, quality in enumerate(inputs.quality[: len(baselines) + 1]):
-        requests = inputs.tasks_per_month * quality.calls_per_task
-        accepted = inputs.tasks_per_month * quality.acceptance_percent / 100
-        model_usd = estimate.total_monthly_usd
-        request_issue = estimate.compatibility_issue or estimate.context_issue
-        if not request_issue and not estimate.topology_confirmed:
-            request_issue = "Multi-host serving needs pilot measurements from this configuration"
-        fits = (
-            not request_issue
-            and requests * inputs.output_tokens_request <= estimate.capacity_tokens_month
-            and requests <= estimate.capacity_requests_day * inputs.active_days
-        )
-        name = "Your GKE fleet"
-        if index > 0:
-            name = baselines[index - 1].name
-            model_usd = api_monthly_cost(inputs, baselines[index - 1], requests)[0]
-            request_issue = api_request_issue(inputs, baselines[index - 1])
-            fits = not request_issue
-        review_usd = inputs.tasks_per_month * quality.review_minutes / 60 * inputs.review_hourly_usd
-        rows.append(
-            TaskComparison(
-                id=f"quality-{index}",
-                name=name,
-                quality=quality,
-                requests=requests,
-                accepted=accepted,
-                model_usd=model_usd,
-                review_usd=review_usd,
-                per_accepted_usd=(model_usd + review_usd) / accepted if accepted else 0,
-                fits=fits,
-                request_issue=request_issue,
             ),
         )
     return tuple(rows)
@@ -497,7 +454,6 @@ def build_llm_self_hosting_view(
         budget_high_usd=max(budgets),
         cost_plot=hosting_cost_plot(inputs, estimate, apis),
         sensitivity=_hosting_sensitivity(inputs, baselines),
-        tasks=_hosting_tasks(inputs, estimate, baselines),
         latency_title=latency_title,
         latency_detail=latency_detail,
         model_source_url=next(

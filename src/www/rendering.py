@@ -25,7 +25,6 @@ from www.sites.formatting import (
     format_usd2,
     hosting_decision_copy,
     hosting_decision_title,
-    task_cost_max,
 )
 
 
@@ -115,7 +114,6 @@ def create_environment(asset_hashes: Mapping[str, str]) -> Environment:
             "hosting_decision_copy": hosting_decision_copy,
             "hosting_decision_title": hosting_decision_title,
             "static_url": _static_url_factory(asset_hashes),
-            "task_cost_max": task_cost_max,
         },
     )
     return environment

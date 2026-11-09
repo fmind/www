@@ -231,7 +231,6 @@ async def test_mcp_article_reader_never_exposes_drafts(
         {"node": "a4", "billing": "cud-3y", "duty": "25", "api-mode": "batch"},
         {"api-mode": "cached", "cache-prefix": "1024", "input-tokens": "2000"},
         {"tokens": "1000000", "input-tokens": "1000000"},
-        {"quality": "on", "quality-0-acceptance": "0"},
     ],
 )
 def test_calculator_matches_web_arithmetic_and_round_trips(parameters: dict[str, str]) -> None:
@@ -246,7 +245,6 @@ def test_calculator_matches_web_arithmetic_and_round_trips(parameters: dict[str,
     assert result.units["month"] == "730 hours"
     assert result.sources["models"] == view.model_source_url
     assert result.snapshot_date == view.snapshot_date
-    assert bool(result.tasks) == view.inputs.quality_enabled
     shared_query = dict(parse_qsl(urlsplit(result.scenario_url).query))
     assert build_llm_self_hosting_view(shared_query).inputs == view.inputs
 
@@ -270,8 +268,6 @@ def test_calculator_matches_web_arithmetic_and_round_trips(parameters: dict[str,
         {"requests": "1_000"},
         {"requests": "\u0661\u0660\u0660"},
         {"preset": "imaginary"},
-        {"mode": "advanced", "quality-0-acceptance": "1e-310"},
-        {"mode": "advanced", "quality-1-acceptance": "1e-1000"},
         {"measured-first": "20", "measured-complete": "10"},
         {"measured-first": "1", "pilot": "old-configuration"},
     ],

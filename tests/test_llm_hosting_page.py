@@ -90,9 +90,8 @@ def test_form_steps_match_server_parsing(client: AppClient) -> None:
         if item["step"] == "1":
             (message,) = result.validation
             bounds = f"between {int(item['min']):,} and {int(item['max']):,}; the default was used"
-            # Labelled fields read "Label (key) must be ..."; generated rows keep the bare key.
-            assert message.endswith(f"must be a whole number {bounds}"), name
-            assert f"({name}) must be" in message or message.startswith(f"{name} must be"), name
+            # Every field is labelled: "Label (key) must be ...".
+            assert message.endswith(f"({name}) must be a whole number {bounds}"), name
         else:
             assert item["step"] == "any", name
             assert not result.validation, name
@@ -195,6 +194,20 @@ def test_blocked_fleets_replace_break_even_capacity_verdicts(client: AppClient) 
     assert multi_host.count("Capacity needs a multi-host pilot") == 2 * len(API_BASELINES)
 
 
+def test_shared_url_with_removed_quality_lab_parameters_renders_without_a_message(client: AppClient) -> None:
+    legacy = {"quality": "on", "tasks": "250", "review-rate": "60", "quality-0-acceptance": "1e-310"}
+    response = client.get(PAGE, params={"requests": "500"} | legacy)
+    assert response.status_code == 200
+    assert "Some inputs need attention" not in response.text
+
+    def calculator(html: str) -> str:
+        # The rest of the document carries a per-response CSP nonce.
+        start = html.index("data-hosting-calculator")
+        return html[start : html.index("<script", start)]
+
+    assert calculator(response.text) == calculator(client.get(PAGE, params={"requests": "500"}).text)
+
+
 def test_catalog_hides_footprints_of_unsupported_checkpoints(client: AppClient) -> None:
     # Each row is sized on its own machine, so only a recipe limit can block one here.
     html = client.get(PAGE, params={"input-tokens": "250000", "tokens": "1000"}).text
@@ -261,7 +274,7 @@ def test_simple_mode_has_basic_choices_and_a_clean_shareable_url(client: AppClie
     html = client.get("/sites/llm-self-hosting/").text
     for name in ("preset", "model", "billing", "window", "advanced-mode"):
         assert f'id="{name}"' in html
-    for name in ("platform", "quant", "node", "throughput", "quality-settings", "cost-volume"):
+    for name in ("platform", "quant", "node", "throughput", "latency-settings", "cost-volume"):
         assert f'id="{name}"' not in html
 
 
@@ -300,7 +313,9 @@ def test_hosting_page_keeps_every_section_open_with_setup_before_method(client: 
     else:
         assert 'id="recommended-fleet"' not in html
         assert 'id="latency-settings"' in html
-        assert 'id="quality-settings"' in html
+        # The quality lab was removed, along with its link in the page navigation.
+        assert "quality-lab" not in html
+        assert 'name="tasks"' not in html
 
 
 def test_simple_outputs_explain_load_cost_and_fixed_fleet_break_even(client: AppClient) -> None:

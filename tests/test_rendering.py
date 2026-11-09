@@ -74,7 +74,6 @@ def test_environment_is_package_local_strict_and_autoescaped() -> None:
         "hosting_decision_copy",
         "hosting_decision_title",
         "static_url",
-        "task_cost_max",
     } <= environment.globals.keys()
 
 

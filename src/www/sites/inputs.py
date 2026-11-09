@@ -25,7 +25,6 @@ from .models import (
     GKENodePool,
     HostingInputs,
     Quantization,
-    TaskQuality,
 )
 
 type QueryValue = str | Sequence[str]
@@ -70,10 +69,8 @@ _FIELD_LABELS: dict[str, str] = {
     "quant": "Checkpoint precision",
     "replicas": "Serving replicas",
     "requests": "Calls per active day",
-    "review-rate": "Human review cost ($/hour)",
     "target-complete": "Target p95 completion",
     "target-first": "Target p95 first token",
-    "tasks": "Attempted tasks per month",
     "throughput": "Assumed output tokens/s per replica",
     "tokens": "Output tokens per request",
     "utilization": "Usable share of throughput (%)",
@@ -109,8 +106,6 @@ def _parse_bounded_float(
     minimum: float,
     maximum: float,
     validation: list[str],
-    *,
-    minimum_positive: float = 0,
 ) -> float:
     raw = _first(query, key)
     if raw is None or raw == "":
@@ -125,13 +120,6 @@ def _parse_bounded_float(
     if not isfinite(value) or value < minimum or value > maximum:
         validation.append(
             f"{_field(key)} must be between {_format_bound(minimum)} and {_format_bound(maximum)}; the default was used",
-        )
-        return fallback
-    # Reject tiny nonzero ratios before division, including values that float()
-    # underflows to zero. Literal zero remains valid for no accepted tasks.
-    if value < minimum_positive and any(digit in "123456789" for digit in raw.lower().partition("e")[0]):
-        validation.append(
-            f"{_field(key)} must be zero or at least {minimum_positive:.7f}; the default was used",
         )
         return fallback
     return value
@@ -193,19 +181,15 @@ _FLEET_FIELDS: tuple[_BoundedField, ...] = (
     ("requests_per_day", "requests", _parse_bounded_float, 1, 10_000_000),
     ("active_days", "days", _parse_bounded_count, 1, 31),
 )
-_SERVING_FIELDS: tuple[_BoundedField, ...] = (
+_OPTION_FIELDS: tuple[_BoundedField, ...] = (
     ("cache_requests", "cache-requests", _parse_bounded_int, 1, 1_000_000),
     ("concurrency", "concurrency", _parse_bounded_int, 1, 100_000),
     ("measured_concurrency", "measured-concurrency", _parse_bounded_int, 0, 100_000),
-)
-_WORKLOAD_FIELDS: tuple[_BoundedField, ...] = (
     ("cache_prefix_tokens", "cache-prefix", _parse_bounded_count, 0, 1_000_000),
-    ("tasks_per_month", "tasks", _parse_bounded_count, 1, 10_000_000),
     ("target_first_token", "target-first", _parse_bounded_float, 0.1, 3600),
     ("target_completion", "target-complete", _parse_bounded_float, 0.1, 86_400),
     ("measured_first_token", "measured-first", _parse_bounded_float, 0, 3600),
     ("measured_completion", "measured-complete", _parse_bounded_float, 0, 86_400),
-    ("review_hourly_usd", "review-rate", _parse_bounded_float, 0, 10_000),
 )
 
 
@@ -251,7 +235,9 @@ def parse_inputs(query: Query) -> tuple[HostingInputs, tuple[str, ...]]:
         validation.append("Operations budget is no longer included; totals cover GPU compute and the GKE fee")
     defaults = DEFAULT_HOSTING_INPUTS
     preset = next((item for item in DEMAND_PRESETS if item.id == _first(query, "preset")), _DEFAULT_PRESET)
-    advanced_keys = (scenario_parameters(defaults).keys() | {"quality", "pilot", "confirm-pilot"}) - {
+    # The removed quality lab's keys (`quality*`, `tasks`, `review-rate`) are read nowhere,
+    # so previously shared URLs keep working without a message.
+    advanced_keys = (scenario_parameters(defaults).keys() | {"pilot", "confirm-pilot"}) - {
         "model",
         "billing",
         "mode",
@@ -376,45 +362,7 @@ def _parse_hosting_options(
         frozenset(mode.value for mode in APIMode),
         validation,
     )
-    inputs = _parse_fields(query, replace(inputs, api_mode=APIMode(api_mode)), _SERVING_FIELDS, validation)
-    inputs = replace(
-        inputs,
-        quality_enabled=_parse_choice(query, "quality", "off", frozenset(("on", "off")), validation) == "on",
-    )
-    inputs = _parse_fields(query, inputs, _WORKLOAD_FIELDS, validation)
-    qualities: list[TaskQuality] = []
-    for index, quality in enumerate(inputs.quality):
-        prefix = f"quality-{index}-"
-        qualities.append(
-            TaskQuality(
-                acceptance_percent=_parse_bounded_float(
-                    query,
-                    prefix + "acceptance",
-                    quality.acceptance_percent,
-                    0,
-                    100,
-                    validation,
-                    minimum_positive=0.0000001,
-                ),
-                calls_per_task=_parse_bounded_float(
-                    query,
-                    prefix + "calls",
-                    quality.calls_per_task,
-                    1,
-                    100,
-                    validation,
-                ),
-                review_minutes=_parse_bounded_float(
-                    query,
-                    prefix + "review",
-                    quality.review_minutes,
-                    0,
-                    480,
-                    validation,
-                ),
-            ),
-        )
-    inputs = replace(inputs, quality=tuple(qualities))
+    inputs = _parse_fields(query, replace(inputs, api_mode=APIMode(api_mode)), _OPTION_FIELDS, validation)
     if (
         inputs.measured_first_token > 0
         and inputs.measured_completion > 0
@@ -679,19 +627,9 @@ def scenario_parameters(inputs: HostingInputs) -> dict[str, str]:
         "target-complete": _float_for_url(inputs.target_completion),
         "measured-first": _float_for_url(inputs.measured_first_token),
         "measured-complete": _float_for_url(inputs.measured_completion),
-        "tasks": _float_for_url(inputs.tasks_per_month),
-        "review-rate": _float_for_url(inputs.review_hourly_usd),
     }
-    if inputs.quality_enabled:
-        values["quality"] = "on"
     if inputs.pilot_config:
         values["pilot"] = inputs.pilot_config
-    for index, quality in enumerate(inputs.quality):
-        values[f"quality-{index}-acceptance"] = _float_for_url(
-            quality.acceptance_percent,
-        )
-        values[f"quality-{index}-calls"] = _float_for_url(quality.calls_per_task)
-        values[f"quality-{index}-review"] = _float_for_url(quality.review_minutes)
     if inputs.mode == "simple":
         values = {key: value for key, value in values.items() if key in {"mode", "model", "billing", "window"}}
         if inputs.demand_window_hours not in (24, 8, 1):

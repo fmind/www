@@ -18,7 +18,6 @@ from www.sites.models import (
     HostingEstimate,
     HostingInputs,
     Quantization,
-    TaskComparison,
 )
 
 
@@ -68,7 +67,6 @@ class HostingResult(BaseModel):
     model_comparisons: tuple[ModelRow, ...]
     precision_comparisons: tuple[PrecisionRow, ...]
     accelerator_comparisons: tuple[AcceleratorRow, ...]
-    tasks: tuple[TaskComparison, ...]
     comparison_ready: bool
     validation: tuple[str, ...]
     latency: str
@@ -83,7 +81,6 @@ class HostingResult(BaseModel):
 def compare_hosting(parameters: dict[str, str]) -> HostingResult:
     """Reject silent input fallback before running the shared web calculator."""
     allowed = scenario_parameters(replace(DEFAULT_HOSTING_INPUTS, mode="advanced")).keys() | {
-        "quality",
         "pilot",
         "confirm-pilot",
         "preset",
@@ -141,7 +138,6 @@ def compare_hosting(parameters: dict[str, str]) -> HostingResult:
             )
             for row in view.accelerators
         ),
-        tasks=view.tasks if view.inputs.quality_enabled else (),
         comparison_ready=view.comparison_ready,
         validation=view.validation,
         latency=f"{view.latency_title}. {view.latency_detail}",
@@ -165,9 +161,7 @@ def compare_hosting(parameters: dict[str, str]) -> HostingResult:
             "Memory fit does not prove runtime support, topology, concurrency, or latency; validate with a pilot.",
             "Totals include GPU compute and the GKE fee; additional disks, network, load balancers, licenses, and operations are excluded.",
             "Committed machines are billed for the full term even when idle; regional availability needs a quote.",
-            "Pilot and task-quality inputs are caller-supplied evidence, not measurements performed by this server.",
-            # Kept numeric so the published output schema stays stable for existing callers.
-            "A task row with accepted 0 reports per_accepted_usd 0: cost per accepted task is undefined there, not free.",
+            "Pilot inputs are caller-supplied evidence, not measurements performed by this server.",
             "Usage windows constrain average output rate, not bursts or latency. Running hours are scheduled inside active windows; startup needs a pilot.",
             "Simple mode sizes replicas and schedules batch presets; interactive presets stay on 24/7. Advanced mode keeps the fleet fixed. Break-even holds it fixed.",
         ),
