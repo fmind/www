@@ -11,6 +11,7 @@ import pytest
 from litestar import Litestar
 from litestar.testing import TestClient
 
+import www.sites.calculator as calculator
 import www.sites.economics as economics
 import www.sites.inputs as hosting_inputs
 from tests.llm_hosting_support import view
@@ -260,6 +261,20 @@ def test_assumption_copy_renders_the_inputs_and_snapshot(client: AppClient, monk
     simple = client.get("/sites/llm-self-hosting/").text
     assert "Assumes 250 generated tokens/s per model copy, with 80% usable." in simple
     assert "GB weights + 10% reserve = " in simple
+
+
+def test_monthly_hours_come_from_the_server_constant(client: AppClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    # Only the view's copy changes here; a literal 730 left in a template would keep its text.
+    monkeypatch.setattr(calculator, "MONTHLY_HOURS", 700.0)
+    query = {"preset": "document-pipeline", "billing": "cud-1y"}
+    hourly = build_llm_self_hosting_view(query).selected_price.hourly_usd
+    simple = client.get("/sites/llm-self-hosting/", params=query).text
+    assert f"{format_usd2(hourly * 700)}/node/month, even while idle" in simple
+    # Thirty 8-hour days fill about a third of the month: 240 h of 730 becomes 230.1 h of 700.
+    assert "8 h per active day, 230.1 h/month" in simple
+    assert "Your commitment still bills 700 hours/month" in simple
+    assert "Commitments bill 700 hours/month" in simple
+    assert "100% = 700 h/month" in client.get(PAGE).text
 
 
 # Simple-mode choices, section order, and fixed-fleet explanations.

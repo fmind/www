@@ -336,6 +336,8 @@ class LLMSelfHostingView:
     model_source_url: str
     gke_source_url: str
     cluster_hourly_usd: float
+    # Billing hours per month, so templates never restate the constant.
+    monthly_hours: float
     price_source_url: str
     current_pilot_config: str
     comparison_ready: bool

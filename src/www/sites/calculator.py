@@ -3,7 +3,7 @@
 from dataclasses import replace
 from datetime import UTC, datetime
 
-from .capacity import replicas_for_demand
+from .capacity import MONTHLY_HOURS, replicas_for_demand
 from .charts import hosting_cost_plot
 from .data import (
     DEMAND_PRESETS,
@@ -442,6 +442,7 @@ def build_llm_self_hosting_view(
         ),
         gke_source_url=GKE_SOURCE_URL,
         cluster_hourly_usd=CLUSTER_HOURLY_USD,
+        monthly_hours=MONTHLY_HOURS,
         price_source_url=PRICE_SOURCE_URL,
         current_pilot_config=current_pilot_config,
         comparison_ready=estimate.qualified and any(not row.request_issue for row in apis),
