@@ -999,6 +999,10 @@ def test_mcp_endpoint_is_stateless_bounded_and_origin_protected(
     )
     assert rejected.status_code == 403
 
+    # Production redirects the apex to www first, so the endpoint never serves that host or origin.
+    assert client.post("/mcp", json=initialize, headers={**headers, "host": "fmind.dev"}).status_code == 421
+    assert client.post("/mcp", json=initialize, headers={**headers, "origin": "https://fmind.dev"}).status_code == 403
+
     for fetch_site in ("cross-site", "same-site"):
         rejected = client.post(
             "/mcp",

@@ -662,12 +662,12 @@ class _PostOnly:
 
 def create_mcp_http_app(server: MCPServer[None]) -> Starlette:
     """Serve finite MCP requests without opening unused notification streams."""
+    # The public host plus loopback for local runs and the image smoke test. The apex
+    # is absent on purpose: production redirects it to www before this app sees it.
     security = TransportSecuritySettings(
         allowed_hosts=[
             "www.fmind.dev",
             "www.fmind.dev:*",
-            "fmind.dev",
-            "fmind.dev:*",
             "testserver.local",
             "testserver.local:*",
             "localhost",
@@ -677,7 +677,6 @@ def create_mcp_http_app(server: MCPServer[None]) -> Starlette:
         ],
         allowed_origins=[
             "https://www.fmind.dev",
-            "https://fmind.dev",
             "http://testserver.local",
             "http://testserver.local:*",
             "http://localhost",
