@@ -272,7 +272,6 @@ class CostFrame:
     label: str
     summary: str
     url: str
-    requests: float
 
 
 @dataclass(frozen=True, slots=True)

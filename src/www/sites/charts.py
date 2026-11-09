@@ -132,7 +132,6 @@ def hosting_cost_plot(
                 label=label,
                 summary=summary + " per month.",
                 url=hosting_url(scenario),
-                requests=requests,
             ),
         )
         if daily == inputs.requests_per_day:

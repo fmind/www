@@ -39,7 +39,7 @@ from www.sites.inputs import (
     parse_inputs,
     scenario_parameters,
 )
-from www.sites.models import APIRates, BillingPlan, FrontierModel
+from www.sites.models import APIRates, BillingPlan, CostFrame, FrontierModel
 
 # Fleet sizing, billing plans, demand presets, and input validation.
 
@@ -449,23 +449,29 @@ def test_scenario_links_preserve_every_assumption() -> None:
                 assert candidate.inputs == result.inputs
 
 
+def frame_daily_requests(frame: CostFrame) -> float:
+    """Daily requests that a slider frame's scenario link applies."""
+    return float(parse_qs(urlparse(frame.url).query)["requests"][0])
+
+
 def test_cost_explorer_frames_use_billing_and_capacity() -> None:
     result = view()
     current = result.cost_plot.frames[result.cost_plot.selected]
-    assert current.requests == result.estimate.requests_month
+    assert frame_daily_requests(current) * result.inputs.active_days == result.estimate.requests_month
     assert "$13.20" in current.summary
     assert result.cost_plot.capacity_x
     assert len(result.cost_plot.break_evens) == 5
 
     previous = 0.0
     for frame in result.cost_plot.frames:
-        assert frame.requests > previous
+        assert frame_daily_requests(frame) > previous
         assert "NaN" not in frame.x
-        previous = frame.requests
+        previous = frame_daily_requests(frame)
 
     extreme = view({"requests": "10000000", "days": "31", "throughput": "0.1"})
     selected = extreme.cost_plot.frames[extreme.cost_plot.selected]
-    assert selected.requests == 310_000_000
+    assert frame_daily_requests(selected) == 10_000_000
+    assert "310,000,000 requests/month" in selected.label
     assert "beyond" in selected.summary
 
 
@@ -486,16 +492,14 @@ def test_cost_chart_has_round_labels_and_workloads_with_exact_costs(query) -> No
     assert len(result.cost_plot.x_ticks) <= 5
     assert len(result.cost_plot.y_ticks) <= 5
     for index, frame in enumerate(result.cost_plot.frames):
-        parsed = parse_qs(urlparse(frame.url).query)
-        daily = float(parsed["requests"][0])
+        daily = frame_daily_requests(frame)
         if index != result.cost_plot.selected:
             assert daily.is_integer()
             assert str(int(daily)).rstrip("0") in {"1", "2", "5"}
         assert 1 <= daily <= 10_000_000
-        assert frame.requests == daily * result.inputs.active_days
         assert f"{format_number(daily)} {'request' if daily == 1 else 'requests'}/day" in frame.label
         for api in result.apis:
-            cost = api_monthly_cost(result.inputs, api.baseline, frame.requests)[0]
+            cost = api_monthly_cost(result.inputs, api.baseline, daily * result.inputs.active_days)[0]
             assert f"{api.baseline.name} {format_usd2(cost)}" in frame.summary
         assert 130 <= float(frame.x) <= 720
     current = result.cost_plot.frames[result.cost_plot.selected]
