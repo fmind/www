@@ -2,13 +2,12 @@
 
 import { spawn } from "node:child_process";
 import { constants as fsConstants } from "node:fs";
-import { access, lstat, mkdir, readFile, realpath, rename, rm, writeFile } from "node:fs/promises";
-import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { access, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { dirname, isAbsolute, join, resolve, sep } from "node:path";
 import process from "node:process";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const LIGHTHOUSE_VERSION = "13.5.0";
-const MAX_SITEMAP_BYTES = 2 * 1024 * 1024;
 const AUDIT_TIMEOUT_MS = 150_000;
 const MAX_AUDIT_ATTEMPTS = 2;
 // A performance-only miss is measured this many times in total and judged by the median.
@@ -109,60 +108,12 @@ function normalizeBaseUrl(value) {
   return url;
 }
 
-function isWithin(parent, candidate) {
-  const pathFromParent = relative(parent, candidate);
-  return (
-    pathFromParent === ""
-    || (pathFromParent !== ".." && !pathFromParent.startsWith(`..${sep}`) && !isAbsolute(pathFromParent))
-  );
-}
-
-async function optionalLstat(path) {
-  try {
-    return await lstat(path);
-  } catch (error) {
-    if (error?.code === "ENOENT") return undefined;
-    throw new Error(`cannot inspect artifact path ${path}: ${error.message}`, { cause: error });
-  }
-}
-
-async function validateArtifactDirectoryPath(outputDirectory) {
-  const resolvedOutput = resolve(REPOSITORY_ROOT, outputDirectory);
-  if (!isWithin(TMP_ROOT, resolvedOutput)) {
+function resolveArtifactDirectory(outputDirectory) {
+  const resolved = resolve(REPOSITORY_ROOT, outputDirectory);
+  if (!resolved.startsWith(`${TMP_ROOT}${sep}`)) {
     throw new Error("artifact directory must resolve inside this repository's ignored tmp/ directory");
   }
-  const realRepository = await realpath(REPOSITORY_ROOT);
-  let tmpStat = await optionalLstat(TMP_ROOT);
-  if (!tmpStat) {
-    // tmp/ is a fixed direct child, so lexical containment is established before creating it.
-    await mkdir(TMP_ROOT);
-    tmpStat = await lstat(TMP_ROOT);
-  }
-  if (tmpStat.isSymbolicLink() || !tmpStat.isDirectory()) {
-    throw new Error("the repository tmp path must be a real directory, not a symbolic link");
-  }
-
-  const realTmp = await realpath(TMP_ROOT);
-  if (!isWithin(realRepository, realTmp)) {
-    throw new Error("the repository tmp directory resolves outside the repository");
-  }
-
-  const target = join(resolvedOutput, "reports");
-  const parts = relative(TMP_ROOT, target).split(sep).filter(Boolean);
-  let current = TMP_ROOT;
-  for (const part of parts) {
-    current = join(current, part);
-    const currentStat = await optionalLstat(current);
-    if (!currentStat) continue;
-    if (currentStat.isSymbolicLink()) {
-      throw new Error(`artifact directory must not contain symbolic links: ${current}`);
-    }
-    if (!currentStat.isDirectory()) throw new Error(`artifact path component is not a directory: ${current}`);
-    const realCurrent = await realpath(current);
-    if (!isWithin(realTmp, realCurrent)) throw new Error(`artifact directory resolves outside tmp: ${current}`);
-  }
-
-  return { outputDirectory: resolvedOutput, realTmp };
+  return resolved;
 }
 
 function appendOutput(current, chunk) {
@@ -171,7 +122,7 @@ function appendOutput(current, chunk) {
 }
 
 function processGroupExists(child) {
-  if (process.platform === "win32" || child.pid === undefined) return false;
+  if (child.pid === undefined) return false;
   try {
     process.kill(-child.pid, 0);
     return true;
@@ -182,7 +133,7 @@ function processGroupExists(child) {
 }
 
 function signalProcessTree(child, signal) {
-  if (process.platform === "win32" || child.pid === undefined) return child.kill(signal);
+  if (child.pid === undefined) return child.kill(signal);
   try {
     process.kill(-child.pid, signal);
     return true;
@@ -202,7 +153,7 @@ function runProcess(
       cwd: REPOSITORY_ROOT,
       // A dedicated POSIX process group lets a timed-out Lighthouse audit
       // terminate Chromium descendants as well as the Node entry process.
-      detached: process.platform !== "win32",
+      detached: true,
       env,
       shell: false,
       stdio: ["ignore", "pipe", "pipe"],
@@ -334,143 +285,20 @@ async function discoverToolchain() {
   };
 }
 
-function decodeXmlText(value) {
-  const entities = { amp: "&", apos: "'", gt: ">", lt: "<", quot: "\"" };
-  const decoded = value.replace(/&(amp|apos|gt|lt|quot);/gu, (_, name) => entities[name]);
-  if (/&(?:#|[A-Za-z])/u.test(decoded)) throw new Error(`unsupported XML entity in sitemap location: ${value}`);
-  return decoded;
-}
-
-function parseSitemapPaths(xml, baseUrl) {
-  const document = xml.replace(/^\uFEFF/u, "").trim();
-  const rootCount = document.match(/<urlset(?:\s|>)/gu)?.length ?? 0;
-  const closingRootCount = document.match(/<\/urlset>/gu)?.length ?? 0;
-  if (
-    rootCount !== 1
-    || closingRootCount !== 1
-    || !/^(?:<\?xml[^?]*\?>\s*)?<urlset(?:\s[^>]*)?>[\s\S]*<\/urlset>$/u.test(document)
-  ) {
-    throw new Error("sitemap does not contain a complete urlset root");
-  }
-  const locations = [...xml.matchAll(/<loc>\s*([^<]+?)\s*<\/loc>/gu)].map((match) => decodeXmlText(match[1]));
-  if (locations.length === 0) throw new Error("sitemap contains no locations");
-
-  const paths = [];
-  const seen = new Set();
-  let sitemapOrigin;
-  for (const location of locations) {
-    if (/[\u0000-\u0020\u007F]/u.test(location)) {
-      throw new Error(`sitemap location contains whitespace or control characters: ${JSON.stringify(location)}`);
-    }
-    let canonical;
-    try {
-      canonical = new URL(location);
-    } catch (error) {
-      throw new Error(`invalid sitemap location: ${JSON.stringify(location)}`, { cause: error });
-    }
-    if (canonical.protocol !== "http:" && canonical.protocol !== "https:") {
-      throw new Error(`sitemap location must use http or https: ${canonical.href}`);
-    }
-    if (canonical.username || canonical.password || canonical.search || canonical.hash) {
-      throw new Error(`sitemap location must be a credential-free, query-free page URL: ${canonical.href}`);
-    }
-    sitemapOrigin ??= canonical.origin;
-    if (canonical.origin !== sitemapOrigin) {
-      throw new Error(`cross-origin sitemap location rejected: ${canonical.href}`);
-    }
-    if (!["/agents", "/connect", "/privacy"].includes(canonical.pathname) && !canonical.pathname.endsWith("/")) {
-      throw new Error(`sitemap page path must end in a slash: ${canonical.pathname}`);
-    }
-
-    // Only the validated path crosses from canonical sitemap data to the selected candidate origin.
-    const target = new URL(canonical.pathname, baseUrl);
-    if (target.origin !== baseUrl.origin || target.search || target.hash) {
-      throw new Error(`sitemap path escaped the candidate origin: ${canonical.pathname}`);
-    }
-    if (seen.has(target.pathname)) throw new Error(`duplicate sitemap path: ${target.pathname}`);
-    seen.add(target.pathname);
-    paths.push(target.pathname);
-  }
-
-  paths.sort((left, right) => (left < right ? -1 : left > right ? 1 : 0));
-  return { paths, sitemapOrigin };
-}
-
-async function readSitemapBody(body) {
-  if (!body) throw new Error("sitemap response body is missing");
-
-  let reader;
-  try {
-    reader = body.getReader();
-  } catch (error) {
-    throw new Error(`cannot read sitemap response body: ${error.message}`, { cause: error });
-  }
-
-  const decoder = new TextDecoder("utf-8", { fatal: true });
-  let byteLength = 0;
-  let xml = "";
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      if (!(value instanceof Uint8Array)) throw new Error("sitemap response body yielded a non-byte chunk");
-
-      // Fetch exposes content-decoded bytes here, so this caps the actual XML rather than its wire encoding.
-      byteLength += value.byteLength;
-      if (byteLength > MAX_SITEMAP_BYTES) throw new Error(`sitemap exceeds ${MAX_SITEMAP_BYTES} bytes`);
-      xml += decoder.decode(value, { stream: true });
-    }
-    xml += decoder.decode();
-    return xml;
-  } catch (error) {
-    let cancellationError;
-    try {
-      await reader.cancel(error);
-    } catch (caught) {
-      cancellationError = caught;
-    }
-    const message = error instanceof Error ? error.message : String(error);
-    if (cancellationError) {
-      throw new Error(`failed to read sitemap body (${message}) and cancel its stream: ${cancellationError.message}`, {
-        cause: new AggregateError([error, cancellationError]),
-      });
-    }
-    if (message === `sitemap exceeds ${MAX_SITEMAP_BYTES} bytes`) throw error;
-    throw new Error(`failed to read sitemap body: ${message}`, { cause: error });
-  } finally {
-    reader.releaseLock();
-  }
-}
-
-async function fetchSitemap(baseUrl, fetchImplementation = globalThis.fetch) {
-  const sitemapUrl = new URL("/sitemap.xml", baseUrl);
-  const signal = AbortSignal.timeout(30_000);
+async function requireSitemapPaths(baseUrl, fetchImplementation = globalThis.fetch) {
   let response;
   try {
-    response = await fetchImplementation(sitemapUrl, {
-      headers: { accept: "application/xml, text/xml;q=0.9" },
-      redirect: "follow",
-      signal,
-    });
+    response = await fetchImplementation(new URL("/sitemap.xml", baseUrl), { signal: AbortSignal.timeout(30_000) });
   } catch (error) {
     throw new Error(`could not fetch sitemap: ${error.message}`, { cause: error });
   }
-  const finalUrl = new URL(response.url);
-  if (finalUrl.href !== sitemapUrl.href) {
-    throw new Error(`cross-origin or unexpected sitemap redirect rejected: ${response.url}`);
-  }
   if (!response.ok) throw new Error(`sitemap returned HTTP ${response.status}`);
-  const contentType = response.headers.get("content-type") ?? "";
-  const mediaType = contentType.split(";", 1)[0].trim().toLowerCase();
-  if (mediaType !== "application/xml" && mediaType !== "text/xml" && !mediaType.endsWith("+xml")) {
-    throw new Error(`sitemap returned unexpected content type ${JSON.stringify(contentType)}`);
+  const locations = [...(await response.text()).matchAll(/<loc>\s*([^<\s]+)\s*<\/loc>/gu)];
+  // The sitemap lists canonical production URLs whatever the candidate origin, so compare paths only.
+  const listed = new Set(locations.map((match) => URL.parse(match[1])?.pathname));
+  for (const pathname of PORTFOLIO_PATHS) {
+    if (!listed.has(pathname)) throw new Error(`required path is missing from sitemap: ${pathname}`);
   }
-  const declaredLength = Number(response.headers.get("content-length"));
-  if (Number.isFinite(declaredLength) && declaredLength > MAX_SITEMAP_BYTES) {
-    throw new Error(`sitemap exceeds ${MAX_SITEMAP_BYTES} bytes`);
-  }
-  const xml = await readSitemapBody(response.body);
-  return parseSitemapPaths(xml, baseUrl);
 }
 
 function pathKey(pathname) {
@@ -495,30 +323,14 @@ function buildAuditPlan(baseUrl) {
   return audits;
 }
 
-function validateSitemapScope(paths) {
-  const available = new Set(paths);
-  for (const pathname of PORTFOLIO_PATHS) {
-    if (!available.has(pathname)) throw new Error(`required path is missing from sitemap: ${pathname}`);
-  }
-}
-
 async function prepareArtifactDirectories(outputDirectory) {
-  const validated = await validateArtifactDirectoryPath(outputDirectory);
-  await mkdir(validated.outputDirectory, { recursive: true });
-  const reportsDirectory = join(validated.outputDirectory, "reports");
+  const resolved = resolveArtifactDirectory(outputDirectory);
+  const reportsDirectory = join(resolved, "reports");
   // Report names come from the plan index, so reports of an earlier plan would
-  // otherwise sit beside current ones. The path above holds no symbolic link.
+  // otherwise sit beside current ones.
   await rm(reportsDirectory, { recursive: true, force: true });
   await mkdir(reportsDirectory, { recursive: true });
-
-  const [realOutput, realReports] = await Promise.all([
-    realpath(validated.outputDirectory),
-    realpath(reportsDirectory),
-  ]);
-  if (!isWithin(validated.realTmp, realOutput) || !isWithin(realOutput, realReports)) {
-    throw new Error("artifact directory resolves outside this repository's ignored tmp/ directory");
-  }
-  return { outputDirectory: realOutput, reportsDirectory: realReports };
+  return { outputDirectory: resolved, reportsDirectory };
 }
 
 async function writeTextAtomic(filename, contents) {
@@ -830,9 +642,9 @@ async function allowChromiumSandbox(
     throw new Error(`invalid Chromium executable path: ${JSON.stringify(chromiumPath)}`);
   }
   await access(chromiumPath, fsConstants.X_OK);
-  const validated = await validateArtifactDirectoryPath(outputDirectory);
-  await mkdir(validated.outputDirectory, { recursive: true });
-  const profilePath = join(validated.outputDirectory, "www-lighthouse-chromium.apparmor");
+  const profileDirectory = resolveArtifactDirectory(outputDirectory);
+  await mkdir(profileDirectory, { recursive: true });
+  const profilePath = join(profileDirectory, "www-lighthouse-chromium.apparmor");
   const destination = "/etc/apparmor.d/www-lighthouse-chromium";
   const profile = [
     "abi <abi/4.0>,",
@@ -867,20 +679,17 @@ async function run() {
 
   const baseUrl = normalizeBaseUrl(options.baseUrl);
   const toolchain = await discoverToolchain();
-  const sitemap = await fetchSitemap(baseUrl);
-  validateSitemapScope(sitemap.paths);
+  await requireSitemapPaths(baseUrl);
   const audits = buildAuditPlan(baseUrl);
   const artifactDirectories = await prepareArtifactDirectories(OUTPUT_DIRECTORY);
   const manifest = {
     schemaVersion: 1,
     baseUrl: baseUrl.href,
     sitemapUrl: new URL("/sitemap.xml", baseUrl).href,
-    sitemapOrigin: sitemap.sitemapOrigin,
     lighthouseVersion: toolchain.lighthouseVersion,
     playwrightVersion: toolchain.playwrightVersion,
     chromiumPath: toolchain.chromiumPath,
     categories: CATEGORIES,
-    sitemapPaths: sitemap.paths,
     portfolioPaths: PORTFOLIO_PATHS,
     audits,
   };
@@ -929,16 +738,14 @@ export {
   allowChromiumSandbox,
   buildAuditPlan,
   describeFailure,
-  fetchSitemap,
   inspectReport,
   LIGHTHOUSE_VERSION,
   normalizeBaseUrl,
   parseArguments,
-  parseSitemapPaths,
   prepareArtifactDirectories,
   renderSummary,
+  requireSitemapPaths,
   runAudit,
   runProcess,
   summarize,
-  validateSitemapScope,
 };

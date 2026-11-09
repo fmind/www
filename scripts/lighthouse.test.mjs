@@ -12,32 +12,23 @@ import * as harness from "./lighthouse.mjs";
 const REPOSITORY_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const REPOSITORY_TMP = join(REPOSITORY_ROOT, "tmp");
 const BASE_URL = new URL("https://candidate.example/");
-const MAX_SITEMAP_BYTES = 2 * 1024 * 1024;
 const CATEGORIES = ["performance", "accessibility", "best-practices", "seo", "agentic-browsing"];
 
-function sitemapResponse(
-  chunks,
-  {
-    cancel,
-    close = true,
-    contentType = "application/xml; charset=utf-8",
-    url = "https://candidate.example/sitemap.xml",
-  } = {},
-) {
-  const body = new ReadableStream({
-    start(controller) {
-      for (const chunk of chunks) controller.enqueue(Buffer.from(chunk));
-      if (close) controller.close();
-    },
-    cancel,
-  });
-  return {
-    body,
-    headers: new Headers({ "content-type": contentType }),
-    ok: true,
-    status: 200,
-    url,
-  };
+const PORTFOLIO_PATHS = [
+  "/",
+  "/connect",
+  "/privacy",
+  "/articles/",
+  "/news/",
+  "/sites/",
+  "/sites/llm-self-hosting/",
+  "/sites/mcp-context-cost/",
+];
+
+// The sitemap names canonical production URLs, whatever origin serves it.
+function sitemapFetch(paths, status = 200) {
+  const locations = paths.map((path) => `<url><loc>https://www.fmind.dev${path}</loc></url>`).join("");
+  return async () => new Response(`<urlset>${locations}</urlset>`, { status });
 }
 
 function perfectReport(audit) {
@@ -93,7 +84,6 @@ test("normalizeBaseUrl accepts an origin and rejects URL authority or path expan
 
 test(
   "runProcess kills the full process group after a timeout",
-  { skip: process.platform === "win32" },
   async () => {
     const grandchildProgram = "process.on('SIGTERM', () => {}); setInterval(() => {}, 1000)";
     const parentProgram = `
@@ -132,25 +122,8 @@ test(
 test("prepareArtifactDirectories keeps artifacts below the repository tmp directory", async () => {
   await assert.rejects(harness.prepareArtifactDirectories("tmp/../reports"), /inside.*tmp/u);
   await assert.rejects(harness.prepareArtifactDirectories(join(tmpdir(), "reports")), /inside.*tmp/u);
-});
-
-test("prepareArtifactDirectories rejects a symlink before creating through it", async (context) => {
-  // A fresh checkout has no generated directories yet.
-  await mkdir(REPOSITORY_TMP, { recursive: true });
-  const external = await mkdtemp(join(tmpdir(), "www-lighthouse-external-"));
-  const fixture = await mkdtemp(join(REPOSITORY_TMP, "lighthouse-symlink-test-"));
-  context.after(async () => {
-    await rm(fixture, { force: true, recursive: true });
-    await rm(external, { force: true, recursive: true });
-  });
-
-  const link = join(fixture, "escape");
-  await symlink(external, link, "dir");
-  await assert.rejects(
-    harness.prepareArtifactDirectories(join(link, "artifacts")),
-    /symbolic link|outside.*tmp/u,
-  );
-  await assert.rejects(access(join(external, "artifacts")), { code: "ENOENT" });
+  await assert.rejects(harness.prepareArtifactDirectories("tmp-sibling/reports"), /inside.*tmp/u);
+  await assert.rejects(harness.prepareArtifactDirectories("tmp"), /inside.*tmp/u);
 });
 
 test("prepareArtifactDirectories clears reports left by an earlier run", async (context) => {
@@ -183,126 +156,45 @@ test("the harness runs when Node starts it through a symbolic link", async (cont
   assert.match(stdout, /--base-url/u);
 });
 
-test("parseSitemapPaths validates canonical pages and retargets only their paths", () => {
-  const xml = `<?xml version="1.0" encoding="utf-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://www.fmind.dev/articles/z/</loc></url>
-  <url><loc>https://www.fmind.dev/</loc></url>
-</urlset>`;
-  assert.deepEqual(harness.parseSitemapPaths(xml, BASE_URL), {
-    paths: ["/", "/articles/z/"],
-    sitemapOrigin: "https://www.fmind.dev",
+test("requireSitemapPaths needs every audited page in the candidate's sitemap", async () => {
+  const requested = [];
+  await harness.requireSitemapPaths(BASE_URL, async (url) => {
+    requested.push(url.href);
+    return sitemapFetch([...PORTFOLIO_PATHS, "/articles/new/"])();
   });
-});
+  assert.deepEqual(requested, ["https://candidate.example/sitemap.xml"]);
 
-test("parseSitemapPaths rejects malformed or unsafe sitemap locations", async (context) => {
-  const cases = {
-    "cross-origin location": ["https://www.fmind.dev/", "https://other.example/articles/"],
-    "duplicate path": ["https://www.fmind.dev/", "https://www.fmind.dev/"],
-    "fragment location": ["https://www.fmind.dev/#top"],
-    "non-page path": ["https://www.fmind.dev/articles"],
-    "query location": ["https://www.fmind.dev/?page=1"],
-    "unsupported entity": ["https://www.fmind.dev/articles/&copy;/"],
-    "whitespace within location": ["https://www.fmind.dev/art\nicles/"],
-  };
-  for (const [name, locations] of Object.entries(cases)) {
-    await context.test(name, () => {
-      const xml = `<urlset>${locations.map((location) => `<url><loc>${location}</loc></url>`).join("")}</urlset>`;
-      assert.throws(() => harness.parseSitemapPaths(xml, BASE_URL));
-    });
-  }
-  assert.throws(
-    () => harness.parseSitemapPaths("<urlset><url><loc>https://www.fmind.dev/</loc></url>", BASE_URL),
-    /urlset/u,
-  );
-  assert.throws(
-    () =>
-      harness.parseSitemapPaths(
-        "<urlset></urlset><urlset><url><loc>https://www.fmind.dev/</loc></url></urlset>",
-        BASE_URL,
-      ),
-    /urlset/u,
-  );
-  assert.throws(() => harness.parseSitemapPaths("<not-a-sitemap />", BASE_URL), /urlset/u);
-});
-
-test("fetchSitemap reads a fragmented response stream", async () => {
-  const response = sitemapResponse([
-    "<urlset><url><loc>https://www.fmind.dev/",
-    "</loc></url></urlset>",
-  ]);
-  const result = await harness.fetchSitemap(BASE_URL, async () => response);
-  assert.deepEqual(result, { paths: ["/"], sitemapOrigin: "https://www.fmind.dev" });
-});
-
-test("fetchSitemap cancels its decoded stream immediately above the 2 MiB cap", async () => {
-  let cancelled = false;
-  const response = sitemapResponse([Buffer.alloc(MAX_SITEMAP_BYTES + 1, "x")], {
-    cancel() {
-      cancelled = true;
-    },
-    close: false,
-  });
-  await assert.rejects(harness.fetchSitemap(BASE_URL, async () => response), /exceeds 2097152 bytes/u);
-  assert.equal(cancelled, true);
-});
-
-test("fetchSitemap reports a cancellation failure without hiding the size violation", async () => {
-  const response = sitemapResponse([Buffer.alloc(MAX_SITEMAP_BYTES + 1, "x")], {
-    cancel() {
-      throw new Error("cancel failed");
-    },
-    close: false,
-  });
   await assert.rejects(
-    harness.fetchSitemap(BASE_URL, async () => response),
-    /sitemap exceeds 2097152 bytes.*cancel its stream: cancel failed/u,
+    harness.requireSitemapPaths(
+      BASE_URL,
+      sitemapFetch(PORTFOLIO_PATHS.filter((path) => path !== "/sites/llm-self-hosting/")),
+    ),
+    /required path is missing from sitemap: \/sites\/llm-self-hosting\/$/u,
   );
-});
-
-test("fetchSitemap rejects missing and failed response bodies", async () => {
-  const metadata = {
-    headers: new Headers({ "content-type": "application/xml" }),
-    ok: true,
-    status: 200,
-    url: "https://candidate.example/sitemap.xml",
-  };
-  await assert.rejects(harness.fetchSitemap(BASE_URL, async () => ({ ...metadata, body: null })), /body/u);
-
-  const body = new ReadableStream({
-    start(controller) {
-      controller.error(new Error("stream failed"));
-    },
-  });
+  // A listed sub-page does not stand in for its index.
   await assert.rejects(
-    harness.fetchSitemap(BASE_URL, async () => ({ ...metadata, body })),
-    /read sitemap body.*stream failed/u,
+    harness.requireSitemapPaths(
+      BASE_URL,
+      sitemapFetch(PORTFOLIO_PATHS.map((path) => path.replace(/^\/news\/$/u, "/news/x/"))),
+    ),
+    /required path is missing from sitemap: \/news\/$/u,
   );
 });
 
-test("fetchSitemap rejects an invalid XML media type", async () => {
-  const response = sitemapResponse(["<urlset><url><loc>https://www.fmind.dev/</loc></url></urlset>"], {
-    contentType: "text/notxml",
-  });
-  await assert.rejects(harness.fetchSitemap(BASE_URL, async () => response), /unexpected content type/u);
+test("requireSitemapPaths reports an unavailable sitemap", async () => {
+  await assert.rejects(harness.requireSitemapPaths(BASE_URL, sitemapFetch(PORTFOLIO_PATHS, 404)), /HTTP 404/u);
+  await assert.rejects(
+    harness.requireSitemapPaths(BASE_URL, async () => {
+      throw new Error("connection refused");
+    }),
+    /could not fetch sitemap: connection refused/u,
+  );
 });
 
 test("the portfolio plan audits every page and both calculators on desktop and mobile", () => {
-  const paths = [
-    "/",
-    "/connect",
-    "/privacy",
-    "/articles/",
-    "/news/",
-    "/sites/",
-    "/sites/llm-self-hosting/",
-    "/sites/mcp-context-cost/",
-    "/articles/new/",
-    "/sites/tool/",
-  ];
   const portfolio = harness.buildAuditPlan(BASE_URL);
   assert.equal(portfolio.length, 16);
-  assert.deepEqual([...new Set(portfolio.map((audit) => audit.path))], paths.slice(0, 8));
+  assert.deepEqual([...new Set(portfolio.map((audit) => audit.path))], PORTFOLIO_PATHS);
   assert.deepEqual(new Set(portfolio.map((audit) => audit.formFactor)), new Set(["desktop", "mobile"]));
   assert.equal(new Set(portfolio.map((audit) => audit.artifact)).size, 16);
   assert.deepEqual(portfolio[0], {
@@ -313,11 +205,6 @@ test("the portfolio plan audits every page and both calculators on desktop and m
     url: "https://candidate.example/",
   });
   assert.ok(portfolio.every((audit) => new URL(audit.url).origin === BASE_URL.origin));
-  harness.validateSitemapScope(paths);
-  assert.throws(
-    () => harness.validateSitemapScope(paths.filter((path) => path !== "/sites/llm-self-hosting/")),
-    /required path/u,
-  );
 });
 
 test("inspectReport accepts only exact categories and the audited page URL", () => {
@@ -347,22 +234,6 @@ test("inspectReport accepts only exact categories and the audited page URL", () 
   const changedFinal = perfectReport(audit);
   changedFinal.finalDisplayedUrl = `${audit.url}?unexpected=1`;
   assert.match(harness.inspectReport(changedFinal, audit, BASE_URL).errors.join("\n"), /final URL escaped or changed/u);
-});
-
-test("sitemap accepts the canonical slashless contact page", () => {
-  const xml = "<urlset><url><loc>https://www.fmind.dev/connect</loc></url></urlset>";
-  assert.deepEqual(harness.parseSitemapPaths(xml, BASE_URL).paths, ["/connect"]);
-  assert.throws(
-    () => harness.parseSitemapPaths(xml.replace("/connect", "/unexpected"), BASE_URL),
-    /must end in a slash/u,
-  );
-});
-
-test("sitemap accepts the canonical privacy and agent pages", () => {
-  for (const path of ["/privacy", "/agents"]) {
-    const xml = `<urlset><url><loc>https://www.fmind.dev${path}</loc></url></urlset>`;
-    assert.deepEqual(harness.parseSitemapPaths(xml, BASE_URL).paths, [path]);
-  }
 });
 
 test("runAudit retries once on NO_NAVSTART and does not retry other score failures", async (context) => {
