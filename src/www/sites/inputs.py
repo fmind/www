@@ -448,23 +448,24 @@ def automatic_setup(
     plan: BillingPlan,
     *,
     keep_checkpoint: bool = False,
+    pools: Sequence[GKENodePool] = GKE_NODE_POOLS,
 ) -> tuple[HostingInputs, GKENodePool]:
     """Pick the lowest-cost machine for the checkpoint, else for the model's next supported one.
 
     A checkpoint can lack hardware with this plan (Mistral Large 4 NVFP4 runs only on A4, which
     has no on-demand rate) or reject the workload (Nemotron NVFP4 on G4 stops at 16,384 context
-    tokens). Unless the caller chose the precision, prefer the first supported checkpoint whose
-    machine accepts the workload; otherwise keep the first compatible one, so the caller reports
-    its limit.
+    tokens). Unless the caller chose the precision, prefer the first checkpoint whose machine
+    accepts the workload (the current one, the model default, then the other supported ones);
+    otherwise keep the first compatible one, so the caller reports its limit.
     """
     model = find_model(inputs.model_id)
-    others = () if keep_checkpoint else model.supported_quantizations
-    candidates = [inputs, *(replace(inputs, quantization_id=q) for q in others if q != inputs.quantization_id)]
+    others = () if keep_checkpoint else (model.default_quantization, *model.supported_quantizations)
+    candidates = [replace(inputs, quantization_id=q) for q in dict.fromkeys((inputs.quantization_id, *others))]
     compatible: tuple[HostingInputs, GKENodePool] | None = None
     first_error: ValueError | None = None
     for candidate in candidates:
         try:
-            node = automatic_node(candidate, plan)
+            node = automatic_node(candidate, plan, pools)
         except ValueError as exc:
             first_error = first_error or exc
             continue

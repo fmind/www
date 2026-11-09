@@ -280,47 +280,28 @@ def _hosting_accelerators(
         ("GPU", tuple(pool for pool in GKE_NODE_POOLS if pool.chip == "GPU")),
         ("Cloud TPU", tuple(pool for pool in GKE_NODE_POOLS if pool.chip == "TPU")),
     )
-    default_quant_id = (
-        inputs.quantization_id
+    # An unsupported precision cannot be sized; start from the model's default checkpoint.
+    start = (
+        inputs
         if inputs.quantization_id in model.supported_quantizations
-        else model.default_quantization
-    )
-    preferred_quants = tuple(
-        dict.fromkeys((default_quant_id, model.default_quantization, *model.supported_quantizations))
+        else replace(inputs, quantization_id=model.default_quantization)
     )
     rows: list[AcceleratorComparison] = []
     for family, pools in families:
-        chosen_quant = find_quantization(default_quant_id)
-        chosen_node = pools[0]
-        target_plan = (
+        chosen_plan = target_plan = (
             inputs.billing_plan
             if any(price.plan is inputs.billing_plan for pool in pools for price in pool.prices)
-            else chosen_node.prices[0].plan
+            else pools[0].prices[0].plan
         )
-        chosen_plan = (
-            target_plan
-            if any(price.plan is target_plan for price in chosen_node.prices)
-            else chosen_node.prices[0].plan
-        )
-        matched_hardware = False
-        for quant_id in preferred_quants:
-            candidate = replace(inputs, quantization_id=quant_id)
-            try:
-                candidate_node = automatic_node(candidate, target_plan, pools)
-            except ValueError:
-                continue
-            # automatic_node prefers machines that also accept the workload; keep looking
-            # for a precision that does, but remember the first hardware match.
-            workload_fits = not configuration_issue(
-                replace(candidate, node_pool_id=candidate_node.id, billing_plan=target_plan)
-            )
-            if workload_fits or not matched_hardware:
-                chosen_quant = find_quantization(quant_id)
-                chosen_plan = target_plan
-                chosen_node = candidate_node
-                matched_hardware = True
-            if workload_fits:
-                break
+        try:
+            candidate, chosen_node = automatic_setup(start, target_plan, pools=pools)
+            matched_hardware = True
+        except ValueError:
+            # Placeholder row: the family's first machine, on a plan it publishes.
+            candidate, chosen_node, matched_hardware = start, pools[0], False
+            if all(price.plan is not target_plan for price in chosen_node.prices):
+                chosen_plan = chosen_node.prices[0].plan
+        chosen_quant = find_quantization(candidate.quantization_id)
         scenario = replace(
             inputs,
             mode="advanced",
@@ -335,7 +316,7 @@ def _hosting_accelerators(
             # pools[0] is only a placeholder: report a reason shared by every machine that offers the plan.
             reasons = {
                 configuration_issue(
-                    replace(inputs, node_pool_id=pool.id, quantization_id=default_quant_id, billing_plan=target_plan),
+                    replace(start, node_pool_id=pool.id, billing_plan=target_plan),
                     check_workload=False,
                 )
                 for pool in pools
