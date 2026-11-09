@@ -555,3 +555,17 @@ def test_search_news_editions_matches_items_and_edition_headers() -> None:
     assert search_news_editions(editions, "   ") == ()
     assert search_news_editions(editions, "nonexistent") == ()
     assert render_news_index_markdown(()).startswith("# News — ")
+
+
+def test_search_news_editions_ranks_by_precomputed_field_boosts() -> None:
+    in_description = parse_edition("2026-11-03", "- [Other](https://example.com/x): Mentions Kubernetes once.\n")
+    in_title = parse_edition("2026-11-02", "- [Kubernetes release](https://example.com/y): About it.\n")
+
+    ranked = search_news_editions((in_description, in_title), "kubernetes")
+
+    # A title match (boost 3) outranks a description match (boost 2) in a newer edition.
+    assert [summary.slug for summary in ranked] == ["2026-11-02", "2026-11-03"]
+    # The counters built at load stay out of an edition's value: equality, hashing, and repr ignore them.
+    again = parse_edition("2026-11-02", "- [Kubernetes release](https://example.com/y): About it.\n")
+    assert (in_title, hash(in_title)) == (again, hash(again))
+    assert "search_terms" not in repr(in_title)

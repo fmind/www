@@ -6,7 +6,7 @@ import re
 import tomllib
 from collections import Counter
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
@@ -106,6 +106,18 @@ class NewsEdition:
     items: tuple[NewsItem, ...]
     source: str
     updated: datetime
+    # Search term counts for the edition header, then for each item: tokenized once at load, not on every query.
+    search_terms: tuple[Counter[str], tuple[Counter[str], ...]] = field(init=False, repr=False, compare=False)
+
+    def __post_init__(self) -> None:
+        header = Counter(tokenize(f"{self.slug} {self.title} {self.topic}"))
+        items: list[Counter[str]] = []
+        for item in self.items:
+            terms: Counter[str] = Counter()
+            for text, boost in ((item.title, 3), (item.domain, 3), (item.description, 2), (item.url, 1)):
+                terms.update({term: count * boost for term, count in Counter(tokenize(text)).items()})
+            items.append(terms)
+        object.__setattr__(self, "search_terms", (header, tuple(items)))
 
     @property
     def url(self) -> str:
@@ -411,23 +423,15 @@ def search_news_editions(editions: Sequence[NewsEdition], query: str) -> tuple[N
 
     hits: list[tuple[int, int, NewsEditionSummary]] = []
     for position, edition in enumerate(editions):
-        edition_terms = Counter(tokenize(f"{edition.slug} {edition.title} {edition.topic}"))
+        edition_terms, item_terms = edition.search_terms
         header_matches = all(term in edition_terms for term in terms)
         matched_items: list[NewsItem] = []
         edition_score = sum(edition_terms[term] * 3 for term in terms) if header_matches else 0
-        for item in edition.items:
-            item_terms: Counter[str] = Counter()
-            for text, boost in (
-                (item.title, 3),
-                (item.domain, 3),
-                (item.description, 2),
-                (item.url, 1),
-            ):
-                item_terms.update({term: count * boost for term, count in Counter(tokenize(text)).items()})
-            combined = edition_terms + item_terms
-            if all(term in combined for term in terms):
+        for item, counts in zip(edition.items, item_terms, strict=True):
+            # An item matches when the edition header and its own text cover every term between them.
+            if all(term in edition_terms or term in counts for term in terms):
                 matched_items.append(item)
-                edition_score += sum(item_terms[term] for term in terms)
+                edition_score += sum(counts[term] for term in terms)
         if header_matches:
             hits.append((edition_score, position, edition.summary()))
         elif matched_items:
