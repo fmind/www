@@ -1,6 +1,10 @@
 """Tracing stays explicitly opt-in and bounded during shutdown."""
 
 import logging
+import os
+import subprocess
+import sys
+from pathlib import Path
 from threading import Event
 
 import pytest
@@ -40,6 +44,25 @@ class RecordingProvider:
 
 def test_telemetry_is_noop_without_endpoint() -> None:
     assert configure_telemetry({}) is None
+
+
+def test_untraced_startup_skips_the_sdk_and_exporter_imports() -> None:
+    # A fresh interpreter: other tests in this process import the SDK themselves.
+    probe = (
+        "import sys, www.app; "
+        "print(sorted(m for m in sys.modules if m.startswith(('opentelemetry.sdk', 'opentelemetry.exporter'))))"
+    )
+    environment = {name: value for name, value in os.environ.items() if not name.startswith("OTEL_")}
+    result = subprocess.run(  # noqa: S603 - fixed interpreter and probe
+        [sys.executable, "-c", probe],
+        cwd=Path(__file__).parents[1],
+        env=environment,
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    assert result.stdout.splitlines()[-1] == "[]"
 
 
 def test_telemetry_flushes_and_shuts_down_inside_the_deadline() -> None:

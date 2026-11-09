@@ -9,7 +9,6 @@ from urllib.parse import parse_qs, urlsplit
 
 from litestar.datastructures import Headers, MutableScopeHeaders
 from litestar.types import ASGIApp, Message, Receive, Scope, Send
-from opentelemetry import trace
 
 from www.config import Config, Environment
 
@@ -129,13 +128,17 @@ def request_trace_id(headers: Headers) -> str:
     return ""
 
 
-def trace_fields(cloud_trace: str = "") -> dict[str, str]:
-    """Return log correlation fields: the Cloud Logging request trace and any active OpenTelemetry span."""
+def trace_fields(cloud_trace: str = "", *, tracing: bool = False) -> dict[str, str]:
+    """Return log correlation fields: the Cloud Logging request trace and, when tracing, the active span."""
     fields = {CLOUD_TRACE_LOG_KEY: cloud_trace} if cloud_trace else {}
-    span_context = trace.get_current_span().get_span_context()
-    if span_context.is_valid:
-        fields["trace_id"] = format(span_context.trace_id, "032x")
-        fields["span_id"] = format(span_context.span_id, "016x")
+    if tracing:
+        # Deferred: only a configured tracer creates spans, so untraced processes skip OpenTelemetry.
+        from opentelemetry import trace
+
+        span_context = trace.get_current_span().get_span_context()
+        if span_context.is_valid:
+            fields["trace_id"] = format(span_context.trace_id, "032x")
+            fields["span_id"] = format(span_context.span_id, "016x")
     return fields
 
 
@@ -193,11 +196,12 @@ def _security_headers(nonce: str, environment: Environment) -> dict[str, str]:
 class SiteMiddleware:
     """Enforce the HTTP boundary and emit bounded structured request records."""
 
-    def __init__(self, app: ASGIApp, config: Config, logger: Logger) -> None:
+    def __init__(self, app: ASGIApp, config: Config, logger: Logger, *, tracing: bool = False) -> None:
         self.app = app
         self.environment = config.environment
         self.project = config.google_cloud_project
         self.logger = logger
+        self.tracing = tracing
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
@@ -244,7 +248,7 @@ class SiteMiddleware:
                     "size_bytes": size_bytes,
                     "duration_ms": round((perf_counter() - started_at) * 1000, 3),
                 }
-                log_values.update(trace_fields(cloud_trace))
+                log_values.update(trace_fields(cloud_trace, tracing=self.tracing))
                 self.logger.info("http request processed", **log_values)
 
             # HEAD probes (link checkers, unfurlers) fetch no page, so they are not pageviews.

@@ -15,7 +15,7 @@ from litestar.concurrency import sync_to_thread
 from litestar.config.compression import CompressionConfig
 from litestar.enums import HttpMethod
 from litestar.params import FromPath
-from litestar.plugins.opentelemetry import OpenTelemetryConfig, OpenTelemetryPlugin
+from litestar.plugins import PluginProtocol
 from litestar.response import Redirect, Response
 from litestar.types import ASGIApp, Scope
 
@@ -697,19 +697,17 @@ def create_app(
     # boundary, so /mcpx or /mcp/foo would get Starlette's plain-text 404.
     mcp_route = asgi("/mcp", copy_scope=True)(mcp_app)
     tracer_provider = configure_telemetry()
-    plugins = (
-        [
+    plugins: list[PluginProtocol] = []
+    if tracer_provider is not None:
+        # Deferred with the SDK: tracing is opt-in, so untraced processes never import it here.
+        from litestar.plugins.opentelemetry import OpenTelemetryConfig, OpenTelemetryPlugin
+
+        plugins.append(
             OpenTelemetryPlugin(
-                OpenTelemetryConfig(
-                    tracer_provider=tracer_provider,
-                    # Emit one server span per request.
-                    exclude_spans=["receive", "send"],
-                )
+                # Emit one server span per request.
+                OpenTelemetryConfig(tracer_provider=tracer_provider, exclude_spans=["receive", "send"])
             )
-        ]
-        if tracer_provider is not None
-        else []
-    )
+        )
 
     @asynccontextmanager
     async def lifespan(_: Litestar) -> AsyncGenerator[None]:
@@ -747,7 +745,7 @@ def create_app(
             "error_type": type(exc).__name__,
             "exc_info": exc,
         }
-        error_values.update(trace_fields(state.get("cloud_trace", "")))
+        error_values.update(trace_fields(state.get("cloud_trace", ""), tracing=tracer_provider is not None))
         site_logger.error(
             "unhandled request failure",
             **error_values,
@@ -801,7 +799,9 @@ def create_app(
     # Litestar applies configured middleware only after route resolution. Wrap
     # its full ASGI handler so routing errors and MCP responses receive
     # the same security, analytics, and access-log boundary as normal pages.
-    application.asgi_handler = SiteMiddleware(application.asgi_handler, runtime_config, site_logger)
+    application.asgi_handler = SiteMiddleware(
+        application.asgi_handler, runtime_config, site_logger, tracing=tracer_provider is not None
+    )
     phases["total"] = round(perf_counter() - started, 3)
     site_logger.info("application startup timed", phase_seconds=phases)
     return application

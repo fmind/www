@@ -3,13 +3,10 @@
 import logging
 import os
 from threading import Event, Thread
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
 
-from opentelemetry import trace
-from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
-from opentelemetry.sdk.resources import SERVICE_NAME, Resource
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
+if TYPE_CHECKING:
+    from opentelemetry.sdk.trace import TracerProvider
 
 SERVICE = "www"
 TELEMETRY_SHUTDOWN_TIMEOUT_SECONDS = 2.0
@@ -29,6 +26,13 @@ def configure_telemetry(environ: dict[str, str] | None = None) -> TracerProvider
     values = os.environ if environ is None else environ
     if not (values.get("OTEL_EXPORTER_OTLP_ENDPOINT") or values.get("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT")):
         return None
+
+    # Deferred: no deployment sets an endpoint today, so cold starts skip the SDK and exporter imports.
+    from opentelemetry import trace
+    from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+    from opentelemetry.sdk.resources import SERVICE_NAME, Resource
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
     provider = TracerProvider(resource=Resource.create({SERVICE_NAME: SERVICE}), shutdown_on_exit=False)
     provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
