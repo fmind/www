@@ -5,6 +5,7 @@ import re
 from collections.abc import Callable
 from dataclasses import replace
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import cast
 from urllib.parse import urlsplit
 
@@ -406,6 +407,20 @@ def crawled_pages(make_app: Callable[[], Litestar]) -> tuple[dict[str, str], set
                 assert response.status_code == (404 if path == "/missing-page" else 200), path
                 pages[path] = response.text
     return pages, requested
+
+
+def test_section_toolbar_breakpoints_agree_in_markup_stylesheet_and_script(
+    crawled_pages: tuple[dict[str, str], set[str]],
+) -> None:
+    home = crawled_pages[0]["/"]
+    stylesheet = Path("assets/css/input.css").read_text()
+
+    # Tailwind compiles `max-[1600px]` to `not all and (min-width: 1600px)`. A hand-written
+    # `max-width: 1599px` or `max-width: 1023px` would leave a fractional width between the two.
+    assert 'id="section-toolbar" class="hidden min-[1024px]:max-[1600px]:block' in home
+    assert "matchMedia('not all and (min-width: 1024px), (min-width: 1600px)')" in home
+    assert "@media (min-width: 1024px) {\n  @media not all and (min-width: 1600px) {" in stylesheet
+    assert not re.search(r"\(max-width: \d+px\)", stylesheet)
 
 
 def test_section_rails_share_one_link_markup(crawled_pages: tuple[dict[str, str], set[str]]) -> None:

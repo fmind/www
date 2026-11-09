@@ -388,9 +388,12 @@ html:has(#consent:not([hidden])) body > footer {
   scroll-margin-top: 5rem;
 }
 
-@media (min-width: 1024px) and (max-width: 1599px) {
-  .portfolio-content section[id] {
-    scroll-margin-top: 8rem;
+/* The queries Tailwind compiles for the toolbar's `min-[1024px]:max-[1600px]`, so no fractional width falls between. */
+@media (min-width: 1024px) {
+  @media not all and (min-width: 1600px) {
+    .portfolio-content section[id] {
+      scroll-margin-top: 8rem;
+    }
   }
 }
 
