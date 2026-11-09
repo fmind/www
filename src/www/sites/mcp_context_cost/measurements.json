@@ -180,11 +180,5 @@
   ],
   "captured_on": "2026-10-13",
   "package_lock_sha256": "68f9254c0b7eca4840ec8ba05c48afc0a040b3912a71665de1e88133efc02bc3",
-  "benchmark_commit": "8251908e2e32977467515d40fbd1d47c9668d25d",
-  "github": {
-    "mode": "default",
-    "tools": 46,
-    "input_schema_tokens": 11157,
-    "full_record_tokens": 57485
-  }
+  "benchmark_commit": "8251908e2e32977467515d40fbd1d47c9668d25d"
 }

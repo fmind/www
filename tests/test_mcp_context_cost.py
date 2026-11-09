@@ -32,6 +32,10 @@ from www.sites.mcp_context_cost.data import BENCHMARK_COMMIT, BENCHMARK_TREE_URL
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 BEFORE_REVIEW = datetime(2026, 10, 14, tzinfo=UTC)
+# Expected totals follow the catalog, so a measurement refresh edits data.py only; the
+# hand-calculated test below stays the independent arithmetic check.
+TOKENS = {server.id: server.tokens for server in SERVERS}
+TOTAL_TOKENS = sum(TOKENS.values())
 
 
 @pytest.fixture(scope="module")
@@ -48,21 +52,21 @@ def server(snapshots: tuple[ApplicationAssets, ArticleCollection]):
     )
 
 
-def test_measured_catalogs_match_the_retained_snapshot(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.chdir(tmp_path)
+def test_measured_catalogs_match_the_retained_snapshot() -> None:
     snapshot = json.loads((REPO_ROOT / "src/www/sites/mcp_context_cost/measurements.json").read_text())
     lock = REPO_ROOT / "scripts/mcp_context_cost/measurement-package-lock.json"
     assert sha256(lock.read_bytes()).hexdigest() == snapshot["package_lock_sha256"]
     assert snapshot["benchmark_commit"] == BENCHMARK_COMMIT
-    github, *others = SERVERS
-    assert (github.tools, github.tokens) == (snapshot["github"]["tools"], snapshot["github"]["input_schema_tokens"])
+    # GitHub comes from the pinned public benchmark; the snapshot retains the three npm captures.
+    others = [server for server in SERVERS if server.id != "github"]
     assert [(item.id, item.tools, item.tokens) for item in others] == [
         (item["id"], item["tool_count"], item["input_schema_tokens"]) for item in snapshot["servers"]
     ]
     # The typed MCP argument advertises exactly the measured catalogs.
     assert tuple(server.id for server in SERVERS) == SERVER_IDS
     view = build_context_view(now=BEFORE_REVIEW)
-    assert (view.tools, view.tokens_request, view.requests_per_day) == (94, 17536, 1000)
+    assert (view.tools, view.tokens_request) == (sum(server.tools for server in SERVERS), TOTAL_TOKENS)
+    assert view.requests_per_day == 1000
 
 
 def test_hand_calculated_tokens_context_and_costs_for_selected_servers() -> None:
@@ -90,7 +94,7 @@ def test_prices_follow_the_shared_snapshot_validity_and_review_dates() -> None:
     gemini = next(model for model in later.models if model.name == "Gemini 3.8 Flash")
     # The announced January 2027 rate doubles; every dated price now needs review.
     assert gemini.input_per_million == 1.5
-    assert gemini.month_usd == pytest.approx(953 * 30 * 1.5 / 1e6)
+    assert gemini.month_usd == pytest.approx(TOKENS["memory"] * 30 * 1.5 / 1e6)
     assert all(model.needs_review for model in later.models)
 
 
@@ -132,8 +136,8 @@ def test_shareable_url_round_trips_and_mcp_matches_the_page() -> None:
     assert (restored.selected, restored.requests_per_day, restored.validation) == (view.selected, 4321, ())
     result = compare_context(["github", "playwright"], 4321)
     assert result.scenario_url == view.scenario_url
-    assert result.tokens_per_request == 11157 + 3745
-    assert result.tokens_per_month == (11157 + 3745) * 4321 * 30
+    assert result.tokens_per_request == TOKENS["github"] + TOKENS["playwright"]
+    assert result.tokens_per_month == (TOKENS["github"] + TOKENS["playwright"]) * 4321 * 30
     assert result.models == view.models
 
 
@@ -150,7 +154,7 @@ def test_page_metadata_validation_redirects_and_404(client: TestClient) -> None:
     response = client.get(PATH)
     assert response.status_code == 200
     assert "How much context do your MCP tools take?" in response.text
-    assert "17,536 tokens of tool definitions on every request" in response.text
+    assert f"{TOTAL_TOKENS:,} tokens of tool definitions on every request" in response.text
     assert f'<link rel="canonical" href="https://www.fmind.dev{PATH}"' in response.text
     assert '"@type":"WebApplication"' in response.text
     assert '<form id="calculator" method="get"' in response.text
@@ -170,9 +174,12 @@ def test_page_metadata_validation_redirects_and_404(client: TestClient) -> None:
     assert "Some inputs need attention" in invalid.text
     assert "between 1 and 10,000,000" in invalid.text
     # Million-dollar budgets use an M suffix instead of thousands of k.
-    assert "$526.1k\u2013$52.6M" in client.get(PATH + "?requests=10000000").text
+    monthly = [model.month_usd for model in build_context_view(requests_per_day=10_000_000).models]
+    assert 100_000 <= min(monthly) < 1_000_000 <= max(monthly)
+    budget = f"${min(monthly) / 1e3:,.1f}k\u2013${max(monthly) / 1e6:,.1f}M"
+    assert budget in client.get(PATH + "?requests=10000000").text
     one = client.get(PATH + "?server=memory&requests=10")
-    assert "953 tokens of tool definitions on every request" in one.text
+    assert f"{TOKENS['memory']:,} tokens of tool definitions on every request" in one.text
     assert one.text.count(" checked/>") == 1
     assert one.text.count(">Package release</a>") == 3
     assert one.text.count(">Pinned measurement source</a>") == 1
@@ -211,11 +218,11 @@ async def test_mcp_result_matches_http_scenario_and_invalid_calls_fail(server, c
     assert result.structured_content is not None
     response = client.get(result.structured_content["scenario_url"])
     assert response.status_code == 200
-    assert "2,634 tokens of tool definitions on every request" in response.text
+    assert f"{TOKENS['memory'] + TOKENS['filesystem']:,} tokens of tool definitions on every request" in response.text
     defaults = await server.call_tool("compare_mcp_context_cost", {})
     assert isinstance(defaults, CallToolResult)
     assert defaults.structured_content is not None
-    assert defaults.structured_content["tokens_per_request"] == 17536
+    assert defaults.structured_content["tokens_per_request"] == TOTAL_TOKENS
     for invalid in (
         {"servers": []},
         {"servers": ["unknown"]},
