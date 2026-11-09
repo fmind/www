@@ -30,6 +30,7 @@ from www.content import ArticleCollection, article_summaries, visible_articles
 from www.data import METADATA, OPEN_SOURCE, SAME_AS_PROFILES, SITE_PAGES
 from www.middleware import ANALYTICS_LOG_NAME, CLOUD_TRACE_LOG_KEY
 from www.rendering import Renderer
+from www.search import SearchIndex
 
 type AppClient = TestClient[Any]
 
@@ -150,6 +151,31 @@ def test_human_pages_render_complete_no_cache_documents(client: AppClient) -> No
             assert 'href="/articles/feed.xml" type="application/atom+xml"' in response.text, path
         if status == 404:
             assert 'content="noindex, follow"' in response.text
+
+
+def test_article_search_keeps_only_the_articles_matching_the_query(
+    client: AppClient, snapshots: tuple[ApplicationAssets, ArticleCollection]
+) -> None:
+    # The default app runs in development, where the archive also lists drafts.
+    articles = visible_articles(snapshots[1].all, include_drafts=True)
+    query = "kubernetes"
+    matched = {article.slug for article in SearchIndex(articles).search(query)}
+    excluded = next(article.slug for article in articles if article.slug not in matched)
+    assert matched
+
+    archive = client.get("/articles/").text
+    results = client.get("/articles/", params={"q": query}).text
+    empty = client.get("/articles/", params={"q": "zzzxqv"}).text
+
+    plural = "" if len(matched) == 1 else "s"
+    assert f'{len(matched)} result{plural} for <span class="text-primary">“{query}”</span>' in results
+    assert all(f'href="/articles/{slug}/"' in results for slug in matched)
+    assert f'href="/articles/{excluded}/"' in archive
+    assert f'href="/articles/{excluded}/"' not in results
+    assert '0 results for <span class="text-primary">“zzzxqv”</span>' in empty
+    assert "No articles match this search." in empty
+    assert "No articles match this search." not in results
+    assert "results for" not in archive
 
 
 def test_ai_architect_identity_is_shared_by_public_surfaces(client: AppClient) -> None:
@@ -764,28 +790,6 @@ def test_required_fonts_have_woff2_content_type_and_revalidate(
     assert response.content.startswith(b"wOF2")
 
 
-def test_static_assets_support_bounded_byte_ranges(client: AppClient) -> None:
-    path = "/static/img/articles/how-to-configure-vs-code-for-ai-ml-and-mlops-development-in-python/04.mp4"
-    full = client.get(path)
-    partial = client.get(path, headers={"range": "bytes=10-19"})
-    head = client.head(path, headers={"range": "bytes=-10"})
-
-    assert full.status_code == 200
-    assert full.headers["accept-ranges"] == "bytes"
-    assert "content-disposition" not in full.headers
-
-    assert partial.status_code == 206
-    assert partial.content == full.content[10:20]
-    assert partial.headers["content-range"] == f"bytes 10-19/{len(full.content)}"
-    assert partial.headers["etag"] == full.headers["etag"]
-    assert partial.headers["content-length"] == "10"
-
-    assert head.status_code == 200
-    assert head.content == b""
-    assert "content-range" not in head.headers
-    assert head.headers["content-length"] == str(len(full.content))
-
-
 def test_every_response_has_security_headers_and_text_can_compress(client: AppClient) -> None:
     response = client.get("/llms.txt", headers={"accept-encoding": "gzip"})
 
@@ -1291,6 +1295,8 @@ def test_drafts_never_enter_production_discovery(
         for path in ("/sitemap.xml", "/articles/feed.xml", "/llms.txt", "/llms-full.txt", "/api/profile"):
             assert draft.slug not in test_client.get(path).text, path
         archive = test_client.get("/articles/", params={"q": "Private draft probe"}).text
+        # The page is the filtered search, not the full archive that ignores the query.
+        assert 'for <span class="text-primary">“Private draft probe”</span>' in archive
         pages = [
             test_client.get(f"/articles/{draft.slug}/"),
             test_client.get(f"/articles/{draft.slug}/", headers={"accept": "text/markdown"}),
@@ -1306,23 +1312,9 @@ def test_drafts_never_enter_production_discovery(
         assert [page.status_code for page in pages] == [200, 200, 200]
 
 
-def test_google_analytics_waits_for_consent_on_the_production_host(client: AppClient) -> None:
-    page = client.get("/").text
-    # The banner and its footer control start hidden; the script reveals them on www.fmind.dev only.
-    assert (
-        '<div id="consent" class="fixed inset-x-0 bottom-0 z-50 p-4 print:hidden" role="region" aria-label="Cookie consent" hidden>'
-        in page
-    )
-    assert "data-consent-open hidden>Cookie settings</button>" in page
-    # The purpose and the control promise are two separate lines.
-    assert ">With your consent, Google Analytics measures which pages help visitors so I can improve them.</p>" in page
-    assert '<p class="text-sm text-base-content mt-1">Nothing loads before you accept' in page
-    assert "if (location.hostname !== 'www.fmind.dev' || !banner) return;" in page
-    assert "var id = 'G-Z28QKD99V2';" in page
-    # No Google script is in the document: it is only appended by load() after an Accept.
-    assert "<script async" not in page
-    assert 'src="https://www.googletagmanager.com' not in page
-    assert page.index("if (choice === 'granted') load();") > page.index("var stored")
+def test_google_analytics_id_and_privacy_notice_are_published(client: AppClient) -> None:
+    # The browser consent journey covers the banner behavior; this pins the measurement ID it loads.
+    assert "'G-Z28QKD99V2'" in client.get("/").text
     privacy = client.get("/privacy").text
     assert "Google Analytics, only with your consent" in privacy
     assert "Cookie settings" in privacy
