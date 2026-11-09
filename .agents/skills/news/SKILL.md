@@ -8,7 +8,7 @@ metadata:
 
 # News
 
-Each edition is `content/news/YYYY-MM-DD.md` (a special edition appends a topic: `2026-04-23-google-next.md`). Validated editions feed `/news/` (latest edition in full, the rest of its week as preview cards, older editions one line per day by month, and Markdown via `Accept: text/markdown`), one `noindex` page and `.md` export per edition, `/news/feed.xml` (one Atom entry per edition, latest 30), `/api/news` (validated by `/api/news/schema.json`), MCP tools `search_news` and `get_news`, and `llms.txt`. Startup rejects any other file or line shape, a description over 30 words, a non-HTTPS link, and a link already published in any edition.
+Each edition is `content/news/YYYY-MM-DD.md` (a special edition appends a topic: `2026-04-23-google-next.md`). Validated editions feed `/news/` (latest edition in full, the rest of its week as preview cards, older editions one line per day by month, and Markdown via `Accept: text/markdown` with the 30 latest editions in full and older ones as links), one `noindex` page and `.md` export per edition, `/news/feed.xml` (one Atom entry per edition, latest 30), `/api/news` (validated by `/api/news/schema.json`), MCP tools `search_news` and `get_news`, and `llms.txt`. Startup rejects any other file or line shape, a description over 30 words, a non-HTTPS link, and a link already published in any edition.
 
 ## Format
 

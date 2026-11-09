@@ -174,7 +174,7 @@ run = "uv run --locked python -m scripts.build_images --check"
 [tasks."check:leaks"]
 alias = "cs"
 description = "Audit recent commits and the working tree for leaked secrets (betterleaks)"
-# The Lighthouse harness test briefly creates and removes a symlink fixture under tmp/;
+# The Lighthouse harness test briefly creates and removes fixture directories under tmp/;
 # scanning concurrently logs a spurious lstat error, so let it finish first.
 wait_for = ["check:lighthouse"]
 run = [

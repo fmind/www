@@ -4,8 +4,8 @@
 useDefault = true
 
 [[allowlists]]
-description = "Generated scratch, virtual environments, and build outputs are not maintained source"
-paths = ['''^(?:tmp|\.venv|dist)/''']
+description = "Generated scratch and virtual environments are not maintained source"
+paths = ['''^(?:tmp|\.venv)/''']
 
 [[allowlists]]
 description = "Binary WebP and AVIF bytes yield random generic-password matches; the default config skips other raster formats"
