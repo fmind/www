@@ -165,40 +165,15 @@ def _x(url: str, fetch: Fetch) -> dict[str, str]:
     return {"title": f"{author} on X" if author else "X post", "description": text[:600], "excerpt": text}
 
 
-_GITHUB_SITE_PATHS = frozenset(
-    {
-        "about",
-        "blog",
-        "collections",
-        "customer-stories",
-        "events",
-        "explore",
-        "features",
-        "login",
-        "marketplace",
-        "new",
-        "notifications",
-        "orgs",
-        "pricing",
-        "search",
-        "security-advisories",
-        "settings",
-        "signup",
-        "sponsors",
-        "topics",
-        "trending",
-    }
-)
-
-
 def _github(url: str, fetch: Fetch) -> dict[str, str]:
     parts = [part for part in urlparse(url).path.split("/") if part]
-    if len(parts) != 2 or parts[0].lower() in _GITHUB_SITE_PATHS:
+    if len(parts) != 2:
         return _page(url, fetch)
     owner, repo = parts[0], parts[1]
     try:
         _, body = fetch(f"https://api.github.com/repos/{quote(owner)}/{quote(repo)}")
     except OSError:
+        # Also the answer for site pages shaped like a repository, such as /blog/x or /topics/x: the API has no such repo.
         return _page(url, fetch)
     data = _json_object(body)
     description = _clean(data.get("description") or "")
