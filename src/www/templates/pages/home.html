@@ -1,12 +1,13 @@
 {% extends "base.html" %}
 {% from "macros/icons.html" import icon %}
+{% from "macros/sections.html" import section_rail, section_rail_link %}
 {% block content %}
   <aside class="fixed left-2 top-24 z-30 hidden min-[1600px]:block">
-    <nav class="section-rail w-48 max-h-[calc(100dvh-7rem)] overflow-x-hidden overflow-y-auto rounded-2xl border border-primary/10 bg-base-100/65 backdrop-blur-md shadow-sm transition-colors duration-150 hover:bg-base-100/90 focus-within:bg-base-100/90" aria-label="Portfolio sections">
-      {% with overlay=true %}
-        {% include "partials/section-links.html" %}
-      {% endwith %}
-    </nav>
+    {% call section_rail("Portfolio sections", "w-48 transition-colors duration-150") %}
+      <ul class="py-2">
+        {% for link in nav_links %}<li>{{ section_rail_link(link.href, link.label, tracked=true) }}</li>{% endfor %}
+      </ul>
+    {% endcall %}
   </aside>
   <div class="min-w-0 portfolio-content">
     <div class="hero min-h-screen bg-base-200 relative overflow-hidden flex items-center justify-center">

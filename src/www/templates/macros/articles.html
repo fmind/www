@@ -22,11 +22,7 @@
   <article class="card bg-base-100 border border-base-300 shadow-lg hover:shadow-xl transition-shadow overflow-hidden h-full">
     {# The title below links to the same page; keep the cover out of the tab order and screen-reader link list. #}
     <a href="/articles/{{ article.slug }}/" class="block" tabindex="-1" aria-hidden="true">
-      {% if priority %}
-        <img class="w-full aspect-[16/9] object-cover" src="{{ article.card_image_path() }}" alt="{{ article.image_alt }}" width="800" height="450" fetchpriority="high" decoding="async"/>
-      {% else %}
-        <img class="w-full aspect-[16/9] object-cover" src="{{ article.card_image_path() }}" alt="{{ article.image_alt }}" width="800" height="450" loading="lazy" decoding="async"/>
-      {% endif %}
+      <img class="w-full aspect-[16/9] object-cover" src="{{ article.card_image_path() }}" alt="{{ article.image_alt }}" width="800" height="450" {% if priority %}fetchpriority="high"{% else %}loading="lazy"{% endif %} decoding="async"/>
     </a>
     <div class="card-body p-5 sm:p-6">
       <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-base-content/65">

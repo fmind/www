@@ -7,7 +7,11 @@
         {{ icon("menu", "w-5 h-5") }}<span>On this page</span>
       </summary>
       <nav class="absolute left-3 right-3 sm:right-auto sm:w-80 top-full max-h-[calc(100dvh-7.5rem)] overflow-y-auto overscroll-contain rounded-xl bg-base-100 p-3 shadow-lg border border-base-300" aria-label="Portfolio sections">
-        {% include "partials/section-links.html" %}
+        <ul class="space-y-1">
+          {% for link in nav_links %}
+            <li><a data-section-link class="section-link flex min-h-11 items-center border-l-2 border-transparent rounded-r-lg px-3 py-2 text-sm text-muted hover:bg-base-content/5 hover:text-base-content" href="{{ link.href }}">{{ link.label }}</a></li>
+          {% endfor %}
+        </ul>
       </nav>
     </details>
   </div>

@@ -1,0 +1,14 @@
+{# The floating section rail of the home page and of long articles; the caller supplies its heading and list. #}
+{% macro section_rail(label, extra_class, id="") -%}
+  <nav{% if id %} id="{{ id }}"{% endif %} class="{{ extra_class }} max-h-[calc(100dvh-7rem)] overflow-x-hidden overflow-y-auto rounded-2xl border border-primary/10 bg-base-100/65 backdrop-blur-md shadow-sm hover:bg-base-100/90 focus-within:bg-base-100/90" aria-label="{{ label }}">
+    {{ caller() }}
+  </nav>
+{%- endmacro %}
+
+{# `tracked` marks a link for the home scroll spy; `clamp` cuts a long article heading to two lines and keeps the full text as a tooltip. #}
+{% macro section_rail_link(href, label, tracked=false, clamp=false) -%}
+  <a{% if tracked %} data-section-link{% endif %} class="section-rail-link flex min-h-11 items-center gap-3 px-4 py-2 text-sm text-muted hover:text-primary focus-visible:outline-offset-[-3px]" href="{{ href }}"{% if clamp %} title="{{ label }}"{% endif %}>
+    <span class="section-marker w-1 h-4 shrink-0 rounded-full bg-muted/80" aria-hidden="true"></span>
+    <span class="{{ 'min-w-0 flex-1 line-clamp-2 wrap-anywhere' if clamp else 'whitespace-nowrap' }}">{{ label }}</span>
+  </a>
+{%- endmacro %}

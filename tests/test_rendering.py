@@ -408,6 +408,34 @@ def crawled_pages(make_app: Callable[[], Litestar]) -> tuple[dict[str, str], set
     return pages, requested
 
 
+def test_section_rails_share_one_link_markup(crawled_pages: tuple[dict[str, str], set[str]]) -> None:
+    pages = crawled_pages[0]
+    link = re.compile(
+        r'<a(?P<tracked> data-section-link)? class="section-rail-link (?P<link>[^"]+)" href="(?P<href>[^"]+)"'
+        r'(?P<title> title="[^"]+")?>\s*<span class="section-marker (?P<marker>[^"]+)" aria-hidden="true"></span>'
+        r'\s*<span class="(?P<label>[^"]+)">'
+    )
+    home = [match.groupdict() for match in link.finditer(pages["/"])]
+    article = next(
+        found
+        for path, html in pages.items()
+        if path.startswith("/articles/") and (found := [match.groupdict() for match in link.finditer(html)])
+    )
+
+    assert home[0]["href"] == "/#about"
+    assert all(entry["href"].startswith("#") for entry in article)
+    # The home script tracks its rail links; long article headings clamp to two lines and keep a tooltip.
+    assert all(entry["tracked"] and not entry["title"] and entry["label"] == "whitespace-nowrap" for entry in home)
+    assert all(
+        not entry["tracked"] and entry["title"] and entry["label"] == "min-w-0 flex-1 line-clamp-2 wrap-anywhere"
+        for entry in article
+    )
+    # Everything else comes from one macro, so the two rails cannot drift apart again.
+    assert {(entry["link"], entry["marker"]) for entry in home} == {
+        (entry["link"], entry["marker"]) for entry in article
+    }
+
+
 def test_every_static_url_names_a_hashed_asset(
     crawled_pages: tuple[dict[str, str], set[str]],
     snapshots: tuple[ApplicationAssets, ArticleCollection],
