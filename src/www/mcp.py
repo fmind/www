@@ -687,7 +687,8 @@ def create_mcp_http_app(server: MCPServer[None]) -> Starlette:
         ],
     )
     app = server.streamable_http_app(
-        streamable_http_path="/",
+        # The site routes the exact public path here without rewriting it.
+        streamable_http_path="/mcp",
         json_response=True,
         stateless_http=True,
         max_request_body_size=1 << 20,

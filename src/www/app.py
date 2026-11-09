@@ -98,7 +98,7 @@ _NO_CACHE = "no-cache"
 # Static ETags and byte ranges describe the on-disk representation. Compressing
 # it afterward invalidates both contracts. The page stylesheet is served from
 # memory at /styles.css with a weak ETag, so it still benefits from Brotli.
-# The MCP mount answers single JSON bodies (json_response=True, no subscriptions/listen),
+# The MCP endpoint answers single JSON bodies (json_response=True, no subscriptions/listen),
 # so it compresses like other responses.
 _COMPRESSION_EXCLUDE = r"^/(?:static/|(?:(?:logo|banner)\.png|portrait\.jpg)$)"
 _READ_METHODS = (HttpMethod.GET, HttpMethod.HEAD)
@@ -693,7 +693,9 @@ def create_app(
             profile_json_bytes=profile.body,
         )
         mcp_app = create_mcp_http_app(mcp_server)
-    mcp_route = asgi("/mcp", is_mount=True, copy_scope=True)(mcp_app)
+    # An exact route, not a mount: a mount matches by prefix without a segment
+    # boundary, so /mcpx or /mcp/foo would get Starlette's plain-text 404.
+    mcp_route = asgi("/mcp", copy_scope=True)(mcp_app)
     tracer_provider = configure_telemetry()
     plugins = (
         [
@@ -797,7 +799,7 @@ def create_app(
         plugins=plugins,
     )
     # Litestar applies configured middleware only after route resolution. Wrap
-    # its full ASGI handler so routing errors and mounted MCP responses receive
+    # its full ASGI handler so routing errors and MCP responses receive
     # the same security, analytics, and access-log boundary as normal pages.
     application.asgi_handler = SiteMiddleware(application.asgi_handler, runtime_config, site_logger)
     phases["total"] = round(perf_counter() - started, 3)

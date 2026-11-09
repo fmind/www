@@ -856,7 +856,20 @@ def test_http_boundary_preserves_head_and_unsupported_method_contract(
     )
 
 
-@pytest.mark.parametrize("path", ["/x", "/articles/some-slug/nested", "/sites/llm-self-hosting/a/b"])
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/x",
+        "/articles/some-slug/nested",
+        "/sites/llm-self-hosting/a/b",
+        # The MCP endpoint is one exact path: its neighbours are ordinary site misses.
+        "/mcp-context-cost",
+        "/mcpx",
+        "/mcp.json",
+        "/mcp/foo",
+        "/mcp/foo/bar",
+    ],
+)
 @pytest.mark.parametrize("method", ["GET", "HEAD", "POST", "DELETE"])
 def test_unknown_paths_share_the_html_not_found_page(client: AppClient, path: str, method: str) -> None:
     response = client.request(method, path, headers={"accept-encoding": "br"})
@@ -962,7 +975,7 @@ def test_startup_logs_one_record_with_every_phase_duration(
     assert phases["total"] >= max(seconds for phase, seconds in phases.items() if phase != "total")
 
 
-def test_mcp_mount_is_stateless_bounded_and_origin_protected(
+def test_mcp_endpoint_is_stateless_bounded_and_origin_protected(
     client: AppClient,
     make_app: Callable[..., Litestar],
 ) -> None:

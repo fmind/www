@@ -207,7 +207,7 @@ class SiteMiddleware:
         state = scope.setdefault("state", {})
         nonce = secrets.token_urlsafe(18)
         state["csp_nonce"] = nonce
-        # Mounted ASGI applications may rewrite scope["path"]. Preserve the
+        # Litestar routing rewrites scope["path"] (trailing slashes). Preserve the
         # public request path for observability and privacy decisions. This
         # boundary runs before Litestar routing, which collapses repeated
         # slashes: do the same so //mcp or //privacy cannot bypass path policy.
