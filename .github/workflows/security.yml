@@ -7,7 +7,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: security
+  group: security-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   scan:
@@ -20,29 +20,20 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false # scanners only read the checkout
-      - name: Set up mise tools
-        uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
+      - name: Set up security scanners
+        uses: ./.github/actions/setup-mise
         with:
-          version: 2026.11.4 # pinned mise; bump deliberately with mise.lock tooling
-          install: false
-          cache: true
-          # Key tools on the lockfiles only: task edits in mise.toml must not force fresh
-          # GitHub downloads (a 2026-11-08 release-asset outage blocked deploys that way).
-          cache_key: "{{cache_key_prefix}}-{{platform}}-{{version}}-p{{cache_period}}-${{ hashFiles('mise.lock', '.mise/locks/**') }}"
-      - name: Install security scanners
-        run: mise install --locked -y aqua:astral-sh/uv betterleaks trivy
+          tools: aqua:astral-sh/uv betterleaks trivy
       - name: Scan complete Git history
         run: mise run check:leaks:full
-      - name: Scan full checkout
+      - name: Scan Dockerfile and infrastructure configuration
         # Each scan is independent: a failed one (such as a Trivy database mirror
-        # outage) must not skip the others.
+        # outage) must not skip the others. Both repeat gate tasks, so new advisories
+        # and checks surface on quiet weeks without pushes.
         if: ${{ !cancelled() }}
-        # Delegate to the task so the weekly scan reproduces locally and cannot drift.
-        run: mise run check:scan:full
+        run: mise run check:scan
       - name: Audit locked dependencies
         if: ${{ !cancelled() }}
-        # The full-checkout scan reads only uv.lock; this also audits the font script
-        # lock and the Lighthouse/Playwright npm locks on quiet weeks without pushes.
         run: mise run check:vuln
   deployed-image:
     name: Scan images receiving production traffic
@@ -52,22 +43,16 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    env:
-      CLOUDSDK_CORE_PROJECT: www-fmind-dev
-      CLOUDSDK_RUN_REGION: europe-west1
     steps:
       - name: Checkout scanner policy
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Set up mise
-        uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
+      - name: Set up scanner and runtime
+        uses: ./.github/actions/setup-mise
         with:
-          version: 2026.11.4 # pinned mise; bump deliberately with mise.lock tooling
-          install: false
+          tools: python trivy
           cache: false # this job holds id-token; never read shared caches
-      - name: Install scanner and runtime
-        run: mise install --locked -y python trivy
       - name: Authenticate read-only scanner
         id: auth
         uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0

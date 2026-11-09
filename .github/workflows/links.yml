@@ -22,16 +22,9 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false # the checker only reads the tree
-      - name: Set up mise tools
-        uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
+      - name: Set up link checker
+        uses: ./.github/actions/setup-mise
         with:
-          version: 2026.11.4 # pinned mise; bump deliberately with mise.lock tooling
-          install: false
-          cache: true
-          # Key tools on the lockfiles only: task edits in mise.toml must not force fresh
-          # GitHub downloads (a 2026-11-08 release-asset outage blocked deploys that way).
-          cache_key: "{{cache_key_prefix}}-{{platform}}-{{version}}-p{{cache_period}}-${{ hashFiles('mise.lock', '.mise/locks/**') }}"
-      - name: Install link checker
-        run: mise install --locked -y lychee
+          tools: lychee
       - name: Check external content links
         run: mise run check:links
