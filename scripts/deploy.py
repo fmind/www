@@ -24,6 +24,9 @@ COMMIT_LABEL = "commit-sha"
 MANUAL_TAG = "manual-candidate"
 # Cleared alongside MANUAL_TAG on promotion so no legacy CI candidate tag remains public.
 CI_TAG = "candidate"
+# One hung gate or gcloud call must fail inside the 20-minute deploy job, leaving time to remove the candidate tag.
+COMMAND_TIMEOUT_SECONDS: float = 600
+TIMEOUT_EXIT = 124  # the exit status coreutils `timeout` uses
 _USAGE = "usage: mise run deploy <digest-ref> <commit-sha> | python -m scripts.deploy --check-head\n"
 
 
@@ -62,8 +65,20 @@ type Verifier = Callable[[DeploymentTarget, str, str, str], None]
 
 
 def run_command(arguments: Sequence[str]) -> int:
-    """Run validated mise or gcloud argv with inherited streams and signals."""
-    return subprocess.run(tuple(arguments), check=False).returncode  # noqa: S603 - fixed, validated argv only.
+    """Run validated mise or gcloud argv with inherited streams and signals, for at most COMMAND_TIMEOUT_SECONDS.
+
+    A timeout returns TIMEOUT_EXIT like any failed step, so the caller still removes the candidate tag.
+    """
+    try:
+        return subprocess.run(  # noqa: S603 - fixed, validated argv only.
+            tuple(arguments), check=False, timeout=COMMAND_TIMEOUT_SECONDS
+        ).returncode
+    except subprocess.TimeoutExpired:
+        sys.stderr.write(
+            f"deploy: {' '.join(arguments[:4])} timed out after {COMMAND_TIMEOUT_SECONDS:g}s;"
+            " inspect the Cloud Run service, then rerun the deployment\n"
+        )
+        return TIMEOUT_EXIT
 
 
 def validate_image_reference(image_reference: str, target: DeploymentTarget) -> str:

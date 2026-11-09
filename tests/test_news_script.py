@@ -659,3 +659,19 @@ def test_publish_tests_never_touch_the_repository_running_them(tmp_path: Path) -
 
     assert run_git(tmp_path / "outer.git", "rev-parse", "main") == before
     assert run_git(outer, "log", "--format=%s") == "x\n"
+
+
+def test_git_never_prompts_and_names_a_timeout(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # The alias prints what Git's children see, and `cat` returns at once on the closed stdin.
+    assert news.git(tmp_path, "-c", "alias.probe=!printenv GIT_TERMINAL_PROMPT && cat", "probe") == "0\n"
+
+    def hang(command: list[str], **options: float) -> subprocess.CompletedProcess[str]:
+        raise subprocess.TimeoutExpired(command, options["timeout"])
+
+    monkeypatch.setattr(news.subprocess, "run", hang)
+
+    with pytest.raises(news.NewsError, match=r"git fetch timed out after 120 s; check the network") as failure:
+        news.fetch_main(tmp_path)
+    assert isinstance(failure.value.__cause__, subprocess.TimeoutExpired)
+    with pytest.raises(news.NewsError, match=r"git archive timed out after 120 s"):
+        news.snapshot(tmp_path, "HEAD", tmp_path)

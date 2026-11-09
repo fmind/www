@@ -12,6 +12,8 @@ from typing import Protocol
 from scripts.deploy import DeploymentTarget, DeploymentUsageError
 
 type CompletedProcess = subprocess.CompletedProcess[str]
+# A Trivy scan pulls the image and may download its database; the scheduled job allows 20 minutes in total.
+COMMAND_TIMEOUT_SECONDS: float = 600
 
 
 class ScanError(RuntimeError):
@@ -36,15 +38,21 @@ def default_runner(
     capture: bool = True,
     env: Mapping[str, str] | None = None,
 ) -> CompletedProcess:
-    """Execute fixed gcloud or Trivy commands with optional stream capture."""
-    return subprocess.run(  # noqa: S603 - fixed gcloud and trivy argv only.
-        tuple(arguments),
-        stdin=subprocess.DEVNULL,
-        capture_output=capture,
-        text=True,
-        check=False,
-        env=dict(env) if env is not None else None,
-    )
+    """Execute fixed gcloud or Trivy commands with optional stream capture, for at most COMMAND_TIMEOUT_SECONDS."""
+    try:
+        return subprocess.run(  # noqa: S603 - fixed gcloud and trivy argv only.
+            tuple(arguments),
+            stdin=subprocess.DEVNULL,
+            capture_output=capture,
+            text=True,
+            check=False,
+            env=dict(env) if env is not None else None,
+            timeout=COMMAND_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired as error:
+        raise ScanError(
+            f"{arguments[0]} timed out after {COMMAND_TIMEOUT_SECONDS:g}s; check network access and rerun the scan"
+        ) from error
 
 
 def resolve_target(environment: Mapping[str, str] = os.environ) -> DeploymentTarget:

@@ -342,6 +342,7 @@ EDITION_TIMEZONE = ZoneInfo("Europe/Paris")
 SKILL = Path(".agents/skills/news/SKILL.md")
 WRITER_MODEL = "gemini-3.8-flash-high"
 WRITER_TIMEOUT_SECONDS = 360
+GIT_TIMEOUT_SECONDS: float = 120  # per Git command, the fetch and the push included
 WRITER_ATTEMPTS = 2
 PROMPT_LIMIT = 100_000  # stays under Linux's 128 KiB limit for one argument
 # Every agy tool kind is denied, so fetched text that carries instructions reaches a model that cannot act on them.
@@ -393,15 +394,26 @@ def git(repo: Path, *args: str, stdin: str | None = None, env: Mapping[str, str]
         completed = subprocess.run(  # noqa: S603 - fixed executable, arguments never pass through a shell
             ["git", *args],  # noqa: S607 - Git comes from the developer's PATH like every other task
             cwd=repo,
-            input=stdin,
+            # An empty input closes stdin and Git may not prompt, so a missing credential fails instead of hanging.
+            input=stdin or "",
             capture_output=True,
             encoding="utf-8",
             check=True,
-            env={**os.environ, **env} if env else None,
+            env={**os.environ, "GIT_TERMINAL_PROMPT": "0", **(env or {})},
+            timeout=GIT_TIMEOUT_SECONDS,
         )
     except subprocess.CalledProcessError as error:
         raise NewsError(f"git {args[0]} failed: {error.stderr.strip() or error}") from error
+    except subprocess.TimeoutExpired as error:
+        raise NewsError(_git_timeout(args[0])) from error
     return completed.stdout
+
+
+def _git_timeout(command: str) -> str:
+    return (
+        f"git {command} timed out after {GIT_TIMEOUT_SECONDS:g} s;"
+        " check the network and the Git credentials (prompts are disabled), then run the command again"
+    )
 
 
 def fetch_main(repo: Path) -> str:
@@ -416,12 +428,16 @@ def snapshot(repo: Path, commit: str, target: Path) -> Path:
         archive = subprocess.run(  # noqa: S603 - fixed executable and arguments
             ["git", "archive", "--format=tar", commit, "content/news"],  # noqa: S607
             cwd=repo,
+            stdin=subprocess.DEVNULL,
             capture_output=True,
             check=True,
+            timeout=GIT_TIMEOUT_SECONDS,
         ).stdout
     except subprocess.CalledProcessError as error:
         message = error.stderr.decode("utf-8", "replace").strip() or error
         raise NewsError(f"git archive failed: {message}") from error
+    except subprocess.TimeoutExpired as error:
+        raise NewsError(_git_timeout("archive")) from error
     with tarfile.open(fileobj=io.BytesIO(archive)) as tar:
         tar.extractall(target, filter="data")
     return target / "content" / "news"

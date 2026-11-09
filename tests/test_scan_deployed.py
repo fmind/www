@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 
+from scripts import scan_deployed
 from scripts.deploy import DeploymentTarget, DeploymentUsageError
 from scripts.scan_deployed import (
     ScanError,
@@ -309,3 +310,12 @@ def test_default_runner_invokes_subprocess() -> None:
     assert result.returncode == 0
     assert result.stdout == "hello"
     assert result.stderr == "err"
+
+
+def test_default_runner_bounds_a_hung_command(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(scan_deployed, "COMMAND_TIMEOUT_SECONDS", 0.2)
+
+    with pytest.raises(ScanError, match=r"timed out after 0\.2s; check network access and rerun") as failure:
+        default_runner([sys.executable, "-c", "import time; time.sleep(60)"])
+
+    assert isinstance(failure.value.__cause__, subprocess.TimeoutExpired)

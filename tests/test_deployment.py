@@ -399,3 +399,25 @@ def test_ci_deploys_only_the_current_head_of_main(
     assert "run: uv run --locked python -m scripts.deploy --check-head" in workflow
     deploy_job = workflow.split("\n  deploy:\n", 1)[1]
     assert deploy_job.startswith("    needs: verify\n    if: needs.verify.outputs.head == 'true'\n")
+
+
+def test_timed_out_candidate_update_drops_the_manual_tag_without_moving_traffic(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    calls: list[tuple[str, ...]] = []
+
+    def fake_run(arguments: tuple[str, ...], **options: float) -> subprocess.CompletedProcess[str]:
+        calls.append(arguments)
+        if arguments[:4] == ("gcloud", "run", "services", "update"):
+            raise subprocess.TimeoutExpired(arguments, options["timeout"])
+        return subprocess.CompletedProcess(arguments, 0)
+
+    monkeypatch.setattr(deploy.subprocess, "run", fake_run)
+
+    assert main((VALID_IMAGE, VALID_COMMIT), target=TARGET) == deploy.TIMEOUT_EXIT
+    assert calls[-1] == CLEANUP
+    assert not any(argument.startswith("--to-revisions") for command in calls for argument in command)
+    assert capsys.readouterr().err == (
+        "deploy: gcloud run services update timed out after 600s;"
+        " inspect the Cloud Run service, then rerun the deployment\n"
+    )
