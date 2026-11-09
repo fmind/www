@@ -180,20 +180,18 @@ def verify_created_revision(target: DeploymentTarget, image: str, commit: str, e
 
 def verify_promoted_release(target: DeploymentTarget, image: str, commit: str, expected_revision: str) -> None:
     """Run the `test:deployed` checks: the promoted revision owns all traffic and serves the public origin."""
-    from scripts.verify_deployment import PUBLIC_ORIGIN, describe_service, probe, probe_mcp, verify_service
+    from scripts.verify_deployment import describe_service, probe_public_origin, verify_service
 
     if verify_service(describe_service(target), image, commit) != expected_revision:
         raise DeploymentUsageError("another deployment replaced the manual release after promotion")
-    # Promotion can route the first public request to a cold instance; allow the 60s startup budget.
-    probe(PUBLIC_ORIGIN, timeout=65)
-    probe_mcp(PUBLIC_ORIGIN, timeout=15)
+    probe_public_origin()
 
 
 def check_main_head(environment: Mapping[str, str] = os.environ) -> int:
     """Confirm the current workflow commit is still the head of main before deploying."""
     try:
-        commit = validate_commit(environment.get("GITHUB_SHA") or environment.get("CURRENT_SHA", ""))
-        repository = environment.get("GITHUB_REPOSITORY") or environment.get("REPOSITORY", "")
+        commit = validate_commit(environment.get("GITHUB_SHA", ""))
+        repository = environment.get("GITHUB_REPOSITORY", "")
         if not _REPOSITORY.fullmatch(repository):
             raise DeploymentUsageError("GITHUB_REPOSITORY must be set to <owner>/<repo>")
         executable = shutil.which("gh", path=environment.get("PATH"))

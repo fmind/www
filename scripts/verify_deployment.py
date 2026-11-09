@@ -132,6 +132,13 @@ def probe_mcp(origin: str, *, timeout: float) -> None:
         raise VerificationError("MCP initialize did not return the www server")
 
 
+def probe_public_origin() -> None:
+    """Probe the public site after promotion, as `test:deployed` and a manual rollout both require."""
+    # Promotion can route the first public request to a cold instance; allow the 60s startup budget.
+    probe(PUBLIC_ORIGIN, timeout=65)
+    probe_mcp(PUBLIC_ORIGIN, timeout=15)
+
+
 def describe_service(target: DeploymentTarget) -> dict[str, Any]:
     """Read the Cloud Run service through a fixed read-only gcloud argv."""
     executable = shutil.which("gcloud")
@@ -187,9 +194,7 @@ def main(arguments: Sequence[str] = ()) -> int:
         image = validate_image_reference(_required("IMAGE_REF", os.environ), target)
         commit = validate_commit(_required("GITHUB_SHA", os.environ))
         revision = verify_service(describe_service(target), image, commit)
-        # Promotion can route the first public request to a cold instance; allow the 60s startup budget.
-        probe(PUBLIC_ORIGIN, timeout=65)
-        probe_mcp(PUBLIC_ORIGIN, timeout=15)
+        probe_public_origin()
         sys.stdout.write(
             f"Verified {revision}: {commit}, {image}, 100% traffic, scale-to-zero, public health/discovery/MCP\n"
         )

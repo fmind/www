@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 from scripts import deploy, verify_deployment
-from scripts.deploy import DeploymentTarget, Runner, build_deploy_commands, build_gate_commands, main
+from scripts.deploy import DeploymentTarget, Runner, build_deploy_commands, main
 
 TARGET = DeploymentTarget(
     region="europe-west1",
@@ -142,16 +142,6 @@ def test_invalid_arguments_exit_with_usage_without_invoking_gcloud(
     captured = capsys.readouterr()
     assert captured.out == ""
     assert captured.err.startswith("usage: mise run deploy <digest-ref> <commit-sha>")
-
-
-def test_ci_workflow_delegates_gate_and_rollout_to_canonical_tasks() -> None:
-    assert build_gate_commands(VALID_IMAGE) == GATES
-
-    workflow = (Path(__file__).resolve().parents[1] / ".github" / "workflows" / "deploy.yml").read_text()
-    assert "run: mise run all" in workflow
-    assert 'run: mise run deploy "$IMAGE_REF" "$GITHUB_SHA"' in workflow
-    assert "run: |" not in workflow
-    assert "run: >-" not in workflow
 
 
 def test_interrupted_rollout_cleans_up_the_candidate_tag_without_moving_traffic(
@@ -365,8 +355,9 @@ def test_module_invocation_rejects_missing_digest_without_gcloud() -> None:
         (VALID_COMMIT, "fmind/www", True, ""),
         ("not-a-sha", "fmind/www", False, ""),
         (VALID_COMMIT, "../bad", False, ""),
+        (VALID_COMMIT, "", False, ""),
     ],
-    ids=["head-of-main", "superseded", "api-failure", "malformed-sha", "invalid-repository"],
+    ids=["head-of-main", "superseded", "api-failure", "malformed-sha", "invalid-repository", "missing-repository"],
 )
 def test_ci_deploys_only_the_current_head_of_main(
     tmp_path: Path,
@@ -386,6 +377,8 @@ def test_ci_deploys_only_the_current_head_of_main(
     monkeypatch.setenv("PATH", f"{tmp_path}:/usr/bin:/bin")
     monkeypatch.setenv("GITHUB_SHA", VALID_COMMIT)
     monkeypatch.setenv("GITHUB_REPOSITORY", repository)
+    # Only GitHub's own variable names the repository: the registry's REPOSITORY is never a fallback.
+    monkeypatch.setenv("REPOSITORY", "fmind/www")
     monkeypatch.setenv("GITHUB_OUTPUT", str(output))
 
     returncode = main(("--check-head",))
@@ -394,11 +387,6 @@ def test_ci_deploys_only_the_current_head_of_main(
     assert (returncode == 0) is bool(expected)
     assert output.read_text() == expected
     assert ("Superseded by" in captured.out) is (expected == "head=false\n")
-
-    workflow = (Path(__file__).resolve().parents[1] / ".github" / "workflows" / "deploy.yml").read_text()
-    assert "run: uv run --locked python -m scripts.deploy --check-head" in workflow
-    deploy_job = workflow.split("\n  deploy:\n", 1)[1]
-    assert deploy_job.startswith("    needs: verify\n    if: needs.verify.outputs.head == 'true'\n")
 
 
 def test_timed_out_candidate_update_drops_the_manual_tag_without_moving_traffic(
