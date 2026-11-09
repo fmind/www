@@ -329,6 +329,24 @@ def test_non_object_api_bodies_are_fetch_errors(url: str, api: str, body: str) -
     assert facts["error"].startswith("ValueError: expected a JSON object")
 
 
+@pytest.mark.parametrize(
+    ("record", "kind"),
+    [({"description": 5}, "TypeError"), ({"description": "A tool.", "license": "MIT"}, "AttributeError")],
+    ids=("numeric-description", "text-license"),
+)
+def test_one_api_record_with_a_wrongly_typed_field_does_not_abort_the_batch(
+    tmp_path: Path, record: dict[str, object], kind: str
+) -> None:
+    bad = "https://github.com/org/tool"
+    web = FakeWeb({"https://api.github.com/repos/org/tool": json.dumps(record), "https://example.com/new": ARTICLE})
+
+    broken, good = news.prepare([bad, "https://example.com/new"], tmp_path, web)
+
+    assert (good["status"], good["title"]) == ("ok", "A & B")
+    assert (broken["status"], broken["url"]) == ("fetch_error", bad)
+    assert broken["error"].startswith(f"{kind}: {bad} returned a field of an unexpected type: ")
+
+
 def test_page_keeps_custom_elements_that_share_a_boilerplate_prefix() -> None:
     page = (
         "<main-content><p>outside</p></main-content><article>"

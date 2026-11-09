@@ -277,6 +277,9 @@ def source_facts(url: str, fetch: Fetch = fetch_text) -> dict[str, str]:
         result.update(reader(url, fetch))
     except (OSError, ValueError, ElementTree.ParseError) as error:
         result["error"] = f"{type(error).__name__}: {error}"
+    except (TypeError, AttributeError) as error:
+        # An API field of another type, such as a numeric description, fails this link only, not the batch.
+        result["error"] = f"{type(error).__name__}: {url} returned a field of an unexpected type: {error}"
     result["excerpt"] = result["excerpt"][:EXCERPT_LIMIT]
     has_facts = bool(result["title"] and (result["description"] or result["excerpt"]))
     return {"status": "ok" if has_facts else "fetch_error", **result}
