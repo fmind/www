@@ -33,17 +33,15 @@ class ApplicationAssets:
     stylesheet: str
     # Build-time raster dimensions by /static/ route; empty without a manifest (local runs).
     image_sizes: Mapping[str, tuple[int, int]] = field(default_factory=dict)
+    # Short content hash that versions the immutable stylesheet URL, computed once.
+    stylesheet_digest: str = field(init=False)
 
     def __post_init__(self) -> None:
         """Detach the published snapshot from caller-owned mutable mappings."""
         object.__setattr__(self, "root_files", MappingProxyType(dict(self.root_files)))
         object.__setattr__(self, "hashes", MappingProxyType(dict(self.hashes)))
         object.__setattr__(self, "image_sizes", MappingProxyType(dict(self.image_sizes)))
-
-    @property
-    def stylesheet_digest(self) -> str:
-        """Short content hash that versions the immutable stylesheet URL."""
-        return sha256(self.stylesheet.encode()).hexdigest()[:8]
+        object.__setattr__(self, "stylesheet_digest", sha256(self.stylesheet.encode()).hexdigest()[:8])
 
     @property
     def stylesheet_url(self) -> str:

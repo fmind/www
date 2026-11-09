@@ -154,43 +154,40 @@ GA_IMAGES = "https://*.google-analytics.com https://*.googletagmanager.com"
 GA_CONNECT = "https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com"
 
 
-def _security_headers(nonce: str, environment: Environment) -> dict[str, str]:
-    # 'strict-dynamic' trusts only nonce scripts and what they insert (gtag.js after consent),
-    # so CSP3 browsers ignore the host allowlist that would let any Tag Manager container run;
-    # 'self' and the host remain the fallback for browsers without 'strict-dynamic'.
-    script_src = f"'self' 'nonce-{nonce}' 'strict-dynamic' {GA_SCRIPTS}"
-    # Pages link one same-origin stylesheet; no inline <style> element is authorized.
-    style_src = "'self'"
-    headers = {
-        "content-security-policy": "; ".join(
-            (
-                "default-src 'self'",
-                "base-uri 'none'",
-                "object-src 'none'",
-                "frame-ancestors 'none'",
-                "form-action 'self'",
-                f"script-src {script_src}",
-                f"style-src {style_src}",
-                f"img-src 'self' data: {GA_IMAGES}",
-                "font-src 'self'",
-                f"connect-src 'self' {GA_CONNECT}",
-            )
+# 'strict-dynamic' trusts only nonce scripts and what they insert (gtag.js after consent),
+# so CSP3 browsers ignore the host allowlist that would let any Tag Manager container run;
+# 'self' and the host remain the fallback for browsers without 'strict-dynamic'.
+# Pages link one same-origin stylesheet; no inline <style> element is authorized.
+_CONTENT_SECURITY_POLICY = (
+    "; ".join(
+        (
+            "default-src 'self'",
+            "base-uri 'none'",
+            "object-src 'none'",
+            "frame-ancestors 'none'",
+            "form-action 'self'",
+            f"script-src 'self' 'nonce-{{nonce}}' 'strict-dynamic' {GA_SCRIPTS}",
+            "style-src 'self'",
+            f"img-src 'self' data: {GA_IMAGES}",
+            "font-src 'self'",
+            f"connect-src 'self' {GA_CONNECT}",
         )
-        + ";",
-        "referrer-policy": "strict-origin-when-cross-origin",
-        "x-content-type-options": "nosniff",
-        "x-frame-options": "DENY",
-        "cross-origin-opener-policy": "same-origin-allow-popups",
-        "x-permitted-cross-domain-policies": "none",
-        "x-xss-protection": "0",
-        "permissions-policy": (
-            "accelerometer=(), autoplay=(self), camera=(), display-capture=(), encrypted-media=(), fullscreen=(), "
-            "geolocation=(), gyroscope=(), magnetometer=(), microphone=(), midi=(), payment=(), sync-xhr=(), usb=()"
-        ),
-    }
-    if environment is Environment.PRODUCTION:
-        headers["strict-transport-security"] = "max-age=63072000; includeSubDomains; preload"
-    return headers
+    )
+    + ";"
+)
+_SECURITY_HEADERS = {
+    "referrer-policy": "strict-origin-when-cross-origin",
+    "x-content-type-options": "nosniff",
+    "x-frame-options": "DENY",
+    "cross-origin-opener-policy": "same-origin-allow-popups",
+    "x-permitted-cross-domain-policies": "none",
+    "x-xss-protection": "0",
+    "permissions-policy": (
+        "accelerometer=(), autoplay=(self), camera=(), display-capture=(), encrypted-media=(), fullscreen=(), "
+        "geolocation=(), gyroscope=(), magnetometer=(), microphone=(), midi=(), payment=(), sync-xhr=(), usb=()"
+    ),
+}
+_STRICT_TRANSPORT_SECURITY = "max-age=63072000; includeSubDomains; preload"
 
 
 class SiteMiddleware:
@@ -202,6 +199,10 @@ class SiteMiddleware:
         self.project = config.google_cloud_project
         self.logger = logger
         self.tracing = tracing
+        # Fixed for the process: only the CSP nonce is built per response.
+        self.security_headers = dict(_SECURITY_HEADERS)
+        if self.environment is Environment.PRODUCTION:
+            self.security_headers["strict-transport-security"] = _STRICT_TRANSPORT_SECURITY
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
@@ -280,9 +281,7 @@ class SiteMiddleware:
             if message["type"] == "http.response.start":
                 status = message["status"]
                 response_headers = MutableScopeHeaders(message)
-                for name, value in _security_headers(nonce, self.environment).items():
-                    response_headers[name] = value
-                _vary_accept_encoding(response_headers)
+                self._secure(response_headers, nonce)
                 if path in _MCP_PATHS:
                     # Protocol responses are per request. Prevent intermediaries
                     # from storing or transforming JSON-RPC envelopes.
@@ -337,6 +336,12 @@ class SiteMiddleware:
             # the inner OpenTelemetry span was current.
             finalize_logs()
 
+    def _secure(self, headers: MutableScopeHeaders, nonce: str) -> None:
+        headers["content-security-policy"] = _CONTENT_SECURITY_POLICY.format(nonce=nonce)
+        for name, value in self.security_headers.items():
+            headers[name] = value
+        _vary_accept_encoding(headers)
+
     async def _redirect(self, scope: Scope, send: Send, nonce: str) -> None:
         raw_path = scope.get("raw_path", scope.get("path", "").encode()).split(b"?", 1)[0]
         path = raw_path.decode("latin-1")
@@ -348,9 +353,6 @@ class SiteMiddleware:
         # 308 keeps the method and body, so an apex POST /mcp is not replayed as a GET.
         status = 301 if scope.get("method", "GET") in {"GET", "HEAD"} else 308
         start: Message = {"type": "http.response.start", "status": status, "headers": headers}
-        mutable = MutableScopeHeaders(start)
-        for name, value in _security_headers(nonce, self.environment).items():
-            mutable[name] = value
-        _vary_accept_encoding(mutable)
+        self._secure(MutableScopeHeaders(start), nonce)
         await send(start)
         await send({"type": "http.response.body", "body": b"", "more_body": False})

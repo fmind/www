@@ -1,5 +1,6 @@
 """Static asset startup invariants."""
 
+import hashlib
 import json
 from pathlib import Path
 from typing import cast
@@ -7,6 +8,7 @@ from typing import cast
 import pytest
 from PIL import Image
 
+import www.assets as assets_module
 from www.assets import ROOT_FILE_SOURCES, STATIC_MANIFEST, ApplicationAssets, hash_static_files, load_application_assets
 
 FONT_FILES = (
@@ -68,6 +70,17 @@ def test_application_assets_detaches_caller_owned_mappings() -> None:
     hashes["/static/example.css"] = "mutated"
 
     assert assets.hashes["/static/example.css"] == "original"
+
+
+def test_stylesheet_digest_is_hashed_once_at_construction(monkeypatch: pytest.MonkeyPatch) -> None:
+    assets = ApplicationAssets(root_files={}, hashes={}, stylesheet="body{}")
+
+    def rehash(*_: object) -> None:
+        raise AssertionError("the stylesheet was hashed again after construction")
+
+    monkeypatch.setattr(assets_module, "sha256", rehash)
+    assert assets.stylesheet_digest == hashlib.sha256(b"body{}").hexdigest()[:8]
+    assert assets.stylesheet_url == f"/styles.css?v={assets.stylesheet_digest}"
 
 
 def test_load_assets_fails_without_generated_stylesheet(tmp_path: Path) -> None:
