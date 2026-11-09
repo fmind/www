@@ -62,7 +62,7 @@ def test_measured_catalogs_match_the_retained_snapshot(tmp_path: Path, monkeypat
     # The typed MCP argument advertises exactly the measured catalogs.
     assert tuple(server.id for server in SERVERS) == SERVER_IDS
     view = build_context_view(now=BEFORE_REVIEW)
-    assert (view.tools, view.tokens_request, view.requests_per_day) == (93, 17368, 1000)
+    assert (view.tools, view.tokens_request, view.requests_per_day) == (94, 17536, 1000)
 
 
 def test_hand_calculated_tokens_context_and_costs_for_selected_servers() -> None:
@@ -132,8 +132,8 @@ def test_shareable_url_round_trips_and_mcp_matches_the_page() -> None:
     assert (restored.selected, restored.requests_per_day, restored.validation) == (view.selected, 4321, ())
     result = compare_context(["github", "playwright"], 4321)
     assert result.scenario_url == view.scenario_url
-    assert result.tokens_per_request == 10989 + 3745
-    assert result.tokens_per_month == (10989 + 3745) * 4321 * 30
+    assert result.tokens_per_request == 11157 + 3745
+    assert result.tokens_per_month == (11157 + 3745) * 4321 * 30
     assert result.models == view.models
 
 
@@ -150,7 +150,7 @@ def test_page_metadata_validation_redirects_and_404(client: TestClient) -> None:
     response = client.get(PATH)
     assert response.status_code == 200
     assert "How much context do your MCP tools take?" in response.text
-    assert "17,368 tokens of tool definitions on every request" in response.text
+    assert "17,536 tokens of tool definitions on every request" in response.text
     assert f'<link rel="canonical" href="https://www.fmind.dev{PATH}"' in response.text
     assert '"@type":"WebApplication"' in response.text
     assert '<form id="calculator" method="get"' in response.text
@@ -170,7 +170,7 @@ def test_page_metadata_validation_redirects_and_404(client: TestClient) -> None:
     assert "Some inputs need attention" in invalid.text
     assert "between 1 and 10,000,000" in invalid.text
     # Million-dollar budgets use an M suffix instead of thousands of k.
-    assert "$521.0k\u2013$52.1M" in client.get(PATH + "?requests=10000000").text
+    assert "$526.1k\u2013$52.6M" in client.get(PATH + "?requests=10000000").text
     one = client.get(PATH + "?server=memory&requests=10")
     assert "953 tokens of tool definitions on every request" in one.text
     assert one.text.count(" checked/>") == 1
@@ -215,7 +215,7 @@ async def test_mcp_result_matches_http_scenario_and_invalid_calls_fail(server, c
     defaults = await server.call_tool("compare_mcp_context_cost", {})
     assert isinstance(defaults, CallToolResult)
     assert defaults.structured_content is not None
-    assert defaults.structured_content["tokens_per_request"] == 17368
+    assert defaults.structured_content["tokens_per_request"] == 17536
     for invalid in (
         {"servers": []},
         {"servers": ["unknown"]},

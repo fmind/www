@@ -1614,7 +1614,7 @@ test("article section links work without JavaScript", async ({ browser }) => {
 
 test("MCP context calculator toggles servers with the keyboard", async ({ page }) => {
   await page.goto(contextCalculator);
-  await expect(page.locator("#context-results")).toHaveText("17,368 tokens of tool definitions on every request");
+  await expect(page.locator("#context-results")).toHaveText("17,536 tokens of tool definitions on every request");
   // Reach the server checkboxes and the submit using only the keyboard.
   for (
     let i = 0;

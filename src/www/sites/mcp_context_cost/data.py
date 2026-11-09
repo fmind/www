@@ -2,10 +2,11 @@
 
 from dataclasses import dataclass
 
-SNAPSHOT_DATE = "2026-10-13"
-BENCHMARK_COMMIT = "e83ad9431e41ffd745384a04c49b95d8e1090691"
+# Date the pinned catalogs and every source link were last re-verified (see sources.md).
+SNAPSHOT_DATE = "2026-11-09"
+BENCHMARK_COMMIT = "8251908e2e32977467515d40fbd1d47c9668d25d"
 BENCHMARK_TREE_URL = f"https://github.com/fmind/mcp-context-benchmark/tree/{BENCHMARK_COMMIT}"
-BENCHMARK_URL = f"https://github.com/fmind/mcp-context-benchmark/blob/{BENCHMARK_COMMIT}/results.json"
+BENCHMARK_URL = f"https://github.com/fmind/mcp-context-benchmark/blob/{BENCHMARK_COMMIT}/results/catalogue.json"
 
 
 @dataclass(frozen=True, slots=True)
@@ -26,11 +27,11 @@ SERVERS = (
     ServerSnapshot(
         "github",
         "GitHub (default toolset)",
-        "v1.12.2",
-        45,
-        10989,
-        "2026-09-20",
-        "https://github.com/github/github-mcp-server/tree/v1.12.2",
+        "v2.0.2",
+        46,
+        11157,
+        "2026-10-10",
+        "https://github.com/github/github-mcp-server/tree/v2.0.2",
         BENCHMARK_URL,
         "Pinned measurement source",
         "Default catalog from the pinned public benchmark; not every available GitHub tool.",
@@ -41,7 +42,7 @@ SERVERS = (
         "1.0.0",
         14,
         1681,
-        SNAPSHOT_DATE,
+        "2026-10-13",
         "https://github.com/modelcontextprotocol/servers/tree/main/src/filesystem",
         "https://registry.npmjs.org/@modelcontextprotocol/server-filesystem/1.0.0",
         "Package release",
@@ -53,7 +54,7 @@ SERVERS = (
         "1.0.0",
         9,
         953,
-        SNAPSHOT_DATE,
+        "2026-10-13",
         "https://github.com/modelcontextprotocol/servers/tree/main/src/memory",
         "https://registry.npmjs.org/@modelcontextprotocol/server-memory/1.0.0",
         "Package release",
@@ -65,7 +66,7 @@ SERVERS = (
         "0.0.83",
         25,
         3745,
-        SNAPSHOT_DATE,
+        "2026-10-13",
         "https://github.com/microsoft/playwright-mcp",
         "https://registry.npmjs.org/@playwright/mcp/0.0.83",
         "Package release",
