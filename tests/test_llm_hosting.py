@@ -963,6 +963,20 @@ def test_invalid_pilot_reference_is_not_reflected_into_the_page() -> None:
     assert all("untrusted-value" not in item for item in result.validation)
 
 
+@pytest.mark.parametrize("mode", ["simple", "advanced"])
+def test_query_text_is_never_reflected_into_validation_messages(mode: str) -> None:
+    marker = "untrusted<text>"
+    # An explicit machine once echoed an unknown billing plan in its availability message.
+    result = build_llm_self_hosting_view({"mode": mode, "node": "a3-high", "billing": marker}, now=NOW)
+    assert "Pricing plan (billing) was not recognized; the default was used" in result.validation
+    assert result.selected_price in result.selected_node.prices
+    keys = scenario_parameters(DEFAULT_HOSTING_INPUTS).keys() | {"preset", "pilot", "confirm-pilot", "platform"}
+    for key in keys:
+        for machine in ({}, {"node": "a3-high"}, {"node": "auto"}):
+            messages = build_llm_self_hosting_view({"mode": mode, **machine, key: marker}, now=NOW).validation
+            assert all(marker not in message for message in messages), (key, messages)
+
+
 def test_native_billing_fallback_names_the_hardware_and_replacement() -> None:
     result = view({"node": "a4", "billing": "on-demand"})
     # Flex-start is listed first but cannot serve this interactive scenario.

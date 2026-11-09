@@ -314,11 +314,10 @@ def parse_inputs(query: Query) -> tuple[HostingInputs, tuple[str, ...]]:
         inputs = replace(inputs, replicas=replicas_for_demand(inputs))
     else:
         inputs = _parse_hosting_options(query, inputs, validation)
-    raw_plan = _first(query, "billing")
+    plans = frozenset(plan.value for plan in BillingPlan)
     if mode == "simple" or _first(query, "node") in (None, "auto"):
-        allowed_plans = frozenset(("on-demand", "cud-1y", "cud-3y"))
-        if mode == "advanced":
-            allowed_plans |= {"flex"}
+        # Simple mode never offers Flex-start, which only queues batch jobs.
+        allowed_plans = plans - {BillingPlan.FLEX.value} if mode == "simple" else plans
         raw_plan = _parse_choice(query, "billing", "on-demand", allowed_plans, validation)
         try:
             inputs, node = automatic_setup(
@@ -328,6 +327,9 @@ def parse_inputs(query: Query) -> tuple[HostingInputs, tuple[str, ...]]:
             validation.append(f"{exc}; select a compatible checkpoint, GPU and billing plan")
             node = find_node_pool(defaults.node_pool_id)
         inputs = replace(inputs, node_pool_id=node.id)
+    else:
+        # Recognize the plan first: the availability message below names it, and must never echo query text.
+        raw_plan = _parse_choice(query, "billing", "", plans, validation)
     node = find_node_pool(inputs.node_pool_id)
     available_plans = frozenset(price.plan.value for price in node.prices)
     # Fall back to the first plan this scenario can use; A4 lists Flex-start first,

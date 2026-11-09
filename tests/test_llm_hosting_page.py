@@ -208,6 +208,13 @@ def test_shared_url_with_removed_quality_lab_parameters_renders_without_a_messag
     assert calculator(response.text) == calculator(client.get(PAGE, params={"requests": "500"}).text)
 
 
+def test_unknown_billing_text_is_not_reflected_into_the_page(client: AppClient) -> None:
+    response = client.get(PAGE, params={"node": "a3-high", "billing": "untrusted-text"})
+    assert response.status_code == 200
+    assert "Pricing plan (billing) was not recognized; the default was used" in response.text
+    assert "untrusted-text" not in response.text
+
+
 def test_catalog_hides_footprints_of_unsupported_checkpoints(client: AppClient) -> None:
     # Each row is sized on its own machine, so only a recipe limit can block one here.
     html = client.get(PAGE, params={"input-tokens": "250000", "tokens": "1000"}).text
