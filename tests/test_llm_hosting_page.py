@@ -387,3 +387,26 @@ def test_setup_notes_come_from_the_selected_checkpoint_and_machine(client: AppCl
     default = client.get("/sites/llm-self-hosting/").text
     assert "needs quality testing" not in default
     assert "The verified recipe caps this setup" not in default
+
+
+def test_simple_form_offers_the_workload_default_plan_and_names_batch_pricing(client: AppClient) -> None:
+    team = client.get("/sites/llm-self-hosting/").text
+    assert '<option value="auto" selected>Workload default · on-demand</option>' in team
+    assert '<option value="flex"' not in team
+    assert "Standard text rates, ordered by price." in team
+    assert "Other plans for this workload:" in team
+    pipeline = client.get("/sites/llm-self-hosting/?mode=simple&preset=document-pipeline").text
+    assert '<option value="auto" selected>Workload default · Flex-start or on-demand</option>' in pipeline
+    assert '<option value="flex">Flex-start · queued batch jobs only</option>' in pipeline
+    assert "Batch rates, half the standard price for asynchronous jobs, ordered by price." in pipeline
+    assert "queues each start and runs nodes for at most seven days" in pipeline
+    assert 'data-plan="Flex-start or on-demand"' in pipeline
+    # An explicit plan stays selected instead of the workload default.
+    explicit = client.get("/sites/llm-self-hosting/?mode=simple&preset=document-pipeline&billing=flex").text
+    assert '<option value="auto">Workload default' in explicit
+    assert '<option value="flex" selected>' in explicit
+    # Advanced mode offers Flex-start on every machine that publishes the rate, and never the automatic plan.
+    advanced = client.get(PAGE + "&node=g4-standard-48").text
+    assert '<option value="flex">Flex-start · queued batch jobs only</option>' in advanced
+    assert ">Workload default ·" not in advanced
+    assert '<option value="flex"' not in client.get(PAGE + "&node=g2-standard-12").text

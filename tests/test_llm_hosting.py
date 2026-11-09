@@ -7,7 +7,9 @@ from urllib.parse import parse_qs, urlparse, urlsplit
 
 import pytest
 
+import www.sites.calculator as calculator
 import www.sites.economics as economics
+import www.sites.inputs as hosting_inputs
 from tests.llm_hosting_support import NOW, view
 from www.sites.agent import compare_hosting
 from www.sites.calculator import build_llm_self_hosting_view
@@ -1316,10 +1318,12 @@ def test_cloud_tpu_multi_host_slices_and_gpu_vs_tpu_demand_comparison() -> None:
             "api-mode": "batch",
         }
     )
+    # Both families publish Flex-start rates, so a batch job gets a queued setup on each.
     gpu_flex, tpu_flex = flex_batch.accelerators
+    assert (gpu_flex.node.id, tpu_flex.node.id) == ("a3-high", "tpu7x-standard-4t")
     assert gpu_flex.estimate.qualified
-    assert "No Cloud TPU machine in this catalog offers the flex billing plan" in tpu_flex.estimate.compatibility_issue
-    assert not tpu_flex.estimate.qualified
+    assert tpu_flex.estimate.qualified
+    assert tpu_flex.estimate.compute_monthly_usd == pytest.approx(24.0 * 730)
 
 
 def test_one_off_demand_cannot_borrow_a_whole_month_of_capacity() -> None:
@@ -1336,7 +1340,8 @@ def test_flex_start_requires_batch_delivery() -> None:
     gpu, tpu = view(parameters).accelerators
     assert gpu.estimate.compatibility_issue.startswith("Flex-start queues bounded jobs")
     assert not gpu.estimate.qualified
-    assert tpu.estimate.compatibility_issue == "No Cloud TPU machine in this catalog offers the flex billing plan"
+    assert tpu.estimate.compatibility_issue.startswith("Flex-start queues bounded jobs")
+    assert not tpu.estimate.qualified
     assert not build_llm_self_hosting_view(parameters | {"api-mode": "batch"}).estimate.compatibility_issue
     with pytest.raises(ValueError, match="Flex-start"):
         compare_hosting(parameters)
@@ -1581,9 +1586,8 @@ def test_catalog_sizes_each_model_on_its_own_automatic_machine() -> None:
     nemotron = next(row for row in long_context.comparison if row.model.id == "nemotron-3-5-super-vl")
     assert nemotron.decision == "Unsupported configuration"
     assert "limited to 16,384 context tokens" in nemotron.estimate.compatibility_issue
-    # When no checkpoint has a machine on the plan, the row says so instead of borrowing one.
-    flex = view({"node": "a4", "billing": "flex", "api-mode": "batch"})
-    assert not flex.validation
+    # Interactive Flex-start has no machine for any checkpoint; the row says so instead of borrowing one.
+    flex = view({"node": "a4", "billing": "flex"})
     blocked = next(row for row in flex.comparison if row.model.id == "nemotron-3-5-super-vl")
     assert blocked.decision == "Unsupported configuration"
     assert blocked.estimate.compatibility_issue == "No compatible hardware for Nemotron 3.5 Super VL under flex"
@@ -1668,3 +1672,93 @@ def test_agent_comparison_rows_reference_catalog_ids_instead_of_repeating_entrie
     assert all(row.node_id in nodes and row.quantization_id in quantizations for row in rows)
     # The empty discovery call stays small enough for agent context (it was 62 KB compact).
     assert len(result.model_dump_json()) < 48_000
+
+
+# Workload defaults: batch jobs compare queued Flex-start nodes with batch API rates.
+
+
+def test_batch_workloads_default_to_flex_start_nodes_and_batch_api_rates() -> None:
+    pipeline = build_llm_self_hosting_view({"mode": "simple", "preset": "document-pipeline"}, now=NOW)
+    assert not pipeline.validation
+    assert pipeline.billing_is_auto
+    assert (pipeline.inputs.billing_plan, pipeline.selected_node.id) == (BillingPlan.FLEX, "g4-standard-48")
+    # Hand calculation: 30 days x 8 h on one G4 at $2.25 Flex-start, plus the $0.10/hour GKE fee for 730 h.
+    assert pipeline.estimate.total_monthly_usd == pytest.approx(30 * 8 * 2.25 + 73)
+    # 30,000 calls x (8,000 x $0.10 + 500 x $0.50) per million tokens, at half price in batch mode.
+    haiku = next(row for row in pipeline.apis if row.baseline.name == "Claude Haiku 5.5")
+    assert haiku.monthly_usd == pytest.approx(30_000 * (8_000 * 0.10 + 500 * 0.50) / 1e6 / 2)
+    assert haiku.mode_note.startswith("Batch: 50% off")
+    # The shared URL names the resolved plan and reproduces the scenario.
+    shared = parse_qs(urlsplit(hosting_url(pipeline.inputs)).query)
+    assert shared["billing"] == ["flex"]
+    reopened = build_llm_self_hosting_view({key: values[0] for key, values in shared.items()}, now=NOW)
+    assert not reopened.validation
+    assert not reopened.billing_is_auto
+    assert reopened.estimate == pipeline.estimate
+    # Agents get the same default, explicitly or by omission.
+    assert (
+        compare_hosting({"mode": "simple", "preset": "document-pipeline", "billing": "auto"}).parameters["billing"]
+        == "flex"
+    )
+
+
+def test_workload_default_takes_the_cheaper_of_flex_start_and_on_demand() -> None:
+    # G2 publishes no Flex-start rate and still beats a queued G4 for the 4B model.
+    small = build_llm_self_hosting_view({"mode": "simple", "preset": "single-job", "model": "qwen3-5-4b"}, now=NOW)
+    assert (small.inputs.billing_plan, small.selected_node.id) == (BillingPlan.ON_DEMAND, "g2-standard-12")
+    assert small.plan_alternatives[0].label == "DWS Flex-start"
+    assert small.plan_alternatives[0].monthly_usd > small.estimate.total_monthly_usd
+    # Every published Flex-start rate undercuts the same machine's on-demand rate.
+    for node in GKE_NODE_POOLS:
+        rates = {price.plan: price.hourly_usd for price in node.prices}
+        if {BillingPlan.FLEX, BillingPlan.ON_DEMAND} <= rates.keys():
+            assert rates[BillingPlan.FLEX] < rates[BillingPlan.ON_DEMAND], node.id
+
+
+def test_interactive_workloads_keep_on_demand_standard_rates_and_reject_flex_start() -> None:
+    team = build_llm_self_hosting_view({"mode": "simple", "preset": "small-team"}, now=NOW)
+    assert (team.inputs.billing_plan, team.inputs.api_mode.value) == (BillingPlan.ON_DEMAND, "standard")
+    # Other plans are listed lowest first and never repeat the selected one or offer a job queue.
+    assert [row.label for row in team.plan_alternatives] == ["3-year resource CUD", "1-year resource CUD"]
+    assert [row.monthly_usd for row in team.plan_alternatives] == sorted(
+        row.monthly_usd for row in team.plan_alternatives
+    )
+    assert all("mode=simple" in row.url for row in team.plan_alternatives)
+    # A multi-step workflow is scheduled but not a batch job: each step waits for the previous answer.
+    workflow = build_llm_self_hosting_view({"mode": "simple", "preset": "scheduled-workflow"}, now=NOW)
+    assert (workflow.inputs.billing_plan, workflow.inputs.api_mode.value) == (BillingPlan.ON_DEMAND, "standard")
+    rejected = build_llm_self_hosting_view({"mode": "simple", "preset": "small-team", "billing": "flex"}, now=NOW)
+    assert rejected.validation == ("Pricing plan (billing) was not recognized; the default was used",)
+    assert rejected.inputs.billing_plan is BillingPlan.ON_DEMAND
+    with pytest.raises(ValueError, match="Pricing plan"):
+        compare_hosting({"mode": "simple", "preset": "small-team", "billing": "flex"})
+
+
+def test_an_explicit_plan_overrides_the_workload_default() -> None:
+    committed = build_llm_self_hosting_view(
+        {"mode": "simple", "preset": "document-pipeline", "billing": "cud-1y"}, now=NOW
+    )
+    assert not committed.validation
+    assert not committed.billing_is_auto
+    assert committed.inputs.billing_plan is BillingPlan.CUD_1Y
+    # The workload stays a batch job, so the API side keeps batch rates.
+    assert committed.inputs.api_mode.value == "batch"
+    assert [row.label for row in committed.plan_alternatives] == ["DWS Flex-start", "On-demand", "3-year resource CUD"]
+    assert not view().plan_alternatives
+
+
+def test_plan_defaults_and_alternatives_fail_closed_without_hardware(monkeypatch: pytest.MonkeyPatch) -> None:
+    def no_hardware(*_args: object, **_kwargs: object) -> None:
+        raise ValueError("No compatible hardware for this test")
+
+    # A plan whose setup is rejected is never listed as an alternative.
+    monkeypatch.setattr(calculator, "configuration_issue", lambda *_args, **_kwargs: "blocked")
+    assert not build_llm_self_hosting_view({"mode": "simple"}, now=NOW).plan_alternatives
+    monkeypatch.undo()
+    monkeypatch.setattr(calculator, "automatic_setup", no_hardware)
+    assert not build_llm_self_hosting_view({"mode": "simple"}, now=NOW).plan_alternatives
+    # When no default plan has a machine, the page says so and prices a published on-demand rate.
+    monkeypatch.setattr(hosting_inputs, "automatic_setup", no_hardware)
+    inputs, validation = parse_inputs({"mode": "simple", "preset": "document-pipeline"})
+    assert validation == ("No compatible hardware for this test; select a compatible checkpoint, GPU and billing plan",)
+    assert (inputs.billing_plan, inputs.node_pool_id) == (BillingPlan.ON_DEMAND, "g4-standard-48")

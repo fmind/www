@@ -29,6 +29,7 @@ document.addEventListener('change', function (event) {
   document.getElementById('preset-help').textContent = selected.dataset.description;
   document.getElementById('requests').placeholder = selected.dataset.calls;
   document.querySelector('#window option[value="auto"]').textContent = 'Workload default · ' + selected.dataset.window + ' hours';
+  document.querySelector('#billing option[value="auto"]').textContent = 'Workload default · ' + selected.dataset.plan;
 });
 // Back/forward form restoration can change the range after initialization without an input event.
 window.addEventListener('pageshow', function () {

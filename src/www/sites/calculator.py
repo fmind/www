@@ -7,6 +7,7 @@ from .capacity import MONTHLY_HOURS, replicas_for_demand
 from .charts import hosting_cost_plot
 from .data import (
     DEMAND_PRESETS,
+    FLEX_START_SOURCE_URL,
     FRONTIER_MODELS,
     GKE_NODE_POOLS,
     GKE_SOURCE_URL,
@@ -53,6 +54,7 @@ from .models import (
     HostingInputs,
     LLMSelfHostingView,
     ModelComparison,
+    PlanAlternative,
     PrecisionComparison,
     SensitivityCell,
     SensitivityRow,
@@ -289,11 +291,7 @@ def _hosting_accelerators(
     )
     rows: list[AcceleratorComparison] = []
     for family, pools in families:
-        chosen_plan = target_plan = (
-            inputs.billing_plan
-            if any(price.plan is inputs.billing_plan for pool in pools for price in pool.prices)
-            else pools[0].prices[0].plan
-        )
+        chosen_plan = target_plan = inputs.billing_plan
         try:
             candidate, chosen_node = automatic_setup(start, target_plan, pools=pools)
             matched_hardware = True
@@ -330,13 +328,6 @@ def _hosting_accelerators(
                 else f"No {family} machine in this catalog has a verified {model.name} configuration for these settings",
                 qualified=False,
             )
-        if chosen_plan is not inputs.billing_plan:
-            estimate = replace(
-                estimate,
-                compatibility_issue=estimate.compatibility_issue
-                or f"No {family} machine in this catalog offers the {inputs.billing_plan.value} billing plan",
-                qualified=False,
-            )
         rows.append(
             AcceleratorComparison(
                 family=family,
@@ -347,6 +338,25 @@ def _hosting_accelerators(
             )
         )
     return tuple(rows)
+
+
+def _plan_alternatives(inputs: HostingInputs, model: FrontierModel) -> tuple[PlanAlternative, ...]:
+    """Price the simple scenario on every other plan it may use, as selecting that plan would."""
+    preset = demand_preset(inputs)
+    rows: list[PlanAlternative] = []
+    for plan in BillingPlan:
+        if plan is inputs.billing_plan or (plan is BillingPlan.FLEX and preset.api_mode is not APIMode.BATCH):
+            continue
+        try:
+            scenario, node = automatic_setup(replace(inputs, quantization_id=model.default_quantization), plan)
+        except ValueError:
+            continue
+        scenario = replace(scenario, node_pool_id=node.id, billing_plan=plan)
+        if configuration_issue(scenario):
+            continue
+        estimate = estimate_hosting(model, node, find_quantization(scenario.quantization_id), scenario)
+        rows.append(PlanAlternative(node.price(plan).label, estimate.total_monthly_usd, hosting_url(scenario)))
+    return tuple(sorted(rows, key=lambda row: row.monthly_usd))
 
 
 def build_llm_self_hosting_view(
@@ -431,6 +441,9 @@ def build_llm_self_hosting_view(
         demand_label=_demand_label(inputs),
         selected_preset=preset,
         window_is_auto=first_value(query, "window") in (None, "auto"),
+        billing_is_auto=first_value(query, "billing") in (None, "", "auto"),
+        plan_alternatives=_plan_alternatives(inputs, model) if inputs.mode == "simple" else (),
+        flex_start_source_url=FLEX_START_SOURCE_URL,
         custom_requests=inputs.requests_per_day != preset.requests_per_day,
         budget_low_usd=min(budgets),
         budget_high_usd=max(budgets),
@@ -453,7 +466,10 @@ def build_llm_self_hosting_view(
             replace(
                 inputs,
                 mode="simple",
-                billing_plan=BillingPlan.ON_DEMAND if inputs.billing_plan is BillingPlan.FLEX else inputs.billing_plan,
+                # Simple mode offers Flex-start to batch workloads only.
+                billing_plan=BillingPlan.ON_DEMAND
+                if inputs.billing_plan is BillingPlan.FLEX and preset.api_mode is not APIMode.BATCH
+                else inputs.billing_plan,
             )
         ),
     )

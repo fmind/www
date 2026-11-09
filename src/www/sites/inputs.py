@@ -261,6 +261,7 @@ def parse_inputs(query: Query) -> tuple[HostingInputs, tuple[str, ...]]:
                 _parse_choice(query, "window", str(int(preset.window_hours)), frozenset(("24", "8", "1")), validation)
             ),
             quantization_id=model.default_quantization,
+            api_mode=preset.api_mode,
         )
     else:
         demand_window_hours = _parse_bounded_float(query, "window", defaults.demand_window_hours, 0.1, 24, validation)
@@ -302,16 +303,24 @@ def parse_inputs(query: Query) -> tuple[HostingInputs, tuple[str, ...]]:
         inputs = _parse_hosting_options(query, inputs, validation)
     plans = frozenset(plan.value for plan in BillingPlan)
     if mode == "simple" or first_value(query, "node") in (None, "auto"):
-        # Simple mode never offers Flex-start, which only queues batch jobs.
-        allowed_plans = plans - {BillingPlan.FLEX.value} if mode == "simple" else plans
-        raw_plan = _parse_choice(query, "billing", "on-demand", allowed_plans, validation)
+        if mode == "simple":
+            # Flex-start only queues jobs, so simple mode offers it to batch workloads alone.
+            # `auto` (also a blank or absent plan) takes the workload's default.
+            allowed_plans = (plans if preset.api_mode is APIMode.BATCH else plans - {BillingPlan.FLEX.value}) | {"auto"}
+            raw_plan = _parse_choice(query, "billing", "auto", allowed_plans, validation)
+        else:
+            raw_plan = _parse_choice(query, "billing", "on-demand", plans, validation)
         try:
-            inputs, node = automatic_setup(
-                inputs, BillingPlan(raw_plan), keep_checkpoint=first_value(query, "quant") not in (None, "", "auto")
-            )
+            if raw_plan == "auto":
+                raw_plan, inputs, node = _workload_setup(inputs, preset)
+            else:
+                inputs, node = automatic_setup(
+                    inputs, BillingPlan(raw_plan), keep_checkpoint=first_value(query, "quant") not in (None, "", "auto")
+                )
         except ValueError as exc:
             validation.append(f"{exc}; select a compatible checkpoint, GPU and billing plan")
             node = find_node_pool(defaults.node_pool_id)
+            raw_plan = BillingPlan.ON_DEMAND.value if raw_plan == "auto" else raw_plan
         inputs = replace(inputs, node_pool_id=node.id)
     else:
         # Recognize the plan first: the availability message below names it, and must never echo query text.
@@ -461,6 +470,41 @@ def automatic_setup(
     if compatible:
         return compatible
     raise first_error or ValueError(f"No compatible hardware for {model.name} under {plan}")
+
+
+def _workload_plans(preset: DemandPreset) -> tuple[BillingPlan, ...]:
+    """Plans a workload takes without a commitment: batch jobs can queue on Flex-start, services cannot."""
+    if preset.api_mode is APIMode.BATCH:
+        return (BillingPlan.FLEX, BillingPlan.ON_DEMAND)
+    return (BillingPlan.ON_DEMAND,)
+
+
+def _workload_setup(inputs: HostingInputs, preset: DemandPreset) -> tuple[str, HostingInputs, GKENodePool]:
+    """Size the workload's default plan: the lowest-cost setup among its no-commitment plans."""
+    model = find_model(inputs.model_id)
+    best: tuple[tuple[bool, bool, float], BillingPlan, HostingInputs, GKENodePool] | None = None
+    first_error: ValueError | None = None
+    for plan in _workload_plans(preset):
+        try:
+            candidate, node = automatic_setup(inputs, plan)
+        except ValueError as exc:
+            first_error = first_error or exc
+            continue
+        required = required_memory_gb(
+            model, find_quantization(candidate.quantization_id), candidate.memory_overhead_pct
+        )
+        nodes = nodes_for_model(model, node, required)
+        # Same order as automatic_node: a setup the workload fits, then one host, then price.
+        rank = (
+            bool(configuration_issue(replace(candidate, node_pool_id=node.id, billing_plan=plan))),
+            nodes > 1,
+            nodes * node.price(plan).hourly_usd,
+        )
+        if best is None or rank < best[0]:
+            best = (rank, plan, candidate, node)
+    if best is None:
+        raise first_error or ValueError(f"No compatible hardware for {model.name}")
+    return best[1].value, best[2], best[3]
 
 
 def automatic_node(

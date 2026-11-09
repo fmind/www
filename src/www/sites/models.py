@@ -94,6 +94,8 @@ class DemandPreset:
     output_tokens: int
     window_hours: float = 24
     scheduled: bool = False
+    # Asynchronous jobs compare batch with batch: queued Flex-start nodes against batch API rates.
+    api_mode: APIMode = APIMode.STANDARD
 
 
 @dataclass(frozen=True, slots=True)
@@ -306,6 +308,15 @@ class SensitivityRow:
 
 
 @dataclass(frozen=True, slots=True)
+class PlanAlternative:
+    """The same workload and model priced on another billing plan."""
+
+    label: str
+    monthly_usd: float
+    url: str
+
+
+@dataclass(frozen=True, slots=True)
 class LLMSelfHostingView:
     inputs: HostingInputs
     models: tuple[FrontierModel, ...]
@@ -326,6 +337,10 @@ class LLMSelfHostingView:
     demand_label: str
     selected_preset: DemandPreset
     window_is_auto: bool
+    billing_is_auto: bool
+    # Simple mode only: other plans for this workload, lowest monthly cost first.
+    plan_alternatives: tuple[PlanAlternative, ...]
+    flex_start_source_url: str
     custom_requests: bool
     budget_low_usd: float
     budget_high_usd: float

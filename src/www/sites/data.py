@@ -15,8 +15,9 @@ from .models import (
 # ruff: noqa: RUF001
 
 
-MODEL_SNAPSHOT = "2026-10-29"
+MODEL_SNAPSHOT = "2026-11-09"
 GKE_SOURCE_URL = "https://cloud.google.com/kubernetes-engine/pricing"
+FLEX_START_SOURCE_URL = "https://docs.cloud.google.com/kubernetes-engine/docs/concepts/dws"
 PRICE_SOURCE_URL = "https://cloud.google.com/products/compute/pricing/accelerator-optimized"
 
 # Checkpoint tensor sizes include mixed precision and scales. Hardware restrictions
@@ -251,6 +252,7 @@ FRONTIER_MODELS = tuple(sorted(_FRONTIER_MODELS, key=lambda model: (model.parame
 
 # Full-machine USD prices, including attached GPUs and bundled host resources.
 # Resource CUD columns are used explicitly; flexible CUDs are not GPU CUDs.
+# DWS Flex-start rates come from the same tables; G2 publishes none.
 GKE_NODE_POOLS = (
     GKENodePool(
         "g2-standard-12",
@@ -275,6 +277,7 @@ GKE_NODE_POOLS = (
             NodePrice(BillingPlan.ON_DEMAND, "On-demand", 4.49993),
             NodePrice(BillingPlan.CUD_1Y, "1-year resource CUD", 3.105),
             NodePrice(BillingPlan.CUD_3Y, "3-year resource CUD", 1.97945),
+            NodePrice(BillingPlan.FLEX, "DWS Flex-start", 2.25),
         ),
         "180 GiB host RAM. GCP Server Edition; verify GKE version, drivers, regional quota, and capacity.",
     ),
@@ -288,6 +291,7 @@ GKE_NODE_POOLS = (
             NodePrice(BillingPlan.ON_DEMAND, "On-demand", 5.06879789),
             NodePrice(BillingPlan.CUD_1Y, "1-year resource CUD", 4.199690411),
             NodePrice(BillingPlan.CUD_3Y, "3-year resource CUD", 3.499997559),
+            NodePrice(BillingPlan.FLEX, "DWS Flex-start", 2.4),
         ),
         "Best used for models that fit on one node; inter-node serving needs separate validation.",
     ),
@@ -301,8 +305,9 @@ GKE_NODE_POOLS = (
             NodePrice(BillingPlan.ON_DEMAND, "On-demand", 21.6),
             NodePrice(BillingPlan.CUD_1Y, "1-year resource CUD", 15.12),
             NodePrice(BillingPlan.CUD_3Y, "3-year resource CUD", 9.76),
+            NodePrice(BillingPlan.FLEX, "DWS Flex-start", 10.8),
         ),
-        "2×4 Trillium host (8 × $2.70/chip-hour on-demand in us-east1); multi-host slices need LeaderWorkerSet and 16-bit BF16 weights.",
+        "2×4 Trillium host (8 × $2.70/chip-hour on-demand, $1.35 Flex-start in us-east1); multi-host slices need LeaderWorkerSet and 16-bit BF16 weights.",
         multi_host=True,
     ),
     GKENodePool(
@@ -315,6 +320,7 @@ GKE_NODE_POOLS = (
             NodePrice(BillingPlan.ON_DEMAND, "On-demand", 88.490000119),
             NodePrice(BillingPlan.CUD_1Y, "1-year resource CUD", 61.383674231),
             NodePrice(BillingPlan.CUD_3Y, "3-year resource CUD", 38.864383195),
+            NodePrice(BillingPlan.FLEX, "DWS Flex-start", 38.32),
         ),
         "Validate regional stock, quota, and multi-host networking.",
         multi_host=True,
@@ -329,8 +335,9 @@ GKE_NODE_POOLS = (
             NodePrice(BillingPlan.ON_DEMAND, "On-demand", 48.0),
             NodePrice(BillingPlan.CUD_1Y, "1-year resource CUD", 33.6),
             NodePrice(BillingPlan.CUD_3Y, "3-year resource CUD", 21.6),
+            NodePrice(BillingPlan.FLEX, "DWS Flex-start", 24.0),
         ),
-        "2×2×1 Ironwood host (4 × $12.00/chip-hour on-demand in us-central1); supports FP8/BF16 and multi-host LeaderWorkerSet slices.",
+        "2×2×1 Ironwood host (4 × $12.00/chip-hour on-demand, $6.00 Flex-start in us-central1); supports FP8/BF16 and multi-host LeaderWorkerSet slices.",
         multi_host=True,
     ),
     GKENodePool(
@@ -343,6 +350,7 @@ GKE_NODE_POOLS = (
             NodePrice(BillingPlan.ON_DEMAND, "On-demand", 84.806908493),
             NodePrice(BillingPlan.CUD_1Y, "1-year resource CUD", 58.471933151),
             NodePrice(BillingPlan.CUD_3Y, "3-year resource CUD", 37.208420822),
+            NodePrice(BillingPlan.FLEX, "DWS Flex-start", 42.4),
         ),
         "Validate regional stock, quota, and RDMA topology.",
         multi_host=True,
@@ -407,6 +415,7 @@ DEMAND_PRESETS = (
         1000,
         window_hours=1,
         scheduled=True,
+        api_mode=APIMode.BATCH,
     ),
     DemandPreset(
         "small-team",
@@ -428,6 +437,7 @@ DEMAND_PRESETS = (
         500,
         window_hours=8,
         scheduled=True,
+        api_mode=APIMode.BATCH,
     ),
     DemandPreset(
         "department",
@@ -482,7 +492,7 @@ API_BASELINES = (
         "https://ai.google.dev/gemini-api/docs/pricing#gemini-3.8-flash",
         "https://ai.google.dev/gemini-api/docs/generate-content/caching",
         MODEL_SNAPSHOT,
-        "2026-11-29",
+        "2026-12-09",
         "2026-12-31",
         "Introductory rates through Dec 31, 2026; input, output, cache reads, and storage double on Jan 1, 2027.",
         1_048_576,
@@ -503,7 +513,7 @@ API_BASELINES = (
         "https://platform.claude.com/docs/en/about-claude/pricing",
         "https://platform.claude.com/docs/en/build-with-claude/prompt-caching",
         MODEL_SNAPSHOT,
-        "2026-11-29",
+        "2026-12-09",
         "",
         "Standard global-routing rates. Fast mode, residency premiums, and tools are excluded.",
         1_000_000,
@@ -522,7 +532,7 @@ API_BASELINES = (
         "https://developers.openai.com/api/docs/models/gpt-6-astra",
         "https://developers.openai.com/api/docs/guides/prompt-caching",
         MODEL_SNAPSHOT,
-        "2026-11-29",
+        "2026-12-09",
         "",
         "OpenAI's published Astra name. Above 272,000 input tokens, full-request rates rise to $20 input / $75 output per million. No announced end date.",
         922_000,
@@ -543,7 +553,7 @@ API_BASELINES = (
         "https://platform.claude.com/docs/en/about-claude/pricing",
         "https://platform.claude.com/docs/en/build-with-claude/prompt-caching",
         MODEL_SNAPSHOT,
-        "2026-11-29",
+        "2026-12-09",
         "",
         "Above 100,000 prompt tokens, the entire request uses $0.50 input / $2.50 output per million; cache rates also rise fivefold.",
         1_000_000,
@@ -564,7 +574,7 @@ API_BASELINES = (
         "https://platform.claude.com/docs/en/about-claude/pricing",
         "https://platform.claude.com/docs/en/build-with-claude/prompt-caching",
         MODEL_SNAPSHOT,
-        "2026-11-29",
+        "2026-12-09",
         "",
         "Standard global-routing rates across the full context window; fast mode and residency premiums excluded.",
         1_000_000,

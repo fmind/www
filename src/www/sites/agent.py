@@ -163,6 +163,6 @@ def compare_hosting(parameters: dict[str, str]) -> HostingResult:
             "Committed machines are billed for the full term even when idle; regional availability needs a quote.",
             "Pilot inputs are caller-supplied evidence, not measurements performed by this server.",
             "Usage windows constrain average output rate, not bursts or latency. Running hours are scheduled inside active windows; startup needs a pilot.",
-            "Simple mode sizes replicas and schedules batch presets; interactive presets stay on 24/7. Advanced mode keeps the fleet fixed. Break-even holds it fixed.",
+            "Simple mode sizes replicas and schedules batch presets; interactive presets stay on 24/7. Single jobs and document pipelines default to queued Flex-start nodes and batch API rates. Advanced mode keeps the fleet fixed. Break-even holds it fixed.",
         ),
     )
