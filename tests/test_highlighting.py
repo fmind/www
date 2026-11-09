@@ -1,6 +1,7 @@
 import re
 
 import pytest
+from pygments.token import STANDARD_TYPES
 
 from www.highlighting import highlight_code, highlight_css
 
@@ -21,6 +22,26 @@ def test_highlighted_markup_is_class_based_and_css_is_minified() -> None:
     assert "style=" not in markup
     assert ".chroma .k" in css
     assert "\n" not in css
+
+
+def test_only_tokens_with_their_own_style_get_a_span() -> None:
+    # Names, operators, punctuation, and whitespace keep the block's base color, so they need no element.
+    assert highlight_code("total = count + 1\n", "python") == (
+        '<pre class="chroma" tabindex="0"><code><span class="line"><span class="cl">'
+        'total = count + <span class="mi">1</span>\n</span></span></code></pre>'
+    )
+
+
+def test_every_token_rule_is_reachable_and_differs_from_the_base_style() -> None:
+    css = highlight_css()
+    base = re.search(r"\.chroma \{ (color: #[0-9a-f]{6});", css)
+    rules = dict(re.findall(r"\.chroma \.([a-z0-9]+) \{ ([^}]*) \}", css))
+
+    assert base
+    assert rules.pop("line") == "display: flex"
+    # A class Pygments never emits is a dead rule; one restating the base color only adds markup.
+    assert set(rules) <= set(STANDARD_TYPES.values())
+    assert base[1] not in rules.values()
 
 
 def test_yaml_keys_and_quoted_scalars_are_colored_and_text_is_escaped() -> None:

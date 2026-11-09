@@ -6,91 +6,8 @@ from typing import Final
 from pygments.lexer import Lexer
 from pygments.lexers import get_lexer_by_name
 from pygments.lexers.special import TextLexer
-from pygments.token import STANDARD_TYPES, Operator, _TokenType
+from pygments.token import STANDARD_TYPES, _TokenType
 from pygments.util import ClassNotFound
-
-# Pygments and Chroma share most short token names, but Pygments also invents
-# names for arbitrary descendants. Chroma instead walks to the nearest type in
-# its fixed table, so constrain the adapter to that stable public HTML contract.
-_CHROMA_CLASSES: Final = frozenset(
-    {
-        "bp",
-        "c",
-        "c1",
-        "ch",
-        "cm",
-        "cp",
-        "cpf",
-        "cs",
-        "err",
-        "fm",
-        "g",
-        "gd",
-        "ge",
-        "gh",
-        "gi",
-        "gl",
-        "go",
-        "gp",
-        "gr",
-        "gs",
-        "gt",
-        "gu",
-        "il",
-        "k",
-        "kc",
-        "kd",
-        "kn",
-        "kp",
-        "kr",
-        "kt",
-        "l",
-        "ld",
-        "m",
-        "mb",
-        "mf",
-        "mh",
-        "mi",
-        "mo",
-        "n",
-        "na",
-        "nb",
-        "nc",
-        "nd",
-        "ne",
-        "nf",
-        "ni",
-        "nl",
-        "nn",
-        "no",
-        "nt",
-        "nv",
-        "nx",
-        "o",
-        "ow",
-        "p",
-        "py",
-        "s",
-        "s1",
-        "s2",
-        "sa",
-        "sb",
-        "sc",
-        "sd",
-        "se",
-        "sh",
-        "si",
-        "sr",
-        "ss",
-        "sx",
-        "vc",
-        "vg",
-        "vi",
-        "vm",
-        "w",
-        "x",
-    }
-)
 
 # Keep the existing token-class contract with native Fmind styles. Roles follow
 # fmind/theme's checks/palette.yaml and themes/ptpython/fmind.py; no sibling checkout
@@ -109,15 +26,11 @@ _CHROMA_CSS_RULES: Final = (
     ("KeywordPseudo", ".chroma .kp", "color: #174ea6; font-weight: bold"),
     ("KeywordReserved", ".chroma .kr", "color: #174ea6; font-weight: bold"),
     ("KeywordType", ".chroma .kt", "color: #681da8"),
-    ("NameAttribute", ".chroma .na", "color: #202124"),
     ("NameClass", ".chroma .nc", "color: #681da8"),
     ("NameConstant", ".chroma .no", "color: #934900; font-weight: bold"),
     ("NameDecorator", ".chroma .nd", "color: #681da8"),
-    ("NameEntity", ".chroma .ni", "color: #202124"),
     ("NameException", ".chroma .ne", "color: #a50e0e; font-weight: bold"),
-    ("NameLabel", ".chroma .nl", "color: #202124"),
     ("NameNamespace", ".chroma .nn", "color: #681da8"),
-    ("NameProperty", ".chroma .py", "color: #202124"),
     ("NameTag", ".chroma .nt", "color: #174ea6; font-weight: bold"),
     ("NameBuiltin", ".chroma .nb", "color: #681da8"),
     ("NameBuiltinPseudo", ".chroma .bp", "color: #681da8"),
@@ -143,9 +56,7 @@ _CHROMA_CSS_RULES: Final = (
     ("LiteralNumberInteger", ".chroma .mi", "color: #934900"),
     ("LiteralNumberIntegerLong", ".chroma .il", "color: #934900"),
     ("LiteralNumberOct", ".chroma .mo", "color: #934900"),
-    ("Operator", ".chroma .o", "color: #202124"),
     ("OperatorWord", ".chroma .ow", "color: #174ea6; font-weight: bold"),
-    ("OperatorReserved", ".chroma .or", "color: #174ea6; font-weight: bold"),
     ("Comment", ".chroma .c", "color: #595d62"),
     ("CommentHashbang", ".chroma .ch", "color: #595d62"),
     ("CommentMultiline", ".chroma .cm", "color: #595d62"),
@@ -161,11 +72,15 @@ _CHROMA_CSS_RULES: Final = (
     ("GenericStrong", ".chroma .gs", "font-weight: bold"),
     ("GenericSubheading", ".chroma .gu", "color: #174ea6; font-weight: bold"),
     ("GenericTraceback", ".chroma .gt", "color: #a50e0e"),
-    ("GenericUnderline", ".chroma .gl", "text-decoration: underline"),
 )
 _CHROMA_CSS: Final = "".join(
     f"/* {comment} */ {selector} {{ {declarations} }}" for comment, selector, declarations in _CHROMA_CSS_RULES
 )
+# Only a token class with its own rule needs a span: every other token keeps the block's base color.
+# Pygments also invents short names for arbitrary descendants, so a token walks up to its nearest styled type.
+_STYLED_CLASSES: Final = frozenset(STANDARD_TYPES.values()) & {
+    selector.removeprefix(".chroma .") for _, selector, _ in _CHROMA_CSS_RULES
+}
 
 
 def _lexer(language: str) -> Lexer:
@@ -207,12 +122,10 @@ def _split_lines(tokens: list[tuple[_TokenType, str]]) -> list[list[tuple[_Token
 
 
 def _token_class(token_type: _TokenType) -> str:
-    if token_type is Operator.Reserved:
-        return "or"
     current: _TokenType | None = token_type
     while current is not None:
         name = STANDARD_TYPES.get(current, "")
-        if name in _CHROMA_CLASSES:
+        if name in _STYLED_CLASSES:
             return name
         current = current.parent
     return ""
