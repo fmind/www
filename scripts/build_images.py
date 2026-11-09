@@ -5,13 +5,14 @@ import os
 import stat
 import sys
 from argparse import ArgumentParser
-from collections.abc import Iterable, Sequence
+from collections.abc import Generator, Iterable, Sequence
+from contextlib import contextmanager
 from dataclasses import dataclass
 from hashlib import sha256
 from io import BytesIO
 from pathlib import Path, PurePosixPath
 from tempfile import NamedTemporaryFile
-from typing import Annotated, TextIO
+from typing import Annotated, TextIO, overload
 
 import PIL
 from PIL import ExifTags, Image, features
@@ -107,16 +108,24 @@ def derivative_size(source_size: tuple[int, int], width: int) -> tuple[int, int]
     return width, source_height * width // source_width
 
 
-def _read(source: Path) -> bytes:
+@overload
+def _read(path: Path, *, what: str = "") -> bytes: ...
+@overload
+def _read(path: Path, *, missing_ok: bool, what: str = "") -> bytes | None: ...
+def _read(path: Path, *, missing_ok: bool = False, what: str = "") -> bytes | None:
+    """Read a real regular file; a missing one is None when `missing_ok`."""
+    action = f'read {what}"{path}"'
     try:
-        metadata = source.lstat()
+        metadata = path.lstat()
         if stat.S_ISLNK(metadata.st_mode):
-            raise ImageDerivativeError(f'read "{source}": symbolic links are not allowed')
+            raise ImageDerivativeError(f"{action}: symbolic links are not allowed")
         if not stat.S_ISREG(metadata.st_mode):
-            raise ImageDerivativeError(f'read "{source}": expected a regular file')
-        return source.read_bytes()
+            raise ImageDerivativeError(f"{action}: expected a regular file")
+        return path.read_bytes()
     except OSError as error:
-        raise ImageDerivativeError(f'read "{source}": {error}') from error
+        if missing_ok and isinstance(error, FileNotFoundError):
+            return None
+        raise ImageDerivativeError(f"{action}: {error}") from error
 
 
 def _require_derivable(source: Path, decoded: Image.Image) -> None:
@@ -135,26 +144,29 @@ def _require_derivable(source: Path, decoded: Image.Image) -> None:
         )
 
 
-def _inspect_source(source: Path, data: bytes) -> tuple[int, int]:
+@contextmanager
+def _open(path: Path, data: bytes) -> Generator[Image.Image]:
+    """Open image bytes; a decode failure inside the block names `path`."""
     try:
         with Image.open(BytesIO(data)) as decoded:
-            _require_derivable(source, decoded)
-            return decoded.size
+            yield decoded
     except (OSError, ValueError) as error:
-        raise ImageDerivativeError(f'decode "{source}": {error}') from error
+        raise ImageDerivativeError(f'decode "{path}": {error}') from error
 
 
-def _decode(source: Path, data: bytes | None = None) -> Image.Image:
-    source_data = _read(source) if data is None else data
-    try:
-        with Image.open(BytesIO(source_data)) as decoded:
-            # Loading before the byte buffer closes also makes decode failures
-            # surface at the boundary carrying the source path.
-            decoded.load()
-            _require_derivable(source, decoded)
-            return decoded.copy()
-    except (OSError, ValueError) as error:
-        raise ImageDerivativeError(f'decode "{source}": {error}') from error
+def _inspect_source(source: Path, data: bytes) -> tuple[int, int]:
+    with _open(source, data) as decoded:
+        _require_derivable(source, decoded)
+        return decoded.size
+
+
+def _decode(source: Path, data: bytes) -> Image.Image:
+    with _open(source, data) as decoded:
+        # Loading before the byte buffer closes also makes decode failures
+        # surface at the boundary carrying the source path.
+        decoded.load()
+        _require_derivable(source, decoded)
+        return decoded.copy()
 
 
 def _encode(decoded: Image.Image, target: Path, width: int) -> bytes:
@@ -288,22 +300,9 @@ def _parse_lock(data: object) -> _DerivativeLock:
 
 def _load_lock(path: Path, *, required: bool) -> _DerivativeLock:
     _reject_symlink_components(path, label="derivative lock")
-    try:
-        metadata = path.lstat()
-    except FileNotFoundError as error:
-        if not required:
-            return _DerivativeLock(recipe=None, widths=(), sources={})
-        raise ImageDerivativeError(f'read derivative lock "{path}": {error}') from error
-    except OSError as error:
-        raise ImageDerivativeError(f'read derivative lock "{path}": {error}') from error
-    if stat.S_ISLNK(metadata.st_mode):
-        raise ImageDerivativeError(f'read derivative lock "{path}": symbolic links are not allowed')
-    if not stat.S_ISREG(metadata.st_mode):
-        raise ImageDerivativeError(f'read derivative lock "{path}": expected a regular file')
-    try:
-        data = path.read_bytes()
-    except OSError as error:
-        raise ImageDerivativeError(f'read derivative lock "{path}": {error}') from error
+    data = _read(path, missing_ok=not required, what="derivative lock ")
+    if data is None:
+        return _DerivativeLock(recipe=None, widths=(), sources={})
     try:
         return _parse_lock(json.loads(data))
     except (json.JSONDecodeError, UnicodeDecodeError, ValueError) as error:
@@ -348,23 +347,6 @@ def _eligible_widths(source: Path, source_width: int) -> tuple[int, ...]:
     )
 
 
-def _read_optional_target(target: Path) -> bytes | None:
-    try:
-        metadata = target.lstat()
-    except FileNotFoundError:
-        return None
-    except OSError as error:
-        raise ImageDerivativeError(f'read "{target}": {error}') from error
-    if stat.S_ISLNK(metadata.st_mode):
-        raise ImageDerivativeError(f'read "{target}": symbolic links are not allowed')
-    if not stat.S_ISREG(metadata.st_mode):
-        raise ImageDerivativeError(f'read "{target}": expected a regular file')
-    try:
-        return target.read_bytes()
-    except OSError as error:
-        raise ImageDerivativeError(f'read "{target}": {error}') from error
-
-
 def _ensure_locked_target(
     source: Path,
     source_data: bytes,
@@ -373,7 +355,7 @@ def _ensure_locked_target(
     width: int,
     trusted_digest: str | None,
 ) -> tuple[str, bool, Image.Image | None]:
-    existing = _read_optional_target(target)
+    existing = _read(target, missing_ok=True)
     if existing is not None and trusted_digest is not None and _digest(existing) == trusted_digest:
         return trusted_digest, _set_generated_mode(target), decoded
 
@@ -543,14 +525,6 @@ def _require_mode(path: Path) -> None:
         )
 
 
-def _image_details(path: Path, data: bytes) -> tuple[str | None, tuple[int, int]]:
-    try:
-        with Image.open(BytesIO(data)) as decoded:
-            return decoded.format, decoded.size
-    except (OSError, ValueError) as error:
-        raise ImageDerivativeError(f'decode "{path}": {error}') from error
-
-
 def _write_summary(output: TextIO | None, summary: str) -> None:
     destination = sys.stdout if output is None else output
     try:
@@ -626,7 +600,8 @@ def check_derivatives(root: Path, *, lock_path: Path, output: TextIO | None = No
             raise ImageDerivativeError(
                 f'target digest differs from the lock for "{target}"; run `mise run build:images`'
             )
-        target_format, target_size = _image_details(target, target_data)
+        with _open(target, target_data) as decoded:
+            target_format, target_size = decoded.format, decoded.size
         if target_format != "WEBP":
             raise ImageDerivativeError(f'derivative target "{target}" must use WebP, got {target_format or "unknown"}')
         if target_size != expected_size:
