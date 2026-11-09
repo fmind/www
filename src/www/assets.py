@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from hashlib import file_digest, sha256
 from pathlib import Path
 from types import MappingProxyType
+from typing import Any
 
 from PIL import UnidentifiedImageError
 
@@ -31,7 +32,7 @@ class ApplicationAssets:
     root_files: Mapping[str, StaticResponse]
     hashes: Mapping[str, str]
     stylesheet: str
-    # Build-time raster dimensions by /static/ route; empty without a manifest (local runs).
+    # Raster dimensions by /static/ route, from the build manifest or the startup hashing pass.
     image_sizes: Mapping[str, tuple[int, int]] = field(default_factory=dict)
     # Short content hash that versions the immutable stylesheet URL, computed once.
     stylesheet_digest: str = field(init=False)
@@ -133,7 +134,7 @@ def _positive(value: object) -> bool:
 def _static_inventory(static_dir: Path, manifest: Path) -> tuple[dict[str, str], dict[str, tuple[int, int]]]:
     """Use the build manifest when present, failing closed if the files differ from it."""
     if not manifest.is_file():
-        return {route: str(entry["hash"]) for route, entry in hash_static_files(static_dir).items()}, {}
+        return _split_inventory(hash_static_files(static_dir))
     try:
         entries = json.loads(manifest.read_text(encoding="utf-8"))
         sizes = {route: path.stat().st_size for route, path in _static_files(static_dir).items()}
@@ -154,6 +155,10 @@ def _static_inventory(static_dir: Path, manifest: Path) -> tuple[dict[str, str],
     if not valid or entries.keys() != sizes.keys():
         msg = f"static manifest {manifest} does not match {static_dir}; rebuild the image or delete the manifest"
         raise RuntimeError(msg)
+    return _split_inventory(entries)
+
+
+def _split_inventory(entries: Mapping[str, Mapping[str, Any]]) -> tuple[dict[str, str], dict[str, tuple[int, int]]]:
     hashes = {route: entry["hash"] for route, entry in entries.items()}
     dimensions = {route: (entry["width"], entry["height"]) for route, entry in entries.items() if "width" in entry}
     return hashes, dimensions

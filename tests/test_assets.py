@@ -188,6 +188,17 @@ def test_build_manifest_records_raster_dimensions_and_rejects_bad_ones(tmp_path:
         load_application_assets(static)
 
 
+def test_startup_hashing_keeps_raster_dimensions_without_a_build_manifest(tmp_path: Path) -> None:
+    static = static_tree(tmp_path)
+    (static / "img").mkdir()
+    Image.new("RGB", (7, 3)).save(static / "img" / "figure.png")
+
+    assets = load_application_assets(static)
+
+    assert assets.image_sizes == {"/static/img/figure.png": (7, 3)}
+    assert assets.hashes.keys() == hash_static_files(static).keys()
+
+
 def test_build_manifest_fails_on_an_undecodable_raster(tmp_path: Path) -> None:
     static = static_tree(tmp_path)
     (static / "broken.webp").write_bytes(b"not an image")
