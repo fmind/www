@@ -323,6 +323,33 @@ def test_feed_without_editions_is_still_valid() -> None:
     assert feed.findtext("a:updated", namespaces=ATOM) == "1970-01-01T00:00:00Z"
 
 
+def test_index_markdown_keeps_recent_editions_in_full_and_links_older_ones() -> None:
+    editions = tuple(
+        parse_edition(f"2026-{month:02d}-{day:02d}", edition_text(f"{month}-{day}"))
+        for month in (12, 11)
+        for day in range(31, 0, -1)
+        if (month, day) != (11, 31)
+    )
+    recent, older = editions[:FEED_EDITION_LIMIT], editions[FEED_EDITION_LIMIT:]
+
+    body = render_news_index_markdown(editions)
+    full, separator, links = body.partition("\n## Older editions\n\n")
+
+    assert separator
+    for edition in recent:
+        assert f"\n## [{edition.title}]({edition.url}) ([Markdown]({edition.markdown_url()}))\n" in full
+        assert edition.source.strip() in full
+    # Each older edition is one link line to its page and Markdown export, newest first, without its links.
+    assert links.splitlines() == [
+        f"- [{edition.title}]({edition.url}) ([Markdown]({edition.markdown_url()}))" for edition in older
+    ]
+    assert all(f"({edition.items[0].url})" not in body for edition in older)
+    assert body.endswith(")\n")
+
+    # An archive within the limit has no older section.
+    assert "## Older editions" not in render_news_index_markdown(recent)
+
+
 @pytest.fixture(scope="module")
 def news_client(make_app: Callable[..., Litestar], tmp_path_factory: pytest.TempPathFactory) -> Iterator[AppClient]:
     directory = write_editions(

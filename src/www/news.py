@@ -361,7 +361,8 @@ def render_news_index_markdown(editions: Sequence[NewsEdition]) -> str:
         f"- JSON API: {METADATA.site_url}/api/news",
         f"- URL: {METADATA.site_url}/news/",
     ]
-    for edition in editions:
+    # Like the feed, carry the latest editions in full; the archive grows daily, so older ones are one link each.
+    for edition in editions[:FEED_EDITION_LIMIT]:
         lines.extend(
             (
                 "",
@@ -370,6 +371,9 @@ def render_news_index_markdown(editions: Sequence[NewsEdition]) -> str:
                 edition.source.strip(),
             )
         )
+    if older := editions[FEED_EDITION_LIMIT:]:
+        lines.extend(("", "## Older editions", ""))
+        lines.extend(f"- [{edition.title}]({edition.url}) ([Markdown]({edition.markdown_url()}))" for edition in older)
     return "\n".join(lines) + "\n"
 
 
