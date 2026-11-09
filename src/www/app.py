@@ -14,6 +14,7 @@ from litestar import Litestar, Request, asgi, route
 from litestar.concurrency import sync_to_thread
 from litestar.config.compression import CompressionConfig
 from litestar.enums import HttpMethod
+from litestar.handlers import HTTPRouteHandler
 from litestar.params import FromPath
 from litestar.plugins import PluginProtocol
 from litestar.response import Redirect, Response
@@ -157,6 +158,26 @@ def _snapshot_response(
             headers["access-control-allow-origin"] = "*"
         return Response(b"", headers=headers, status_code=304)
     return _static_response(snapshot.body, content_type, cache_control, cors=cors, extra_headers=headers)
+
+
+def _snapshot_route(
+    path: str,
+    snapshot: _Snapshot,
+    content_type: str,
+    cache_control: str = _HOUR_CACHE,
+    *,
+    cors: bool = False,
+    extra_headers: dict[str, str] | None = None,
+) -> HTTPRouteHandler:
+    """Route one startup snapshot; these routes differ only by their arguments."""
+
+    @route(path, http_method=_READ_METHODS, sync_to_thread=False)
+    def snapshot_route(request: AppRequest) -> Response[bytes]:
+        return _snapshot_response(
+            request, snapshot, content_type, cache_control, cors=cors, extra_headers=extra_headers
+        )
+
+    return snapshot_route
 
 
 def _markdown_response(
@@ -400,39 +421,44 @@ def create_app(
     def security_policy() -> Response[bytes]:
         return _static_response(_security_policy(), "text/plain; charset=utf-8", _DAY_CACHE)
 
-    @route("/api/profile", http_method=_READ_METHODS, sync_to_thread=False)
-    def profile_api(request: AppRequest) -> Response[bytes]:
-        return _snapshot_response(
-            request,
+    json_type = "application/json; charset=utf-8"
+    schema_type = "application/schema+json; charset=utf-8"
+    text_type = "text/plain; charset=utf-8"
+    atom_type = "application/atom+xml; charset=utf-8"
+    snapshot_routes = [
+        _snapshot_route(
+            "/api/profile",
             profile,
-            "application/json; charset=utf-8",
+            json_type,
             _HOUR_CACHE_WITHOUT_REVALIDATION,
             cors=True,
             extra_headers={"link": '</api/profile/schema.json>; rel="describedby"; type="application/schema+json"'},
-        )
-
-    @route("/api/profile/schema.json", http_method=_READ_METHODS, sync_to_thread=False)
-    def profile_schema_api(request: AppRequest) -> Response[bytes]:
-        return _snapshot_response(
-            request, profile_schema, "application/schema+json; charset=utf-8", _HOUR_CACHE, cors=True
-        )
-
-    @route("/api/news", http_method=_READ_METHODS, sync_to_thread=False)
-    def news_api_route(request: AppRequest) -> Response[bytes]:
-        return _snapshot_response(
-            request,
+        ),
+        _snapshot_route("/api/profile/schema.json", profile_schema, schema_type, cors=True),
+        _snapshot_route(
+            "/api/news",
             news_api,
-            "application/json; charset=utf-8",
-            _HOUR_CACHE,
+            json_type,
             cors=True,
             extra_headers={"link": '</api/news/schema.json>; rel="describedby"; type="application/schema+json"'},
-        )
-
-    @route("/api/news/schema.json", http_method=_READ_METHODS, sync_to_thread=False)
-    def news_schema_api(request: AppRequest) -> Response[bytes]:
-        return _snapshot_response(
-            request, news_schema, "application/schema+json; charset=utf-8", _HOUR_CACHE, cors=True
-        )
+        ),
+        _snapshot_route("/api/news/schema.json", news_schema, schema_type, cors=True),
+        _snapshot_route("/llms.txt", llms_index_snapshot, text_type, cors=True),
+        # Agents read the bulk export; search engines should index the individual articles instead.
+        _snapshot_route("/llms-full.txt", llms_full, text_type, cors=True, extra_headers={"x-robots-tag": "noindex"}),
+        _snapshot_route("/sitemap.xml", sitemap, "application/xml; charset=utf-8"),
+        _snapshot_route("/articles/feed.xml", feed, atom_type),
+        _snapshot_route(NEWS_FEED_PATH, news_feed, atom_type),
+        _snapshot_route(
+            "/.well-known/api-catalog",
+            api_catalog,
+            'application/linkset+json; profile="https://www.rfc-editor.org/info/rfc9727"; charset=utf-8',
+            cors=True,
+            extra_headers={"link": AGENT_LINKS},
+        ),
+        _snapshot_route("/.well-known/agent-skills/index.json", skill_index, json_type, cors=True),
+        _snapshot_route(AGENT_SKILL_PATH, skill_body, "text/markdown; charset=utf-8", cors=True),
+    ]
 
     @route(
         ["/mcp/server-card", "/.well-known/mcp/server-card.json"],
@@ -449,34 +475,6 @@ def create_app(
             _HOUR_CACHE,
             cors=True,
         )
-
-    @route("/llms.txt", http_method=_READ_METHODS, sync_to_thread=False)
-    def llms_index(request: AppRequest) -> Response[bytes]:
-        return _snapshot_response(request, llms_index_snapshot, "text/plain; charset=utf-8", _HOUR_CACHE, cors=True)
-
-    @route("/llms-full.txt", http_method=_READ_METHODS, sync_to_thread=False)
-    def llms_full_index(request: AppRequest) -> Response[bytes]:
-        # Agents read the bulk export; search engines should index the individual articles instead.
-        return _snapshot_response(
-            request,
-            llms_full,
-            "text/plain; charset=utf-8",
-            _HOUR_CACHE,
-            cors=True,
-            extra_headers={"x-robots-tag": "noindex"},
-        )
-
-    @route("/sitemap.xml", http_method=_READ_METHODS, sync_to_thread=False)
-    def sitemap_index(request: AppRequest) -> Response[bytes]:
-        return _snapshot_response(request, sitemap, "application/xml; charset=utf-8", _HOUR_CACHE)
-
-    @route("/articles/feed.xml", http_method=_READ_METHODS, sync_to_thread=False)
-    def atom_feed(request: AppRequest) -> Response[bytes]:
-        return _snapshot_response(request, feed, "application/atom+xml; charset=utf-8", _HOUR_CACHE)
-
-    @route(NEWS_FEED_PATH, http_method=_READ_METHODS, sync_to_thread=False)
-    def news_atom_feed(request: AppRequest) -> Response[bytes]:
-        return _snapshot_response(request, news_feed, "application/atom+xml; charset=utf-8", _HOUR_CACHE)
 
     @route("/news", http_method=_READ_METHODS, sync_to_thread=True)
     def news_index(request: AppRequest) -> Redirect | Response[bytes] | Response[str]:
@@ -518,25 +516,6 @@ def create_app(
         if _request_path(request).endswith("/"):
             return _redirect("/agents")
         return render_page(request, PageTemplate.AGENTS, agents_page)
-
-    @route("/.well-known/api-catalog", http_method=_READ_METHODS, sync_to_thread=False)
-    def catalog(request: AppRequest) -> Response[bytes]:
-        return _snapshot_response(
-            request,
-            api_catalog,
-            'application/linkset+json; profile="https://www.rfc-editor.org/info/rfc9727"; charset=utf-8',
-            _HOUR_CACHE,
-            cors=True,
-            extra_headers={"link": AGENT_LINKS},
-        )
-
-    @route("/.well-known/agent-skills/index.json", http_method=_READ_METHODS, sync_to_thread=False)
-    def skills_index(request: AppRequest) -> Response[bytes]:
-        return _snapshot_response(request, skill_index, "application/json; charset=utf-8", _HOUR_CACHE, cors=True)
-
-    @route(AGENT_SKILL_PATH, http_method=_READ_METHODS, sync_to_thread=False)
-    def skill(request: AppRequest) -> Response[bytes]:
-        return _snapshot_response(request, skill_body, "text/markdown; charset=utf-8", _HOUR_CACHE, cors=True)
 
     @route("/privacy", http_method=_READ_METHODS, sync_to_thread=True)
     def privacy(request: AppRequest) -> Redirect | Response[str]:
@@ -760,24 +739,13 @@ def create_app(
             health,
             root_file,
             security_policy,
-            profile_api,
-            profile_schema_api,
-            news_api_route,
-            news_schema_api,
+            *snapshot_routes,
             mcp_server_card,
-            llms_index,
-            llms_full_index,
-            sitemap_index,
-            atom_feed,
-            news_atom_feed,
             news_index,
             news_edition,
             connect,
             privacy,
             agents,
-            catalog,
-            skills_index,
-            skill,
             scan,
             contact,
             articles_index,
