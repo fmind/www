@@ -9,7 +9,7 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Protocol
 
-from scripts.deploy import DeploymentTarget, DeploymentUsageError
+from scripts.deploy import DeploymentTarget, DeploymentUsageError, validate_image_reference
 
 type CompletedProcess = subprocess.CompletedProcess[str]
 # A Trivy scan pulls the image and may download its database; the scheduled job allows 20 minutes in total.
@@ -55,29 +55,11 @@ def default_runner(
         ) from error
 
 
-def resolve_target(environment: Mapping[str, str] = os.environ) -> DeploymentTarget:
-    """Resolve deployment target coordinates with Cloud Run environment fallback."""
-    region = environment.get("REGION") or environment.get("CLOUDSDK_RUN_REGION", "")
-    project_id = environment.get("PROJECT_ID") or environment.get("CLOUDSDK_CORE_PROJECT", "")
-    repository = environment.get("REPOSITORY", "app")
-    service_name = environment.get("SERVICE_NAME", "www-fmind-dev")
-    return DeploymentTarget(
-        region=region,
-        project_id=project_id,
-        repository=repository,
-        service_name=service_name,
-    )
-
-
 def extract_serving_revisions(service_data: object) -> list[str]:
     """Extract sorted, unique revision names receiving traffic or reachable through a public tag URL."""
-    traffic_items: object = None
-    if isinstance(service_data, dict):
-        status = service_data.get("status")
-        traffic_items = status.get("traffic") if isinstance(status, dict) else service_data.get("traffic")
-    elif isinstance(service_data, list):
-        traffic_items = service_data
-
+    # `--format=json(status.traffic)` always nests the list under `status`.
+    status = service_data.get("status") if isinstance(service_data, dict) else None
+    traffic_items = status.get("traffic") if isinstance(status, dict) else None
     if not isinstance(traffic_items, list):
         raise ScanError("invalid traffic format in service description")
 
@@ -106,13 +88,6 @@ def validate_revision_name(revision: str, service_name: str) -> None:
     pattern = rf"^{re.escape(service_name)}-[a-z0-9-]+\Z"
     if not re.fullmatch(pattern, revision):
         raise ScanError(f"revision name '{revision}' does not match service pattern '{service_name}-*'")
-
-
-def validate_image_digest(digest: str, image_repository: str) -> None:
-    """Verify the image digest matches the repository Artifact Registry repository."""
-    pattern = rf"^{re.escape(image_repository)}@sha256:[a-f0-9]{{64}}\Z"
-    if not re.fullmatch(pattern, digest):
-        raise ScanError(f"image digest '{digest}' does not match repository '{image_repository}@sha256:<64 hex>'")
 
 
 def build_service_describe_command(target: DeploymentTarget) -> tuple[str, ...]:
@@ -170,21 +145,9 @@ def build_trivy_evidence_command(digest: str, output_path: Path) -> tuple[str, .
     )
 
 
-def build_trivy_gate_command(digest: str) -> tuple[str, ...]:
-    """Construct Trivy command enforcing the fixable HIGH/CRITICAL vulnerability gate."""
-    return (
-        "trivy",
-        "image",
-        "--platform",
-        "linux/amd64",
-        "--exit-code=1",
-        "--severity",
-        "HIGH,CRITICAL",
-        "--ignore-unfixed",
-        "--scanners",
-        "vuln,secret",
-        digest,
-    )
+def build_gate_command(digest: str) -> tuple[str, ...]:
+    """Reuse the `check:image:digest` task, the single owner of the fixable HIGH/CRITICAL image gate."""
+    return ("mise", "run", "check:image:digest", digest)
 
 
 def build_trivy_environment(base_environment: Mapping[str, str] = os.environ) -> dict[str, str]:
@@ -219,35 +182,36 @@ def scan_deployed_revisions(
     revisions = extract_serving_revisions(service_data)
     (output_dir / "revisions.txt").write_text("\n".join(revisions) + "\n", encoding="utf-8")
 
-    digests_lines: list[str] = []
     has_gate_failure = False
 
-    for revision in revisions:
-        validate_revision_name(revision, target.service_name)
+    # Closing the file on any exit keeps the digests resolved before a failure in the uploaded evidence.
+    with (output_dir / "digests.txt").open("w", encoding="utf-8") as digests:
+        for revision in revisions:
+            validate_revision_name(revision, target.service_name)
 
-        revision_command = build_revision_describe_command(revision, target)
-        revision_process = runner(revision_command, capture=True)
-        if revision_process.returncode != 0:
-            message = revision_process.stderr.strip() or f"exit status {revision_process.returncode}"
-            raise ScanError(f"failed to describe revision {revision}: {message}")
+            revision_command = build_revision_describe_command(revision, target)
+            revision_process = runner(revision_command, capture=True)
+            if revision_process.returncode != 0:
+                message = revision_process.stderr.strip() or f"exit status {revision_process.returncode}"
+                raise ScanError(f"failed to describe revision {revision}: {message}")
 
-        digest = revision_process.stdout.strip()
-        validate_image_digest(digest, target.image_repository)
-        digests_lines.append(f"{revision} {digest}\n")
+            digest = revision_process.stdout.strip()
+            try:
+                validate_image_reference(digest, target)
+            except DeploymentUsageError as error:
+                raise ScanError(f"revision {revision} serves an unexpected image: {error}") from error
+            digests.write(f"{revision} {digest}\n")
 
-        evidence_file = output_dir / f"{revision}.json"
-        evidence_command = build_trivy_evidence_command(digest, evidence_file)
-        evidence_process = runner(evidence_command, capture=True, env=trivy_env)
-        if evidence_process.returncode != 0:
-            message = evidence_process.stderr.strip() or f"exit status {evidence_process.returncode}"
-            raise ScanError(f"failed to generate advisory evidence for {digest}: {message}")
+            evidence_file = output_dir / f"{revision}.json"
+            evidence_command = build_trivy_evidence_command(digest, evidence_file)
+            evidence_process = runner(evidence_command, capture=True, env=trivy_env)
+            if evidence_process.returncode != 0:
+                message = evidence_process.stderr.strip() or f"exit status {evidence_process.returncode}"
+                raise ScanError(f"failed to generate advisory evidence for {digest}: {message}")
 
-        gate_command = build_trivy_gate_command(digest)
-        gate_process = runner(gate_command, capture=False, env=trivy_env)
-        if gate_process.returncode != 0:
-            has_gate_failure = True
-
-    (output_dir / "digests.txt").write_text("".join(digests_lines), encoding="utf-8")
+            gate_process = runner(build_gate_command(digest), capture=False, env=trivy_env)
+            if gate_process.returncode != 0:
+                has_gate_failure = True
 
     return 1 if has_gate_failure else 0
 
@@ -261,7 +225,7 @@ def main(
 ) -> int:
     """Resolve targets and run deployed image security qualification."""
     try:
-        deployment_target = target or resolve_target(environment)
+        deployment_target = target or DeploymentTarget.from_environment(environment)
     except DeploymentUsageError as error:
         sys.stderr.write(f"scan: configuration error: {error}\n")
         return 2
