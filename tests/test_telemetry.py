@@ -46,6 +46,21 @@ def test_telemetry_is_noop_without_endpoint() -> None:
     assert configure_telemetry({}) is None
 
 
+def test_telemetry_installs_an_otlp_provider_when_an_endpoint_opts_in(monkeypatch: pytest.MonkeyPatch) -> None:
+    installed: list[object] = []
+    # Record instead of installing: the process-wide tracer provider can be set only once.
+    monkeypatch.setattr("opentelemetry.trace.set_tracer_provider", installed.append)
+
+    provider = configure_telemetry({"OTEL_EXPORTER_OTLP_TRACES_ENDPOINT": "http://127.0.0.1:4318/v1/traces"})
+
+    assert provider is not None
+    try:
+        assert installed == [provider]
+        assert provider.resource.attributes["service.name"] == "www"
+    finally:
+        assert shutdown_telemetry(provider)
+
+
 def test_untraced_startup_skips_the_sdk_and_exporter_imports() -> None:
     # A fresh interpreter: other tests in this process import the SDK themselves.
     probe = (
