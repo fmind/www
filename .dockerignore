@@ -1,36 +1,16 @@
 # Docs: https://docs.docker.com/build/concepts/context/#dockerignore-files
-**/.agents
-**/.claude
-**/.git
-**/.mise
-**/.pytest_cache
-**/.ruff_cache
-**/.venv
+# Allowlist: the build context holds only what the Dockerfile build stage reads, so a
+# new top-level file never reaches `COPY . /app` unless it is listed here.
+*
+!LICENSE
+!README.md
+!assets/css/input.css
+!content
+!pyproject.toml
+!src
+!static
+!uv.lock
+# Generated files inside the allowed directories; the image builds its own stylesheet.
 **/__pycache__
-*.db
-*.log
-*.py[co]
-.coverage
-.dockerignore
-.env*
-.github
-.gitignore
-AGENTS.md
-CHANGELOG.md
-Dockerfile
-SECURITY.md
-dist
-static-hashes.json
-dprint.json
-gha-creds-*.json
-htmlcov
-infra
-lefthook.yml
-lychee.toml
-mise.lock
-mise.toml
-scripts
-server.json
+**/*.py[co]
 static/dist/styles.css
-tests
-tmp

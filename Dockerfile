@@ -16,7 +16,10 @@ ADD --chmod=0755 --checksum=sha256:a7e0f2ea7e639ebef82d16c40819764d42bdb2d79c30e
 # hadolint ignore=DL3006 # trivy:ignore:DS-0001
 FROM tailwind-${TARGETARCH} AS tailwind
 
-FROM python:3.14.10-slim@sha256:af8a5aa14780025dbfbcfbc81bd8a91ebd87711dd5b0f48ed71090949dd7cb1d AS build
+# Both stages share one pinned base, so the digest is stated once.
+FROM python:3.14.10-slim@sha256:af8a5aa14780025dbfbcfbc81bd8a91ebd87711dd5b0f48ed71090949dd7cb1d AS base
+
+FROM base AS build
 ENV UV_COMPILE_BYTECODE=1
 ENV UV_LINK_MODE=copy
 WORKDIR /app
@@ -37,7 +40,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     \( ! -perm -0444 -o -perm /0022 -o \( -type d ! -perm -0111 \) \) \
     -exec chmod u=rwX,go=rX {} +
 
-FROM python:3.14.10-slim@sha256:af8a5aa14780025dbfbcfbc81bd8a91ebd87711dd5b0f48ed71090949dd7cb1d AS runner
+FROM base AS runner
 ENV ENVIRONMENT=production
 # Cloud Run and published container ports need a non-loopback listener.
 ENV HOST=0.0.0.0
