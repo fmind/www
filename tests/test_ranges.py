@@ -268,9 +268,10 @@ def test_head_ignores_ranges_and_returns_full_metadata(asset: Path, range_header
     assert response.headers["content-type"] == _CONTENT_TYPE
 
 
-def test_unknown_range_unit_is_ignored(asset: Path) -> None:
+@pytest.mark.parametrize("range_header", ["items=0-1", "bytes", "bytes=", "bytes= "])
+def test_unknown_units_and_empty_range_sets_are_ignored(asset: Path, range_header: str) -> None:
     with _client(asset) as client:
-        response = client.get("/video.mp4", headers={"range": "items=0-1"})
+        response = client.get("/video.mp4", headers={"range": range_header})
 
     assert response.status_code == 200
     assert response.content == _BODY
