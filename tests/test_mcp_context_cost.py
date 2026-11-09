@@ -32,12 +32,6 @@ TOKENS = {server.id: server.tokens for server in SERVERS}
 TOTAL_TOKENS = sum(TOKENS.values())
 
 
-@pytest.fixture
-def server(mcp_server: MCPServer[None]) -> MCPServer[None]:
-    # The tests below name the shared server `server`.
-    return mcp_server
-
-
 def test_measured_catalogs_match_the_retained_snapshot() -> None:
     snapshot = json.loads((REPO_ROOT / "src/www/sites/mcp_context_cost/measurements.json").read_text())
     lock = REPO_ROOT / "scripts/mcp_context_cost/measurement-package-lock.json"
@@ -195,9 +189,11 @@ def test_registry_discovery_and_packaged_agent_skill_include_both_sites(client: 
 
 
 @pytest.mark.anyio
-async def test_mcp_result_matches_http_scenario_and_invalid_calls_fail(server, client: TestClient) -> None:
+async def test_mcp_result_matches_http_scenario_and_invalid_calls_fail(
+    mcp_server: MCPServer[None], client: TestClient
+) -> None:
     arguments = {"servers": ["memory", "filesystem"], "requests_per_day": 200}
-    result = await server.call_tool("compare_mcp_context_cost", arguments)
+    result = await mcp_server.call_tool("compare_mcp_context_cost", arguments)
     assert isinstance(result, CallToolResult)
     expected = compare_context(["memory", "filesystem"], 200)
     assert result.structured_content == json.loads(expected.model_dump_json())
@@ -205,7 +201,7 @@ async def test_mcp_result_matches_http_scenario_and_invalid_calls_fail(server, c
     response = client.get(result.structured_content["scenario_url"])
     assert response.status_code == 200
     assert f"{TOKENS['memory'] + TOKENS['filesystem']:,} tokens of tool definitions on every request" in response.text
-    defaults = await server.call_tool("compare_mcp_context_cost", {})
+    defaults = await mcp_server.call_tool("compare_mcp_context_cost", {})
     assert isinstance(defaults, CallToolResult)
     assert defaults.structured_content is not None
     assert defaults.structured_content["tokens_per_request"] == TOTAL_TOKENS
@@ -220,4 +216,4 @@ async def test_mcp_result_matches_http_scenario_and_invalid_calls_fail(server, c
         {"requests_per_day": "1000"},
     ):
         with pytest.raises(ToolError):
-            await server.call_tool("compare_mcp_context_cost", invalid)
+            await mcp_server.call_tool("compare_mcp_context_cost", invalid)

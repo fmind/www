@@ -60,7 +60,7 @@ from www.models import (
     WorkExperience,
 )
 from www.news import NewsEdition, NewsEditionSummary, render_news_markdown, search_news_editions
-from www.publications import article_sections, render_profile_json
+from www.publications import article_sections
 from www.search import SEARCH_QUERY_LIMIT, SearchIndex, normalize_search_query
 from www.sites.agent import HostingResult, compare_hosting
 from www.sites.mcp_context_cost.calculator import (
@@ -240,12 +240,12 @@ def create_mcp_server(
     index: SearchIndex,
     publications: tuple[Article, ...],
     markdown_by_slug: Mapping[str, str],
-    news: Sequence[NewsEdition] = (),
+    news: Sequence[NewsEdition],
     *,
-    profile_json_bytes: bytes | None = None,
+    profile_json_bytes: bytes,
 ) -> MCPServer[None]:
     """Build the immutable portfolio MCP server."""
-    profile_json = (profile_json_bytes or render_profile_json(articles)).decode()
+    profile_json = profile_json_bytes.decode()
     summaries_by_slug = {summary.slug: summary for summary in articles}
     article_results = {
         article.slug: ArticleResult(
