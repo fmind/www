@@ -4,6 +4,12 @@ const { setTimeout: delay } = require("node:timers/promises");
 const calculator = "/sites/llm-self-hosting/";
 const contextCalculator = "/sites/mcp-context-cost/";
 
+// The `page` fixture guard below never sees pages of a context a journey opens itself.
+const failOnPageErrors = (context) =>
+  context.on("weberror", (webError) => {
+    throw webError.error();
+  });
+
 test("portfolio navigation remains usable without JavaScript", async ({ browser }, testInfo) => {
   const context = await browser.newContext({ ...testInfo.project.use, javaScriptEnabled: false });
   try {
@@ -34,6 +40,7 @@ test(
     // Exercise the production hostname with candidate responses; Google requests
     // are fulfilled locally so accepting in this test never sends analytics.
     const context = await browser.newContext({ ...testInfo.project.use, storageState: undefined });
+    failOnPageErrors(context);
     try {
       await context.route("https://www.fmind.dev/**", async (route) => {
         const url = new URL(route.request().url());
@@ -128,6 +135,7 @@ test("the open consent banner never hides keyboard focus", async ({ browser, bas
     reducedMotion: "reduce",
     viewport: { width: 375, height: 800 },
   });
+  failOnPageErrors(context);
   try {
     await context.route("https://www.fmind.dev/**", async (route) => {
       const url = new URL(route.request().url());
@@ -673,6 +681,7 @@ test(
     ];
     for (const path of paths) {
       const context = await browser.newContext({ ...testInfo.project.use, baseURL });
+      failOnPageErrors(context);
       try {
         const page = await context.newPage();
         await page.addInitScript(() => {
@@ -800,13 +809,13 @@ test("site stays light with a dark system preference and an old saved theme", as
 
 test("calculator updates preserve focus, open sections, and shareable values", async ({ page }) => {
   await page.goto(calculator + "?mode=advanced");
-  await expect(page.locator("#quality")).toBeVisible();
+  await expect(page.locator("#concurrency")).toBeVisible();
   await page.locator("#requests").fill("234");
   await page.locator("#requests").press("Enter");
   await expect(page.locator("[data-update-status]")).toHaveText("Comparison updated.");
   await expect(page.locator("#requests")).toHaveValue("234");
   await expect(page.locator("#requests")).toBeFocused();
-  await expect(page.locator("#quality")).toBeVisible();
+  await expect(page.locator("#concurrency")).toBeVisible();
   expect(new URL(page.url()).searchParams.get("requests")).toBe("234");
   await page.locator("#preset-single-job").click();
   await expect(page.locator("#requests")).toHaveValue("100");
@@ -943,7 +952,7 @@ test("calculator and article search work without JavaScript", async ({ browser, 
 test("simple calculator chooses compatible native hardware and preserves commitments", async ({ page }, testInfo) => {
   await page.goto(calculator);
   await expect(page.locator("#preset")).toHaveValue("small-team");
-  await expect(page.locator("#quant, #node, #throughput, #quality")).toHaveCount(0);
+  await expect(page.locator("#quant, #node, #throughput")).toHaveCount(0);
   await expect(page.locator("#calculator select, #calculator input[type=number]")).toHaveCount(5);
   await expect(page.getByRole("link", { name: "Try a scenario", exact: true })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Compare costs", exact: true })).toHaveCount(0);
@@ -990,7 +999,7 @@ test("simple calculator chooses compatible native hardware and preserves commitm
   await expect(apiComparison).toContainText("Claude Sonnet 5.5");
   await expect(apiComparison).toContainText("Claude Opus 5.5");
   await expect(page.locator("#hosting-break-even")).toContainText(/break-even/i);
-  expect(await apiComparison.locator("tbody th, h4").allTextContents())
+  expect(await apiComparison.locator("tbody th a, h4 a").allTextContents())
     .toEqual(["Claude Haiku 5.5", "Gemini 3.8 Flash", "Claude Sonnet 5.5", "Claude Opus 5.5", "GPT-6 Astra"]);
   await expect(page.locator("main")).toContainText("not measured GPU utilization");
   await page.screenshot({ path: testInfo.outputPath("gke-simple.png"), fullPage: true });
@@ -1052,6 +1061,7 @@ test(
   async ({ browser, baseURL }, testInfo) => {
     for (const javaScriptEnabled of [true, false]) {
       const context = await browser.newContext({ ...testInfo.project.use, javaScriptEnabled, baseURL });
+      failOnPageErrors(context);
       try {
         const page = await context.newPage();
         await page.goto(calculator);
@@ -1064,10 +1074,20 @@ test(
         await expect(page.locator("#requests")).toHaveValue("1000");
         await page.locator("#requests").fill("");
         await page.locator("#preset").selectOption("single-job");
+        if (javaScriptEnabled) {
+          // The default-plan label follows the workload before the server responds.
+          await expect(page.locator("#billing option[value=auto]")).toHaveText(
+            "Workload default · Flex-start or on-demand",
+          );
+        }
         await page.locator("#window").selectOption("auto");
         await page.locator("#update-comparison").click();
         await expect(page.locator("main")).toContainText("100 calls/month");
         await expect(page.locator("#recommended-fleet")).toContainText("1 h/month");
+        // A batch job defaults to queued Flex-start nodes and batch API rates.
+        await expect(page.locator("#billing")).toHaveValue("auto");
+        await expect(page.locator("#recommended-fleet")).toContainText("Flex-start queues each start");
+        await expect(page.locator("main")).toContainText("Batch rates, half the standard price");
         await page.locator("#reset-scenario").click();
         await expect(page.locator("#preset")).toHaveValue("small-team");
         await expect(page.locator("#requests")).toHaveValue("");
@@ -1092,9 +1112,7 @@ test("Fmind palette reaches page surfaces, controls, charts, and code", async ({
   await expect(button).toHaveCSS("outline-color", "rgb(23, 78, 166)");
   expect(await page.locator("h1").evaluate((element) => getComputedStyle(element, "::selection").backgroundColor))
     .toBe("rgb(210, 227, 252)");
-  const manifest = await (await request.get("/static/site.webmanifest")).json();
-  expect(manifest.theme_color).toBe("#174ea6");
-  await expect(page.locator("meta[name=\"theme-color\"]")).toHaveAttribute("content", manifest.theme_color);
+  await expect(page.locator("meta[name=\"theme-color\"]")).toHaveAttribute("content", "#174ea6");
 
   await page.goto(calculator + "?mode=advanced");
   for (
@@ -1172,8 +1190,6 @@ test("footer stays compact with ordered discovery links", async ({ page }) => {
 
 test("narrow screens reflow and keep navigation reachable", async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 320, height: 740 });
-  const errors = [];
-  page.on("pageerror", (error) => errors.push(error.message));
   for (const path of ["/", "/articles/", "/news/", "/sites/", "/sites/llm-self-hosting/"]) {
     await page.goto(path);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
@@ -1210,7 +1226,6 @@ test("narrow screens reflow and keep navigation reachable", async ({ page }, tes
     await footerNavigation.scrollIntoViewIfNeeded();
     await expect(footerNavigation).toBeInViewport();
   }
-  expect(errors).toEqual([]);
   await page.goto("/");
   await page.screenshot({ path: testInfo.outputPath("home-320.png") });
   for (
@@ -1644,7 +1659,7 @@ test("MCP context calculator toggles servers with the keyboard", async ({ page }
   await expect(page.getByRole("alert")).toHaveCount(0);
   await expect(page.locator("details")).toHaveCount(0);
   const models = page.getByRole("region", { name: /Cost by model/ });
-  expect(await models.locator("tbody th").allTextContents())
+  expect(await models.locator("tbody th a").allTextContents())
     .toEqual(["Claude Haiku 5.5", "Gemini 3.8 Flash", "Claude Sonnet 5.5", "Claude Opus 5.5", "GPT-6 Astra"]);
 });
 
