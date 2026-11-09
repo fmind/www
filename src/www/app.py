@@ -252,10 +252,7 @@ def create_app(
     *,
     assets: ApplicationAssets | None = None,
     collection: ArticleCollection | None = None,
-    content_dir: Path = Path("content/articles"),
     news: tuple[NewsEdition, ...] | None = None,
-    news_dir: Path = Path("content/news"),
-    static_dir: Path = Path("static"),
     logger: Logger | None = None,
 ) -> Litestar:
     """Build one fail-fast application from immutable startup snapshots."""
@@ -265,11 +262,11 @@ def create_app(
     runtime_config = config or Config.load()
     site_logger = logger or configure_logging(runtime_config)
     with _timed(phases, "assets"):
-        application_assets = assets or load_application_assets(static_dir)
+        application_assets = assets or load_application_assets()
     with _timed(phases, "articles"):
-        article_collection = collection or load_articles(content_dir, static_dir, application_assets.image_sizes)
+        article_collection = collection or load_articles(image_sizes=application_assets.image_sizes)
     with _timed(phases, "news"):
-        editions = load_news(news_dir) if news is None else news
+        editions = load_news() if news is None else news
 
     public_articles = visible_articles(article_collection.all)
     page_articles = visible_articles(
@@ -317,7 +314,7 @@ def create_app(
     home_page = home_metadata(home_structured_data)
     connect_page = connect_metadata()
     scan_page = scan_metadata()
-    contact_card = render_contact_card(static_dir)
+    contact_card = render_contact_card()
     not_found_page = not_found_metadata()
     agents_page = agents_metadata()
     privacy_page = privacy_metadata()
@@ -383,7 +380,7 @@ def create_app(
     def render_not_found(request: AppRequest) -> Response[str]:
         return render_page(request, PageTemplate.NOT_FOUND, not_found_page, status_code=404)
 
-    static_root_dir = static_dir.resolve()
+    static_root_dir = Path("static").resolve()
 
     @route("/static/{asset_path:path}", http_method=_READ_METHODS)
     async def static_asset(asset_path: FromPath[str], request: AppRequest) -> ASGIApp:
@@ -393,10 +390,10 @@ def create_app(
     async def branding_asset(request: AppRequest) -> ASGIApp:
         return await static_asset_response(request.scope["path"], request, application_assets, static_root_dir)
 
+    # The router does not backtrack from /static/{asset_path} to the catch-all, so the bare
+    # directory needs its own miss; without it Litestar answers with a JSON 404.
     @route("/static", http_method=_READ_METHODS, sync_to_thread=False)
-    def static_root(request: AppRequest) -> Redirect | Response[bytes]:
-        if not _request_path(request).endswith("/"):
-            return _redirect_keeping_query(request, "/static/")
+    def static_root() -> Response[bytes]:
         return _static_response(b"404 page not found\n", "text/plain; charset=utf-8", _NO_CACHE, status_code=404)
 
     @route(STYLESHEET_PATH, http_method=_READ_METHODS, sync_to_thread=False)

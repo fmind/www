@@ -637,9 +637,13 @@ def test_static_assets_have_content_hash_revalidation_without_download_headers(
     ordinary_query = client.get(path + "?xv=1")
     assert ordinary_query.headers["cache-control"] == "public, max-age=86400, must-revalidate"
 
-    root = client.get("/static/", follow_redirects=False)
-    assert root.status_code == 404
-    assert root.headers["x-content-type-options"] == "nosniff"
+    # The bare directory is a plain miss in both spellings, not a redirect to one.
+    for root_path in ("/static", "/static/"):
+        root = client.get(root_path, follow_redirects=False)
+        assert root.status_code == 404
+        assert root.headers["content-type"] == "text/plain; charset=utf-8"
+        assert root.headers["cache-control"] == "no-cache"
+        assert root.headers["x-content-type-options"] == "nosniff"
 
     stylesheet = client.get("/static/dist/styles.css", headers={"accept-encoding": "identity"})
     static_text = client.get("/static/robots.txt", headers={"accept-encoding": "identity"})
