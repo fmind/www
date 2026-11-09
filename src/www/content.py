@@ -6,7 +6,7 @@ import re
 import tomllib
 from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
-from datetime import UTC, date, datetime
+from datetime import date, datetime
 from pathlib import Path, PurePosixPath
 from types import MappingProxyType
 
@@ -20,7 +20,7 @@ from PIL import Image, UnidentifiedImageError
 from www.data import METADATA
 from www.highlighting import highlight_code
 from www.markdown import rewrite_markdown_links
-from www.models import DERIVATIVE_WIDTHS, SOURCE_EXTENSIONS, Article, ArticleSection, ArticleSummary
+from www.models import DERIVATIVE_WIDTHS, SOURCE_EXTENSIONS, Article, ArticleSection, ArticleSummary, utc_midnight
 from www.tags import is_tag, tag_names
 
 WORDS_PER_MINUTE = 200
@@ -144,15 +144,15 @@ def _unknown_key_line(header: str, key: str) -> int:
     return header.count("\n", 0, match.start()) + 2 if match else 1
 
 
-def _read_frontmatter(name: str, header: bytes) -> dict[str, object]:
+def _read_frontmatter(header: bytes) -> dict[str, object]:
     try:
         metadata = tomllib.loads(header.decode("utf-8"))
     except (UnicodeDecodeError, tomllib.TOMLDecodeError) as error:
-        raise ArticleError(f'parse "{name}" frontmatter: {error}') from error
+        raise ArticleError(f"frontmatter: {error}") from error
     for key in metadata:
         if key not in _KNOWN_FRONTMATTER:
             line = _unknown_key_line(header.decode(), key)
-            raise ArticleError(f'parse "{name}" frontmatter: unknown key {key!r} at line {line}')
+            raise ArticleError(f"frontmatter: unknown key {key!r} at line {line}")
     return metadata
 
 
@@ -165,14 +165,14 @@ def _string(metadata: Mapping[str, object], field: str, *, required: bool = Fals
     return value
 
 
-def _parse_date(name: str, field: str, value: str) -> datetime:
+def _parse_date(field: str, value: str) -> datetime:
     if re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}", value) is None:
-        raise ArticleError(f'parse "{name}": {field} {value!r}: expected YYYY-MM-DD')
+        raise ArticleError(f"{field} {value!r}: expected YYYY-MM-DD")
     try:
         parsed = date.fromisoformat(value)
     except ValueError as error:
-        raise ArticleError(f'parse "{name}": {field} {value!r}: {error}') from error
-    return datetime(parsed.year, parsed.month, parsed.day, tzinfo=UTC)
+        raise ArticleError(f"{field} {value!r}: {error}") from error
+    return utc_midnight(parsed)
 
 
 def _cover(static_dir: Path, slug: str) -> str:
@@ -518,39 +518,39 @@ def parse_article(
 ) -> Article:
     try:
         header, markdown_bytes = split_frontmatter(data)
-        metadata = _read_frontmatter(name, header)
+        metadata = _read_frontmatter(header)
         title = _string(metadata, "title", required=True)
         description = _string(metadata, "description", required=True)
         date_value = _string(metadata, "date", required=True)
         slug = _string(metadata, "slug", required=True)
         if not _SLUG.fullmatch(slug):
-            raise ArticleError(f'parse "{name}": invalid slug {slug!r}')
+            raise ArticleError(f"invalid slug {slug!r}")
         # Search snippets, feeds, and link previews reuse the description verbatim.
         if description.rstrip().endswith(("…", "...")):
-            raise ArticleError(f'parse "{name}": description must end with a complete sentence, not an ellipsis')
+            raise ArticleError("description must end with a complete sentence, not an ellipsis")
         if Path(name).stem != slug:
-            raise ArticleError(f'parse "{name}": filename must match slug {slug!r}')
+            raise ArticleError(f"filename must match slug {slug!r}")
 
         raw_tags = metadata.get("tags", [])
         if not isinstance(raw_tags, list) or any(not isinstance(tag, str) for tag in raw_tags):
-            raise ArticleError(f'parse "{name}": tags must be an array of strings')
+            raise ArticleError("tags must be an array of strings")
         tags = tuple(raw_tags)
         if not tags:
-            raise ArticleError(f'parse "{name}": at least one tag is required')
+            raise ArticleError("at least one tag is required")
         for index, tag in enumerate(tags):
             if not is_tag(tag):
-                raise ArticleError(f'parse "{name}": unknown tag {tag!r} (allowed: {", ".join(tag_names())})')
+                raise ArticleError(f"unknown tag {tag!r} (allowed: {', '.join(tag_names())})")
             if tag in tags[:index]:
-                raise ArticleError(f'parse "{name}": duplicate tag {tag!r}')
+                raise ArticleError(f"duplicate tag {tag!r}")
         raw_draft = metadata.get("draft", False)
         if not isinstance(raw_draft, bool):
-            raise ArticleError(f'parse "{name}": draft must be a boolean')
+            raise ArticleError("draft must be a boolean")
 
-        published = _parse_date(name, "date", date_value)
+        published = _parse_date("date", date_value)
         updated_value = _string(metadata, "updated")
-        updated = _parse_date(name, "updated", updated_value) if updated_value else published
+        updated = _parse_date("updated", updated_value) if updated_value else published
         if updated < published:
-            raise ArticleError(f'parse "{name}": updated date must not precede publish date')
+            raise ArticleError("updated date must not precede publish date")
         image_path = _cover(static_dir, slug)
         card_image_path = _card_cover(static_dir, slug)
         markdown = markdown_bytes.decode("utf-8")
@@ -584,8 +584,7 @@ def parse_article(
             sections=rendered.sections,
         )
     except ArticleError as error:
-        if str(error).startswith(f'parse "{name}"'):
-            raise
+        # Every rejection above states only its cause; the file is named once, here.
         raise ArticleError(f'parse "{name}": {error}') from error
     except UnicodeDecodeError as error:
         raise ArticleError(f'parse "{name}": body must be UTF-8: {error}') from error
@@ -602,9 +601,8 @@ def load_articles(
     by_slug: dict[str, Article] = {}
     articles: list[Article] = []
     for path in names:
+        # A file name must equal its slug, so two files never share one.
         article = parse_article(path.as_posix(), path.read_bytes(), static_dir, image_sizes)
-        if article.slug in by_slug:
-            raise ArticleError(f'parse "{path}": duplicate slug {article.slug!r}')
         articles.append(article)
         by_slug[article.slug] = article
     articles.sort(key=lambda article: (-article.date.timestamp(), article.slug))

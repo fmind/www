@@ -109,8 +109,11 @@ def test_parse_article_rejects_unknown_frontmatter_with_source_line(tmp_path: Pa
     ],
 )
 def test_parse_article_rejects_invalid_metadata(tmp_path: Path, metadata: dict[str, str], message: str) -> None:
-    with pytest.raises(ArticleError, match=message):
+    with pytest.raises(ArticleError, match=message) as rejection:
         parse_article("content/articles/example.md", source(**metadata), assets(tmp_path))
+    # Whichever check rejects the article, the file is named exactly once.
+    assert str(rejection.value).startswith('parse "content/articles/example.md": ')
+    assert str(rejection.value).count('parse "') == 1
 
 
 @pytest.mark.parametrize("value", ['"2026-9-6"', '"20260906"', '"2026-09-06T00:00:00"'])

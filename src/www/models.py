@@ -1,7 +1,7 @@
 """Immutable view and publication models shared by every delivery surface."""
 
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import Annotated
 
 from pydantic import Field
@@ -11,6 +11,11 @@ DERIVATIVE_WIDTHS = (CARD_COVER_WIDTH, 1280)
 # Lowercase article-image source extensions, in the order an article cover is preferred.
 SOURCE_EXTENSIONS = (".webp", ".gif", ".png", ".jpg", ".jpeg")
 _ZERO_DATE = datetime.min.replace(tzinfo=UTC)
+
+
+def utc_midnight(day: date) -> datetime:
+    """Return the UTC instant at which a publication date starts."""
+    return datetime(day.year, day.month, day.day, tzinfo=UTC)
 
 
 @dataclass(frozen=True, slots=True)

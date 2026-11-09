@@ -1,11 +1,11 @@
 from dataclasses import FrozenInstanceError
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import Any, cast
 
 import pytest
 
 from www.data import BIOGRAPHY, METADATA, SITE_PAGES, article_filter_url, get_structured_data, markdown_to_html
-from www.models import Article, ArticleIndexView, Tag
+from www.models import Article, ArticleIndexView, Tag, utc_midnight
 from www.tags import TAGS, is_tag, sort_tags, tag_names, validate_tag_vocabulary
 
 
@@ -47,6 +47,10 @@ def test_article_fallbacks_and_foreign_images() -> None:
 
     assert item.modified_date() == item.date
     assert item.card_image_path() == item.card_image_url
+
+
+def test_publication_dates_start_at_utc_midnight() -> None:
+    assert utc_midnight(date(2026, 11, 3)) == datetime(2026, 11, 3, tzinfo=UTC)
 
 
 def test_domain_models_are_frozen_and_search_view_switches_on_query() -> None:

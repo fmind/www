@@ -15,6 +15,7 @@ from xml.etree import ElementTree
 from pydantic import TypeAdapter
 
 from www.data import METADATA
+from www.models import utc_midnight
 from www.search import tokenize
 
 NEWS_FEED_PATH = "/news/feed.xml"
@@ -147,7 +148,7 @@ class NewsEdition:
         return f"{count} curated {noun} on {NEWS_TOPICS}, selected by {METADATA.name}."
 
     def published(self) -> datetime:
-        return datetime(self.date.year, self.date.month, self.date.day, tzinfo=UTC)
+        return utc_midnight(self.date)
 
     def modified(self) -> datetime:
         return self.updated
@@ -228,7 +229,7 @@ def xml_document(element: ElementTree.Element) -> str:
 
 def _split_front_matter(slug: str, text: str, edition_date: date) -> tuple[datetime, str, int]:
     """Return the update time (the edition date when absent), the Markdown body, and the body's first line."""
-    published = datetime(edition_date.year, edition_date.month, edition_date.day, tzinfo=UTC)
+    published = utc_midnight(edition_date)
     if not text.startswith("+++\n"):
         return published, text, 1
     end = text.find("\n+++\n", 3)
