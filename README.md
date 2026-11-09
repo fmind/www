@@ -25,12 +25,12 @@ Open `http://localhost:8080` (`PORT=8081` changes the port; `GRANIAN_HOST=0.0.0.
 
 | Command                                        | Purpose                                                                                                                 |
 | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `mise run all`                                 | Format, static checks, build, pytest, OCI build/scan/smoke, Chromium install, browser journeys                          |
+| `mise run all`                                 | Format, static checks, CSS build, pytest, OCI build/scan/smoke, Chromium install, browser journeys                      |
 | `mise run check`                               | Offline `check:local` (pre-commit) and network `check:network` (`uv`/npm/Trivy scans and OpenTofu validation, pre-push) |
 | `mise run test`                                | Offline pytest (`≥91%` branch coverage, warnings as errors)                                                             |
 | `mise run test:browser` / `test:browser:cross` | Chromium journeys, or Firefox/WebKit smoke tests (`install:browser:cross` or `PW_TEST_CONNECT_WS_ENDPOINT`)             |
 | `mise run test:lighthouse:local`               | Temporary server and strict 16-audit desktop/mobile Lighthouse matrix (`tmp/lighthouse/`)                               |
-| `mise run check:tofu`                          | Credential-free OpenTofu format, validation, tflint, and mocked plan tests                                              |
+| `mise run check:tofu`                          | Credential-free OpenTofu validation, tflint, and mocked plan tests (`check:format` owns formatting)                     |
 | `mise run check:links`                         | Network link check across content, portfolio, and `.agents/skills`                                                      |
 | `mise run check:image` / `test:image [digest]` | Build and Trivy-scan `tmp/www-image.tar`, then smoke-test the archive or remote digest                                  |
 | `mise run deploy <digest-ref> <commit-sha>`    | Manual Cloud Run rollout or rollback of a qualified Artifact Registry digest                                            |
@@ -41,7 +41,7 @@ Browser suites share local port `8096` and must run sequentially; set `BROWSER_B
 
 Cloud Run serves <https://www.fmind.dev/> in project `www-fmind-dev` (`europe-west1`) with scale-to-zero (`min_instance_count = 0` on service and revision, max `5`, request-based CPU, `1` CPU, `512 MiB`, concurrency `32`, `30s` timeout). [`infra/`](infra/) and the [infra skill](.agents/skills/infra/SKILL.md) manage Cloud Run settings, Artifact Registry, keyless Workload Identity Federation, monitoring alerts, and remote state (`gs://www-fmind-dev-tfstate/infra/state`); OpenTofu ignores the image and CI-managed traffic.
 
-A push to `main` runs `mise run all`, confirms the commit is still `main` HEAD, builds and pushes a non-root image with SBOM/provenance, and runs `mise run deploy <digest-ref> <commit-sha>` to scan and smoke-test the immutable digest, verify a no-traffic candidate revision, route 100% of traffic to that revision, remove candidate tags, and run `test:deployed`:
+A push to `main` runs `mise run all`, confirms the commit is still `main` HEAD (the deploy job checks again before the image build and before the rollout, so a re-run cannot ship an older commit over a newer one), builds and pushes a non-root image with SBOM/provenance, and runs `mise run deploy <digest-ref> <commit-sha>` to scan and smoke-test the immutable digest, verify a no-traffic candidate revision, route 100% of traffic to that revision, remove candidate tags, and run `test:deployed`:
 
 ```bash
 mise run deploy europe-west1-docker.pkg.dev/www-fmind-dev/app/www-fmind-dev@sha256:<64-lowercase-hex> <40-lowercase-hex-commit>
