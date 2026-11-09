@@ -250,35 +250,52 @@ def test_manual_verifier_checks_expected_revision_before_probing(
         assert probes == [url]
 
 
+# Our own invariant messages reach the log; any other failure shows only its type, never provider text.
+VERIFICATION_FAILURES = pytest.mark.parametrize(
+    ("error", "detail"),
+    [
+        (ValueError("private provider diagnostics"), "ValueError"),
+        (subprocess.CalledProcessError(1, "gcloud", stderr="private provider diagnostics"), "CalledProcessError"),
+        (verify_deployment.VerificationError("service is not ready"), "service is not ready"),
+        (deploy.DeploymentUsageError("manual candidate was replaced"), "manual candidate was replaced"),
+    ],
+    ids=("value-error", "provider-error", "verification-error", "usage-error"),
+)
+
+
+@VERIFICATION_FAILURES
 def test_failed_candidate_verification_never_promotes_or_exposes_diagnostics(
-    capsys: pytest.CaptureFixture[str],
+    capsys: pytest.CaptureFixture[str], error: Exception, detail: str
 ) -> None:
     runner = RecordingRunner()
 
     def fail(*_args: object) -> None:
-        raise ValueError("private provider diagnostics")
+        raise error
 
     assert main((VALID_IMAGE, VALID_COMMIT), target=TARGET, runner=runner, verifier=fail) == 1
     # The failed candidate loses its public tag URL now, as in CI, instead of at the next manual rollout.
     assert runner.commands[-1] == CLEANUP
     assert not any(argument.startswith("--to-revisions") for command in runner.commands for argument in command)
-    assert capsys.readouterr().err == "candidate verification failed: ValueError; traffic was not promoted\n"
+    assert capsys.readouterr().err == f"candidate verification failed: {detail}; traffic was not promoted\n"
 
 
-def test_promoted_release_is_verified_without_exposing_diagnostics(capsys: pytest.CaptureFixture[str]) -> None:
+@VERIFICATION_FAILURES
+def test_promoted_release_is_verified_without_exposing_diagnostics(
+    capsys: pytest.CaptureFixture[str], error: Exception, detail: str
+) -> None:
     runner = RecordingRunner()
     checked: list[tuple[object, ...]] = []
 
     def fail(*arguments: object) -> None:
         checked.append(arguments)
         assert runner.gcloud_steps == ["update", "update-traffic"]
-        raise ValueError("private provider diagnostics")
+        raise error
 
     assert main((VALID_IMAGE, VALID_COMMIT), target=TARGET, runner=runner, post_verifier=fail) == 1
     assert checked[0][:3] == (TARGET, VALID_IMAGE, VALID_COMMIT)
     assert f"--to-revisions={checked[0][3]}=100" in runner.commands[-1]
     assert capsys.readouterr().err == (
-        "promoted release verification failed: ValueError; traffic stays on the new revision,"
+        f"promoted release verification failed: {detail}; traffic stays on the new revision,"
         " so inspect it or redeploy the preceding qualified digest\n"
     )
 

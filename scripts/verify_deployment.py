@@ -165,6 +165,11 @@ def describe_service(target: DeploymentTarget) -> dict[str, Any]:
     return document
 
 
+def safe_detail(error: BaseException) -> str:
+    """Only our own invariant messages are safe; provider diagnostics may contain private data."""
+    return str(error) if isinstance(error, VerificationError | DeploymentUsageError) else type(error).__name__
+
+
 def _required(name: str, environment: Mapping[str, str]) -> str:
     """Name a missing variable and its expected value instead of reporting a bare KeyError."""
     if value := environment.get(name):
@@ -197,9 +202,7 @@ def main(arguments: Sequence[str] = ()) -> int:
         subprocess.SubprocessError,
         httpx2.HTTPError,
     ) as error:
-        # Only our own invariant messages are safe; provider diagnostics may contain private data.
-        detail = str(error) if isinstance(error, VerificationError | DeploymentUsageError) else type(error).__name__
-        sys.stderr.write(f"deployment verification failed: {detail}; inspect revision and public health\n")
+        sys.stderr.write(f"deployment verification failed: {safe_detail(error)}; inspect revision and public health\n")
         return 1
     return 0
 

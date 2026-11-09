@@ -209,6 +209,13 @@ def check_main_head(environment: Mapping[str, str] = os.environ) -> int:
         return 1
 
 
+def _safe_detail(error: BaseException) -> str:
+    """Reuse the CI rule for which failure text may reach a log, without a module-level import cycle."""
+    from scripts.verify_deployment import safe_detail
+
+    return safe_detail(error)
+
+
 def _raise_interrupt(_signum: int, _frame: FrameType | None) -> None:
     raise KeyboardInterrupt
 
@@ -255,10 +262,9 @@ def main(
                 try:
                     (verifier or verify_created_revision)(*release)
                 except Exception as error:
-                    # Provider/HTTP diagnostics may contain private data. Fail closed
-                    # and report the cause's type without reflecting its unsafe text.
+                    # Fail closed; only our own invariant messages are printed, never provider diagnostics.
                     sys.stderr.write(
-                        f"candidate verification failed: {type(error).__name__}; traffic was not promoted\n"
+                        f"candidate verification failed: {_safe_detail(error)}; traffic was not promoted\n"
                     )
                     returncode = 1
                 else:
@@ -280,7 +286,7 @@ def main(
             (post_verifier or verify_promoted_release)(*release)
         except Exception as error:
             sys.stderr.write(
-                f"promoted release verification failed: {type(error).__name__}; traffic stays on the new revision,"
+                f"promoted release verification failed: {_safe_detail(error)}; traffic stays on the new revision,"
                 " so inspect it or redeploy the preceding qualified digest\n"
             )
             return 1
