@@ -211,6 +211,25 @@ def test_query_mapping_uses_first_repeated_value() -> None:
     assert result.inputs.replicas == 2
 
 
+@pytest.mark.parametrize(
+    ("query", "automatic"),
+    [
+        ({}, True),
+        ({"window": "auto"}, True),
+        # Parsed query strings carry lists; the window picker must read them like every other field.
+        ({"window": ["auto"]}, True),
+        ({"window": ["auto", "8"]}, True),
+        ({"window": "8"}, False),
+        ({"window": ["8", "auto"]}, False),
+    ],
+)
+def test_window_picker_follows_the_first_window_value(query: dict[str, str | list[str]], automatic: bool) -> None:
+    result = build_llm_self_hosting_view({"preset": "single-job", **query}, now=NOW)
+
+    assert result.window_is_auto == automatic
+    assert result.inputs.demand_window_hours == (1 if automatic else 8)
+
+
 def test_current_api_baselines_returns_immutable_date_adjusted_snapshots() -> None:
     adjusted = current_api_baselines(datetime(2027, 1, 1, tzinfo=UTC), DEFAULT_HOSTING_INPUTS)
 

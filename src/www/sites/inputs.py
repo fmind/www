@@ -34,7 +34,8 @@ type Query = Mapping[str, QueryValue]
 _DEFAULT_PRESET = next(preset for preset in DEMAND_PRESETS if preset.id == "small-team")
 
 
-def _first(query: Query, key: str) -> str | None:
+def first_value(query: Query, key: str) -> str | None:
+    """Read one query value; repeated keys keep their first value."""
     raw = query.get(key)
     if raw is None:
         return None
@@ -90,7 +91,7 @@ def _parse_choice(
     allowed: frozenset[str],
     validation: list[str],
 ) -> str:
-    raw = _first(query, key)
+    raw = first_value(query, key)
     if raw is None or raw == "":
         return fallback
     if raw in allowed:
@@ -107,7 +108,7 @@ def _parse_bounded_float(
     maximum: float,
     validation: list[str],
 ) -> float:
-    raw = _first(query, key)
+    raw = first_value(query, key)
     if raw is None or raw == "":
         return fallback
     try:
@@ -133,7 +134,7 @@ def _parse_bounded_int(
     maximum: int,
     validation: list[str],
 ) -> int:
-    raw = _first(query, key)
+    raw = first_value(query, key)
     if raw is None or raw == "":
         return fallback
     try:
@@ -219,7 +220,7 @@ def parse_inputs(query: Query) -> tuple[HostingInputs, tuple[str, ...]]:
     if "platform" in query:
         validation.append("Operations budget is no longer included; totals cover GPU compute and the GKE fee")
     defaults = DEFAULT_HOSTING_INPUTS
-    preset = next((item for item in DEMAND_PRESETS if item.id == _first(query, "preset")), _DEFAULT_PRESET)
+    preset = next((item for item in DEMAND_PRESETS if item.id == first_value(query, "preset")), _DEFAULT_PRESET)
     # The removed quality lab's keys (`quality*`, `tasks`, `review-rate`) are read nowhere,
     # so previously shared URLs keep working without a message.
     advanced_keys = (scenario_parameters(defaults).keys() | {"pilot", "confirm-pilot"}) - {
@@ -239,11 +240,11 @@ def parse_inputs(query: Query) -> tuple[HostingInputs, tuple[str, ...]]:
     if mode == "simple" and query.keys() & (advanced_keys - {"requests"}):
         validation.append("Advanced parameters require advanced mode; simple defaults were used")
     # Previously shared URLs encoded the A4 billing plan in the hardware ID.
-    legacy_plan = {"a4-cud-3y": "cud-3y", "a4-flex": "flex"}.get(_first(query, "node") or "")
+    legacy_plan = {"a4-cud-3y": "cud-3y", "a4-flex": "flex"}.get(first_value(query, "node") or "")
     if legacy_plan:
         query = dict(query)
         query["node"] = "a4"
-        if not _first(query, "billing"):
+        if not first_value(query, "billing"):
             query["billing"] = legacy_plan
     model = find_model(
         _parse_choice(query, "model", defaults.model_id, frozenset(item.id for item in FRONTIER_MODELS), validation)
@@ -255,7 +256,7 @@ def parse_inputs(query: Query) -> tuple[HostingInputs, tuple[str, ...]]:
             mode=mode,
             model_id=model.id,
             demand_window_hours=preset.window_hours
-            if _first(query, "window") == "auto"
+            if first_value(query, "window") == "auto"
             else float(
                 _parse_choice(query, "window", str(int(preset.window_hours)), frozenset(("24", "8", "1")), validation)
             ),
@@ -285,7 +286,7 @@ def parse_inputs(query: Query) -> tuple[HostingInputs, tuple[str, ...]]:
             ),
         )
         inputs = _parse_fields(query, inputs, _FLEET_FIELDS, validation)
-    inputs = _apply_demand_preset(_first(query, "preset"), inputs, validation)
+    inputs = _apply_demand_preset(first_value(query, "preset"), inputs, validation)
     if mode == "simple":
         inputs = replace(
             inputs,
@@ -300,13 +301,13 @@ def parse_inputs(query: Query) -> tuple[HostingInputs, tuple[str, ...]]:
     else:
         inputs = _parse_hosting_options(query, inputs, validation)
     plans = frozenset(plan.value for plan in BillingPlan)
-    if mode == "simple" or _first(query, "node") in (None, "auto"):
+    if mode == "simple" or first_value(query, "node") in (None, "auto"):
         # Simple mode never offers Flex-start, which only queues batch jobs.
         allowed_plans = plans - {BillingPlan.FLEX.value} if mode == "simple" else plans
         raw_plan = _parse_choice(query, "billing", "on-demand", allowed_plans, validation)
         try:
             inputs, node = automatic_setup(
-                inputs, BillingPlan(raw_plan), keep_checkpoint=_first(query, "quant") not in (None, "", "auto")
+                inputs, BillingPlan(raw_plan), keep_checkpoint=first_value(query, "quant") not in (None, "", "auto")
             )
         except ValueError as exc:
             validation.append(f"{exc}; select a compatible checkpoint, GPU and billing plan")
@@ -538,8 +539,8 @@ def _bind_pilot_measurements(
     validation: list[str],
 ) -> HostingInputs:
     current = pilot_configuration_id(inputs)
-    saved = _first(query, "pilot") or ""
-    confirmation = _first(query, "confirm-pilot") or ""
+    saved = first_value(query, "pilot") or ""
+    confirmation = first_value(query, "confirm-pilot") or ""
     measurements_present = any(
         (inputs.measured_concurrency, inputs.measured_first_token, inputs.measured_completion),
     )
