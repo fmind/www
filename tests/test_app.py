@@ -181,7 +181,6 @@ def test_article_search_keeps_only_the_articles_matching_the_query(
 def test_ai_architect_identity_is_shared_by_public_surfaces(client: AppClient) -> None:
     profile = client.get("/api/profile").json()
     assert profile["metadata"]["job_title"] == "Freelance AI Architect"
-    assert client.get("/site.webmanifest").json()["description"] == profile["metadata"]["description"]
     human_socials = client.get("/humans.txt").text.split("/* SOCIAL */\n", 1)[1].split("\n\n", 1)[0]
     assert human_socials.splitlines() == [f"{social.name}: {social.url}" for social in METADATA.socials]
     card = client.get("/connect.vcf").text.replace("\r\n ", "")
@@ -319,13 +318,6 @@ def test_branding_uses_small_navigation_asset_and_banner_preview(client: AppClie
         assert banner.format == "JPEG"
         assert banner.size == (1200, 630)
         assert banner.info["progressive"]
-
-    manifest = client.get("/site.webmanifest").json()
-    for icon in manifest["icons"]:
-        with Image.open(BytesIO(client.get(icon["src"]).content)) as decoded:
-            assert f"{decoded.width}x{decoded.height}" == icon["sizes"]
-            assert decoded.mode == "RGB"
-        assert icon["purpose"] == "any"
 
 
 def test_connect_actions_and_contact_download(client: AppClient) -> None:

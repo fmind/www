@@ -53,7 +53,6 @@ _SILENT_PATHS = frozenset(
         "/styles.css",
         "/robots.txt",
         "/sitemap.xml",
-        "/site.webmanifest",
         "/llms.txt",
         "/humans.txt",
         "/security.txt",

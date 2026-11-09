@@ -52,7 +52,6 @@ ROOT_FILE_SOURCES = {
     "/favicon.ico": ("favicon.ico", "image/x-icon"),
     "/robots.txt": ("robots.txt", "text/plain; charset=utf-8"),
     "/humans.txt": ("humans.txt", "text/plain; charset=utf-8"),
-    "/site.webmanifest": ("site.webmanifest", "application/manifest+json"),
 }
 
 _REQUIRED_WOFF2_FILES = (
