@@ -11,22 +11,10 @@ from mcp_types.version import LATEST_MODERN_VERSION
 
 from www.assets import ApplicationAssets
 from www.content import ArticleCollection, article_summaries, visible_articles
-from www.mcp import AUDIENCE_LIMIT, BRIEF_LIMIT, TAG_LIMIT, create_mcp_server, render_mcp_server_card
+from www.mcp import AUDIENCE_LIMIT, BRIEF_LIMIT, TAG_LIMIT, render_mcp_server_card
 from www.news import load_news, render_news_markdown
-from www.publications import article_markdown_index, render_profile_json
-from www.search import SEARCH_QUERY_LIMIT, SearchIndex
-
-
-@pytest.fixture(scope="module")
-def mcp_server(snapshots: tuple[ApplicationAssets, ArticleCollection]) -> MCPServer[None]:
-    articles = visible_articles(snapshots[1].all)
-    return create_mcp_server(
-        article_summaries(articles),
-        SearchIndex(articles),
-        articles,
-        article_markdown_index(articles),
-        load_news(),
-    )
+from www.publications import render_profile_json
+from www.search import SEARCH_QUERY_LIMIT
 
 
 @pytest.mark.anyio

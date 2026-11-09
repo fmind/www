@@ -1,7 +1,7 @@
 """LLM self-hosting calculator page: rendered forms, sections, and HTML semantics over HTTP."""
 
 import re
-from collections.abc import Callable, Iterator
+from collections.abc import Callable
 from dataclasses import replace
 from html.parser import HTMLParser
 from typing import Any
@@ -26,13 +26,6 @@ from www.sites.models import BillingPlan
 PAGE = "/sites/llm-self-hosting/?mode=advanced"
 
 type AppClient = TestClient[Any]
-
-
-@pytest.fixture(scope="module")
-def client(make_app: Callable[[], Litestar]) -> Iterator[AppClient]:
-    # One app per module: the MCP session manager inside an instance can only start once per process.
-    with TestClient(make_app()) as test_client:
-        yield test_client
 
 
 # Advanced form fidelity, API availability, and page semantics.

@@ -1,15 +1,15 @@
 """Agent discovery, representation negotiation, and end-to-end tool contracts."""
 
 import re
-from collections.abc import Callable, Iterator
+from collections.abc import Callable
 from dataclasses import replace
 from hashlib import sha256
 from typing import Any
 from urllib.parse import parse_qsl, urlsplit
 
 import pytest
-from litestar import Litestar
 from litestar.testing import TestClient
+from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 from mcp_types import CallToolResult
 from pydantic import TypeAdapter
@@ -17,20 +17,10 @@ from pydantic import TypeAdapter
 from tests.conftest import mcp_post
 from www.agent_discovery import AGENT_SKILL_PATH, prefers_markdown
 from www.assets import ApplicationAssets
-from www.content import ArticleCollection, article_summaries, visible_articles
-from www.mcp import create_mcp_server
-from www.publications import article_markdown_index
-from www.search import SearchIndex
+from www.content import ArticleCollection, visible_articles
 from www.sites.agent import compare_hosting
 from www.sites.calculator import build_llm_self_hosting_view
 from www.sites.models import HostingEstimate, HostingInputs
-
-
-@pytest.fixture(scope="module")
-def client(make_app: Callable[[], Litestar]) -> Iterator[TestClient[Any]]:
-    # MCP validates Host and has no test-only entry: call it as a local client does.
-    with TestClient(make_app(), base_url="http://127.0.0.1") as instance:
-        yield instance
 
 
 @pytest.mark.parametrize(
@@ -203,12 +193,11 @@ def test_mcp_search_read_cite_workflow_over_http(client: TestClient[Any]) -> Non
 @pytest.mark.anyio
 async def test_mcp_article_reader_never_exposes_drafts(
     snapshots: tuple[ApplicationAssets, ArticleCollection],
+    make_mcp_server: Callable[..., MCPServer[None]],
 ) -> None:
     public = visible_articles(snapshots[1].all)
     draft = replace(public[0], slug="private-draft", draft=True, markdown="private text")
-    server = create_mcp_server(
-        article_summaries(public), SearchIndex(public), (*public, draft), article_markdown_index(public)
-    )
+    server = make_mcp_server(publications=(*public, draft))
     with pytest.raises(ToolError, match="Article not found"):
         await server.call_tool("get_article", {"slug": draft.slug})
     result = await server.call_tool("get_article", {"slug": public[0].slug})

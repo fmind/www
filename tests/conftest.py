@@ -1,7 +1,7 @@
 """Session fixtures and plain helpers shared by the application tests."""
 
 import os
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass, field
 from functools import partial
 from typing import TYPE_CHECKING, Any, cast
@@ -14,9 +14,10 @@ if TYPE_CHECKING:
     from litestar import Litestar
     from litestar.testing import TestClient
     from litestar.types import Scope
+    from mcp.server.mcpserver import MCPServer
 
     from www.assets import ApplicationAssets
-    from www.content import ArticleCollection
+    from www.content import Article, ArticleCollection
 
 MCP_ACCEPT = {"accept": "application/json, text/event-stream"}
 # The stateless revision: each request carries its own protocol metadata instead of a session.
@@ -130,3 +131,45 @@ def make_app(snapshots: tuple[ApplicationAssets, ArticleCollection]) -> Callable
     assets, collection = snapshots
     news = load_news()
     return partial(create_app, assets=assets, collection=collection, news=news)
+
+
+@pytest.fixture(scope="session")
+def client(make_app: Callable[[], Litestar]) -> Iterator[TestClient[Any]]:
+    """Serve one default application for the read-only HTTP tests; requests through it never change its state."""
+    from litestar.testing import TestClient
+
+    with TestClient(make_app(), base_url=LOCAL_BASE_URL) as test_client:
+        yield test_client
+
+
+@pytest.fixture(scope="session")
+def make_mcp_server(snapshots: tuple[ApplicationAssets, ArticleCollection]) -> Callable[..., MCPServer[None]]:
+    """Build an MCP server over the public articles and news, with every argument explicit as at startup.
+
+    `publications` replaces the readable articles, for example to add a draft.
+    """
+    from www.content import article_summaries, visible_articles
+    from www.mcp import create_mcp_server
+    from www.news import load_news
+    from www.publications import article_markdown_index, render_profile_json
+    from www.search import SearchIndex
+
+    articles = visible_articles(snapshots[1].all)
+    summaries = article_summaries(articles)
+    index = SearchIndex(articles)
+    markdown_by_slug = article_markdown_index(articles)
+    news = load_news()
+    profile_json = render_profile_json(summaries)
+
+    def build(publications: tuple[Article, ...] = articles) -> MCPServer[None]:
+        return create_mcp_server(
+            summaries, index, publications, markdown_by_slug, news, profile_json_bytes=profile_json
+        )
+
+    return build
+
+
+@pytest.fixture(scope="session")
+def mcp_server(make_mcp_server: Callable[..., MCPServer[None]]) -> MCPServer[None]:
+    """Share one read-only MCP server; its tools, prompts, and resources are immutable snapshots."""
+    return make_mcp_server()

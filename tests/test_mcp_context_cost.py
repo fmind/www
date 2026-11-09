@@ -1,24 +1,18 @@
 """MCP context arithmetic, boundary validation and shared HTTP/MCP discovery."""
 
 import json
-from collections.abc import Callable, Iterator
 from datetime import UTC, datetime
 from hashlib import sha256
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
 import pytest
-from litestar import Litestar
 from litestar.testing import TestClient
+from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 from mcp_types import CallToolResult
 
-from www.assets import ApplicationAssets
-from www.content import ArticleCollection, article_summaries, visible_articles
 from www.data import SITE_PAGES
-from www.mcp import create_mcp_server
-from www.publications import article_markdown_index
-from www.search import SearchIndex
 from www.sites.data import API_BASELINES
 from www.sites.mcp_context_cost.calculator import (
     PATH,
@@ -38,18 +32,10 @@ TOKENS = {server.id: server.tokens for server in SERVERS}
 TOTAL_TOKENS = sum(TOKENS.values())
 
 
-@pytest.fixture(scope="module")
-def client(make_app: Callable[[], Litestar]) -> Iterator[TestClient]:
-    with TestClient(app=make_app()) as test_client:
-        yield test_client
-
-
-@pytest.fixture(scope="module")
-def server(snapshots: tuple[ApplicationAssets, ArticleCollection]):
-    articles = visible_articles(snapshots[1].all)
-    return create_mcp_server(
-        article_summaries(articles), SearchIndex(articles), articles, article_markdown_index(articles)
-    )
+@pytest.fixture
+def server(mcp_server: MCPServer[None]) -> MCPServer[None]:
+    # The tests below name the shared server `server`.
+    return mcp_server
 
 
 def test_measured_catalogs_match_the_retained_snapshot() -> None:
