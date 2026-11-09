@@ -302,7 +302,7 @@ def test_feed_has_one_escaped_entry_per_recent_edition() -> None:
     feed = ElementTree.fromstring(body)  # noqa: S314 - trusted serializer output
 
     assert "\n  <entry>\n    <title>" in body
-    assert feed.findtext("a:icon", namespaces=ATOM) == f"{METADATA.site_url}/logo.png"
+    assert feed.findtext("a:icon", namespaces=ATOM) == f"{METADATA.site_url}/static/img/favicons/icon-192.png"
     entries = feed.findall("a:entry", ATOM)
     assert len(entries) == FEED_EDITION_LIMIT
     assert feed.findtext("a:updated", namespaces=ATOM) == "2026-12-31T00:00:00Z"
@@ -480,6 +480,10 @@ def test_news_feed_route_serves_cached_atom(news_client: AppClient) -> None:
         "News: Cloud Next: October 8, 2026",
     ]
     assert news_client.get("/news/feed.xml", headers={"if-none-match": response.headers["etag"]}).status_code == 304
+    # The feed icon is the small square favicon the site serves, not the full-size logo.
+    icon = news_client.get((feed.findtext("a:icon", namespaces=ATOM) or "").removeprefix(METADATA.site_url))
+    assert (icon.status_code, icon.headers["content-type"]) == (200, "image/png")
+    assert len(icon.content) < 50_000
 
 
 def test_sitemap_lists_the_news_index_but_not_editions(news_client: AppClient) -> None:

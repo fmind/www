@@ -73,7 +73,7 @@ def test_atom_feed_limits_full_content_and_absolutizes_assets() -> None:
 
     assert body.count('<content type="html">') == ATOM_FULL_CONTENT_LIMIT
     assert "\n  <entry>\n    <title>" in body
-    assert f"<icon>{METADATA.site_url}/logo.png</icon>" in body
+    assert f"<icon>{METADATA.site_url}/static/img/favicons/icon-192.png</icon>" in body
     assert 'xmlns:media="http://search.yahoo.com/mrss/"' in body
     thumbnails = [
         element.get("url")

@@ -457,7 +457,7 @@ def atom_feed_root(
     xml_sub(feed, "link", href=f"{METADATA.site_url}{feed_path}", rel="self", type="application/atom+xml")
     xml_sub(feed, "link", href=f"{METADATA.site_url}{page_path}", rel="alternate", type="text/html")
     # Atom `icon` is the square branding image feed readers show next to the feed name.
-    xml_sub(feed, "icon", f"{METADATA.site_url}/logo.png")
+    xml_sub(feed, "icon", f"{METADATA.site_url}/static/img/favicons/icon-192.png")
     author = xml_sub(feed, "author")
     xml_sub(author, "name", METADATA.name)
     xml_sub(author, "uri", f"{METADATA.site_url}/")
