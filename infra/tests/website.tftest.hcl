@@ -262,12 +262,13 @@ run "alerting_contract" {
     condition = (
       google_monitoring_uptime_check_config.health.monitored_resource[0].labels["host"] == "www.fmind.dev" &&
       google_monitoring_uptime_check_config.health.http_check[0].validate_ssl &&
+      length(google_monitoring_uptime_check_config.health.http_check[0].accepted_response_status_codes) == 0 &&
       google_monitoring_uptime_check_config.apex.monitored_resource[0].labels["host"] == "fmind.dev" &&
       google_monitoring_uptime_check_config.apex.http_check[0].validate_ssl &&
       google_monitoring_uptime_check_config.apex.http_check[0].path == "/health" &&
-      [for code in google_monitoring_uptime_check_config.apex.http_check[0].accepted_response_status_codes : code.status_value] == [301]
+      length(google_monitoring_uptime_check_config.apex.http_check[0].accepted_response_status_codes) == 0
     )
-    error_message = "Both hosts need a TLS-validating uptime check; the apex check accepts only its 301 redirect."
+    error_message = "Both hosts need a TLS-validating /health uptime check accepting the final 2xx response after redirects."
   }
 
   assert {

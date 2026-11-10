@@ -58,8 +58,10 @@ resource "google_monitoring_uptime_check_config" "health" {
 }
 
 # The apex mapping has its own managed certificate and answers every GET,
-# /health included, with a 301 to www. Uptime checks do not follow redirects,
-# so the 301 itself is the healthy answer.
+# /health included, with a 301 to www. Public Cloud Monitoring uptime checks
+# follow HTTP redirects, validating TLS on the initial apex handshake and
+# evaluating the final www /health 200 response (accepting 301 alone fails every
+# probe because the followed hop answers 200).
 resource "google_monitoring_uptime_check_config" "apex" {
   display_name = "Uptime - ${var.service_name} apex redirect"
   timeout      = "10s"
@@ -70,9 +72,6 @@ resource "google_monitoring_uptime_check_config" "apex" {
     port         = 443
     use_ssl      = true
     validate_ssl = true
-    accepted_response_status_codes {
-      status_value = 301
-    }
   }
 
   monitored_resource {
@@ -145,6 +144,9 @@ resource "google_monitoring_alert_policy" "uptime_health" {
 # Google renews managed certificates about a month before they expire, so fewer
 # than 21 days left means renewal is stuck, usually because the DNS records at
 # the external host drifted. Expiry would otherwise surface only as an outage.
+# Note: while the apex 301 redirects to www, Cloud Monitoring records
+# time_until_ssl_cert_expires from the final hop (www); an expired apex
+# certificate still fails validate_ssl in uptime_health immediately.
 resource "google_monitoring_alert_policy" "tls_expiry" {
   display_name = "TLS Certificate Expiring - ${var.service_name}"
   combiner     = "OR"
