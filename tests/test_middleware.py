@@ -19,6 +19,7 @@ from www.middleware import (
     analytics_dimension,
     analytics_path,
     is_bot,
+    log_path,
     referer_host,
     request_trace_id,
 )
@@ -89,6 +90,7 @@ def test_security_headers_authorize_the_request_nonce() -> None:
     assert response.headers["referrer-policy"] == "strict-origin-when-cross-origin"
     assert response.headers["x-frame-options"] == "DENY"
     assert response.headers["cross-origin-opener-policy"] == "same-origin-allow-popups"
+    assert response.headers["cross-origin-resource-policy"] == "same-origin"
     assert response.headers["x-permitted-cross-domain-policies"] == "none"
     assert response.headers["x-xss-protection"] == "0"
     assert response.headers["permissions-policy"] == (
@@ -171,16 +173,41 @@ def test_privacy_helpers_reject_unbounded_or_invalid_values() -> None:
     assert analytics_dimension("agent_campaign-1") == "agent_campaign-1"
     assert analytics_dimension("contains spaces") == ""
     assert referer_host("https://EXAMPLE.com:8443/private") == "example.com"
-    assert referer_host("not a URL") == ""
+    assert referer_host("https://EXAMPLE.com./private") == "example.com"
+    assert referer_host("https://xn--bcher-kva.example/x") == "xn--bcher-kva.example"
+    assert referer_host("android-app://com.linkedin.android/") == "com.linkedin.android"
+    for invalid_referer in (
+        "not a URL",
+        "javascript://alert.example/1",
+        "data://text.example/plain",
+        "http://127.0.0.1:8080/private",
+        "http://[::1]/private",
+        "http://localhost:8080/",
+        "https://arbitrary private text!/path",
+        f"https://{'a' * 64}.example/",
+        f"https://example.com/{'x' * 2048}",
+    ):
+        assert referer_host(invalid_referer) == "", invalid_referer
+    assert log_path("/clean/path") == "/clean/path"
+    assert log_path("/bad\npath\r\x1b[31m\x00") == "/bad%0Apath%0D%1B[31m%00"
+    assert len(log_path("/" + "a" * 700)) == 512
     assert is_bot("Mozilla compatible; LinkedInBot")
     assert not is_bot("Mozilla/5.0 Firefox")
     for automated in (
         "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; ChatGPT-User/1.0; +https://openai.com/bot",
+        "Mozilla/5.0 (compatible; Claude-Web/1.0; +https://support.anthropic.com)",
+        "Mozilla/5.0 (compatible; MistralAI-User/1.0; +https://docs.mistral.ai/robots)",
+        "Mozilla/5.0 (compatible; GoogleOther)",
+        "Mozilla/5.0 (compatible; Google-InspectionTool/1.0)",
+        "GoogleStackdriverMonitoring-UptimeChecks(https://cloud.google.com/monitoring)",
         "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/140.0 Safari/537.36",
         "curl/8.9.1",
         "python-requests/2.32.3",
         "Python-urllib/3.14",
+        "Python/3.14 aiohttp/3.11.0",
         "Go-http-client/2.0",
+        "okhttp/4.12.0",
+        "undici",
         "WhatsApp/2.24.1 A",
         "",
     ):
@@ -283,3 +310,76 @@ async def test_pathsend_response_logs_the_file_size_before_returning() -> None:
     assert sent == ["1 records"]
     assert [event for event, _ in logger.records] == ["http request processed"]
     assert logger.records[0][1]["size_bytes"] == 2048
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    ("raw_path", "path", "query", "host", "expected"),
+    [
+        (None, "/privacy", b"", b"fmind.dev.", b"https://www.fmind.dev/privacy"),
+        (b"", "/privacy", b"", b"fmind.dev", b"https://www.fmind.dev/privacy"),
+        (b"//evil.example/path", "//evil.example/path", b"", b"fmind.dev", b"https://www.fmind.dev/evil.example/path"),
+        (b"@evil.example", "@evil.example", b"", b"fmind.dev", b"https://www.fmind.dev/"),
+        (b"*", "*", b"", b"fmind.dev", b"https://www.fmind.dev/"),
+        (b"/a b\r\nc", "/a b\r\nc", b"q=1\r\n2", b"fmind.dev", b"https://www.fmind.dev/a%20b%0D%0Ac?q=1%0D%0A2"),
+    ],
+)
+async def test_production_apex_redirect_neutralizes_non_origin_paths_and_control_bytes(
+    raw_path: bytes | None,
+    path: str,
+    query: bytes,
+    host: bytes,
+    expected: bytes,
+) -> None:
+    messages: list[Message] = []
+    middleware = SiteMiddleware(
+        cast(ASGIApp, _discard),
+        Config(environment=Environment.PRODUCTION),
+        RecordingLogger(),
+    )
+    scope = asgi_scope(headers=[(b"host", host)])
+    cast(dict[str, object], scope)["raw_path"] = raw_path
+    scope["path"] = path
+    scope["query_string"] = query
+
+    async def record(message: Message) -> None:
+        messages.append(message)
+
+    await middleware(scope, _disconnected, record)
+
+    start = next(message for message in messages if message["type"] == "http.response.start")
+    headers = dict(start["headers"])
+    assert start["status"] == 301
+    assert headers[b"location"] == expected
+    assert headers[b"cross-origin-resource-policy"] == b"same-origin"
+
+
+@pytest.mark.anyio
+async def test_mcp_fetch_metadata_normalizes_case_and_request_logs_escape_controls() -> None:
+    logger = RecordingLogger()
+    called: list[str] = []
+
+    async def ok_app(scope: Scope, _receive: Receive, send: Send) -> None:
+        called.append(scope["path"])
+        await send({"type": "http.response.start", "status": 200, "headers": [(b"content-type", b"application/json")]})
+        await send({"type": "http.response.body", "body": b"{}", "more_body": False})
+
+    middleware = SiteMiddleware(cast(ASGIApp, ok_app), Config(environment=Environment.DEVELOPMENT), logger)
+    allowed = asgi_scope(method="POST", raw_path=b"/mcp", headers=[(b"sec-fetch-site", b" Same-Origin ")])
+    await middleware(allowed, _disconnected, _discard)
+    assert called == ["/mcp"]
+
+    blocked_messages: list[Message] = []
+
+    async def record_blocked(message: Message) -> None:
+        blocked_messages.append(message)
+
+    blocked = asgi_scope(method="POST", raw_path=b"/mcp", headers=[(b"sec-fetch-site", b"Cross-Site")])
+    await middleware(blocked, _disconnected, record_blocked)
+    blocked_start = next(message for message in blocked_messages if message["type"] == "http.response.start")
+    assert blocked_start["status"] == 403
+
+    control_scope = asgi_scope(raw_path=b"/probe")
+    control_scope["path"] = "/probe\nforged"
+    await middleware(control_scope, _disconnected, _discard)
+    assert logger.records[-1][1]["path"] == "/probe%0Aforged"

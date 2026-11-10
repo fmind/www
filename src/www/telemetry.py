@@ -2,6 +2,7 @@
 
 import logging
 import os
+from collections.abc import Mapping
 from threading import Event, Thread
 from typing import TYPE_CHECKING, Protocol
 
@@ -21,11 +22,16 @@ class TelemetryProvider(Protocol):
     def shutdown(self) -> None: ...
 
 
-def configure_telemetry(environ: dict[str, str] | None = None) -> TracerProvider | None:
+def configure_telemetry(environ: Mapping[str, str] | None = None) -> TracerProvider | None:
     """Install an OTLP provider when the standard endpoint variables opt in."""
     values = os.environ if environ is None else environ
-    if not (values.get("OTEL_EXPORTER_OTLP_ENDPOINT") or values.get("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT")):
+    if values.get("OTEL_SDK_DISABLED", "").strip().lower() == "true":
         return None
+    traces_endpoint = values.get("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", "").strip()
+    base_endpoint = values.get("OTEL_EXPORTER_OTLP_ENDPOINT", "").strip()
+    if not (traces_endpoint or base_endpoint):
+        return None
+    endpoint = traces_endpoint or f"{base_endpoint.rstrip('/')}/v1/traces"
 
     # Deferred: no deployment sets an endpoint today, so cold starts skip the SDK and exporter imports.
     from opentelemetry import trace
@@ -35,7 +41,7 @@ def configure_telemetry(environ: dict[str, str] | None = None) -> TracerProvider
     from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
     provider = TracerProvider(resource=Resource.create({SERVICE_NAME: SERVICE}), shutdown_on_exit=False)
-    provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
+    provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter(endpoint=endpoint)))
     trace.set_tracer_provider(provider)
     return provider
 

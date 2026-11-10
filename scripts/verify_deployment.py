@@ -21,6 +21,7 @@ from scripts.deploy import DeploymentTarget, DeploymentUsageError, validate_comm
 PUBLIC_ORIGIN = "https://www.fmind.dev"
 PROBE_PATHS = ("/health", "/api/profile", "/.well-known/mcp/server-card.json")
 MCP_PATH = "/mcp"
+MAX_PROBE_BYTES = 1_048_576
 _MCP_INITIALIZE = {
     "jsonrpc": "2.0",
     "id": 1,
@@ -103,14 +104,27 @@ def verify_candidate(
     return revision, url
 
 
+def _read_bounded_json(response: httpx2.Response, label: str) -> Any:
+    """Read at most MAX_PROBE_BYTES from a probe response before parsing JSON."""
+    response.raise_for_status()
+    chunks: list[bytes] = []
+    total = 0
+    for chunk in response.iter_bytes():
+        total += len(chunk)
+        if total > MAX_PROBE_BYTES:
+            raise VerificationError(f"response at {label} exceeds {MAX_PROBE_BYTES} bytes")
+        chunks.append(chunk)
+    return json.loads(b"".join(chunks))
+
+
 def probe(origin: str, *, timeout: float) -> None:
     """Require JSON health, profile, and MCP server card responses from one origin."""
     with httpx2.Client(timeout=timeout, follow_redirects=False) as client:
         for path in PROBE_PATHS:
-            response = client.get(origin + path)
-            response.raise_for_status()
-            document = response.json()
-            if response.status_code != 200 or not isinstance(document, dict):
+            with client.stream("GET", origin + path) as response:
+                document = _read_bounded_json(response, path)
+                status_code = response.status_code
+            if status_code != 200 or not isinstance(document, dict):
                 raise VerificationError(f"invalid response at {path}")
             if path == "/health" and document != {"status": "ok"}:
                 raise VerificationError("health check is not healthy")
@@ -118,17 +132,20 @@ def probe(origin: str, *, timeout: float) -> None:
 
 def probe_mcp(origin: str, *, timeout: float) -> None:
     """POST one finite MCP initialize with the public Host and Origin that real clients use."""
-    with httpx2.Client(timeout=timeout, follow_redirects=False) as client:
-        response = client.post(
+    with (
+        httpx2.Client(timeout=timeout, follow_redirects=False) as client,
+        client.stream(
+            "POST",
             origin + MCP_PATH,
             json=_MCP_INITIALIZE,
             headers={"accept": "application/json, text/event-stream", "origin": origin},
-        )
-        response.raise_for_status()
-        document = response.json()
+        ) as response,
+    ):
+        document = _read_bounded_json(response, MCP_PATH)
+        status_code = response.status_code
     result = document.get("result") if isinstance(document, dict) else None
     server_info = result.get("serverInfo") if isinstance(result, dict) else None
-    if response.status_code != 200 or not isinstance(server_info, dict) or server_info.get("name") != "www":
+    if status_code != 200 or not isinstance(server_info, dict) or server_info.get("name") != "www":
         raise VerificationError("MCP initialize did not return the www server")
 
 
@@ -184,15 +201,16 @@ def _required(name: str, environment: Mapping[str, str]) -> str:
     raise VerificationError(f"{name} is not set; export it as {_REQUIRED_ENVIRONMENT[name]}")
 
 
-def main(arguments: Sequence[str] = ()) -> int:
+def main(arguments: Sequence[str] = (), *, environment: Mapping[str, str] | None = None) -> int:
     """Use read-only Cloud Run metadata and bounded HTTP requests; never mutate traffic."""
     if tuple(arguments):
         sys.stderr.write(_USAGE)
         return 2
+    env = os.environ if environment is None else environment
     try:
-        target = DeploymentTarget.from_environment()
-        image = validate_image_reference(_required("IMAGE_REF", os.environ), target)
-        commit = validate_commit(_required("GITHUB_SHA", os.environ))
+        target = DeploymentTarget.from_environment(env)
+        image = validate_image_reference(_required("IMAGE_REF", env), target)
+        commit = validate_commit(_required("GITHUB_SHA", env))
         revision = verify_service(describe_service(target), image, commit)
         probe_public_origin()
         sys.stdout.write(

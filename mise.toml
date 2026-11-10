@@ -42,7 +42,7 @@ lefthook = "2.2.2"
 lychee = "0.24.2"
 node = "26.13.0"
 # Held: 13.6.0 pulls chromium-bidi@157.0.8090-0 without the trusted-publisher
-# evidence its earlier releases carried, so mise trust policy rejects it (rechecked 2026-11-07).
+# evidence its earlier releases carried, so mise trust policy rejects it (rechecked 2026-11-10).
 "npm:lighthouse" = "13.5.0"
 "npm:playwright" = "1.65.0"
 opentofu = "1.13.9"
@@ -53,12 +53,12 @@ python = "3.14.10"
 shellcheck = "0.11.0"
 tflint = "0.66.0"
 trivy = "0.76.2"
-typos = "1.52.0"
+typos = "1.52.1"
 
 # MCP Registry publisher for the release skill. The release also ships registry server
 # assets, so select the publisher archive per platform (signature side files excluded).
 [tools."github:modelcontextprotocol/registry"]
-version = "1.8.8"
+version = "1.8.9"
 
 [tools."github:modelcontextprotocol/registry".platforms]
 linux-arm64 = { asset_pattern = "mcp-publisher_linux_arm64.tar.gz" }

@@ -48,7 +48,7 @@ OTEL_ENDPOINT_NAMES = {
 HOMEPAGE_TITLE_PREFIX = "<title>Médéric Hurier (Fmind)".encode()
 # Image IDs and repository digests share the same SHA-256 form.
 _IMAGE_DIGEST = re.compile(r"sha256:[0-9a-f]{64}\Z")
-_IMAGE_REFERENCE_CHARS = re.compile(r"[A-Za-z0-9_./:@-]+\Z")
+_IMAGE_REFERENCE_CHARS = re.compile(r"[A-Za-z0-9][A-Za-z0-9_./:@-]*\Z")
 _CONTAINER_ID = re.compile(r"[0-9a-f]{12,64}\Z")
 _ENVIRONMENT_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*\Z")
 _EXPECTED_MCP_TOOLS = frozenset(("get_profile", "search_articles"))

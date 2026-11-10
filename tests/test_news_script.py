@@ -331,8 +331,13 @@ def test_non_object_api_bodies_are_fetch_errors(url: str, api: str, body: str) -
 
 @pytest.mark.parametrize(
     ("record", "kind"),
-    [({"description": 5}, "TypeError"), ({"description": "A tool.", "license": "MIT"}, "AttributeError")],
-    ids=("numeric-description", "text-license"),
+    [
+        ({"description": 5}, "TypeError"),
+        ({"full_name": 5, "description": "A tool."}, "TypeError"),
+        ({"description": "A tool.", "license": "MIT"}, "AttributeError"),
+        ({"description": "A tool.", "topics": {"a": 1}}, "KeyError"),
+    ],
+    ids=("numeric-description", "numeric-full-name", "text-license", "dict-topics"),
 )
 def test_one_api_record_with_a_wrongly_typed_field_does_not_abort_the_batch(
     tmp_path: Path, record: dict[str, object], kind: str
@@ -616,10 +621,14 @@ def test_draft_rejects_titles_that_reparse_into_other_links(site: Path, title: s
 def test_publish_refuses_an_incomplete_draft_record(site: Path) -> None:
     drafts = site / "tmp" / "drafts"
     drafts.mkdir(parents=True)
-    (drafts / "0123456789ab.json").write_text('{"slug": "2026-11-07"}', encoding="utf-8")
-
-    with pytest.raises(news.NewsError, match="unreadable or incomplete"):
-        news.publish("0123456789ab", repo=site, drafts=drafts)
+    for bad in (
+        '{"slug": "2026-11-07"}',
+        '{"slug": "../evil", "markdown": "- [A](https://example.com/a): B.\\n", "base": ""}',
+        '{"slug": "2026-11-07", "markdown": 123, "base": ""}',
+    ):
+        (drafts / "0123456789ab.json").write_text(bad, encoding="utf-8")
+        with pytest.raises(news.NewsError, match="unreadable or incomplete"):
+            news.publish("0123456789ab", repo=site, drafts=drafts)
 
 
 def test_agy_writer_denies_every_tool(monkeypatch: pytest.MonkeyPatch) -> None:

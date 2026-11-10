@@ -170,9 +170,13 @@ def test_scan_stops_at_the_first_failed_step(
 
 
 def test_main_cli_entry_points(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    # 0. Unexpected positional or flag arguments fail closed.
+    assert main(["--unexpected"]) == 2
+    assert capsys.readouterr().err == "usage: python -m scripts.scan_deployed\n"
+
     # 1. Invalid or missing configuration fails closed: mise `[env]` always sets the four names.
-    assert main(environment={**ENVIRONMENT, "REGION": "BAD!"}) == 2
-    assert main(environment={name: value for name, value in ENVIRONMENT.items() if name != "SERVICE_NAME"}) == 2
+    assert main([], environment={**ENVIRONMENT, "REGION": "BAD!"}) == 2
+    assert main([], environment={name: value for name, value in ENVIRONMENT.items() if name != "SERVICE_NAME"}) == 2
     assert capsys.readouterr().err == (
         "scan: configuration error: REGION is missing or invalid\n"
         "scan: configuration error: SERVICE_NAME is missing or invalid\n"
@@ -185,14 +189,14 @@ def test_main_cli_entry_points(tmp_path: Path, capsys: pytest.CaptureFixture[str
         del arguments, capture, env
         raise FileNotFoundError("gcloud")
 
-    assert main(target=TARGET, runner=missing_runner, output_dir=tmp_path) == 127
+    assert main([], target=TARGET, runner=missing_runner, output_dir=tmp_path) == 127
 
     # 3. ScanError handling
     failing = scan_runner(tmp_path, service=completed(1, stderr="fail"))
-    assert main(target=TARGET, runner=failing, output_dir=tmp_path) == 1
+    assert main([], target=TARGET, runner=failing, output_dir=tmp_path) == 1
 
     # 4. Success path via main, with the target read from the environment
-    assert main(runner=scan_runner(tmp_path), output_dir=tmp_path, environment=ENVIRONMENT) == 0
+    assert main([], runner=scan_runner(tmp_path), output_dir=tmp_path, environment=ENVIRONMENT) == 0
 
 
 def test_default_runner_captures_output_and_bounds_a_hung_command(monkeypatch: pytest.MonkeyPatch) -> None:

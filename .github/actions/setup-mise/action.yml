@@ -14,7 +14,7 @@ runs:
     - name: Install mise and locked tools
       uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
       with:
-        version: 2026.11.4 # pinned mise; bump deliberately with mise.lock tooling
+        version: 2026.11.6 # pinned mise; bump deliberately with mise.lock tooling
         # Fail on a tool that mise.lock does not pin instead of resolving it live.
         install_args: --locked ${{ inputs.tools }}
         cache: ${{ inputs.cache }}

@@ -481,6 +481,8 @@ def test_validate_image_reference_accepts_valid_refs() -> None:
     [
         ("", "invalid image reference"),
         ("   ", "invalid image reference"),
+        ("-q", "invalid characters"),
+        ("--help", "invalid characters"),
         ("image with spaces", "invalid image reference"),
         ("image;rm-rf", "invalid characters"),
         ("image$bad", "invalid characters"),

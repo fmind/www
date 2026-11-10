@@ -177,7 +177,7 @@ def _github(url: str, fetch: Fetch) -> dict[str, str]:
         return _page(url, fetch)
     data = _json_object(body)
     description = _clean(data.get("description") or "")
-    result = {"title": data.get("full_name") or f"{owner}/{repo}", "description": description}
+    result = {"title": _clean(data.get("full_name") or "") or f"{owner}/{repo}", "description": description}
     try:
         # The API finds the README whatever its name or format (README.md, readme.rst, docs/README.md).
         _, body = fetch(f"https://api.github.com/repos/{quote(owner)}/{quote(repo)}/readme")
@@ -277,7 +277,7 @@ def source_facts(url: str, fetch: Fetch = fetch_text) -> dict[str, str]:
         result.update(reader(url, fetch))
     except (OSError, ValueError, ElementTree.ParseError) as error:
         result["error"] = f"{type(error).__name__}: {error}"
-    except (TypeError, AttributeError) as error:
+    except (TypeError, AttributeError, KeyError) as error:
         # An API field of another type, such as a numeric description, fails this link only, not the batch.
         result["error"] = f"{type(error).__name__}: {url} returned a field of an unexpected type: {error}"
     result["excerpt"] = result["excerpt"][:EXCERPT_LIMIT]
@@ -480,7 +480,13 @@ def agy_writer(prompt: str) -> Mapping[str, Any]:
     with tempfile.TemporaryDirectory(prefix="news-writer-") as empty:
         try:
             completed = subprocess.run(  # noqa: S603 - fixed executable; the prompt is one argument, never a shell
-                command, cwd=empty, capture_output=True, text=True, timeout=WRITER_TIMEOUT_SECONDS, check=False
+                command,
+                cwd=empty,
+                stdin=subprocess.DEVNULL,
+                capture_output=True,
+                text=True,
+                timeout=WRITER_TIMEOUT_SECONDS,
+                check=False,
             )
         except (OSError, subprocess.TimeoutExpired) as error:
             raise NewsError(f"the agy writer did not answer: {error}") from error
@@ -659,6 +665,9 @@ def publish(identifier: str, *, repo: Path = Path(), drafts: Path = DRAFTS) -> s
     try:
         record = json.loads(record_path.read_text(encoding="utf-8"))
         slug, markdown, base = record["slug"], record["markdown"], record["base"]
+        if not (isinstance(slug, str) and isinstance(markdown, str) and isinstance(base, str)):
+            raise TypeError("draft fields must be strings")
+        date.fromisoformat(slug)
     except FileNotFoundError as error:
         raise NewsError(f"draft {identifier} does not exist or was already published; draft again") from error
     except (OSError, ValueError, KeyError, TypeError) as error:

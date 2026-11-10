@@ -316,3 +316,19 @@ def test_invalid_expected_commit_fails_with_safe_reason(
 def test_unknown_mode_is_a_usage_error(capsys: pytest.CaptureFixture[str]) -> None:
     assert verify_deployment.main(("promote",)) == 2
     assert capsys.readouterr().err.startswith("usage:")
+
+
+def test_oversized_probe_responses_fail_closed(monkeypatch: pytest.MonkeyPatch) -> None:
+    oversized = b'{"pad":"' + (b"x" * verify_deployment.MAX_PROBE_BYTES) + b'"}'
+    client_class = httpx2.Client
+    monkeypatch.setattr(
+        verify_deployment.httpx2,
+        "Client",
+        lambda **_kwargs: client_class(
+            transport=httpx2.MockTransport(lambda _request: httpx2.Response(200, content=oversized))
+        ),
+    )
+    with pytest.raises(verify_deployment.VerificationError, match="exceeds"):
+        verify_deployment.probe("https://www.fmind.dev", timeout=5)
+    with pytest.raises(verify_deployment.VerificationError, match="exceeds"):
+        verify_deployment.probe_mcp("https://www.fmind.dev", timeout=5)

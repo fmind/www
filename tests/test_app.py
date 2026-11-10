@@ -354,7 +354,7 @@ def test_scan_shares_the_permanent_contact_destination_without_search_indexing(c
 
 def test_machine_surfaces_keep_content_cache_and_cors_contracts(client: AppClient) -> None:
     cases = (
-        ("/health", "application/json; charset=utf-8", None, None, b'{"status":"ok"}'),
+        ("/health", "application/json; charset=utf-8", "no-store", None, b'{"status":"ok"}'),
         ("/robots.txt", "text/plain; charset=utf-8", "public, max-age=86400, must-revalidate", None, b"User-agent"),
         ("/llms.txt", "text/plain; charset=utf-8", "public, max-age=3600, must-revalidate", "*", b"## Articles"),
         (
@@ -1397,3 +1397,63 @@ def test_decorative_bounce_stops_on_its_own(client: AppClient) -> None:
 
     # WCAG 2.2.2: motion must not repeat forever; 2.5 cycles end at the keyframes' resting midpoint.
     assert "--animate-bounce:bounce 1s 2.5" in client.get(stylesheet_link[1]).text
+
+
+def test_cross_origin_resource_policy_matches_surface_isolation(client: AppClient) -> None:
+    for same_origin_path in (
+        "/",
+        "/styles.css",
+        "/static/fonts/GoogleSans-Variable.woff2",
+        "/health",
+        "/connect.vcf",
+        "/robots.txt",
+        "/sitemap.xml",
+        "/articles/feed.xml",
+        "/does-not-exist",
+        "/static/img/does-not-exist.webp",
+    ):
+        response = client.get(same_origin_path)
+        assert response.headers["cross-origin-resource-policy"] == "same-origin", same_origin_path
+
+    redirect = client.get("/articles", follow_redirects=False)
+    assert redirect.status_code == 301
+    assert redirect.headers["cross-origin-resource-policy"] == "same-origin"
+
+    for cross_origin_path in (
+        "/api/profile",
+        "/llms.txt",
+        "/articles/the-affordable-ai-agents.md",
+        "/favicon.ico",
+        "/logo.png",
+        "/static/img/avatar-192.webp",
+    ):
+        response = client.get(cross_origin_path)
+        assert response.status_code == 200, cross_origin_path
+        assert response.headers["cross-origin-resource-policy"] == "cross-origin", cross_origin_path
+        not_modified = client.get(cross_origin_path, headers={"if-none-match": response.headers["etag"]})
+        assert not_modified.status_code == 304, cross_origin_path
+        assert not_modified.headers["cross-origin-resource-policy"] == "cross-origin", cross_origin_path
+
+    partial = client.get("/static/img/avatar-192.webp", headers={"range": "bytes=0-31"})
+    assert partial.status_code == 206
+    assert partial.headers["cross-origin-resource-policy"] == "cross-origin"
+
+
+@pytest.mark.anyio
+async def test_query_preserving_redirects_encode_control_bytes(client: AppClient) -> None:
+    messages: list[Any] = []
+    scope = asgi_scope(raw_path=b"/articles", headers=[(b"host", b"www.fmind.dev")])
+    scope["query_string"] = b"q=one two\r\nthree"
+
+    async def disconnect() -> Any:
+        return {"type": "http.disconnect"}
+
+    async def record(message: Any) -> None:
+        messages.append(message)
+
+    await client.app(scope, disconnect, record)
+
+    start = next(message for message in messages if message["type"] == "http.response.start")
+    headers = dict(start["headers"])
+    assert start["status"] == 301
+    assert headers[b"location"] == b"/articles/?q=one%20two%0D%0Athree"

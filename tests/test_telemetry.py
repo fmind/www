@@ -44,18 +44,38 @@ class RecordingProvider:
 
 def test_telemetry_is_noop_without_endpoint() -> None:
     assert configure_telemetry({}) is None
+    assert configure_telemetry({"OTEL_EXPORTER_OTLP_ENDPOINT": "   "}) is None
+    assert (
+        configure_telemetry(
+            {
+                "OTEL_SDK_DISABLED": "true",
+                "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT": "http://127.0.0.1:4318/v1/traces",
+            }
+        )
+        is None
+    )
 
 
 def test_telemetry_installs_an_otlp_provider_when_an_endpoint_opts_in(monkeypatch: pytest.MonkeyPatch) -> None:
     installed: list[object] = []
+    endpoints: list[str | None] = []
     # Record instead of installing: the process-wide tracer provider can be set only once.
     monkeypatch.setattr("opentelemetry.trace.set_tracer_provider", installed.append)
+    from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter as RealExporter
 
-    provider = configure_telemetry({"OTEL_EXPORTER_OTLP_TRACES_ENDPOINT": "http://127.0.0.1:4318/v1/traces"})
+    def recording_exporter(*, endpoint: str | None = None) -> RealExporter:
+        endpoints.append(endpoint)
+        return RealExporter(endpoint=endpoint)
+
+    monkeypatch.setattr("opentelemetry.exporter.otlp.proto.http.trace_exporter.OTLPSpanExporter", recording_exporter)
+    monkeypatch.setenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", "http://ambient.invalid:4318/v1/traces")
+
+    provider = configure_telemetry({"OTEL_EXPORTER_OTLP_ENDPOINT": "http://127.0.0.1:4318/"})
 
     assert provider is not None
     try:
         assert installed == [provider]
+        assert endpoints == ["http://127.0.0.1:4318/v1/traces"]
         assert provider.resource.attributes["service.name"] == "www"
     finally:
         assert shutdown_telemetry(provider)

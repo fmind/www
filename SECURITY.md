@@ -10,15 +10,14 @@ Trivy may warn about [fallback severity sources](https://trivy.dev/docs/v0.76/gu
 
 ## Current advisory review
 
-**Owner:** Médéric Hurier. **Reviewed:** 2026-11-07. **Next review:** 2026-11-14, or immediately on a new fixable finding or relevant runtime change.
+**Owner:** Médéric Hurier. **Reviewed:** 2026-11-10. **Next review:** 2026-11-17, or immediately on a new fixable finding or relevant runtime change.
 
-The current candidate uses `python:3.14.10-slim@sha256:af8a5aa14780025dbfbcfbc81bd8a91ebd87711dd5b0f48ed71090949dd7cb1d`, and its runtime stage applies pending Debian security updates because they can lag the base image. The fixable vulnerability/secret gate and HTTP/MCP image smoke pass. The November 7 unfiltered scan of the single serving/tagged revision image (built on that base digest) reports 49 Trivy HIGH package/advisory instances across the 13 CVEs below, no CRITICAL findings, and no fixes available for the installed Debian trixie packages. Upstream and Debian unstable fixes exist; their availability does not imply a compatible trixie update. Each new rollout still needs its own serving-digest evidence.
+The current candidate uses `python:3.14.10-slim@sha256:af8a5aa14780025dbfbcfbc81bd8a91ebd87711dd5b0f48ed71090949dd7cb1d`, and its runtime stage applies pending Debian security updates because they can lag the base image. The fixable vulnerability/secret gate and HTTP/MCP image smoke pass. The November 10 unfiltered scan of the single serving/tagged revision image (built on that base digest) reports 47 Trivy HIGH package/advisory instances across the 11 CVEs below, no CRITICAL findings, and no fixes available for the installed Debian trixie packages. Upstream and Debian unstable fixes exist; their availability does not imply a compatible trixie update. Each new rollout still needs its own serving-digest evidence.
 
 | Residual advisories                                                        | Application exposure assessment                                                                           |
 | -------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
 | Perl: CVE-2026-9538                                                        | No request path executes Perl or caller-controlled Perl data.                                             |
 | SQLite: CVE-2026-119373, CVE-2026-119374, CVE-2026-119379                  | The application never loads SQLite, creates no FTS5 tables, and applies no session changesets.            |
-| zlib: CVE-2026-76844, CVE-2026-85091                                       | Debian marks the installed trixie-security build (`+deb13u1`) fixed; Trivy's data still flags it.         |
 | ncurses: CVE-2025-69720                                                    | No request path invokes infocmp or processes caller-supplied terminfo.                                    |
 | systemd: CVE-2026-16742                                                    | Granian runs directly; the service does not run systemd-homed.                                            |
 | libacl: CVE-2026-54369                                                     | No ACL manipulation of caller-owned trees; runtime assets are root-owned and the process is unprivileged. |

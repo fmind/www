@@ -217,6 +217,7 @@ def scan_deployed_revisions(
 
 
 def main(
+    arguments: Sequence[str] | None = None,
     *,
     target: DeploymentTarget | None = None,
     runner: Runner | None = None,
@@ -224,6 +225,9 @@ def main(
     environment: Mapping[str, str] = os.environ,
 ) -> int:
     """Resolve targets and run deployed image security qualification."""
+    if list(sys.argv[1:] if arguments is None else arguments):
+        sys.stderr.write("usage: python -m scripts.scan_deployed\n")
+        return 2
     try:
         deployment_target = target or DeploymentTarget.from_environment(environment)
     except DeploymentUsageError as error:

@@ -39,6 +39,11 @@ def test_load_production() -> None:
         ({"HOST": ""}, "invalid HOST"),
         ({"HOST": "localhost"}, "invalid HOST"),
         ({"PORT": ""}, "invalid PORT"),
+        ({"PORT": "0"}, "invalid PORT"),
+        ({"PORT": " 8080 "}, "invalid PORT"),
+        ({"PORT": "+8080"}, "invalid PORT"),
+        ({"PORT": "8_080"}, "invalid PORT"),
+        ({"PORT": "\uff18\uff10\uff18\uff10"}, "invalid PORT"),
         ({"PORT": "not-a-port"}, "invalid PORT"),
         ({"PORT": "70000"}, "invalid PORT"),
         # The project names the Cloud Logging trace resource, so reject anything but a project ID.

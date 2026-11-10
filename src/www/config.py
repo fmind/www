@@ -49,11 +49,10 @@ class Config:
             raise ValueError(msg) from error
 
         raw_port = values.get("PORT", "8080")
-        try:
-            port = int(raw_port)
-        except ValueError as error:
+        if not (raw_port.isascii() and raw_port.isdigit()):
             msg = f"invalid PORT {raw_port!r} (want an integer from 1 through 65535)"
-            raise ValueError(msg) from error
+            raise ValueError(msg)
+        port = int(raw_port)
         if not 1 <= port <= 65535:
             msg = f"invalid PORT {port} (want 1-65535)"
             raise ValueError(msg)

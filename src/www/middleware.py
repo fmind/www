@@ -5,7 +5,7 @@ import secrets
 from datetime import UTC, datetime
 from time import perf_counter
 from typing import Any, Protocol
-from urllib.parse import parse_qs, urlsplit
+from urllib.parse import parse_qs, quote, urlsplit
 
 from litestar.datastructures import Headers, MutableScopeHeaders
 from litestar.types import ASGIApp, Message, Receive, Scope, Send
@@ -24,9 +24,17 @@ _BOT_TOKENS = (
     "bingpreview",
     "facebookexternalhit",
     "linkedinbot",
+    # Search and platform crawlers or monitors whose names omit "bot".
+    "googleother",
+    "google-inspectiontool",
+    "google-extended",
+    "google-read-aloud",
+    "googlestackdrivermonitoring",
     # AI assistants fetching on a user's behalf, which omit "bot" from their names.
     "chatgpt-user",
     "claude-user",
+    "claude-web",
+    "mistralai-user",
     "perplexity-user",
     "meta-externalagent",
     "meta-externalfetcher",
@@ -38,9 +46,12 @@ _BOT_TOKENS = (
     "python-requests",
     "python-httpx",
     "python-urllib",
+    "aiohttp/",
     "go-http-client",
     "node-fetch",
+    "undici",
     "axios/",
+    "okhttp/",
     # Link-preview fetchers.
     "preview",
     "whatsapp/",
@@ -59,10 +70,17 @@ _SILENT_PATHS = frozenset(
         "/.well-known/security.txt",
     }
 )
+_PUBLIC_MEDIA_PATHS = frozenset({"/favicon.ico", "/logo.png", "/banner.png", "/portrait.jpg"})
+_CROSS_ORIGIN_MEDIA_STATUSES = frozenset({200, 206, 304})
 _SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
 _SAME_ORIGIN_FETCH_SITES = frozenset({"", "same-origin", "none"})
 _MCP_PATHS = frozenset({"/mcp", "/mcp/"})
 _REPEATED_SLASHES = re.compile(r"/{2,}")
+_LEADING_SLASHES = re.compile(r"^/+")
+_REFERER_SCHEMES = frozenset({"http", "https", "android-app"})
+_DNS_LABEL = re.compile(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?")
+_MAX_REFERER_LENGTH = 2048
+_MAX_LOG_PATH_LENGTH = 512
 # Cloud Logging joins a log entry to its request log through this special field.
 CLOUD_TRACE_LOG_KEY = "logging.googleapis.com/trace"
 _TRACEPARENT = re.compile(r"00-([0-9a-f]{32})-[0-9a-f]{16}-[0-9a-f]{2}")
@@ -100,12 +118,40 @@ def analytics_dimension(value: str) -> str:
 
 
 def referer_host(referer: str) -> str:
-    """Reduce a referrer to its lowercase hostname."""
+    """Reduce a web or Android-app referrer to a bounded, IP-free DNS hostname."""
+    if len(referer) > _MAX_REFERER_LENGTH:
+        return ""
     try:
         parsed = urlsplit(referer)
-        return (parsed.hostname or "").lower()
+        if parsed.scheme.lower() not in _REFERER_SCHEMES:
+            return ""
+        host = (parsed.hostname or "").rstrip(".").lower()
     except ValueError:
         return ""
+    if not 1 <= len(host) <= 253 or "." not in host:
+        return ""
+    labels = host.split(".")
+    if labels[-1].isdigit() or not all(_DNS_LABEL.fullmatch(label) for label in labels):
+        return ""
+    return host
+
+
+def sanitize_uri_bytes(raw: bytes) -> str:
+    """Keep visible URI ASCII and percent-encode control, whitespace, or non-ASCII bytes."""
+    return "".join(chr(byte) if 0x21 <= byte <= 0x7E else f"%{byte:02X}" for byte in raw)
+
+
+def log_path(path: str) -> str:
+    """Bound request paths and escape control characters before logging."""
+    bounded = path[:_MAX_LOG_PATH_LENGTH]
+    if all(0x20 <= ord(character) < 0x7F or ord(character) >= 0xA0 for character in bounded):
+        return bounded
+    return "".join(
+        character
+        if (0x20 <= ord(character) < 0x7F or ord(character) >= 0xA0)
+        else "".join(f"%{byte:02X}" for byte in character.encode("utf-8"))
+        for character in bounded
+    )
 
 
 def is_bot(user_agent: str) -> bool:
@@ -222,7 +268,7 @@ class SiteMiddleware:
         trace_id = request_trace_id(request_headers) if self.project else ""
         cloud_trace = f"projects/{self.project}/traces/{trace_id}" if trace_id else ""
         state["cloud_trace"] = cloud_trace
-        host = request_headers.get("host", "").partition(":")[0].lower()
+        host = request_headers.get("host", "").partition(":")[0].rstrip(".").lower()
         if self.environment is Environment.PRODUCTION and host == CANONICAL_APEX:
             await self._redirect(scope, send, nonce)
             return
@@ -243,7 +289,7 @@ class SiteMiddleware:
             if not path.startswith("/static/") and path not in _SILENT_PATHS:
                 log_values: dict[str, object] = {
                     "method": scope.get("method", ""),
-                    "path": path,
+                    "path": log_path(path),
                     "status": status,
                     "size_bytes": size_bytes,
                     "duration_ms": round((perf_counter() - started_at) * 1000, 3),
@@ -252,7 +298,11 @@ class SiteMiddleware:
                 self.logger.info("http request processed", **log_values)
 
             # HEAD probes (link checkers, unfurlers) fetch no page, so they are not pageviews.
-            if scope.get("method") == "GET" and content_type.startswith("text/html") and not 300 <= status < 400:
+            if (
+                scope.get("method") == "GET"
+                and content_type.lower().startswith("text/html")
+                and not 300 <= status < 400
+            ):
                 query = parse_qs(scope.get("query_string", b"").decode("utf-8", "replace"), keep_blank_values=True)
 
                 def first(name: str) -> str:
@@ -280,7 +330,11 @@ class SiteMiddleware:
             if message["type"] == "http.response.start":
                 status = message["status"]
                 response_headers = MutableScopeHeaders(message)
-                self._secure(response_headers, nonce)
+                cross_origin_resource = "access-control-allow-origin" in response_headers or (
+                    status in _CROSS_ORIGIN_MEDIA_STATUSES
+                    and (path in _PUBLIC_MEDIA_PATHS or path.startswith("/static/img/"))
+                )
+                self._secure(response_headers, nonce, cross_origin_resource=cross_origin_resource)
                 if path in _MCP_PATHS:
                     # Protocol responses are per request. Prevent intermediaries
                     # from storing or transforming JSON-RPC envelopes.
@@ -300,7 +354,7 @@ class SiteMiddleware:
             ):
                 finalize_logs()
 
-        fetch_site = request_headers.get("sec-fetch-site", "")
+        fetch_site = request_headers.get("sec-fetch-site", "").strip().lower()
         if (
             path in _MCP_PATHS
             and scope.get("method", "") not in _SAFE_METHODS
@@ -335,20 +389,30 @@ class SiteMiddleware:
             # the inner OpenTelemetry span was current.
             finalize_logs()
 
-    def _secure(self, headers: MutableScopeHeaders, nonce: str) -> None:
+    def _secure(self, headers: MutableScopeHeaders, nonce: str, *, cross_origin_resource: bool = False) -> None:
         headers["content-security-policy"] = _CONTENT_SECURITY_POLICY.format(nonce=nonce)
         for name, value in self.security_headers.items():
             headers[name] = value
+        headers["cross-origin-resource-policy"] = "cross-origin" if cross_origin_resource else "same-origin"
         _vary_accept_encoding(headers)
 
     async def _redirect(self, scope: Scope, send: Send, nonce: str) -> None:
-        raw_path = scope.get("raw_path", scope.get("path", "").encode()).split(b"?", 1)[0]
-        path = raw_path.decode("latin-1")
-        query = scope.get("query_string", b"")
+        raw_path = scope.get("raw_path")
+        raw_target = raw_path.split(b"?", 1)[0] if isinstance(raw_path, bytes) else b""
+        if raw_target.startswith(b"/"):
+            path = _LEADING_SLASHES.sub("/", sanitize_uri_bytes(raw_target))
+        else:
+            fallback = scope.get("path") or "/"
+            path = (
+                quote(_LEADING_SLASHES.sub("/", fallback), safe="/:@!$&'()*+,;=-._~")
+                if fallback.startswith("/")
+                else "/"
+            )
+        query = sanitize_uri_bytes(scope.get("query_string") or b"")
         location = CANONICAL_TARGET + path
         if query:
-            location += "?" + query.decode("latin-1")
-        headers = [(b"location", location.encode("latin-1")), (b"content-length", b"0")]
+            location += "?" + query
+        headers = [(b"location", location.encode("ascii")), (b"content-length", b"0")]
         # 308 keeps the method and body, so an apex POST /mcp is not replayed as a GET.
         status = 301 if scope.get("method", "GET") in {"GET", "HEAD"} else 308
         start: Message = {"type": "http.response.start", "status": status, "headers": headers}

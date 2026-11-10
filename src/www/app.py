@@ -42,7 +42,7 @@ from www.data import (
 )
 from www.log import configure_logging
 from www.mcp import create_mcp_http_app, create_mcp_server, render_mcp_server_card
-from www.middleware import Logger, SiteMiddleware, trace_fields
+from www.middleware import Logger, SiteMiddleware, log_path, sanitize_uri_bytes, trace_fields
 from www.models import PageMetadata
 from www.news import (
     NEWS_FEED_PATH,
@@ -220,7 +220,7 @@ def _request_nonce(request: AppRequest) -> str:
 
 
 def _raw_query(request: AppRequest) -> str:
-    return request.scope.get("query_string", b"").decode("latin-1")
+    return sanitize_uri_bytes(request.scope.get("query_string") or b"")
 
 
 def _request_path(request: AppRequest) -> str:
@@ -423,7 +423,7 @@ def create_app(
     # Cloud Run reserves some paths ending in "z"; keep one portable probe URL.
     @route("/health", http_method=_READ_METHODS, sync_to_thread=False)
     def health() -> Response[bytes]:
-        return Response(b'{"status":"ok"}', headers={"content-type": "application/json; charset=utf-8"})
+        return _static_response(b'{"status":"ok"}', "application/json; charset=utf-8", "no-store")
 
     @route(list(application_assets.root_files), http_method=_READ_METHODS, sync_to_thread=False)
     def root_file(request: AppRequest) -> Response[bytes]:
@@ -718,7 +718,7 @@ def create_app(
         state = scope.get("state", {})
         error_values: dict[str, object] = {
             "method": scope.get("method", ""),
-            "path": state.get("request_path", scope.get("path", "")),
+            "path": log_path(str(state.get("request_path", scope.get("path", "")))),
             "error_type": type(exc).__name__,
             "exc_info": exc,
         }
