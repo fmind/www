@@ -429,10 +429,13 @@ def configuration_issue(inputs: HostingInputs, *, check_workload: bool = True) -
         ):
             return f"The verified {model.name} recipe on {node.name} is limited to {context_limit:,} context tokens"
     required = required_memory_gb(model, quantization, inputs.memory_overhead_pct)
-    if ceil(required / node.vram_gb) > 1 and not node.multi_host:
+    nodes = nodes_for_model(model, node, required)
+    if nodes > 1 and not node.multi_host:
         return (
             f"{model.name} does not fit on one {node.name}; this catalog does not support sharding across those nodes"
         )
+    if node.id == "ct6e-standard-8t" and nodes > 32:
+        return f"{model.name} exceeds the 256-chip Cloud TPU v6e Trillium pod limit"
     if inputs.billing_plan is BillingPlan.FLEX and inputs.api_mode is not APIMode.BATCH:
         return "Flex-start queues bounded jobs and does not support this interactive serving comparison; select batch or reserved capacity"
     return ""
@@ -558,7 +561,14 @@ def required_memory_gb(model: FrontierModel, quantization: Quantization, overhea
 
 def nodes_for_model(model: FrontierModel, node: GKENodePool, required_memory: float) -> int:
     minimum = next((count for node_id, count in model.node_minimums if node_id == node.id), 1)
-    return max(minimum, ceil(required_memory / node.vram_gb))
+    nodes = max(minimum, ceil(required_memory / node.vram_gb))
+    if nodes > 1 and node.id == "ct6e-standard-8t":
+        # Trillium 2D torus slices scale in powers of two: 8, 16, 32, 64, 128, or 256 chips (1..32 8-chip units).
+        return 1 << (nodes - 1).bit_length()
+    if nodes > 1 and node.id == "tpu7x-standard-4t":
+        # Ironwood 3D torus slices are 1, 2, 4, 8, or 16 4-chip hosts up to one 64-chip cube, then multiples of 16.
+        return 1 << (nodes - 1).bit_length() if nodes <= 16 else ceil(nodes / 16) * 16
+    return nodes
 
 
 def pilot_configuration_id(inputs: HostingInputs) -> str:

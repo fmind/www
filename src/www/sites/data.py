@@ -187,6 +187,7 @@ _FRONTIER_MODELS = (
         default_quantization="fp8",
         supported_quantizations=("fp8", "fp16"),
         required_node_ids=("tpu7x-standard-4t", "a3-ultra", "a4"),
+        node_minimums=(("tpu7x-standard-4t", 2),),
         node_context_limits=(("tpu7x-standard-4t", 132096), ("a3-ultra", 262144)),
         checkpoint_memory=(("fp8", 755617140416 / 1e9), ("fp16", 1506659919872 / 1e9)),
         recipe_url="https://recipes.vllm.ai/zai-org/GLM-5.3",

@@ -1281,12 +1281,52 @@ def test_cloud_tpu_multi_host_slices_and_gpu_vs_tpu_demand_comparison() -> None:
     assert not trillium_slice.estimate.topology_confirmed
 
     ironwood_slice = build_llm_self_hosting_view(
-        {"mode": "advanced", "model": "glm-5-3", "node": "tpu7x-standard-4t", "quant": "fp8"}
+        {"mode": "advanced", "model": "glm-5-3", "node": "tpu7x-standard-4t", "quant": "fp8", "overhead": "0"}
     )
     assert not ironwood_slice.estimate.compatibility_issue
     assert ironwood_slice.estimate.nodes_per_replica == 2
     assert ironwood_slice.estimate.total_gpus == 8
     assert not ironwood_slice.estimate.topology_confirmed
+
+    # Multi-host Cloud TPU slices round up to valid torus shapes (no 3-host Ironwood or 3/7/9-unit Trillium slices).
+    glm_bf16_ironwood = build_llm_self_hosting_view(
+        {"mode": "advanced", "model": "glm-5-3", "node": "tpu7x-standard-4t", "quant": "fp16"}
+    )
+    assert glm_bf16_ironwood.estimate.nodes_per_replica == 4
+    assert glm_bf16_ironwood.estimate.total_gpus == 16
+
+    glm_flash_trillium = build_llm_self_hosting_view(
+        {"mode": "advanced", "model": "glm-5-3-flash", "node": "ct6e-standard-8t", "quant": "fp16", "overhead": "0"}
+    )
+    assert glm_flash_trillium.estimate.nodes_per_replica == 4
+    assert glm_flash_trillium.estimate.total_gpus == 32
+
+    muse_simple = build_llm_self_hosting_view({"model": "muse-spark-open"})
+    assert muse_simple.selected_node.id == "a3-ultra"
+    assert muse_simple.estimate.nodes_per_replica == 2
+    muse_gpu, muse_tpu = muse_simple.accelerators
+    assert (muse_gpu.node.id, muse_gpu.estimate.nodes_per_replica) == ("a3-ultra", 2)
+    assert (muse_tpu.node.id, muse_tpu.estimate.nodes_per_replica) == ("tpu7x-standard-4t", 4)
+    assert muse_gpu.estimate.total_monthly_usd < muse_tpu.estimate.total_monthly_usd
+
+    muse_trillium_zero = build_llm_self_hosting_view(
+        {"mode": "advanced", "model": "muse-spark-open", "node": "ct6e-standard-8t", "quant": "fp16", "overhead": "0"}
+    )
+    assert muse_trillium_zero.estimate.nodes_per_replica == 8
+    assert muse_trillium_zero.estimate.total_gpus == 64
+
+    muse_trillium_default = build_llm_self_hosting_view(
+        {"mode": "advanced", "model": "muse-spark-open", "node": "ct6e-standard-8t", "quant": "fp16"}
+    )
+    assert muse_trillium_default.estimate.nodes_per_replica == 16
+    assert muse_trillium_default.estimate.total_gpus == 128
+
+    assert (
+        hosting_inputs.nodes_for_model(muse_simple.selected_model, muse_trillium_default.selected_node, 256 * 20) == 32
+    )
+    assert hosting_inputs.nodes_for_model(muse_simple.selected_model, muse_tpu.node, 768 * 17) == 32
+    over_pod = configuration_issue(replace(muse_trillium_default.inputs, memory_overhead_pct=450))
+    assert "exceeds the 256-chip Cloud TPU v6e Trillium pod limit" in over_pod
 
     for row in build_llm_self_hosting_view({"model": "gemma-4-26b-a4b", "preset": "small-team"}).accelerators:
         assert not row.estimate.compatibility_issue

@@ -57,6 +57,9 @@ async def test_server_lists_twelve_read_only_tools_and_two_prompts(mcp_server: M
         article_schema = article_tool.output_schema["$defs"]["ArticleSummary"]
         assert set(article_schema["required"]) == required_article_fields
         assert set(article_schema["properties"]) == required_article_fields
+    profile_tool = next(tool for tool in tools if tool.name == "get_profile")
+    assert profile_tool.description is not None
+    assert "leadership" in profile_tool.description
     search_tool = next(tool for tool in tools if tool.name == "search_articles")
     assert search_tool.input_schema["properties"]["query"]["description"] == (
         "words to search for across article titles, tags, descriptions, and full text (at most 128 characters)"
@@ -243,7 +246,15 @@ async def test_tools_reject_unknown_arguments_and_advertise_closed_schemas(mcp_s
 
 @pytest.mark.anyio
 async def test_prompt_caller_mistakes_are_invalid_params(mcp_server: MCPServer[None]) -> None:
-    for name, arguments in (("assess_fit", {}), ("brief_me", {"audience": "x", "extra": "y"}), ("nope", {})):
+    for name, arguments in (
+        ("assess_fit", {}),
+        ("assess_fit", {"brief": ""}),
+        ("assess_fit", {"brief": "   "}),
+        ("brief_me", {"audience": ""}),
+        ("brief_me", {"audience": " \t\n "}),
+        ("brief_me", {"audience": "x", "extra": "y"}),
+        ("nope", {}),
+    ):
         with pytest.raises(MCPError) as caught:
             await mcp_server.get_prompt(name, arguments)
         assert caught.value.code == INVALID_PARAMS

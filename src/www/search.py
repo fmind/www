@@ -43,7 +43,7 @@ def tokenize(text: str) -> tuple[str, ...]:
 
 
 def normalize_search_query(query: str) -> str:
-    return query.strip()[:SEARCH_QUERY_LIMIT].strip()
+    return " ".join(query.split())[:SEARCH_QUERY_LIMIT].rstrip()
 
 
 class SearchIndex:

@@ -288,7 +288,8 @@ def create_mcp_server(
         name="get_profile",
         title="Get profile",
         description=(
-            "Return the core profile: identity, headline, job title, contact, socials, biography, and areas of expertise."
+            "Return the core profile: identity, headline, job title, contact, socials, biography, leadership, "
+            "and areas of expertise."
         ),
         annotations=_READ_ONLY,
         structured_output=True,
@@ -554,8 +555,11 @@ def create_mcp_server(
             ),
         ],
     ) -> str:
+        text = brief.strip()
+        if not text:
+            raise ValueError("brief must not be empty")
         return (
-            f"Assess this brief against Fmind's portfolio: {brief}\n\n"
+            f"Assess this brief against Fmind's portfolio: {text}\n\n"
             "Use get_profile, list_experience, list_certifications, and get_services. Distinguish direct evidence, "
             "transferable strengths, gaps, and concrete next steps."
         )
@@ -577,8 +581,11 @@ def create_mcp_server(
             ),
         ],
     ) -> str:
+        target = audience.strip()
+        if not target:
+            raise ValueError("audience must not be empty")
         return (
-            f"Brief this audience about Fmind: {audience}. Use the portfolio resource and relevant tools. Lead with "
+            f"Brief this audience about Fmind: {target}. Use the portfolio resource and relevant tools. Lead with "
             "audience value, support claims with specific experience or publications, and keep the result concise."
         )
 

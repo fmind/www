@@ -146,6 +146,10 @@ def test_parse_edition_rejects_invalid_files(slug: str, text: str, message: str)
         ("https://www.youtube.com/@channel", "https://www.youtube.com/@channel"),
         ("https://arxiv.org/pdf/2601.00001v2.pdf", "https://arxiv.org/abs/2601.00001v2"),
         ("https://arxiv.org/html/2601.00001v2", "https://arxiv.org/abs/2601.00001v2"),
+        ("https://export.arxiv.org/abs/2601.00001v2/", "https://arxiv.org/abs/2601.00001v2"),
+        ("https://www.arxiv.org/abs/2601.00001v2", "https://arxiv.org/abs/2601.00001v2"),
+        ("https://example.com/?utm_source=x#top", "https://example.com"),
+        ("https://example.com", "https://example.com"),
         # Only X share links carry s= and t= trackers; elsewhere they can name the page.
         ("https://x.com/user/status/1?t=abc&s=20", "https://x.com/user/status/1"),
         ("https://forum.example.com/viewtopic.php?t=123", "https://forum.example.com/viewtopic.php?t=123"),

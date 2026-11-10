@@ -105,7 +105,12 @@ def prefers_markdown(accept: str) -> bool:
                 else:
                     quality = float(value)
                 seen_quality = True
-            elif key.strip() == "charset" and value.strip() in ("utf-8", '"utf-8"'):
+            elif (
+                not seen_quality
+                and not charset_specific
+                and key.strip() == "charset"
+                and value.strip() in ("utf-8", '"utf-8"')
+            ):
                 charset_specific = True
             else:
                 supported = False

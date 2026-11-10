@@ -48,6 +48,8 @@ from www.sites.models import HostingEstimate, HostingInputs
         ("TEXT/MARKDOWN; charset=utf-8", True),
         ("text/markdown;variant=unknown", False),
         ('text/markdown; charset = "utf-8"', True),
+        ("text/markdown;q=1;charset=utf-8", False),
+        ("text/markdown;charset=utf-8;charset=utf-8", False),
         ("text/markdown;charset=utf-8;q=0, text/markdown;q=1", False),
         ("text/html;charset=utf-8;q=0, text/html;q=1, text/markdown;q=0.5", True),
         ("text/markdown;q=0, text/*;charset=utf-8;q=1", False),

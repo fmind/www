@@ -57,6 +57,7 @@ def test_search_matches_body_case_and_plural_forms() -> None:
 
 def test_normalize_search_query_trims_and_caps_unicode() -> None:
     assert normalize_search_query("  agents  ") == "agents"
+    assert normalize_search_query("  ai \n\t  agents\r\nsecurity  ") == "ai agents security"
     result = normalize_search_query("é" * (SEARCH_QUERY_LIMIT + 50))
     assert len(result) == SEARCH_QUERY_LIMIT
     assert "�" not in result

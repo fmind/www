@@ -178,6 +178,8 @@ def canonicalize_url(raw_url: str) -> str:
     host = parsed.netloc.lower().removeprefix("mobile.")
     if host in ("twitter.com", "www.twitter.com", "www.x.com"):
         host = "x.com"
+    if host in ("www.arxiv.org", "export.arxiv.org"):
+        host = "arxiv.org"
     path = parsed.path
     if host in _YOUTUBE_HOSTS:
         video = ""
@@ -192,7 +194,7 @@ def canonicalize_url(raw_url: str) -> str:
             return f"https://www.youtube.com/watch?v={video}"
         host = "www.youtube.com"
     if (
-        host in ("arxiv.org", "www.arxiv.org", "export.arxiv.org")
+        host == "arxiv.org"
         and path.startswith(("/pdf/", "/html/"))
         and (paper := path.removeprefix("/pdf/").removeprefix("/html/").removesuffix(".pdf").strip("/"))
     ):
@@ -203,8 +205,7 @@ def canonicalize_url(raw_url: str) -> str:
         for key, value in parse_qsl(parsed.query, keep_blank_values=True)
         if key.lower() not in strip and not key.lower().startswith(_STRIP_PREFIXES)
     ]
-    if len(path) > 1 and path.endswith("/"):
-        path = path.rstrip("/")
+    path = path.rstrip("/")
     return urlunparse(("https", host, path, parsed.params, urlencode(query), ""))
 
 
