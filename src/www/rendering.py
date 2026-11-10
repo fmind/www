@@ -74,6 +74,20 @@ _URL_ATTRIBUTES: Final = frozenset({"action", "formaction", "href", "poster", "s
 _URL_IGNORED_CHARACTERS = re.compile(r"[\x00-\x20\x7f]+")
 
 
+_IMAGE_MIME_TYPES: Final = {
+    ".gif": "image/gif",
+    ".jpeg": "image/jpeg",
+    ".jpg": "image/jpeg",
+    ".png": "image/png",
+    ".webp": "image/webp",
+}
+
+
+def _static_route(url_or_path: str) -> str:
+    path = url_or_path.removeprefix(METADATA.site_url).partition("?")[0]
+    return path if path.startswith("/") else f"/{path}"
+
+
 def _static_url_factory(asset_hashes: Mapping[str, str]) -> Callable[[str], str]:
     # Copy even immutable-looking inputs so a renderer can never observe a
     # later caller mutation or another application's asset load.
@@ -87,7 +101,29 @@ def _static_url_factory(asset_hashes: Mapping[str, str]) -> Callable[[str], str]
     return static_url
 
 
-def create_environment(asset_hashes: Mapping[str, str]) -> Environment:
+def _image_size_factory(image_sizes: Mapping[str, tuple[int, int]]) -> Callable[[str], tuple[int, int] | None]:
+    sizes = dict(image_sizes)
+
+    def image_size(url_or_path: str) -> tuple[int, int] | None:
+        if not url_or_path:
+            return None
+        return sizes.get(_static_route(url_or_path))
+
+    return image_size
+
+
+def _image_mime_type(url_or_path: str) -> str:
+    if not url_or_path:
+        return ""
+    route = _static_route(url_or_path)
+    dot = route.rfind(".")
+    return _IMAGE_MIME_TYPES.get(route[dot:].lower(), "") if dot >= 0 else ""
+
+
+def create_environment(
+    asset_hashes: Mapping[str, str],
+    image_sizes: Mapping[str, tuple[int, int]] | None = None,
+) -> Environment:
     """Create the locked-down Jinja environment shared by page renders."""
     environment = Environment(
         loader=PackageLoader("www", "templates"),
@@ -113,6 +149,8 @@ def create_environment(asset_hashes: Mapping[str, str]) -> Environment:
             "format_usd2": format_usd2,
             "hosting_decision_copy": hosting_decision_copy,
             "hosting_decision_title": hosting_decision_title,
+            "image_mime_type": _image_mime_type,
+            "image_size": _image_size_factory(image_sizes or {}),
             "static_url": _static_url_factory(asset_hashes),
         },
     )
@@ -138,7 +176,7 @@ class Renderer:
         biography_html: Sequence[str] = (),
         structured_data: Sequence[str] = (),
     ) -> None:
-        self._environment = create_environment(assets.hashes)
+        self._environment = create_environment(assets.hashes, assets.image_sizes)
         self._stylesheet_url = assets.stylesheet_url
         self._clock = clock or _utc_now
         # Only startup-owned values enter these bounded snapshots. Request data

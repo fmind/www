@@ -15,11 +15,11 @@
   {% endif %}
   <article class="article-page bg-base-100 min-h-screen px-4 py-12 md:py-20">
     <header class="max-w-4xl mx-auto text-center mb-10 md:mb-14">
-      <a class="link link-primary font-semibold" href="/articles/">← All articles</a>
+      <a class="link link-primary font-semibold inline-flex min-h-6 items-center" href="/articles/">← All articles</a>
       <h1 class="font-heading text-4xl md:text-6xl font-bold leading-tight text-balance mt-6">{{ article.title }}</h1>
       <p class="text-xl text-base-content/70 leading-relaxed mt-6 text-balance">{{ article.description }}</p>
       <div class="flex flex-wrap justify-center items-center gap-x-3 gap-y-2 text-sm text-base-content/65 mt-6">
-        <a href="/" rel="author" class="link link-primary">{{ metadata.name }} ({{ metadata.alternate_name }})</a>
+        <a href="/" rel="author" class="link link-primary inline-flex min-h-6 items-center">{{ metadata.name }} ({{ metadata.alternate_name }})</a>
         <span aria-hidden="true">·</span>
         <time datetime="{{ article.date.strftime('%Y-%m-%d') }}">{{ article.date.strftime('%B %-d, %Y') }}</time>
         {% if article.modified_date().date() > article.date.date() %}

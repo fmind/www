@@ -1,3 +1,14 @@
+var reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+var syncArticleVideos = function () {
+  if (!reducedMotion.matches) return;
+  document.querySelectorAll('.article-page video[autoplay]').forEach(function (video) {
+    video.pause();
+    video.removeAttribute('autoplay');
+  });
+};
+syncArticleVideos();
+reducedMotion.addEventListener('change', syncArticleVideos);
+
 var copyStatus = document.getElementById('copy-link-status');
 var copyTimeout;
 var copyRequest = 0;

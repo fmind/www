@@ -29,12 +29,15 @@ class _NoOverlapError(ValueError):
 
 
 def etag_matches(header: str, current: str) -> bool:
-    """Apply weak comparison to a comma-separated If-None-Match field."""
-    return any(
-        candidate == "*" or candidate.removeprefix("W/") == current.removeprefix("W/")
-        for item in header.split(",")
-        if (candidate := item.strip())
-    )
+    """Apply weak comparison to an If-None-Match field (RFC 9110 §13.1.2)."""
+    value = header.strip()
+    if value == "*":
+        return True
+    candidates = tuple(item.strip() for item in value.split(",") if item.strip())
+    if "*" in candidates:
+        return False
+    target = current.removeprefix("W/")
+    return any(candidate.removeprefix("W/") == target for candidate in candidates)
 
 
 def strong_etag_matches(header: str, current: str) -> bool:
@@ -167,6 +170,7 @@ async def _stream(file: BinaryIO, remaining: int, send: Send) -> None:
 
 async def _send_error(send: Send, body: bytes, size: int | None = None) -> None:
     headers = [
+        (b"cache-control", b"no-cache"),
         (b"content-type", b"text/plain; charset=utf-8"),
         (b"content-length", str(len(body)).encode("ascii")),
     ]

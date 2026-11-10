@@ -16,7 +16,7 @@ from litestar.types import ASGIApp, HTTPRequestEvent, Message
 from tests.conftest import asgi_scope
 from www.config import Config
 from www.middleware import SiteMiddleware
-from www.ranges import _stream, range_file_response
+from www.ranges import _stream, etag_matches, range_file_response, strong_etag_matches
 
 _BODY = b"0123456789abcdef"
 _CACHE_CONTROL = "public, max-age=86400, must-revalidate"
@@ -164,12 +164,27 @@ def test_non_overlapping_range_returns_sized_416(asset: Path) -> None:
 
     assert response.status_code == 416
     assert response.content == b"invalid range: failed to overlap\n"
+    assert response.headers["cache-control"] == "no-cache"
     assert response.headers["content-range"] == "bytes */16"
     assert response.headers["content-length"] == "33"
     assert response.headers["content-type"] == "text/plain; charset=utf-8"
     assert "accept-ranges" not in response.headers
     assert "content-disposition" not in response.headers
     assert response.headers["x-content-type-options"] == "nosniff"
+
+
+def test_etag_validators_enforce_rfc9110_weak_and_strong_comparison() -> None:
+    assert etag_matches("*", '"abc"')
+    assert etag_matches('W/"other", "abc"', '"abc"')
+    assert etag_matches('"abc"', 'W/"abc"')
+    assert not etag_matches('"other", *', '"abc"')
+    assert not etag_matches("", '"abc"')
+
+    assert strong_etag_matches("*", '"abc"')
+    assert strong_etag_matches('"other", "abc"', '"abc"')
+    assert not strong_etag_matches('W/"abc"', '"abc"')
+    assert not strong_etag_matches('"other", *', '"abc"')
+    assert not strong_etag_matches("", '"abc"')
 
 
 def test_empty_file_ignores_a_non_overlapping_range(tmp_path: Path) -> None:

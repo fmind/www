@@ -74,6 +74,8 @@ def test_environment_is_package_local_strict_and_autoescaped() -> None:
         "format_usd2",
         "hosting_decision_copy",
         "hosting_decision_title",
+        "image_mime_type",
+        "image_size",
         "static_url",
     } <= environment.globals.keys()
 
@@ -282,10 +284,7 @@ def test_renderer_renders_all_six_pages_with_real_domain_contexts(
             PageTemplate.LLM_SELF_HOSTING,
             page=site_page_metadata(site_page, site_structured_data(site_page)),
             nonce=nonce,
-            context={
-                "view": build_llm_self_hosting_view(),
-                "related_articles": tuple(item for item in articles if item.slug in site_page.article_slugs),
-            },
+            context={"view": build_llm_self_hosting_view()},
         ),
         PageTemplate.NOT_FOUND: renderer.render(
             PageTemplate.NOT_FOUND,
@@ -402,7 +401,8 @@ def crawled_pages(make_app: Callable[[], Litestar]) -> tuple[dict[str, str], set
         with TestClient(make_app()) as client:
             sitemap = client.get("/sitemap.xml").text
             paths = [urlsplit(location).path for location in re.findall(r"<loc>([^<]+)</loc>", sitemap)]
-            for path in [*paths, "/scan", "/missing-page"]:
+            news_slug = client.get("/api/news").json()["editions"][0]["slug"]
+            for path in [*paths, f"/news/{news_slug}/", "/scan", "/missing-page"]:
                 response = client.get(path)
                 assert response.status_code == (404 if path == "/missing-page" else 200), path
                 pages[path] = response.text

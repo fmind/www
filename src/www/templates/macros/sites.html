@@ -12,7 +12,7 @@
 {%- endmacro %}
 
 {% macro site_breadcrumb(current_label) -%}
-  <nav aria-label="Breadcrumb" class="text-sm text-base-content/70"><a class="link hover:text-primary" href="/sites/">Sites</a><span aria-hidden="true"> / </span><span aria-current="page">{{ current_label }}</span></nav>
+  <nav aria-label="Breadcrumb" class="text-sm text-base-content/70"><a class="link hover:text-primary inline-flex min-h-6 items-center" href="/sites/">Sites</a><span aria-hidden="true"> / </span><span aria-current="page">{{ current_label }}</span></nav>
 {%- endmacro %}
 
 {% macro validation_alert(messages) -%}
@@ -60,7 +60,7 @@
   <div class="rounded-2xl border border-base-300 bg-base-100 p-5 md:p-6 space-y-5">
     <div class="flex flex-wrap items-center justify-between gap-3">
       <h2 class="font-heading text-xl font-bold">Your workload</h2>
-      {% if view.inputs.mode == "simple" %}<a id="advanced-mode" data-scenario-link href="{{ view.advanced_url }}" class="link link-primary text-sm font-semibold">Advanced settings</a>{% else %}<a id="simple-mode" data-scenario-link href="{{ view.simple_url }}" class="link link-primary text-sm font-semibold">Simple mode</a>{% endif %}
+      {% if view.inputs.mode == "simple" %}<a id="advanced-mode" data-scenario-link href="{{ view.advanced_url }}" class="link link-primary text-sm font-semibold inline-flex min-h-6 items-center">Advanced settings</a>{% else %}<a id="simple-mode" data-scenario-link href="{{ view.simple_url }}" class="link link-primary text-sm font-semibold inline-flex min-h-6 items-center">Simple mode</a>{% endif %}
     </div>
     <input type="hidden" name="mode" value="{{ view.inputs.mode }}"/>
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -173,7 +173,7 @@
             <p class="text-sm font-semibold mt-2">{{ row.node.name }}</p>
             <p class="text-sm text-base-content/75 mt-1">{{ format_count(row.estimate.total_nodes, "node") }} · {{ format_count(row.estimate.total_gpus, unit) }} · {{ row.quantization.name }}</p>
             {% if row.estimate.nodes_per_replica > 1 %}<p class="text-xs text-base-content/70 mt-2">Spans {{ format_count(row.estimate.nodes_per_replica, "host") }} per replica; confirm multi-host serving with a pilot.</p>{% endif %}
-            {% if row.node.id == view.selected_node.id and row.quantization.id == view.selected_quant.id %}<p class="text-xs font-semibold text-primary mt-3">Active setup</p>{% else %}<a data-scenario-link class="link link-primary text-sm font-semibold inline-block mt-3" href="{{ row.url }}">Inspect {{ row.family }} setup →</a>{% endif %}
+            {% if row.node.id == view.selected_node.id and row.quantization.id == view.selected_quant.id %}<p class="text-xs font-semibold text-primary mt-3">Active setup</p>{% else %}<a data-scenario-link class="link link-primary text-sm font-semibold inline-flex min-h-6 items-center mt-3" href="{{ row.url }}">Inspect {{ row.family }} setup →</a>{% endif %}
           {% endif %}
         </article>
       {% endfor %}
@@ -236,7 +236,7 @@
     <div>
       <p class="text-sm uppercase tracking-[0.18em] text-primary font-semibold">Your scenario · {{ view.demand_label }}</p>
       <h2 id="executive-result" class="text-3xl md:text-4xl font-heading font-bold mt-2 scroll-mt-24">What your demand actually costs</h2>
-      <a class="link link-primary text-sm inline-block mt-3" href="#calculator">Change assumptions ↑</a>
+      <a class="link link-primary text-sm inline-flex min-h-6 items-center mt-3" href="#calculator">Change assumptions ↑</a>
       <p class="text-base-content/75 mt-3">{{ format_decimal(view.estimate.requests_month, 0) }} requests/month · {{ format_number(view.estimate.input_tokens_month) }} input tokens · {{ format_number(view.estimate.output_tokens_month) }} output tokens.</p>
     </div>
     {% if not view.estimate.compatibility_issue %}<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -296,7 +296,7 @@
         <article class="rounded-2xl border border-base-300 bg-base-100 p-6">
           <h3 class="font-heading text-xl font-bold">{{ row.quantization.name }}</h3>
           <p class="font-heading text-3xl font-bold text-primary mt-4">{{ format_ungrouped(row.estimate.weight_memory_gb, 1) }} GB<span class="block font-body text-sm font-normal text-base-content/70 mt-1">weights only, per replica</span></p>
-          {% if row.estimate.compatibility_issue %}<p class="font-semibold mt-4">Unavailable: {{ row.estimate.compatibility_issue }}</p>{% else %}<p class="font-semibold mt-4">{{ row.node.name }} · {{ format_usd2(row.estimate.total_monthly_usd) }}/month</p><a data-scenario-link class="link link-primary inline-block mt-3" href="{{ row.url }}">Use this checkpoint</a>{% endif %}
+          {% if row.estimate.compatibility_issue %}<p class="font-semibold mt-4">Unavailable: {{ row.estimate.compatibility_issue }}</p>{% else %}<p class="font-semibold mt-4">{{ row.node.name }} · {{ format_usd2(row.estimate.total_monthly_usd) }}/month</p><a data-scenario-link class="link link-primary inline-flex min-h-6 items-center mt-3" href="{{ row.url }}">Use this checkpoint</a>{% endif %}
           <p class="text-sm text-base-content/75 leading-relaxed mt-3">{{ row.quantization.guidance }}</p>
         </article>
       {% endfor %}
@@ -347,7 +347,7 @@
       </figure>
       <div data-cost-controls class="hidden mt-6">
         <label for="cost-volume" class="block font-semibold">Explore monthly demand</label>
-        <input id="cost-volume" data-cost-range type="range" min="0" max="{{ view.cost_plot.frames|length - 1 }}" value="{{ view.cost_plot.selected }}" disabled class="w-full mt-3 accent-primary" aria-describedby="cost-slider-help" aria-valuetext="{{ selected_frame.label }}"/>
+        <input id="cost-volume" data-cost-range type="range" min="0" max="{{ view.cost_plot.frames|length - 1 }}" value="{{ view.cost_plot.selected }}" disabled class="w-full min-h-6 mt-3 accent-primary" aria-describedby="cost-slider-help" aria-valuetext="{{ selected_frame.label }}"/>
         <p id="cost-slider-help" class="text-sm text-base-content/70">Round daily workloads × your active days per month. Drag or use the arrow keys, then apply the volume.</p>
       </div>
       <output data-cost-output for="cost-volume" aria-live="polite" aria-atomic="true" class="block rounded-xl bg-base-200 p-4 font-semibold leading-relaxed mt-5">{{ selected_frame.summary }}</output>

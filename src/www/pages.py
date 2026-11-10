@@ -1,14 +1,25 @@
 """Pure page metadata builders shared by routes and tests."""
 
+import json
 from dataclasses import replace
+from functools import lru_cache
+from pathlib import Path
+from typing import Any
 
+from PIL import UnidentifiedImageError
+
+from www.assets import STATIC_MANIFEST
 from www.connect import CONNECT_URL
+from www.content import image_dimensions
 from www.data import METADATA, get_application_structured_data, get_page_structured_data
 from www.models import Article, ArticleIndexView, PageMetadata, SitePage
 from www.news import NEWS_FEED_PATH, NEWS_TOPICS, NewsEdition
 
 _IDENTITY = f"{METADATA.name} ({METADATA.alternate_name})"
 _ARTICLE_INDEX_TITLE = f"Articles | {_IDENTITY}"
+_HOME_URL = f"{METADATA.site_url}/"
+_ARTICLES_URL = f"{METADATA.site_url}/articles/"
+_SITES_URL = f"{METADATA.site_url}/sites/"
 # Pages other than articles share the site's social card.
 _WEBSITE = PageMetadata(
     image_url=f"{METADATA.site_url}/static/img/og-image.jpg",
@@ -17,12 +28,93 @@ _WEBSITE = PageMetadata(
 )
 
 
+@lru_cache(maxsize=4)
+def _manifest_image_sizes(manifest_path: str) -> dict[str, tuple[int, int]]:
+    """Read precomputed raster dimensions when the image build manifest is present."""
+    manifest = Path(manifest_path)
+    if not manifest.is_file():
+        return {}
+    try:
+        entries = json.loads(manifest.read_text(encoding="utf-8"))
+    except OSError, ValueError:
+        return {}
+    if not isinstance(entries, dict):
+        return {}
+    sizes: dict[str, tuple[int, int]] = {}
+    for route, entry in entries.items():
+        if isinstance(entry, dict) and isinstance(entry.get("width"), int) and isinstance(entry.get("height"), int):
+            sizes[route] = (entry["width"], entry["height"])
+    return sizes
+
+
+@lru_cache(maxsize=256)
+def _static_image_size(image_url: str, manifest_path: str) -> tuple[int, int] | None:
+    """Resolve (width, height) for a /static/ image URL without decoding pixel payloads."""
+    prefix = f"{METADATA.site_url}/static/"
+    if not image_url.startswith(prefix):
+        return None
+    relative = image_url.removeprefix(prefix)
+    route = f"/static/{relative}"
+    if dimensions := _manifest_image_sizes(manifest_path).get(route):
+        return dimensions
+    static_root = Path("static").resolve()
+    path = (static_root / relative).resolve()
+    if not path.is_relative_to(static_root) or not path.is_file():
+        return None
+    try:
+        return image_dimensions(path)
+    except OSError, UnidentifiedImageError:
+        return None
+
+
+def _image_object(url: str, caption: str) -> dict[str, object]:
+    image: dict[str, object] = {"@type": "ImageObject", "url": url, "caption": caption}
+    if dimensions := _static_image_size(url, STATIC_MANIFEST):
+        image["width"], image["height"] = dimensions
+    return image
+
+
+def _breadcrumb_list(url: str, *crumbs: tuple[str, str]) -> dict[str, object]:
+    return {
+        "@id": f"{url}#breadcrumb",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+            {"@type": "ListItem", "position": position, "name": label, "item": target}
+            for position, (label, target) in enumerate(crumbs, start=1)
+        ],
+    }
+
+
+def _dump_json_ld(payload: dict[str, Any]) -> str:
+    return json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+
+
+def _enriched_page_structured_data(
+    page_type: str,
+    canonical: str,
+    title: str,
+    description: str,
+    *,
+    breadcrumb_label: str = "",
+) -> str:
+    payload = json.loads(get_page_structured_data(page_type, canonical, title, description))
+    graph: list[dict[str, Any]] = payload["@graph"]
+    page = graph[-1]
+    page["inLanguage"] = "en"
+    page["primaryImageOfPage"] = _image_object(_WEBSITE.image_url, _WEBSITE.image_alt)
+    if breadcrumb_label:
+        breadcrumb = _breadcrumb_list(canonical, ("Home", _HOME_URL), (breadcrumb_label, canonical))
+        page["breadcrumb"] = {"@id": breadcrumb["@id"]}
+        graph.insert(-1, breadcrumb)
+    return _dump_json_ld(payload)
+
+
 def home_metadata(structured_data: str) -> PageMetadata:
     return replace(
         _WEBSITE,
         title=METADATA.title,
         description=METADATA.description,
-        canonical=f"{METADATA.site_url}/",
+        canonical=_HOME_URL,
         structured_data=structured_data,
         is_home=True,
         # Deferred sections change height during animated fragment scrolling.
@@ -36,6 +128,7 @@ def _web_page(
     title: str,
     description: str,
     canonical: str,
+    breadcrumb_label: str = "",
     no_index: bool = False,
     preload_code_font: bool = False,
 ) -> PageMetadata:
@@ -45,7 +138,13 @@ def _web_page(
         title=title,
         description=description,
         canonical=canonical,
-        structured_data=get_page_structured_data(page_type, canonical, title, description),
+        structured_data=_enriched_page_structured_data(
+            page_type,
+            canonical,
+            title,
+            description,
+            breadcrumb_label="" if no_index else breadcrumb_label,
+        ),
         no_index=no_index,
         preload_code_font=preload_code_font,
     )
@@ -57,6 +156,7 @@ def connect_metadata() -> PageMetadata:
         title=f"Connect with {_IDENTITY}",
         description="Connect with Médéric Hurier (Fmind), freelance AI Architect based in Luxembourg. Find me on LinkedIn or save my contact details.",
         canonical=CONNECT_URL,
+        breadcrumb_label="Connect",
     )
 
 
@@ -66,6 +166,7 @@ def agents_metadata() -> PageMetadata:
         title=f"For AI agents | {_IDENTITY}",
         description="Explore Médéric Hurier (Fmind)'s profile, services, articles, and decision tools through free, read-only APIs and MCP.",
         canonical=f"{METADATA.site_url}/agents",
+        breadcrumb_label="For AI agents",
         preload_code_font=True,
     )
 
@@ -76,6 +177,7 @@ def privacy_metadata() -> PageMetadata:
         title=f"Privacy | {_IDENTITY}",
         description="How this website measures visits and handles personal information.",
         canonical=f"{METADATA.site_url}/privacy",
+        breadcrumb_label="Privacy",
         # The page names the _ga cookies in <code>.
         preload_code_font=True,
     )
@@ -95,8 +197,12 @@ def scan_metadata() -> PageMetadata:
 _ARTICLE_INDEX_DESCRIPTION = (
     "Articles on AI agents, MLOps, cloud architecture, security, and pragmatic engineering systems."
 )
-ARTICLE_INDEX_STRUCTURED_DATA = get_page_structured_data(
-    "CollectionPage", f"{METADATA.site_url}/articles/", _ARTICLE_INDEX_TITLE, _ARTICLE_INDEX_DESCRIPTION
+ARTICLE_INDEX_STRUCTURED_DATA = _enriched_page_structured_data(
+    "CollectionPage",
+    _ARTICLES_URL,
+    _ARTICLE_INDEX_TITLE,
+    _ARTICLE_INDEX_DESCRIPTION,
+    breadcrumb_label="Articles",
 )
 
 
@@ -106,16 +212,55 @@ def article_index_metadata(view: ArticleIndexView) -> PageMetadata:
         preload = view.results[0].card_image_path()
     elif view.years and view.years[0].articles:
         preload = view.years[0].articles[0].card_image_path()
-    title = f"Search: {view.query} | {_ARTICLE_INDEX_TITLE}" if view.searching() else _ARTICLE_INDEX_TITLE
+    if view.searching() and view.active_tag:
+        title = f"Search: {view.query} ({view.active_tag}) | {_ARTICLE_INDEX_TITLE}"
+    elif view.searching():
+        title = f"Search: {view.query} | {_ARTICLE_INDEX_TITLE}"
+    elif view.active_tag:
+        title = f"{view.active_tag} Articles | {_IDENTITY}"
+    else:
+        title = _ARTICLE_INDEX_TITLE
     return replace(
         _WEBSITE,
         title=title,
         description=_ARTICLE_INDEX_DESCRIPTION,
-        canonical=f"{METADATA.site_url}/articles/",
+        canonical=_ARTICLES_URL,
         structured_data=ARTICLE_INDEX_STRUCTURED_DATA,
         preload_image=preload,
         no_index=view.searching(),
     )
+
+
+def _enriched_article_structured_data(article: Article, structured_data: str) -> str:
+    if not structured_data:
+        return ""
+    try:
+        payload = json.loads(structured_data)
+    except ValueError:
+        return structured_data
+    graph = payload.get("@graph")
+    if not isinstance(graph, list):
+        return structured_data
+    posting = next((node for node in graph if isinstance(node, dict) and node.get("@type") == "BlogPosting"), None)
+    if posting is None:
+        return structured_data
+    posting["publisher"] = {"@id": f"{METADATA.site_url}/#person"}
+    posting["inLanguage"] = "en"
+    posting["isAccessibleForFree"] = True
+    posting["timeRequired"] = f"PT{article.reading_minutes}M"
+    if article.tags:
+        posting["articleSection"] = list(article.tags)
+    image = posting.get("image")
+    if isinstance(image, dict) and (dimensions := _static_image_size(article.image_url, STATIC_MANIFEST)):
+        image["width"], image["height"] = dimensions
+    breadcrumb = _breadcrumb_list(
+        article.url,
+        ("Home", _HOME_URL),
+        ("Articles", _ARTICLES_URL),
+        (article.title, article.url),
+    )
+    graph.insert(-1, breadcrumb)
+    return _dump_json_ld(payload)
 
 
 def article_metadata(article: Article, structured_data: str) -> PageMetadata:
@@ -127,7 +272,7 @@ def article_metadata(article: Article, structured_data: str) -> PageMetadata:
         image_url=article.image_url,
         image_alt=article.image_alt,
         kind="article",
-        structured_data=structured_data,
+        structured_data=_enriched_article_structured_data(article, structured_data),
         preload_code_font="<code" in article.html,
         no_index=article.draft,
     )
@@ -145,6 +290,7 @@ def news_index_metadata() -> PageMetadata:
         title=f"News | {_IDENTITY}",
         description=_NEWS_INDEX_DESCRIPTION,
         canonical=f"{METADATA.site_url}/news/",
+        breadcrumb_label="News",
     )
     return replace(page, feed_path=NEWS_FEED_PATH, feed_title="Fmind news")
 
@@ -164,7 +310,24 @@ def news_edition_metadata(edition: NewsEdition) -> PageMetadata:
 
 
 def site_structured_data(page: SitePage) -> str:
-    return get_application_structured_data(page.url, page.title, page.description)
+    payload = json.loads(get_application_structured_data(page.url, page.title, page.description))
+    graph: list[dict[str, Any]] = payload["@graph"]
+    nodes = {node["@id"]: node for node in graph if isinstance(node, dict) and "@id" in node}
+    breadcrumb = _breadcrumb_list(
+        page.url,
+        ("Home", _HOME_URL),
+        ("Sites", _SITES_URL),
+        (page.title, page.url),
+    )
+    if webpage := nodes.get(f"{page.url}#webpage"):
+        webpage["inLanguage"] = "en"
+        webpage["breadcrumb"] = {"@id": breadcrumb["@id"]}
+        webpage["primaryImageOfPage"] = _image_object(_WEBSITE.image_url, _WEBSITE.image_alt)
+    if application := nodes.get(f"{page.url}#application"):
+        application["inLanguage"] = "en"
+        application["audience"] = {"@type": "Audience", "audienceType": page.audience}
+    graph.insert(-2, breadcrumb)
+    return _dump_json_ld(payload)
 
 
 def site_index_metadata() -> PageMetadata:
@@ -172,7 +335,8 @@ def site_index_metadata() -> PageMetadata:
         "CollectionPage",
         title=f"Sites | {METADATA.site_name}",
         description="Source-backed decision tools for AI architecture, infrastructure, and operating economics.",
-        canonical=f"{METADATA.site_url}/sites/",
+        canonical=_SITES_URL,
+        breadcrumb_label="Sites",
     )
 
 
@@ -188,11 +352,11 @@ def site_page_metadata(page: SitePage, structured_data: str) -> PageMetadata:
 
 
 def not_found_metadata() -> PageMetadata:
-    # A missing page describes nothing, so it carries no JSON-LD graph.
+    # A missing page describes nothing, so it carries no canonical URL or JSON-LD graph.
     return replace(
         _WEBSITE,
         title="Page not found | Fmind",
         description="The requested page could not be found.",
-        canonical=f"{METADATA.site_url}/",
+        canonical="",
         no_index=True,
     )

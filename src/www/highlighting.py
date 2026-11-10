@@ -10,7 +10,7 @@ from pygments.token import STANDARD_TYPES, _TokenType
 from pygments.util import ClassNotFound
 
 # Keep the existing token-class contract with native Fmind styles. Roles follow
-# fmind/theme's checks/palette.yaml and themes/ptpython/fmind.py; no sibling checkout
+# fmind/theme's checks/palette.yaml; no sibling checkout
 # or second style inheritance engine is needed to build the website.
 _CHROMA_CSS_RULES: Final = (
     ("PreWrapper", ".chroma", "color: #202124; background-color: #ffffff; -webkit-text-size-adjust: none"),
