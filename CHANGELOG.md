@@ -2,6 +2,98 @@
 
 All notable changes to this project are documented in this file.
 
+## [2.10.0] - 2026-11-10
+
+### 🚀 Features
+
+- _(news)_ Add 2026-11-09 edition
+- _(agents)_ Allow cross-origin reads of llms.txt and llms-full.txt
+- _(sites)_ Refresh the GitHub MCP catalog to v2.0.2 and re-verify sources
+- _(sites)_ Remove the quality lab from the LLM hosting tool
+- _(news)_ Keep the 30 latest editions in full in the Markdown index and link older ones
+- _(sites)_ Default batch workloads to Flex-start nodes and batch API rates, and re-verify prices
+- _(news)_ Add 2026-11-10 edition
+- _(seo)_ Enrich JSON-LD, OG metadata, mobile targets, and range headers
+
+### 🐛 Bug Fixes
+
+- _(deploy)_ Print the safe message of own verification errors
+- _(scripts)_ Bound deploy, scan, and news subprocess calls with timeouts
+- _(news)_ Report a wrongly typed API field per link instead of aborting the batch
+- _(sites)_ Never echo an unknown billing plan in the validation message
+- _(sites)_ Read the usage window like every other query value
+- _(seo)_ Claim only active credentials in JSON-LD and drop the graph from noindex news editions
+- _(home)_ Match the section toolbar breakpoints at fractional widths
+- _(mcp)_ Serve the site 404 for unknown /mcp-prefixed paths
+- _(assets)_ Keep the hashed image dimensions when no build manifest exists
+- _(mcp)_ Drop the apex host and origin that production always redirects
+- _(mcp)_ Remove the test-only host from the production allow-list
+- _(articles)_ Replace the removed AWS Strands guide link
+- _(infra)_ Accept followed 2xx on apex uptime check
+- _(sites,mcp)_ Enforce valid Cloud TPU slice topologies and boundary validation
+- _(security,ci)_ Harden HTTP boundary, telemetry, workflows, and locks
+
+### ⚡ Performance
+
+- _(feeds)_ Point the Atom icon at the 26 KB favicon instead of the 830 KB logo
+- _(highlighting)_ Emit spans only for token classes with their own style
+- _(news)_ Tokenize editions once at load instead of on every search
+- _(telemetry)_ Import the OpenTelemetry SDK only when tracing is configured
+- _(http)_ Hash the stylesheet and build the constant security headers once
+
+### ♻️ Refactor
+
+- _(lighthouse)_ Check sitemap locations and the tmp output path with plain rules
+- _(scan)_ Fail closed on missing target names and reuse the image gate task
+- _(images)_ Share one safe file read and one image opener
+- _(deploy)_ Drop unset head-check fallbacks and share the public probes
+- _(news)_ Let the GitHub API fallback handle site pages
+- _(sites)_ Share automatic_setup with the GPU and TPU comparison
+- _(sites)_ Type whole hosting quantities as integers
+- _(sites)_ Drop the cost frame field that only tests read
+- _(sites)_ Render monthly hours from the server constant
+- _(content)_ Name the article once per rejection and share the UTC-midnight builder
+- _(templates)_ Share the section rail, footer link class, and card image markup
+- _(ranges)_ Answer range lists with the full response and drop multipart
+- _(app)_ Build the snapshot routes from one table
+- _(app)_ Drop unused create_app directories and the /static redirect to a 404
+- _(sites)_ Dispatch site pages from a view map checked at startup
+- _(mcp)_ Require every server factory argument
+
+### 📚 Documentation
+
+- _(agents)_ Include the news API in the CLI contract
+- Align guides with the pipeline and keep one owner per rule
+- _(security)_ Require uniform bucket-level access on state bucket
+- _(articles)_ Drop purged Google Drive example links
+
+### 🧪 Testing
+
+- _(news)_ Count closer searches instead of timing the page parser
+- _(sites)_ Derive MCP context totals from the measured catalog
+- _(sites)_ Remove hosting tests that repeat other tests
+- _(app)_ Assert the article search filters by query and drop redundant string checks
+- _(telemetry)_ Cover the opt-in OTLP provider path
+- _(ranges)_ Cover ignored empty range sets
+- _(browser)_ Drop clock-dependent price assertions, guard own contexts, and follow removed controls
+- Share the logger, ASGI scope, and MCP request helpers
+- Build the shared client and MCP server once per session
+- _(mcp)_ Drop assertions other checks already make
+
+### ⚙️ Build & CI
+
+- Re-check main head in the deploy job and share one locked mise setup
+- Allowlist the Docker build context and state the base image once
+- Trim gate tasks and state the Trivy policy once
+- Pin dprint plugins by tarball checksum
+
+### 🧹 Miscellaneous
+
+- _(infra)_ Drop OpenTofu outputs nobody reads
+- Remove no-op classes, rules, and the import-time tag validation
+- _(static)_ Delete the unlinked web manifest and its route
+- Ignore agent worktrees and align scan notes with the merged cleanup
+
 ## [2.9.0] - 2026-11-08
 
 ### 🚀 Features
