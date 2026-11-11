@@ -49,7 +49,7 @@
         {%- for preset in view.presets -%}
           <button type="submit" id="preset-{{ preset.id }}" name="preset" value="{{ preset.id }}" aria-pressed="{{ (view.demand_label == preset.name)|lower }}" class="min-w-0 rounded-xl border border-base-300 p-4 text-left hover:border-primary hover:bg-primary/5 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary aria-pressed:border-primary aria-pressed:bg-primary/5 transition-colors"><span class="block font-bold text-primary">{{ preset.name }}</span> <span class="block text-sm text-base-content/75 leading-relaxed mt-2">{{ preset.description }}</span></button>
         {%- endfor -%}
-      </div><div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 mt-6">{{ number_input("requests", "Requests per active day", view.form_values["requests"], "1", "10000000", "any", "Include every model call in agent and tool loops.") -}}{{ number_input("days", "Active days per month", view.form_values["days"], "1", "31", "1", "1 for a one-off job; 22 for workdays; 30 for daily traffic.") -}}{{ number_input("input-tokens", "Input tokens per request", view.form_values["input-tokens"], "1", "1000000", "1", "Include instructions, retrieved context, history, and tool results.") -}}{{ number_input("tokens", "Output tokens per request", view.form_values["tokens"], "1", "1000000", "1", "Include billed reasoning tokens; use observed usage.") }}{{ number_input("window", "Usage window (hours/active day)", view.form_values["window"], "0.1", "24", "any", "Finish each day's calls inside this window. Running time below controls billing; shorter bursts need a pilot.") }}</div></fieldset></div>
+      </div><div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 mt-6">{{ number_input("requests", "Calls per active day", view.form_values["requests"], "1", "10000000", "any", format_employee_equivalent(view.inputs.requests_per_day) ~ ". Try 1,000, 10,000, or 100,000; count every agent step.") -}}{{ number_input("days", "Active days per month", view.form_values["days"], "1", "31", "1", "22 for workdays; 30 for daily traffic; 1 for a single run.") -}}{{ number_input("input-tokens", "Input tokens per request", view.form_values["input-tokens"], "1", "1000000", "1", "Include instructions, retrieved context, history, and tool results.") -}}{{ number_input("tokens", "Output tokens per request", view.form_values["tokens"], "1", "1000000", "1", "Include billed reasoning tokens; use observed usage.") }}{{ number_input("window", "Usage window (hours/active day)", view.form_values["window"], "0.1", "24", "any", "Finish each day's calls inside this window. Running time below controls billing; shorter bursts need a pilot.") }}</div></fieldset></div>
 {%- endmacro %}
 
 {% macro default_plan_label(preset) -%}
@@ -66,7 +66,7 @@
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
       {% if view.inputs.mode == "simple" %}<div>
         <label for="preset" class="block font-semibold mb-2">Workload</label>
-        <select id="preset" name="preset" class="select w-full" aria-describedby="preset-help">{% for preset in view.presets %}<option value="{{ preset.id }}"{% if preset.id == view.selected_preset.id %} selected{% endif %} data-calls="{{ format_ungrouped(preset.requests_per_day, 0) }}" data-plan="{{ default_plan_label(preset) }}" data-description="{{ preset.description }}" data-window="{{ format_ungrouped(preset.window_hours, 0) }}">{{ preset.name }}</option>{% endfor %}</select>
+        <select id="preset" name="preset" class="select w-full" aria-describedby="preset-help">{% for preset in view.presets %}<option value="{{ preset.id }}"{% if preset.id == view.selected_preset.id %} selected{% endif %} data-calls="{{ format_ungrouped(preset.requests_per_day, 0) }}" data-scale="Active: {{ format_decimal(preset.requests_per_day, 0) }}/day ({{ format_employee_equivalent(preset.requests_per_day) }}). Try 1,000, 10,000, or 100,000; count every agent step." data-plan="{{ default_plan_label(preset) }}" data-description="{{ preset.description }}" data-window="{{ format_ungrouped(preset.window_hours, 0) }}">{{ preset.name }}</option>{% endfor %}</select>
         <p id="preset-help" class="text-sm text-base-content/70 mt-2">{{ view.selected_preset.description }}</p>
       </div>{% endif %}
       <div>
@@ -77,7 +77,7 @@
       {% if view.inputs.mode == "simple" %}<div>
         <label for="requests" class="block font-semibold mb-2">Calls per active day <span class="font-normal text-sm">(optional)</span></label>
         <input class="input w-full" id="requests" name="requests" type="number" min="1" max="10000000" step="any" value="{% if view.custom_requests %}{{ view.form_values['requests'] }}{% endif %}" placeholder="{{ format_ungrouped(view.selected_preset.requests_per_day, 0) }}" aria-describedby="requests-help"/>
-        <p id="requests-help" class="text-sm text-base-content/70 mt-2">Leave blank to use the workload example. Count every call in an agent workflow.</p>
+        <p id="requests-help" class="text-sm text-base-content/70 mt-2">Active: {{ format_decimal(view.inputs.requests_per_day, 0) }}/day ({{ format_employee_equivalent(view.inputs.requests_per_day) }}). Try 1,000, 10,000, or 100,000; count every agent step.</p>
       </div>
       <div>
         <label for="window" class="block font-semibold mb-2">Daily usage window</label>
@@ -189,7 +189,7 @@
       <h2 id="executive-result" class="font-heading text-2xl md:text-3xl font-bold scroll-mt-24">{{ hosting_decision_title(view) }}</h2>
       <p class="text-base-content/80 mt-3 max-w-3xl">{{ hosting_decision_copy(view) }}</p>
     </div>
-    <p class="text-sm text-base-content/75">{{ view.demand_label }} · {{ format_decimal(view.estimate.requests_month, 0) }} calls/month over {{ format_ungrouped(view.inputs.active_days, 0) }} active days.</p>
+    <p class="text-sm text-base-content/75">{{ view.demand_label }} · {{ format_decimal(view.inputs.requests_per_day, 0) }} calls/active day ({{ format_employee_equivalent(view.inputs.requests_per_day) }}) · {{ format_decimal(view.estimate.requests_month, 0) }} calls/month over {{ format_ungrouped(view.inputs.active_days, 0) }} active days.</p>
     {% if not view.estimate.compatibility_issue %}<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       {{ metric_card("GKE infrastructure / month", "≈ " ~ format_budget(view.estimate.total_monthly_usd), view.selected_node.chip ~ " compute + cluster fee. Operations and additional services excluded.") }}
       {% if available %}{{ metric_card("Managed APIs / month", format_budget(available[0].monthly_usd) ~ "–" ~ format_budget(available[-1].monthly_usd), "Same token budget across the APIs below. Model quality and actual token usage vary.") }}{% endif %}
@@ -237,7 +237,7 @@
       <p class="text-sm uppercase tracking-[0.18em] text-primary font-semibold">Your scenario · {{ view.demand_label }}</p>
       <h2 id="executive-result" class="text-3xl md:text-4xl font-heading font-bold mt-2 scroll-mt-24">What your demand actually costs</h2>
       <a class="link link-primary text-sm inline-flex min-h-6 items-center mt-3" href="#calculator">Change assumptions ↑</a>
-      <p class="text-base-content/75 mt-3">{{ format_decimal(view.estimate.requests_month, 0) }} requests/month · {{ format_number(view.estimate.input_tokens_month) }} input tokens · {{ format_number(view.estimate.output_tokens_month) }} output tokens.</p>
+      <p class="text-base-content/75 mt-3">{{ format_decimal(view.inputs.requests_per_day, 0) }} calls/active day ({{ format_employee_equivalent(view.inputs.requests_per_day) }}) · {{ format_decimal(view.estimate.requests_month, 0) }} requests/month · {{ format_number(view.estimate.input_tokens_month) }} input tokens · {{ format_number(view.estimate.output_tokens_month) }} output tokens.</p>
     </div>
     {% if not view.estimate.compatibility_issue %}<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       {{ metric_card("Self-hosting / month", format_usd2(view.estimate.total_monthly_usd), format_usd2(view.estimate.compute_monthly_usd) ~ " compute + " ~ format_usd(view.estimate.control_monthly_usd) ~ " GKE fee, including idle time. Additional services and operating costs are excluded.") }}

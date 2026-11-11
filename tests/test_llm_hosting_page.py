@@ -108,12 +108,13 @@ def test_no_available_api_is_explicit(client: AppClient) -> None:
 def test_chart_styles_scale_with_the_baseline_count(client: AppClient, monkeypatch: pytest.MonkeyPatch) -> None:
     extra = tuple(replace(baseline, name=f"{baseline.name} copy") for baseline in API_BASELINES[:2])
     monkeypatch.setattr(economics, "API_BASELINES", API_BASELINES + extra)
+    expected = len(API_BASELINES) + len(extra)
 
-    assert [line.series for line in view().cost_plot.lines] == list(range(8))
+    assert [line.series for line in view().cost_plot.lines] == list(range(expected + 1))
     response = client.get(PAGE)
     assert response.status_code == 200
-    assert "one fixed GKE fleet and 7 managed APIs" in response.text
-    assert response.text.count('<polyline points="') == 8
+    assert f"one fixed GKE fleet and {expected} managed APIs" in response.text
+    assert response.text.count('<polyline points="') == expected + 1
 
 
 def test_method_and_sources_render_catalog_prices(client: AppClient) -> None:
@@ -183,7 +184,7 @@ def test_blocked_fleets_replace_break_even_capacity_verdicts(client: AppClient) 
     assert api_table(over_context).count("<td>Exceeds model context</td>") == accepted > 0
 
     # An unconfirmed multi-host fleet needs a pilot in both the cards and the table.
-    multi_host = client.get(PAGE, params={"mode": "advanced", "model": "kimi-k3"}).text
+    multi_host = client.get(PAGE, params={"mode": "advanced", "model": "kimi-k3-1-pro"}).text
     assert "Beyond this fleet" not in multi_host
     assert multi_host.count("Capacity needs a multi-host pilot") == 2 * len(API_BASELINES)
 
@@ -227,13 +228,17 @@ def test_catalog_hides_footprints_of_unsupported_checkpoints(client: AppClient) 
 def test_assumption_copy_renders_the_inputs_and_snapshot(client: AppClient, monkeypatch: pytest.MonkeyPatch) -> None:
     cached = client.get(PAGE, params={"api-mode": "cached"}).text
     assert (
-        "Minimum: 512 for Claude Sonnet 5.5, Claude Haiku 5.5, Claude Opus 5.5; 1,024 for GPT-6 Astra; "
-        "4,096 for Gemini 3.8 Flash. Ineligible requests use standard rates."
+        "Minimum: 512 for Claude Haiku 5.5, Claude Sonnet 5.5, Claude Opus 5.5, Claude Fable 5.2; "
+        "1,024 for GPT-6 Luna, GPT-6.1 Terra, GPT-6.1 Sol, GPT-6 Astra; "
+        "4,096 for Gemini 3.8 Flash, Gemini 3.5 Flash-Lite, Gemini 4 Argon, Gemini 4 Carbon. "
+        "Ineligible requests use standard rates."
     ) in cached
     assert (
-        "Assumes no misses within each group: 30-minute minimum retention for GPT-6 Astra; "
-        "five-minute explicit GenerateContent storage for Gemini 3.8 Flash; "
-        "five-minute writes for Claude Sonnet 5.5, Claude Haiku 5.5, Claude Opus 5.5."
+        "Assumes no misses within each group: "
+        "30-minute minimum retention for GPT-6 Luna, GPT-6.1 Terra, GPT-6.1 Sol, GPT-6 Astra; "
+        "best-effort implicit prefix reuse (explicit caching unsupported) for Gemini 4 Argon, Gemini 4 Carbon; "
+        "five-minute explicit GenerateContent storage for Gemini 3.8 Flash, Gemini 3.5 Flash-Lite; "
+        "five-minute writes for Claude Haiku 5.5, Claude Sonnet 5.5, Claude Opus 5.5, Claude Fable 5.2."
     ) in cached
     monkeypatch.setattr(
         economics,
@@ -274,7 +279,7 @@ def test_simple_mode_has_basic_choices_and_a_clean_shareable_url(client: AppClie
     assert result.inputs.quantization_id == "nvfp4"
     assert result.inputs.node_pool_id == "g4-standard-48"
     assert result.inputs.memory_overhead_pct == 25
-    assert result.estimate.requests_month == 44000
+    assert result.estimate.requests_month == 220000
     assert not result.validation
     parameters = parse_qs(urlsplit(hosting_url(result.inputs)).query)
     assert set(parameters) == {"mode", "preset", "model", "billing", "window"}
@@ -288,12 +293,9 @@ def test_simple_mode_has_basic_choices_and_a_clean_shareable_url(client: AppClie
 
 def test_presets_and_models_are_presented_from_smallest_to_largest(client: AppClient) -> None:
     assert [preset.id for preset in DEMAND_PRESETS] == [
-        "single-job",
         "small-team",
         "document-pipeline",
         "department",
-        "automated-support",
-        "scheduled-workflow",
         "service",
     ]
     assert [model.parameters_b for model in FRONTIER_MODELS] == sorted(model.parameters_b for model in FRONTIER_MODELS)
@@ -302,7 +304,9 @@ def test_presets_and_models_are_presented_from_smallest_to_largest(client: AppCl
     model_positions = [html.index(f'value="{model.id}"') for model in FRONTIER_MODELS]
     assert preset_positions == sorted(preset_positions)
     assert model_positions == sorted(model_positions)
-    assert "3,520 calls/month" in html
+    assert "22,000 calls/month" in html
+    assert "= 5 calls/day for 200 employees" in html
+    assert "1,000, 10,000, or 100,000" in html
     # Simple mode explains sizes in the picker, including mixture-of-experts active parameters.
     assert '<option value="qwen3-5-4b">Qwen3.5 4B · 4B</option>' in html
     assert '<option value="nemotron-3-5-super-vl">Nemotron 3.5 Super VL · 120B / 12B active</option>' in html
@@ -328,7 +332,7 @@ def test_hosting_page_keeps_every_section_open_with_setup_before_method(client: 
 
 def test_simple_outputs_explain_load_cost_and_fixed_fleet_break_even(client: AppClient) -> None:
     # Gemma 4 runs on both GPUs and Cloud TPU, so both comparison cards price a fleet.
-    scenario = {"model": "gemma-4-26b-a4b", "preset": "scheduled-workflow", "window": "1"}
+    scenario = {"model": "gemma-4-26b-a4b", "preset": "document-pipeline", "window": "1"}
     result = build_llm_self_hosting_view(scenario)
     for row in result.apis:
         assert row.break_even_fits == (row.break_even_requests <= result.estimate.capacity_requests_month)
@@ -336,7 +340,7 @@ def test_simple_outputs_explain_load_cost_and_fixed_fleet_break_even(client: App
     assert "Try a scenario" not in html
     assert "Compare costs" not in html
     for text in (
-        "17 replicas",
+        "3 replicas",
         "Illustrative setup",
         "GPU vs. Cloud TPU · this demand",
         "CT6e · 8\u00d7 TPU v6e · 256 GB",

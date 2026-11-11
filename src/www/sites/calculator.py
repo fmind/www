@@ -85,6 +85,12 @@ def _api_mode_note(inputs: HostingInputs, baseline: APIBaseline) -> str:
                 f"token-hours stored; {baseline.cache_retention} is charged for every group. "
                 "Implicit cache hits are not assumed."
             )
+        if baseline.cache_write_per_million == baseline.input_per_million:
+            return (
+                f"Implicit cache: {format_usd2(baseline.cache_write_per_million)}/M standard input "
+                f"on the first call, {format_usd2(baseline.cache_read_per_million)}/M on prefix hits "
+                f"({baseline.cache_retention})."
+            )
         return (
             f"Cache: {format_usd2(baseline.cache_write_per_million)}/M prefix tokens "
             f"on the first call, {format_usd2(baseline.cache_read_per_million)}/M on "

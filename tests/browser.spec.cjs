@@ -156,14 +156,22 @@ test("the open consent banner never hides keyboard focus", async ({ browser, bas
       await page.keyboard.press("Tab");
       await page.keyboard.press("Tab");
       await expect(banner.getByRole("link", { name: "Privacy" })).toBeFocused();
-      for (let index = 0; index < 60; index += 1) {
+      for (let index = 0; index < 75; index += 1) {
         await page.keyboard.press("Tab");
         const hidden = await page.evaluate(() => {
           const active = document.activeElement;
           const consent = document.getElementById("consent");
           if (!active || active === document.body || consent.contains(active)) return "";
           const box = active.getBoundingClientRect();
-          return box.height > 0 && box.bottom > consent.getBoundingClientRect().top + 0.5
+          const consentTop = consent.getBoundingClientRect().top;
+          const scrollFloor = window.innerHeight
+            - parseFloat(getComputedStyle(document.documentElement).scrollPaddingBottom);
+          // A scrollable region taller than the space above the banner cannot fit both edges at once;
+          // it must stay in view above the banner while every control inside fits whole.
+          const obscured = active.getAttribute("tabindex") === "0" && box.height > scrollFloor
+            ? box.top >= consentTop - 48 || box.bottom <= 48
+            : box.bottom > consentTop + 0.5;
+          return box.height > 0 && obscured
             ? (active.textContent || active.getAttribute("aria-label") || active.tagName).trim()
             : "";
         });
@@ -823,9 +831,9 @@ test("calculator updates preserve focus, open sections, and shareable values", a
   await expect(page.locator("#requests")).toBeFocused();
   await expect(page.locator("#concurrency")).toBeVisible();
   expect(new URL(page.url()).searchParams.get("requests")).toBe("234");
-  await page.locator("#preset-single-job").click();
-  await expect(page.locator("#requests")).toHaveValue("100");
-  await expect(page.locator("#days")).toHaveValue("1");
+  await page.locator("#preset-document-pipeline").click();
+  await expect(page.locator("#requests")).toHaveValue("1000");
+  await expect(page.locator("#days")).toHaveValue("30");
   await page.locator("#cost-volume").focus();
   await page.locator("#cost-volume").press("End");
   const scenario = await page.locator("#apply-demand").getAttribute("href");
@@ -974,26 +982,26 @@ test("simple calculator chooses compatible native hardware and preserves commitm
     "Nemotron 3.5 Super VL · 120B / 12B active",
   );
   await expect(page.locator("#model option[value=gemma-4-26b-a4b]")).toContainText("Gemma 4 26B A4B");
-  await expect(page.locator("#model option[value=kimi-k3]")).toContainText("Kimi K3");
-  await expect(page.locator("#preset option[value=small-team]")).toContainText("Small team");
+  await expect(page.locator("#model option[value=gemma-4-31b]")).toContainText("Gemma 4 31B");
+  await expect(page.locator("#model option[value=kimi-k3-1-pro]")).toContainText("Kimi K3.1 Pro");
+  await expect(page.locator("#preset option[value=small-team]")).toContainText("Team assistant");
+  await expect(page.locator("#requests-help")).toContainText("= 5 calls/day for 200 employees");
   expect(await page.locator("#preset option").evaluateAll((options) => options.map((option) => option.value)))
     .toEqual([
-      "single-job",
       "small-team",
       "document-pipeline",
       "department",
-      "automated-support",
-      "scheduled-workflow",
       "service",
     ]);
   await expect(page.locator("#model option").first()).toHaveAttribute("value", "qwen3-5-4b");
-  await expect(page.locator("#model option").last()).toHaveAttribute("value", "kimi-k3");
+  await expect(page.locator("#model option").last()).toHaveAttribute("value", "kimi-k3-1-pro");
   await expect(page.locator("#model option").first()).toHaveText("Qwen3.5 4B · 4B");
   await expect(page.locator("details")).toHaveCount(0);
   await expect(page.locator("#hosting-method ul")).toBeVisible();
   await expect(page.locator("#hosting-sources ul")).toBeVisible();
   await expect(page.locator("#recommended-fleet")).toBeVisible();
   await page.locator("#preset").selectOption("department");
+  await expect(page.locator("#requests-help")).toContainText("= 5 calls/day for 2,000 employees");
   await page.locator("#window").selectOption("8");
   await page.locator("#model").selectOption("nemotron-3-5-super-vl");
   await page.locator("#billing").selectOption("cud-3y");
@@ -1002,26 +1010,40 @@ test("simple calculator chooses compatible native hardware and preserves commitm
   await expect(page.locator("#update-comparison")).toBeFocused();
   await expect(page.locator("#recommended-fleet")).toContainText("G4");
   await expect(page.locator("#recommended-fleet")).toContainText("NVFP4");
-  await expect(page.locator("main")).toContainText("2 replicas");
+  await expect(page.locator("main")).toContainText("6 replicas");
   await expect(page.locator("#recommended-fleet")).toContainText("Always-on service");
   await expect(page.locator("#billing-help")).toContainText("even while idle");
-  await expect(page.locator("main")).toContainText("Department");
+  await expect(page.locator("main")).toContainText("Enterprise & agents");
+  await expect(page.locator("main")).toContainText("= 5 calls/day for 2,000 employees");
   const apiComparison = page.getByRole("region", { name: "API monthly cost comparison" });
   await expect(apiComparison).toContainText("Claude Haiku 5.5");
-  await expect(apiComparison).toContainText("Claude Sonnet 5.5");
-  await expect(apiComparison).toContainText("Claude Opus 5.5");
+  await expect(apiComparison).toContainText("Claude Fable 5.2");
+  await expect(apiComparison).toContainText("Gemini 4 Carbon");
   await expect(page.locator("#hosting-break-even")).toContainText(/break-even/i);
   expect(await apiComparison.locator("tbody th a, h4 a").allTextContents())
-    .toEqual(["Claude Haiku 5.5", "Gemini 3.8 Flash", "Claude Sonnet 5.5", "Claude Opus 5.5", "GPT-6 Astra"]);
+    .toEqual([
+      "Claude Haiku 5.5",
+      "GPT-6 Luna",
+      "Gemini 3.5 Flash-Lite",
+      "Gemini 3.8 Flash",
+      "GPT-6.1 Terra",
+      "Gemini 4 Argon",
+      "Gemini 4 Carbon",
+      "Claude Sonnet 5.5",
+      "GPT-6.1 Sol",
+      "Claude Opus 5.5",
+      "Claude Fable 5.2",
+      "GPT-6 Astra",
+    ]);
   await expect(page.locator("main")).toContainText("not measured GPU utilization");
   await page.screenshot({ path: testInfo.outputPath("gke-simple.png"), fullPage: true });
   expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
   await page.locator("#advanced-mode").click();
   await expect(page.locator("#quant")).toHaveValue("nvfp4");
   await expect(page.locator("#node")).toHaveValue("g4-standard-48");
-  await expect(page.locator("#requests")).toHaveValue("2000");
+  await expect(page.locator("#requests")).toHaveValue("10000");
   await expect(page.locator("#window")).toHaveValue("8");
-  await expect(page.locator("#replicas")).toHaveValue("2");
+  await expect(page.locator("#replicas")).toHaveValue("6");
   await page.locator("#quant").selectOption("fp16");
   await page.locator("#node").selectOption("auto");
   await page.locator("#update-comparison").click();
@@ -1032,7 +1054,7 @@ test("simple calculator chooses compatible native hardware and preserves commitm
   await expect(page.locator("#recommended-fleet")).toContainText("NVFP4");
   await expect(page.locator("#preset")).toHaveValue("department");
   await expect(page.locator("#window")).toHaveValue("8");
-  await page.goto(calculator + "?preset=service&model=kimi-k3&window=1");
+  await page.goto(calculator + "?preset=service&model=kimi-k3-1-pro&window=1");
   await expect(page.locator("main")).toContainText("129 replicas");
   await expect(page.locator("main")).toContainText("Confirm this multi-host configuration with a pilot");
   for (const width of [320, 768, 1024]) {
@@ -1047,22 +1069,22 @@ test("simple calculator works without JavaScript", async ({ browser, baseURL }) 
   try {
     const page = await context.newPage();
     await page.goto(calculator);
-    await page.locator("#preset").selectOption("scheduled-workflow");
+    await page.locator("#preset").selectOption("document-pipeline");
     await page.locator("#window").selectOption("1");
     await page.locator("#model").selectOption("nemotron-3-5-super-vl");
     await page.locator("#billing").selectOption("cud-1y");
     await page.locator("#update-comparison").click();
-    await expect(page.locator("#preset")).toHaveValue("scheduled-workflow");
+    await expect(page.locator("#preset")).toHaveValue("document-pipeline");
     await expect(page.locator("#window")).toHaveValue("1");
     await expect(page.locator("main")).toContainText("Start with an API on cost grounds");
-    await expect(page.locator("main")).toContainText("17 replicas");
+    await expect(page.locator("main")).toContainText("3 replicas");
     await expect(page.locator("#recommended-fleet")).toContainText("G4");
     expect(new URL(page.url()).searchParams.get("mode")).toBe("simple");
     await page.locator("#advanced-mode").click();
     await expect(page.locator("#quant")).toHaveValue("nvfp4");
-    await expect(page.locator("#requests")).toHaveValue("2500");
+    await expect(page.locator("#requests")).toHaveValue("1000");
     await expect(page.locator("#window")).toHaveValue("1");
-    await expect(page.locator("#replicas")).toHaveValue("17");
+    await expect(page.locator("#replicas")).toHaveValue("3");
   } finally {
     await context.close();
   }
@@ -1085,7 +1107,7 @@ test(
         await page.reload();
         await expect(page.locator("#requests")).toHaveValue("1000");
         await page.locator("#requests").fill("");
-        await page.locator("#preset").selectOption("single-job");
+        await page.locator("#preset").selectOption("document-pipeline");
         if (javaScriptEnabled) {
           // The default-plan label follows the workload before the server responds.
           await expect(page.locator("#billing option[value=auto]")).toHaveText(
@@ -1094,8 +1116,8 @@ test(
         }
         await page.locator("#window").selectOption("auto");
         await page.locator("#update-comparison").click();
-        await expect(page.locator("main")).toContainText("100 calls/month");
-        await expect(page.locator("#recommended-fleet")).toContainText("1 h/month");
+        await expect(page.locator("main")).toContainText("30,000 calls/month");
+        await expect(page.locator("#recommended-fleet")).toContainText("240 h/month");
         // A batch job defaults to queued Flex-start nodes and batch API rates.
         await expect(page.locator("#billing")).toHaveValue("auto");
         await expect(page.locator("#recommended-fleet")).toContainText("Flex-start queues each start");
@@ -1669,7 +1691,20 @@ test("MCP context calculator toggles servers with the keyboard", async ({ page }
   await expect(page.locator("details")).toHaveCount(0);
   const models = page.getByRole("region", { name: /Cost by model/ });
   expect(await models.locator("tbody th a").allTextContents())
-    .toEqual(["Claude Haiku 5.5", "Gemini 3.8 Flash", "Claude Sonnet 5.5", "Claude Opus 5.5", "GPT-6 Astra"]);
+    .toEqual([
+      "Claude Haiku 5.5",
+      "GPT-6 Luna",
+      "Gemini 3.5 Flash-Lite",
+      "Gemini 3.8 Flash",
+      "GPT-6.1 Terra",
+      "Gemini 4 Argon",
+      "Gemini 4 Carbon",
+      "Claude Sonnet 5.5",
+      "GPT-6.1 Sol",
+      "Claude Opus 5.5",
+      "Claude Fable 5.2",
+      "GPT-6 Astra",
+    ]);
   await page.locator("#reset-context").click();
   await expect(page.locator("#server-github")).toBeChecked();
   await expect(page.locator("#context-results")).toHaveText("17,536 tokens of tool definitions on every request");

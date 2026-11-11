@@ -115,12 +115,12 @@ test(
       try {
         const page = await context.newPage();
         await page.goto("/sites/llm-self-hosting/");
-        await page.locator("#preset").selectOption("single-job");
+        await page.locator("#preset").selectOption("document-pipeline");
         await page.locator("#model").selectOption("qwen3-5-4b");
         await page.locator("#requests").fill("200");
         await page.locator("#update-comparison").click();
-        await expect(page.locator("main")).toContainText("200 calls/month");
-        await expect(page.locator("#recommended-fleet")).toContainText("1 h/month");
+        await expect(page.locator("main")).toContainText("6,000 calls/month");
+        await expect(page.locator("#recommended-fleet")).toContainText("240 h/month");
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
         await page.locator("#advanced-mode").click();
         await expect(page.locator("#requests")).toHaveValue("200");

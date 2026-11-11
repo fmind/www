@@ -1,6 +1,6 @@
 # MCP context-cost snapshot
 
-Verified 2026-11-09 (GitHub re-pinned to the 2026-10-20 benchmark commit; the three npm catalogs keep their 2026-10-13 capture). This calculator counts the tool definitions that measured MCP servers add to every model request and prices them as standard input. It does not estimate total task cost, mitigation savings or model quality. Runtime formulas never fetch sources or start MCP servers.
+Verified 2026-11-11 (API baseline prices refreshed 2026-11-11; GitHub re-pinned to the 2026-10-20 benchmark commit; the three npm catalogs keep their 2026-10-13 capture). This calculator counts the tool definitions that measured MCP servers add to every model request and prices them as standard input. It does not estimate total task cost, mitigation savings or model quality. Runtime formulas never fetch sources or start MCP servers.
 
 ## Tool catalogs
 

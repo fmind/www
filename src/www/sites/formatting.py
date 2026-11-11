@@ -70,6 +70,17 @@ def format_count(value: int, noun: str) -> str:
     return f"{format_decimal(float(value), 0)} {noun}{suffix}"
 
 
+def format_employee_equivalent(requests_per_day: float) -> str:
+    """Anchor daily call volume to a concrete headcount at 5 calls per employee per day."""
+    if requests_per_day < 5:
+        calls = max(1, int(_round_away_from_zero(requests_per_day)))
+        sign = "=" if calls == requests_per_day else "≈"
+        return f"{sign} {format_count(calls, 'call')}/day for 1 employee"
+    employees = int(_round_away_from_zero(requests_per_day / 5))
+    sign = "=" if employees * 5 == requests_per_day else "≈"
+    return f"{sign} 5 calls/day for {format_count(employees, 'employee')}"
+
+
 _DECISION_TITLES = {
     "unsupported": "This configuration is not supported",
     "context": "The request exceeds this model's context limit",

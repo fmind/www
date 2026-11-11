@@ -239,13 +239,17 @@ def parse_inputs(query: Query) -> tuple[HostingInputs, tuple[str, ...]]:
     )
     if mode == "simple" and query.keys() & (advanced_keys - {"requests"}):
         validation.append("Advanced parameters require advanced mode; simple defaults were used")
-    # Previously shared URLs encoded the A4 billing plan in the hardware ID.
+    # Previously shared URLs encoded the A4 billing plan in the hardware ID or the superseded Kimi K3 ID.
     legacy_plan = {"a4-cud-3y": "cud-3y", "a4-flex": "flex"}.get(first_value(query, "node") or "")
-    if legacy_plan:
+    legacy_model = {"kimi-k3": "kimi-k3-1-pro"}.get(first_value(query, "model") or "")
+    if legacy_plan or legacy_model:
         query = dict(query)
-        query["node"] = "a4"
-        if not first_value(query, "billing"):
-            query["billing"] = legacy_plan
+        if legacy_plan:
+            query["node"] = "a4"
+            if not first_value(query, "billing"):
+                query["billing"] = legacy_plan
+        if legacy_model:
+            query["model"] = legacy_model
     model = find_model(
         _parse_choice(query, "model", defaults.model_id, frozenset(item.id for item in FRONTIER_MODELS), validation)
     )

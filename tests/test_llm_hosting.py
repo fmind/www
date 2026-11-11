@@ -27,6 +27,7 @@ from www.sites.formatting import (
     format_budget,
     format_count,
     format_decimal,
+    format_employee_equivalent,
     format_number,
     format_usd,
     format_usd2,
@@ -114,14 +115,16 @@ def test_manual_demand_remains_custom() -> None:
 def test_api_baselines_charge_both_token_directions_at_actual_demand() -> None:
     result = view({"preset": "small-team"})
 
-    assert [row.monthly_usd for row in result.apis] == pytest.approx([13.2, 35.2, 176, 1.76, 70.4])
+    assert [row.monthly_usd for row in result.apis] == pytest.approx(
+        [82.5, 46.2, 220, 220, 11, 220, 440, 880, 11, 110, 220, 1100]
+    )
     assert result.estimate.demand_fits
-    assert result.estimate.output_tokens_month == 2_112_000
-    assert result.estimate.input_tokens_month == 7_040_000
+    assert result.estimate.output_tokens_month == 13_200_000
+    assert result.estimate.input_tokens_month == 44_000_000
 
-    job = view({"preset": "single-job"})
-    assert job.apis[0].monthly_usd == pytest.approx(0.675)
-    assert job.estimate.total_monthly_usd == result.estimate.total_monthly_usd
+    pipeline = view({"preset": "document-pipeline"})
+    assert pipeline.apis[0].monthly_usd == pytest.approx(236.25)
+    assert pipeline.estimate.total_monthly_usd == result.estimate.total_monthly_usd
 
 
 def test_capacity_shortfall_and_unreachable_break_even() -> None:
@@ -145,16 +148,16 @@ def test_capacity_shortfall_and_unreachable_break_even() -> None:
 def test_astra_long_context_pricing_boundary_is_provider_specific() -> None:
     short = view({"input-tokens": "272000"})
     long = view({"input-tokens": "272001"})
+    short_by_name = {row.baseline.name: row.baseline for row in short.apis}
+    long_by_name = {row.baseline.name: row.baseline for row in long.apis}
 
-    assert (short.apis[2].baseline.input_per_million, short.apis[2].baseline.output_per_million) == (
-        10,
-        50,
-    )
-    assert (long.apis[2].baseline.input_per_million, long.apis[2].baseline.output_per_million) == (
-        20,
-        75,
-    )
-    assert long.apis[0].baseline.input_per_million == short.apis[0].baseline.input_per_million
+    assert (short_by_name["GPT-6 Astra"].input_per_million, short_by_name["GPT-6 Astra"].output_per_million) == (10, 50)
+    assert (long_by_name["GPT-6 Astra"].input_per_million, long_by_name["GPT-6 Astra"].output_per_million) == (20, 75)
+    assert (short_by_name["GPT-6.1 Sol"].input_per_million, long_by_name["GPT-6.1 Sol"].input_per_million) == (2, 4)
+    assert (short_by_name["GPT-6.1 Terra"].input_per_million, long_by_name["GPT-6.1 Terra"].input_per_million) == (1, 2)
+    assert (short_by_name["GPT-6 Luna"].input_per_million, long_by_name["GPT-6 Luna"].input_per_million) == (0.1, 0.2)
+    assert long_by_name["Gemini 3.8 Flash"].input_per_million == short_by_name["Gemini 3.8 Flash"].input_per_million
+    assert long_by_name["Claude Sonnet 5.5"].input_per_million == short_by_name["Claude Sonnet 5.5"].input_per_million
 
 
 @pytest.mark.parametrize("key", ["requests", "days", "input-tokens", "tokens", "duty"])
@@ -187,10 +190,10 @@ def test_checkpoint_precision_changes_memory_and_whole_nodes_determine_cost() ->
 
 def test_view_compares_all_catalog_models_in_deterministic_order() -> None:
     result = view({"model": "qwen3-8-27b", "node": "a2-ultra-1g"})
-    assert len(result.models) == len(result.comparison) == 12
+    assert len(result.models) == len(result.comparison) == 14
     assert tuple(row.model for row in result.comparison) == FRONTIER_MODELS
     assert result.estimate.nodes_per_replica == 1
-    assert len(API_BASELINES) == 5
+    assert len(API_BASELINES) == 12
     assert isclose(result.estimate.weight_memory_gb, 55.562855904)
 
 
@@ -213,10 +216,10 @@ def test_query_mapping_uses_first_repeated_value() -> None:
     ],
 )
 def test_window_picker_follows_the_first_window_value(query: dict[str, str | list[str]], automatic: bool) -> None:
-    result = build_llm_self_hosting_view({"preset": "single-job", **query}, now=NOW)
+    result = build_llm_self_hosting_view({"preset": "service", **query}, now=NOW)
 
     assert result.window_is_auto == automatic
-    assert result.inputs.demand_window_hours == (1 if automatic else 8)
+    assert result.inputs.demand_window_hours == (24 if automatic else 8)
 
 
 def test_current_api_baselines_returns_immutable_date_adjusted_snapshots() -> None:
@@ -249,9 +252,9 @@ def test_template_decision_helpers_preserve_capacity_before_cost() -> None:
 
 def test_page_decision_and_own_sensitivity_cell_share_one_verdict() -> None:
     queries = (
-        {"model": "kimi-k3", "node": "g4-standard-48"},
+        {"model": "kimi-k3-1-pro", "node": "g4-standard-48"},
         {"input-tokens": "900000"},
-        {"model": "kimi-k3"},
+        {"model": "kimi-k3-1-pro"},
         {"preset": "service", "throughput": "0.1"},
         {"tokens": "200000", "requests": "1"},
         {},
@@ -381,7 +384,9 @@ def test_automatic_setup_uses_native_checkpoint_and_a_compatible_topology(model)
 
 def test_api_modes_include_warmup_and_storage() -> None:
     batch = view({"api-mode": "batch"})
-    assert [row.monthly_usd for row in batch.apis] == pytest.approx([6.6, 17.6, 88, 0.88, 35.2])
+    assert [row.monthly_usd for row in batch.apis] == pytest.approx(
+        [41.25, 23.1, 110, 110, 5.5, 110, 220, 440, 5.5, 55, 110, 550]
+    )
 
     cached = view(
         {
@@ -394,7 +399,20 @@ def test_api_modes_include_warmup_and_storage() -> None:
         },
     )
     assert [row.monthly_usd for row in cached.apis] == pytest.approx(
-        [0.07237466666666667, 0.1941824, 1.009824, 0.01009824, 0.3883648],
+        [
+            0.07237466666666667,
+            0.03922293333333333,
+            0.1921344,
+            0.1921344,
+            0.01009824,
+            0.1941824,
+            0.3883648,
+            0.7611648,
+            0.01009824,
+            0.0970912,
+            0.1941824,
+            1.009824,
+        ],
     )
     for baseline in current_api_baselines(NOW, cached.inputs):
         _, one_group = api_monthly_cost(cached.inputs, baseline, 20)
@@ -402,12 +420,14 @@ def test_api_modes_include_warmup_and_storage() -> None:
         assert partial_group == one_group * 2
 
     fallback = view({"api-mode": "cached"})
-    assert fallback.apis[0].monthly_usd == 13.2
+    assert fallback.apis[0].monthly_usd == 82.5
     assert "Standard rates applied" in fallback.apis[0].mode_note
-    assert fallback.apis[1].monthly_usd < 35.2
+    sonnet_fallback = next(row for row in fallback.apis if row.baseline.name == "Claude Sonnet 5.5")
+    assert sonnet_fallback.monthly_usd < 220
 
     invalid_prefix = view({"api-mode": "cached", "cache-prefix": "9999"})
-    assert invalid_prefix.apis[1].monthly_usd == 35.2
+    sonnet_invalid = next(row for row in invalid_prefix.apis if row.baseline.name == "Claude Sonnet 5.5")
+    assert sonnet_invalid.monthly_usd == 220
 
 
 def test_cached_break_even_is_first_whole_request() -> None:
@@ -467,9 +487,9 @@ def test_cost_explorer_frames_use_billing_and_capacity() -> None:
     result = view()
     current = result.cost_plot.frames[result.cost_plot.selected]
     assert frame_daily_requests(current) * result.inputs.active_days == result.estimate.requests_month
-    assert "$13.20" in current.summary
+    assert "$82.50" in current.summary
     assert result.cost_plot.capacity_x
-    assert len(result.cost_plot.break_evens) == 5
+    assert len(result.cost_plot.break_evens) == 12
 
     previous = 0.0
     for frame in result.cost_plot.frames:
@@ -491,7 +511,7 @@ def test_cost_explorer_frames_use_billing_and_capacity() -> None:
         {"days": "1"},
         {"requests": "651.4", "days": "31"},
         {"api-mode": "cached", "input-tokens": "6000", "cache-prefix": "4096"},
-        {"requests": "10000000", "node": "a4", "billing": "cud-3y", "model": "kimi-k3"},
+        {"requests": "10000000", "node": "a4", "billing": "cud-3y", "model": "kimi-k3-1-pro"},
     ],
 )
 def test_cost_chart_has_round_labels_and_workloads_with_exact_costs(query) -> None:
@@ -647,8 +667,10 @@ def test_whole_quantities_reject_fractions_for_agents(parameter: str) -> None:
 
 def test_unavailable_apis_are_never_the_lowest_or_plotted() -> None:
     result = view({"tokens": "100000"})
-    gemini, *available = result.apis
-    assert gemini.request_issue
+    unavailable = result.apis[:4]
+    available = result.apis[4:]
+    assert len(unavailable) == 4
+    assert all(api.request_issue for api in unavailable)
     assert all(not api.request_issue for api in available)
 
     for row in result.sensitivity:
@@ -662,9 +684,9 @@ def test_unavailable_apis_are_never_the_lowest_or_plotted() -> None:
         (0, "GKE fleet"),
         *((index, api.baseline.name) for index, api in enumerate(result.apis, start=1) if not api.request_issue),
     ]
-    assert plot.unavailable == (f"{gemini.baseline.name}: {gemini.request_issue}",)
-    assert all(gemini.baseline.name not in tick.label for tick in plot.break_evens)
-    assert all(f"{gemini.baseline.name} unavailable" in frame.summary for frame in plot.frames)
+    assert plot.unavailable == tuple(f"{api.baseline.name}: {api.request_issue}" for api in unavailable)
+    assert all(api.baseline.name not in tick.label for api in unavailable for tick in plot.break_evens)
+    assert all(f"{api.baseline.name} unavailable" in frame.summary for api in unavailable for frame in plot.frames)
 
 
 @pytest.mark.parametrize(
@@ -792,12 +814,12 @@ def test_partial_multi_host_pilot_cannot_qualify_the_configuration() -> None:
     assert "unproved" in partial.latency_title
 
 
-@pytest.mark.parametrize("model", ["qwen3-8-27b", "kimi-k3"])
+@pytest.mark.parametrize("model", ["qwen3-8-27b", "kimi-k3-1-pro"])
 def test_mcp_comparisons_cannot_borrow_another_configuration_pilot(model: str) -> None:
     parameters = {
         "model": model,
         "node": "a3-ultra",
-        "quant": "mxfp4" if model == "kimi-k3" else "fp16",
+        "quant": "mxfp4" if model == "kimi-k3-1-pro" else "fp16",
         "requests": "1",
     }
     baseline = compare_hosting(parameters)
@@ -833,19 +855,23 @@ def test_api_output_limits_disable_unavailable_comparisons(tokens: str) -> None:
 
 def test_api_limits_enforce_combined_context_windows() -> None:
     over_limit = view({"input-tokens": "1000000", "tokens": "60000"})
-    assert not over_limit.apis[0].request_issue  # Gemini publishes separate input/output limits.
-    assert all(api.request_issue for api in over_limit.apis[1:])
+    # Gemini 3.x publishes separate input/output limits; Gemini 4, Claude, and OpenAI enforce combined windows.
+    assert all(not api.request_issue for api in over_limit.apis[:2])
+    assert all(api.request_issue for api in over_limit.apis[2:])
 
     gemini_limit = view({"input-tokens": "983040", "tokens": "65536"})
-    assert not gemini_limit.apis[0].request_issue
-    assert gemini_limit.apis[1].request_issue
-    assert gemini_limit.apis[2].request_issue == "Input exceeds the 922,000-token limit"
+    assert all(not api.request_issue for api in gemini_limit.apis[:4])
+    assert all(
+        api.request_issue == "Input plus output exceeds the 1,000,000-token context limit"
+        for api in gemini_limit.apis[4:8]
+    )
+    assert all(api.request_issue == "Input exceeds the 922,000-token limit" for api in gemini_limit.apis[8:])
 
-    # Astra caps input at 922,000 tokens inside its 1,050,000-token context window.
-    astra_limit = view({"input-tokens": "922000", "tokens": "128000"})
-    assert not astra_limit.apis[2].request_issue
-    astra_over = view({"input-tokens": "922001", "tokens": "1000"})
-    assert astra_over.apis[2].request_issue == "Input exceeds the 922,000-token limit"
+    # OpenAI GPT-6/6.1 models cap input at 922,000 tokens inside a 1,050,000-token context window.
+    openai_limit = view({"input-tokens": "922000", "tokens": "128000"})
+    assert all(not api.request_issue for api in openai_limit.apis[8:])
+    openai_over = view({"input-tokens": "922001", "tokens": "1000"})
+    assert all(api.request_issue == "Input exceeds the 922,000-token limit" for api in openai_over.apis[8:])
 
 
 def test_pilot_confirmation_survives_a_shared_url() -> None:
@@ -884,7 +910,7 @@ def test_precision_alternative_clears_pilot_when_automatic_hardware_changes() ->
 @pytest.mark.parametrize(
     "change",
     [
-        {"model": "kimi-k3"},
+        {"model": "kimi-k3-1-pro"},
         {"node": "a2-ultra-1g"},
         {"quant": "fp8"},
         {"input-tokens": "4000"},
@@ -996,9 +1022,10 @@ def test_query_text_is_never_reflected_into_validation_messages(mode: str) -> No
 @pytest.mark.parametrize(
     ("preset", "requests", "input_tokens", "output_tokens"),
     [
-        ("scheduled-workflow", 75000, 450000000, 112500000),
-        ("document-pipeline", 30000, 240000000, 15000000),
-        ("automated-support", 45000, 180000000, 13500000),
+        ("small-team", 22_000, 44_000_000, 13_200_000),
+        ("document-pipeline", 30_000, 240_000_000, 15_000_000),
+        ("department", 220_000, 880_000_000, 220_000_000),
+        ("service", 3_000_000, 3_000_000_000, 900_000_000),
     ],
 )
 def test_automated_presets_count_every_model_call(preset, requests, input_tokens, output_tokens) -> None:
@@ -1027,9 +1054,15 @@ def test_operations_budget_is_removed_from_costs_and_agent_parameters() -> None:
 
 
 def test_simple_usage_window_sizes_capacity_without_inflating_volume_or_api_bills() -> None:
-    steady = build_llm_self_hosting_view({"preset": "scheduled-workflow", "window": "24"})
-    workday = build_llm_self_hosting_view({"preset": "scheduled-workflow", "window": "8"})
-    peak = build_llm_self_hosting_view({"preset": "scheduled-workflow", "window": "1"})
+    steady = build_llm_self_hosting_view(
+        {"mode": "simple", "preset": "document-pipeline", "requests": "7500", "window": "24"}
+    )
+    workday = build_llm_self_hosting_view(
+        {"mode": "simple", "preset": "document-pipeline", "requests": "7500", "window": "8"}
+    )
+    peak = build_llm_self_hosting_view(
+        {"mode": "simple", "preset": "document-pipeline", "requests": "7500", "window": "1"}
+    )
     assert steady.estimate.qualified
     assert [result.inputs.replicas for result in (steady, workday, peak)] == [1, 3, 17]
     for concentrated in (workday, peak):
@@ -1047,15 +1080,13 @@ def test_simple_usage_window_sizes_capacity_without_inflating_volume_or_api_bill
         assert [row.monthly_usd for row in concentrated.apis] == [row.monthly_usd for row in steady.apis]
     assert workday.estimate.capacity_requests_day == pytest.approx(steady.estimate.capacity_requests_day)
     assert peak.estimate.capacity_requests_day == pytest.approx(steady.estimate.capacity_requests_day / 24 * 17)
-    assert peak.estimate.required_output_tokens_per_second == pytest.approx(2500 * 1500 / 3600)
+    assert peak.estimate.required_output_tokens_per_second == pytest.approx(7500 * 500 / 3600)
     assert peak.estimate.usable_output_tokens_per_second == 1105
-    assert peak.estimate.capacity_requests_month == 79560
-    expanded = build_llm_self_hosting_view(
-        {"mode": "advanced", "preset": "scheduled-workflow", "window": "8", "replicas": "3"}
-    )
+    assert peak.estimate.capacity_requests_month == 238680
+    expanded = build_llm_self_hosting_view({"mode": "advanced", "preset": "department", "window": "8", "replicas": "6"})
     assert expanded.estimate.qualified
-    assert expanded.estimate.compute_monthly_usd == pytest.approx(3 * steady.selected_price.hourly_usd * 730)
-    fixed_peak = build_llm_self_hosting_view({"mode": "advanced", "preset": "scheduled-workflow", "window": "1"})
+    assert expanded.estimate.compute_monthly_usd == pytest.approx(6 * expanded.selected_price.hourly_usd * 730)
+    fixed_peak = build_llm_self_hosting_view({"mode": "advanced", "preset": "document-pipeline", "window": "1"})
     frame = fixed_peak.cost_plot.frames[fixed_peak.cost_plot.selected]
     assert "beyond this fleet's capacity" in frame.summary
     assert any(row.break_even_fits for row in peak.apis)
@@ -1114,10 +1145,10 @@ def test_sizing_also_checks_monthly_capacity_for_a_31_day_workload() -> None:
 
 def test_advanced_window_changes_capacity_while_preserving_the_manually_selected_fleet() -> None:
     flat = build_llm_self_hosting_view(
-        {"mode": "advanced", "preset": "scheduled-workflow", "replicas": "1", "window": "24"}
+        {"mode": "advanced", "preset": "document-pipeline", "replicas": "1", "window": "24"}
     )
     peak = build_llm_self_hosting_view(
-        {"mode": "advanced", "preset": "scheduled-workflow", "replicas": "1", "window": "1"}
+        {"mode": "advanced", "preset": "document-pipeline", "replicas": "1", "window": "1"}
     )
     assert flat.estimate.qualified
     assert not peak.estimate.qualified
@@ -1168,7 +1199,7 @@ def test_every_simple_model_has_a_supported_checkpoint_and_billing_plan(model, b
         {"model": "nemotron-3-5-super-vl", "node": "a3-ultra", "quant": "nvfp4"},
         {"model": "nemotron-3-5-super-vl", "node": "g4-standard-48", "quant": "fp16"},
         {"model": "nemotron-3-5-super-vl", "node": "a4", "quant": "nvfp4", "billing": "cud-1y"},
-        {"model": "kimi-k3", "node": "g4-standard-48", "quant": "mxfp4"},
+        {"model": "kimi-k3-1-pro", "node": "g4-standard-48", "quant": "mxfp4"},
         {"model": "glm-5-3", "node": "a3-high", "quant": "fp8"},
         {"model": "glm-5-3-flash", "node": "g4-standard-48", "quant": "fp8"},
         {"model": "mistral-large-4", "node": "a4", "quant": "fp8", "billing": "cud-1y"},
@@ -1482,14 +1513,13 @@ def test_invalid_advanced_auto_selection_retains_the_requested_model() -> None:
 
 
 def test_scheduled_hours_are_not_counted_again_as_daily_downtime() -> None:
-    job = build_llm_self_hosting_view({"mode": "advanced", "preset": "single-job", "duty": "0.5", "window": "1"})
+    one_off = {"mode": "advanced", "requests": "100", "days": "1", "input-tokens": "4000", "tokens": "1000"}
+    job = build_llm_self_hosting_view({**one_off, "duty": "0.5", "window": "1"})
     assert job.estimate.qualified
     assert job.estimate.capacity_tokens_month == pytest.approx(65 * 3.65 * 3600)
     assert job.estimate.capacity_requests_day == pytest.approx(65 * 3600 / 1000)
     assert job.estimate.compute_monthly_usd == pytest.approx(4.49993 * 3.65)
-    too_short = build_llm_self_hosting_view(
-        {"mode": "advanced", "preset": "single-job", "duty": "0.5", "window": "0.1"}
-    )
+    too_short = build_llm_self_hosting_view({**one_off, "duty": "0.5", "window": "0.1"})
     assert not too_short.estimate.daily_demand_fits
     assert too_short.estimate.demand_fits
 
@@ -1498,11 +1528,11 @@ def test_workload_defaults_schedule_jobs_and_keep_teams_available() -> None:
     team = build_llm_self_hosting_view()
     assert team.inputs.demand_window_hours == 8
     assert team.inputs.duty_cycle_percent == 100
-    job = build_llm_self_hosting_view({"preset": "single-job"})
-    assert job.inputs.demand_window_hours == 1
-    assert job.inputs.duty_cycle_percent * 730 / 100 == pytest.approx(1)
-    assert job.estimate.compute_monthly_usd == pytest.approx(job.selected_price.hourly_usd)
-    committed = build_llm_self_hosting_view({"preset": "single-job", "billing": "cud-1y"})
+    job = build_llm_self_hosting_view({"preset": "document-pipeline"})
+    assert job.inputs.demand_window_hours == 8
+    assert job.inputs.duty_cycle_percent * 730 / 100 == pytest.approx(240)
+    assert job.estimate.compute_monthly_usd == pytest.approx(job.selected_price.hourly_usd * 240)
+    committed = build_llm_self_hosting_view({"preset": "document-pipeline", "billing": "cud-1y"})
     assert committed.estimate.compute_monthly_usd == pytest.approx(committed.selected_price.hourly_usd * 730)
     assert committed.estimate.capacity_tokens_month == job.estimate.capacity_tokens_month
 
@@ -1519,7 +1549,7 @@ def test_simple_volume_override_survives_sharing_and_mode_changes() -> None:
     advanced = build_llm_self_hosting_view(parse_qs(urlsplit(result.advanced_url).query))
     assert advanced.inputs == replace(result.inputs, mode="advanced")
     blank = build_llm_self_hosting_view({"mode": "simple", "preset": "department", "requests": ""})
-    assert blank.inputs.requests_per_day == 2000
+    assert blank.inputs.requests_per_day == 10_000
     invalid = build_llm_self_hosting_view({"mode": "simple", "requests": "NaN"})
     assert len(invalid.validation) == 1
     with pytest.raises(ValueError, match=r"Calls per active day \(requests\) must be"):
@@ -1711,7 +1741,7 @@ def test_agent_comparison_rows_reference_catalog_ids_instead_of_repeating_entrie
     assert {row.model_id for row in result.model_comparisons} == models
     assert all(row.node_id in nodes and row.quantization_id in quantizations for row in rows)
     # The empty discovery call stays small enough for agent context (it was 62 KB compact).
-    assert len(result.model_dump_json()) < 48_000
+    assert len(result.model_dump_json()) < 56_000
 
 
 # Workload defaults: batch jobs compare queued Flex-start nodes with batch API rates.
@@ -1743,8 +1773,11 @@ def test_batch_workloads_default_to_flex_start_nodes_and_batch_api_rates() -> No
 
 
 def test_workload_default_takes_the_cheaper_of_flex_start_and_on_demand() -> None:
-    # G2 publishes no Flex-start rate and still beats a queued G4 for the 4B model.
-    small = build_llm_self_hosting_view({"mode": "simple", "preset": "single-job", "model": "qwen3-5-4b"}, now=NOW)
+    # G2 publishes no Flex-start rate and still beats a queued G4 for the 4B model on short daily runs.
+    small = build_llm_self_hosting_view(
+        {"mode": "simple", "preset": "document-pipeline", "window": "1", "model": "qwen3-5-4b"},
+        now=NOW,
+    )
     assert (small.inputs.billing_plan, small.selected_node.id) == (BillingPlan.ON_DEMAND, "g2-standard-12")
     assert small.plan_alternatives[0].label == "DWS Flex-start"
     assert small.plan_alternatives[0].monthly_usd > small.estimate.total_monthly_usd
@@ -1764,9 +1797,9 @@ def test_interactive_workloads_keep_on_demand_standard_rates_and_reject_flex_sta
         row.monthly_usd for row in team.plan_alternatives
     )
     assert all("mode=simple" in row.url for row in team.plan_alternatives)
-    # A multi-step workflow is scheduled but not a batch job: each step waits for the previous answer.
-    workflow = build_llm_self_hosting_view({"mode": "simple", "preset": "scheduled-workflow"}, now=NOW)
-    assert (workflow.inputs.billing_plan, workflow.inputs.api_mode.value) == (BillingPlan.ON_DEMAND, "standard")
+    for interactive in ("department", "service"):
+        result = build_llm_self_hosting_view({"mode": "simple", "preset": interactive}, now=NOW)
+        assert (result.inputs.billing_plan, result.inputs.api_mode.value) == (BillingPlan.ON_DEMAND, "standard")
     rejected = build_llm_self_hosting_view({"mode": "simple", "preset": "small-team", "billing": "flex"}, now=NOW)
     assert rejected.validation == ("Pricing plan (billing) was not recognized; the default was used",)
     assert rejected.inputs.billing_plan is BillingPlan.ON_DEMAND
@@ -1809,7 +1842,8 @@ def test_plan_defaults_and_alternatives_fail_closed_without_hardware(monkeypatch
     [
         ("mistral-large-4", "Validate multi-node serving"),
         ("muse-spark-open", "Validate multi-node serving"),
-        ("kimi-k3", "Validate multi-node serving"),
+        ("qwen3-8-2-4t-a95b", "Validate multi-node serving"),
+        ("kimi-k3-1-pro", "Validate multi-node serving"),
         ("glm-5-3", "Review commercial terms"),
     ],
 )
@@ -1817,3 +1851,94 @@ def test_multi_node_topology_takes_precedence_over_commercial_license_decision(m
     row = next(entry for entry in view().comparison if entry.model.id == model)
 
     assert row.decision == expected
+
+
+@pytest.mark.parametrize(
+    ("requests_per_day", "expected"),
+    [
+        (1, "= 1 call/day for 1 employee"),
+        (2.4, "≈ 2 calls/day for 1 employee"),
+        (5, "= 5 calls/day for 1 employee"),
+        (234, "≈ 5 calls/day for 47 employees"),
+        (1000, "= 5 calls/day for 200 employees"),
+        (5000, "= 5 calls/day for 1,000 employees"),
+        (10_000, "= 5 calls/day for 2,000 employees"),
+        (100_000, "= 5 calls/day for 20,000 employees"),
+    ],
+)
+def test_format_employee_equivalent_anchors_daily_volume(requests_per_day: float, expected: str) -> None:
+    assert format_employee_equivalent(requests_per_day) == expected
+
+
+def test_legacy_kimi_k3_web_url_maps_to_k3_1_pro_while_mcp_rejects_it() -> None:
+    web = build_llm_self_hosting_view({"model": "kimi-k3"}, now=NOW)
+    assert not web.validation
+    assert web.selected_model.id == "kimi-k3-1-pro"
+    with pytest.raises(ValueError, match=r"Model \(model\) was not recognized"):
+        compare_hosting({"model": "kimi-k3"})
+
+
+def test_new_frontier_models_select_best_hardware_per_billing_plan() -> None:
+    # Gemma 4 31B fits native BF16 on one G4 GPU and on Trillium <=16k, switching to Ironwood above 16k.
+    gemma = build_llm_self_hosting_view({"model": "gemma-4-31b"}, now=NOW)
+    assert (gemma.selected_node.id, gemma.selected_quant.id) == ("g4-standard-48", "fp16")
+    tpu_short = next(row for row in gemma.accelerators if row.family == "Cloud TPU")
+    assert (tpu_short.node.id, tpu_short.quantization.id) == ("ct6e-standard-8t", "fp16")
+    gemma_long = view({"model": "gemma-4-31b", "input-tokens": "20000", "tokens": "1000"})
+    tpu_long = next(row for row in gemma_long.accelerators if row.family == "Cloud TPU")
+    assert (tpu_long.node.id, tpu_long.quantization.id) == ("tpu7x-standard-4t", "fp16")
+
+    # Muse Spark Open fits a single A4 host on NVFP4 under commitments/Flex, avoiding multi-host overhead.
+    muse_cud = build_llm_self_hosting_view({"model": "muse-spark-open", "billing": "cud-1y"}, now=NOW)
+    assert (muse_cud.selected_node.id, muse_cud.selected_quant.id, muse_cud.estimate.nodes_per_replica) == (
+        "a4",
+        "nvfp4",
+        1,
+    )
+    assert muse_cud.estimate.topology_confirmed
+    muse_od = build_llm_self_hosting_view({"model": "muse-spark-open", "billing": "on-demand"}, now=NOW)
+    assert (muse_od.selected_node.id, muse_od.selected_quant.id, muse_od.estimate.nodes_per_replica) == (
+        "a3-ultra",
+        "fp16",
+        2,
+    )
+
+    # Qwen3.8 2.4T A95B uses 2x A4 NVFP4 on commitments and 4x A3 Ultra FP8 on-demand.
+    qwen_cud = build_llm_self_hosting_view({"model": "qwen3-8-2-4t-a95b", "billing": "cud-3y"}, now=NOW)
+    assert (qwen_cud.selected_node.id, qwen_cud.selected_quant.id, qwen_cud.estimate.nodes_per_replica) == (
+        "a4",
+        "nvfp4",
+        2,
+    )
+    qwen_od = build_llm_self_hosting_view({"model": "qwen3-8-2-4t-a95b", "billing": "on-demand"}, now=NOW)
+    assert (qwen_od.selected_node.id, qwen_od.selected_quant.id, qwen_od.estimate.nodes_per_replica) == (
+        "a3-ultra",
+        "fp8",
+        4,
+    )
+
+
+def test_provider_api_families_enforce_long_context_cache_and_expiry_rules() -> None:
+    # Haiku 5.5 crosses a 5x full-request tier at 100,000 prompt tokens; Fable 5.2 reads cache at 2.5% ($0.20/M).
+    haiku_short = next(row for row in view({"input-tokens": "100000"}).apis if row.baseline.name == "Claude Haiku 5.5")
+    haiku_long = next(row for row in view({"input-tokens": "100001"}).apis if row.baseline.name == "Claude Haiku 5.5")
+    assert (haiku_short.baseline.input_per_million, haiku_long.baseline.input_per_million) == (0.1, 0.5)
+    cached = view({"api-mode": "cached", "cache-prefix": "4096", "input-tokens": "8000"})
+    by_name = {row.baseline.name: row for row in cached.apis}
+    assert by_name["Claude Fable 5.2"].baseline.cache_read_per_million == 0.2
+    assert by_name["GPT-6.1 Terra"].baseline.cache_read_per_million == 0.05
+    assert by_name["GPT-6.1 Sol"].baseline.cache_read_per_million == 0.1
+    assert by_name["Gemini 4 Argon"].mode_note.startswith("Implicit cache: $2.00/M standard input on the first call")
+    assert by_name["Gemini 4 Carbon"].mode_note.startswith("Implicit cache: $2.00/M standard input on the first call")
+
+    # Gemini 4 Argon and Carbon double from introductory to standard rates on Dec 1, 2026.
+    nov = {
+        row.baseline.name: row
+        for row in build_llm_self_hosting_view(now=datetime(2026, 11, 30, 23, 59, tzinfo=UTC)).apis
+    }
+    dec = {
+        row.baseline.name: row for row in build_llm_self_hosting_view(now=datetime(2026, 12, 1, 0, 0, tzinfo=UTC)).apis
+    }
+    for name in ("Gemini 4 Argon", "Gemini 4 Carbon"):
+        assert dec[name].monthly_usd == pytest.approx(nov[name].monthly_usd * 2)
+    assert dec["Gemini 3.8 Flash"].monthly_usd == pytest.approx(nov["Gemini 3.8 Flash"].monthly_usd)

@@ -27,7 +27,9 @@ document.addEventListener('change', function (event) {
   if (event.target.id !== 'preset') return;
   var selected = event.target.selectedOptions[0];
   document.getElementById('preset-help').textContent = selected.dataset.description;
-  document.getElementById('requests').placeholder = selected.dataset.calls;
+  var requests = document.getElementById('requests');
+  requests.placeholder = selected.dataset.calls;
+  if (!requests.value) document.getElementById('requests-help').textContent = selected.dataset.scale;
   document.querySelector('#window option[value="auto"]').textContent = 'Workload default · ' + selected.dataset.window + ' hours';
   document.querySelector('#billing option[value="auto"]').textContent = 'Workload default · ' + selected.dataset.plan;
 });
