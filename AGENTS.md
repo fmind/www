@@ -4,7 +4,7 @@ Python 3.14, Litestar, strict Jinja, Tailwind/DaisyUI, and Granian. No client fr
 
 ## Delivery
 
-- **Pass `mise run all` before done**: `mise.toml` is the task contract for local work, hooks, and CI ([README](README.md#tasks)). The gate must pass without unresolved warnings, and new behavior needs a regression test. Run it in the foreground, because background runs have been killed under memory pressure.
+- **Pass `mise run all` before done**: `mise.toml` is the task contract for local work, hooks, and CI ([README](README.md#tasks)). The gate must pass without unresolved warnings, and new behavior needs a regression test. Run it in the foreground (background runs have been killed under memory pressure), and copy `mise.local.toml` (`IMAGE_PLATFORM = "linux/arm64"` on ARM64 hosts) into temporary worktrees before running it so `build:image` avoids QEMU emulation crashes.
 - **Iterate with focused tests**: run `mise run build:css` once, because app startup reads the generated stylesheet, then `uv run --locked pytest tests/<file>.py`.
 - **Run affected out-of-gate checks**: network link checks, cross-browser tests, and Lighthouse are separate tasks; run those relevant to the change.
 - **Keep scratch out of the tracked tree**: tasks write only to ignored paths (`tmp/`, `static/dist/`, `.coverage`, tool caches); ad hoc scratch and review reports go to OS temporary directories and are never committed.
