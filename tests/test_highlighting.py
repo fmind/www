@@ -86,5 +86,7 @@ def test_fmind_roles_reach_real_python_tokens() -> None:
     }.items():
         assert f'class="{token}"' in markup
         assert re.search(r"\.chroma \." + token + r"\s*\{[^}]*color: " + color, css)
-    assert ".chroma { color: #202124; background-color: #ffffff;" in css
+    assert ".chroma { color: #202124; background-color: #f1f3f4;" in css
     assert ".chroma ::selection { color: inherit; background-color: #d2e3fc" in css
+    assert '<span class="na">href</span>' in highlight_code('<a href="x">y</a>\n', "html")
+    assert re.search(r"\.chroma \.na\s*\{[^}]*color: #681da8", css)

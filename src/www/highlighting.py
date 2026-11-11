@@ -13,7 +13,7 @@ from pygments.util import ClassNotFound
 # fmind/theme's checks/palette.yaml; no sibling checkout
 # or second style inheritance engine is needed to build the website.
 _CHROMA_CSS_RULES: Final = (
-    ("PreWrapper", ".chroma", "color: #202124; background-color: #ffffff; -webkit-text-size-adjust: none"),
+    ("PreWrapper", ".chroma", "color: #202124; background-color: #f1f3f4; -webkit-text-size-adjust: none"),
     ("Error", ".chroma .err", "color: #a50e0e; font-weight: bold"),
     ("Selection", ".chroma ::selection", "color: inherit; background-color: #d2e3fc"),
     ("GenericOutput", ".chroma .go", "color: #595d62"),
@@ -26,6 +26,7 @@ _CHROMA_CSS_RULES: Final = (
     ("KeywordPseudo", ".chroma .kp", "color: #174ea6; font-weight: bold"),
     ("KeywordReserved", ".chroma .kr", "color: #174ea6; font-weight: bold"),
     ("KeywordType", ".chroma .kt", "color: #681da8"),
+    ("NameAttribute", ".chroma .na", "color: #681da8"),
     ("NameClass", ".chroma .nc", "color: #681da8"),
     ("NameConstant", ".chroma .no", "color: #934900; font-weight: bold"),
     ("NameDecorator", ".chroma .nd", "color: #681da8"),

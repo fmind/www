@@ -1135,7 +1135,7 @@ test("Fmind palette reaches page surfaces, controls, charts, and code", async ({
     await page.goto(new URL(article.url).pathname);
     if (!(await page.locator(".chroma .k").count())) continue;
     foundCode = true;
-    await expect(page.locator(".chroma").first()).toHaveCSS("background-color", "rgb(255, 255, 255)");
+    await expect(page.locator(".chroma").first()).toHaveCSS("background-color", "rgb(241, 243, 244)");
     await expect(page.locator(".chroma").first()).toHaveCSS("color", "rgb(32, 33, 36)");
     await expect(page.locator(".chroma .k").first()).toHaveCSS("color", "rgb(23, 78, 166)");
     await expect(page.locator(".chroma .k").first()).toHaveCSS("font-weight", "700");
