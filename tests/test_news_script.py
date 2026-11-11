@@ -7,6 +7,7 @@ import json
 import os
 import re
 import shutil
+import ssl
 import subprocess
 import sys
 import urllib.request
@@ -301,6 +302,18 @@ def test_public_https_connection_binds_verified_global_socket_and_sni(monkeypatc
     assert len(wrapped) == 1
     assert wrapped[0][1] == "example.com"
     assert connection.sock == "tls-socket"
+
+
+def test_tls_context_enforces_tls_1_2_minimum(monkeypatch: pytest.MonkeyPatch) -> None:
+    def relaxed_default_context() -> ssl.SSLContext:
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        context.minimum_version = ssl.TLSVersion.MINIMUM_SUPPORTED
+        return context
+
+    monkeypatch.setattr(news.ssl, "create_default_context", relaxed_default_context)
+
+    assert news._tls_context().minimum_version == ssl.TLSVersion.TLSv1_2  # noqa: SLF001
+    assert news._TLS_CONTEXT.minimum_version >= ssl.TLSVersion.TLSv1_2  # noqa: SLF001
 
 
 def test_fetch_text_refuses_plain_http() -> None:

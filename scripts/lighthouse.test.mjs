@@ -73,12 +73,24 @@ test("normalizeBaseUrl accepts an origin and rejects URL authority or path expan
 
 test(
   "runProcess kills the full process group after a timeout",
-  async () => {
+  async (context) => {
+    await mkdir(REPOSITORY_TMP, { recursive: true });
+    const fixture = await mkdtemp(join(REPOSITORY_TMP, "lighthouse-group-test-"));
+    context.after(async () => {
+      await rm(fixture, { force: true, recursive: true });
+    });
     // POSIX sh + sleep starts without cold-booting two V8 isolates under parallel check load,
     // while `trap "" TERM` ensures SIGTERM is ignored across exec so SIGKILL is exercised.
-    const parentProgram = "sh -c 'trap \"\" TERM; exec sleep 60' >/dev/null 2>&1 & printf '%s' \"$!\"; exec sleep 60";
+    // An executable script avoids passing `sh -c` to runProcess, which CodeQL models as a shell sink.
+    const script = join(fixture, "sleep-group.sh");
+    await writeFile(
+      script,
+      "#!/bin/sh\nsh -c 'trap \"\" TERM; exec sleep 60' >/dev/null 2>&1 &\nprintf '%s' \"$!\"\nexec sleep 60\n",
+      "utf8",
+    );
+    await chmod(script, 0o755);
 
-    const result = await harness.runProcess("/bin/sh", ["-c", parentProgram], {
+    const result = await harness.runProcess(script, [], {
       killGraceMs: 100,
       timeoutMs: 1000,
     });

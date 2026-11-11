@@ -82,7 +82,13 @@ class HttpsOnlyRedirect(urllib.request.HTTPRedirectHandler):
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 
-_TLS_CONTEXT = ssl.create_default_context()
+def _tls_context() -> ssl.SSLContext:
+    context = ssl.create_default_context()
+    context.minimum_version = ssl.TLSVersion.TLSv1_2
+    return context
+
+
+_TLS_CONTEXT = _tls_context()
 
 
 class PublicHTTPSConnection(http.client.HTTPSConnection):
