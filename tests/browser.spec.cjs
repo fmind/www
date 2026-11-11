@@ -1100,12 +1100,13 @@ test(
         const page = await context.newPage();
         await page.goto(calculator);
         await page.locator("#preset").selectOption("department");
-        await page.locator("#requests").fill("1000");
+        await page.locator("#requests").fill("2000");
         await page.locator("#update-comparison").click();
-        await expect(page.locator("#requests")).toHaveValue("1000");
-        await expect(page.locator("main")).toContainText("22,000 calls/month");
+        await expect(page.locator("#requests")).toHaveValue("2000");
+        await expect(page.locator("main")).toContainText("44,000 calls/month");
+        await expect(page).toHaveURL(/[?&]requests=2000\b/);
         await page.reload();
-        await expect(page.locator("#requests")).toHaveValue("1000");
+        await expect(page.locator("#requests")).toHaveValue("2000");
         await page.locator("#requests").fill("");
         await page.locator("#preset").selectOption("document-pipeline");
         if (javaScriptEnabled) {
