@@ -42,11 +42,13 @@ test(
     const context = await browser.newContext({ ...testInfo.project.use, storageState: undefined });
     failOnPageErrors(context);
     try {
-      await context.route("https://www.fmind.dev/**", async (route) => {
-        const url = new URL(route.request().url());
-        const response = await route.fetch({ url: new URL(url.pathname + url.search, baseURL).href });
-        await route.fulfill({ response });
-      });
+      if (new URL(baseURL).origin !== "https://www.fmind.dev") {
+        await context.route("https://www.fmind.dev/**", async (route) => {
+          const url = new URL(route.request().url());
+          const response = await route.fetch({ url: new URL(url.pathname + url.search, baseURL).href });
+          await route.fulfill({ response });
+        });
+      }
       await context.route(
         /https:\/\/([^/]+\.)?google(tagmanager|-analytics)?\.com\//,
         (route) => route.fulfill({ contentType: "application/javascript", body: "" }),
@@ -116,6 +118,7 @@ test(
       await expect(settings).toBeInViewport();
       await page.screenshot({ path: testInfo.outputPath("scan-small-phone-consent.png"), fullPage: true });
     } finally {
+      await context.unrouteAll({ behavior: "ignoreErrors" });
       await context.close();
     }
   },
@@ -137,10 +140,12 @@ test("the open consent banner never hides keyboard focus", async ({ browser, bas
   });
   failOnPageErrors(context);
   try {
-    await context.route("https://www.fmind.dev/**", async (route) => {
-      const url = new URL(route.request().url());
-      await route.fulfill({ response: await route.fetch({ url: new URL(url.pathname + url.search, baseURL).href }) });
-    });
+    if (new URL(baseURL).origin !== "https://www.fmind.dev") {
+      await context.route("https://www.fmind.dev/**", async (route) => {
+        const url = new URL(route.request().url());
+        await route.fulfill({ response: await route.fetch({ url: new URL(url.pathname + url.search, baseURL).href }) });
+      });
+    }
     await context.route(/https:\/\/([^/]+\.)?google(tagmanager|-analytics)?\.com\//, (route) => route.abort());
     const page = await context.newPage();
     for (const path of ["/", "/articles/", contextCalculator]) {
@@ -166,6 +171,7 @@ test("the open consent banner never hides keyboard focus", async ({ browser, bas
       }
     }
   } finally {
+    await context.unrouteAll({ behavior: "ignoreErrors" });
     await context.close();
   }
 });
