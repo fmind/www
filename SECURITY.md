@@ -1,6 +1,6 @@
 # Security
 
-Report vulnerabilities privately to <contact@fmind.dev> with the affected URL/commit, reproduction, and impact. Do not include credentials or visitor data in issues.
+Report vulnerabilities privately through GitHub's Security tab ("Report a vulnerability") or to <contact@fmind.dev> with the affected URL/commit, reproduction, and impact. Do not include credentials or visitor data in public issues.
 
 ## Release policy
 

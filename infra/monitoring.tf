@@ -8,8 +8,7 @@
 # so only the 5xx and log-match conditions would then cost about $0.70 a month.
 
 locals {
-  # Alert emails link these runbooks; the repository is private, so only the
-  # owner can open them.
+  # Alert emails link these public runbooks directly on main.
   runbook_deployment = "https://github.com/fmind/www/blob/main/README.md#deployment"
   runbook_infra      = "https://github.com/fmind/www/blob/main/.agents/skills/infra/SKILL.md"
   uptime_check_ids = [

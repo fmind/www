@@ -57,3 +57,9 @@ Authenticate Docker to Artifact Registry before a manual `deploy`. Neither CI no
 - **Consented GA4**: `G-Z28QKD99V2` (property `538730900`) loads only on `www.fmind.dev` after explicit consent; **Cookie settings** in the footer revokes consent and deletes `_ga` cookies.
 - **Operational logs and tracing**: private Cloud Run logs expire after 30 days. Opt-in tracing uses `OTEL_EXPORTER_OTLP_*`, and `GOOGLE_CLOUD_PROJECT` adds Cloud Logging trace correlation.
 - **FinOps**: use the [finops-analytics skill](.agents/skills/finops-analytics/SKILL.md) for cost and budget reviews (`TF_VAR_billing_account` is required for OpenTofu plans and never committed).
+
+## License
+
+Application source code, infrastructure configuration, and build scripts are licensed under the [MIT License](LICENSE).
+
+All rights are reserved on authored articles, curated news editions, and article media (`content/` and `static/img/articles/`), and on personal photographs and Fmind brand assets (`static/portrait.jpg`, `static/logo.png`, `static/img/avatar*.webp`, `static/img/logo.webp`, `static/img/og-image.jpg`, and `static/img/favicons/`): they are not licensed under MIT and may not be republished or redistributed without written permission. Company and certification logos under `static/img/companies/` and `static/img/certifications/` remain the property of their respective owners and are excluded from the MIT License.
