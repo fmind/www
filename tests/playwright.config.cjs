@@ -12,7 +12,7 @@ module.exports = defineConfig({
   // Run Chromium journeys in parallel across workers; cross-browser overrides this
   // to two workers without intra-file parallelism because four on CI starve WebKit.
   fullyParallel: true,
-  workers: process.env.CI ? 2 : 4,
+  workers: 4,
   reporter: "list",
   use: {
     baseURL,

@@ -231,8 +231,8 @@ description = "Type-check Python sources (ty)"
 run = "uv run --locked ty check"
 
 [tasks."check:typos"]
-description = "Check article prose for common spelling mistakes"
-run = "typos content/articles"
+description = "Check article, skill, and repository prose for spelling mistakes"
+run = "typos content/articles AGENTS.md README.md SECURITY.md .agents src/www/agent_skills src/www/sites/sources.md"
 
 [tasks."check:vuln"]
 alias = "cv"
@@ -241,7 +241,7 @@ run = [
   "uv audit --preview-features audit-command --locked",
   "uv audit --preview-features audit-command --locked --script scripts/build_fonts.py",
   # Scan the maintained lock, not third-party checkouts under tmp/.
-  "trivy fs --exit-code=1 --severity HIGH,CRITICAL --scanners vuln uv.lock",
+  "trivy fs --exit-code=1 --severity HIGH,CRITICAL --scanners vuln --include-dev-deps uv.lock",
   # mise locks npm tools (Lighthouse, Playwright) as pnpm-format aube-lock.yaml. Dependabot
   # never reads it, and Trivy skips it unless the file name is mapped to the pnpm parser.
   "trivy fs --exit-code=1 --severity HIGH,CRITICAL --scanners vuln --file-patterns 'pnpm:aube-lock\\.yaml' .mise/locks",

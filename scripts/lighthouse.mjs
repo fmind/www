@@ -737,11 +737,13 @@ if (import.meta.main) {
 export {
   allowChromiumSandbox,
   buildAuditPlan,
+  CATEGORIES,
   describeFailure,
   inspectReport,
   LIGHTHOUSE_VERSION,
   normalizeBaseUrl,
   parseArguments,
+  PORTFOLIO_PATHS,
   prepareArtifactDirectories,
   renderSummary,
   requireSitemapPaths,

@@ -12,18 +12,7 @@ import * as harness from "./lighthouse.mjs";
 const REPOSITORY_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const REPOSITORY_TMP = join(REPOSITORY_ROOT, "tmp");
 const BASE_URL = new URL("https://candidate.example/");
-const CATEGORIES = ["performance", "accessibility", "best-practices", "seo", "agentic-browsing"];
-
-const PORTFOLIO_PATHS = [
-  "/",
-  "/connect",
-  "/privacy",
-  "/articles/",
-  "/news/",
-  "/sites/",
-  "/sites/llm-self-hosting/",
-  "/sites/mcp-context-cost/",
-];
+const { CATEGORIES, PORTFOLIO_PATHS } = harness;
 
 // The sitemap names canonical production URLs, whatever origin serves it.
 function sitemapFetch(paths, status = 200) {
@@ -85,19 +74,13 @@ test("normalizeBaseUrl accepts an origin and rejects URL authority or path expan
 test(
   "runProcess kills the full process group after a timeout",
   async () => {
-    const grandchildProgram = "process.on('SIGTERM', () => {}); setInterval(() => {}, 1000)";
-    const parentProgram = `
-      const { spawn } = require("node:child_process");
-      const grandchild = spawn(process.execPath, ["-e", ${JSON.stringify(grandchildProgram)}], {
-        stdio: "ignore",
-      });
-      process.stdout.write(String(grandchild.pid));
-      setInterval(() => {}, 1000);
-    `;
+    // POSIX sh + sleep starts without cold-booting two V8 isolates under parallel check load,
+    // while `trap "" TERM` ensures SIGTERM is ignored across exec so SIGKILL is exercised.
+    const parentProgram = "sh -c 'trap \"\" TERM; exec sleep 60' >/dev/null 2>&1 & printf '%s' \"$!\"; exec sleep 60";
 
-    const result = await harness.runProcess(process.execPath, ["-e", parentProgram], {
+    const result = await harness.runProcess("/bin/sh", ["-c", parentProgram], {
       killGraceMs: 100,
-      timeoutMs: 500,
+      timeoutMs: 1000,
     });
     const grandchildPid = Number(result.stdout);
 

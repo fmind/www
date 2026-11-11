@@ -861,10 +861,15 @@ test("calculator keeps edits made while an update is in flight", async ({ page }
   const held = new Promise((resolve) => {
     release = resolve;
   });
+  let settle;
+  const settled = new Promise((resolve) => {
+    settle = resolve;
+  });
   await page.route("**/sites/llm-self-hosting/?*", async (route) => {
     await held;
     // The edit aborts this request, so the late continuation may be rejected.
     await route.continue().catch(() => {});
+    settle();
   });
   await page.locator("#requests").fill("234");
   await page.locator("#requests").press("Enter");
@@ -872,7 +877,7 @@ test("calculator keeps edits made while an update is in flight", async ({ page }
   await page.locator("#days").fill("5");
   await expect(page.locator("[data-hosting-calculator]")).not.toHaveAttribute("aria-busy", "true");
   release();
-  await delay(300);
+  await settled;
   await expect(page.locator("#days")).toHaveValue("5");
   await expect(page.locator("#days")).toBeFocused();
   await expect(page.locator("#requests")).toHaveValue("234");
@@ -1630,14 +1635,9 @@ test("article section links work without JavaScript", async ({ browser }) => {
 test("MCP context calculator toggles servers with the keyboard", async ({ page }) => {
   await page.goto(contextCalculator);
   await expect(page.locator("#context-results")).toHaveText("17,536 tokens of tool definitions on every request");
-  // Reach the server checkboxes and the submit using only the keyboard.
-  for (
-    let i = 0;
-    i < 30 && !(await page.locator("#server-github").evaluate((el) => el === document.activeElement));
-    i++
-  ) {
-    await page.keyboard.press("Tab");
-  }
+  // Tab from the breadcrumb immediately preceding the form into the server checkboxes.
+  await page.getByLabel("Breadcrumb").getByRole("link").focus();
+  await page.keyboard.press("Tab");
   await expect(page.locator("#server-github")).toBeFocused();
   await page.keyboard.press("Space");
   await expect(page.locator("#server-github")).not.toBeChecked();
