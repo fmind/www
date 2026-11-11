@@ -2,6 +2,26 @@
 
 All notable changes to this project are documented in this file.
 
+## [2.10.1] - 2026-11-11
+
+### 🐛 Bug Fixes
+
+- _(www)_ Harden security boundaries, MCP metadata, and web LCP
+
+### 📚 Documentation
+
+- Scope MIT license and document public repository posture
+- _(agents)_ Note mise.local.toml copy for temporary worktrees
+- Trim repository docs and maintenance skills
+
+### ⚙️ Build & CI
+
+- _(tasks)_ Harden Lighthouse process test and broaden checks
+
+### 🧹 Miscellaneous
+
+- _(highlighting)_ Align Chroma code blocks with fmind/theme v10
+
 ## [2.10.0] - 2026-11-10
 
 ### 🚀 Features
