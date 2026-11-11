@@ -35,7 +35,15 @@ jobs:
         if: inputs.target != 'production'
         run: uv sync --locked --no-dev
       - name: Install browser binaries and ephemeral runner libraries
-        run: mise run install:browser:cross -- --with-deps
+        run: |
+          # GitHub Ubuntu 24.04 runners list cleartext http://azure.archive.ubuntu.com first;
+          # drop http:// entries when https:// mirrors exist so port-80 stalls cannot hang apt.
+          if [ -f /etc/apt/apt-mirrors.txt ] && grep -q '^https://' /etc/apt/apt-mirrors.txt; then
+            sudo sed -i '/^http:\/\//d' /etc/apt/apt-mirrors.txt
+          fi
+          printf 'Acquire::http::Timeout "10";\nAcquire::https::Timeout "10";\nAcquire::Retries "2";\n' \
+            | sudo tee /etc/apt/apt.conf.d/99quality-timeouts >/dev/null
+          mise run install:browser:cross -- --with-deps
       - name: Exercise Firefox and WebKit
         run: mise run ${{ inputs.target == 'production' && '--skip-deps ' || '' }}test:browser:cross
       - name: Install Chromium for production journeys
