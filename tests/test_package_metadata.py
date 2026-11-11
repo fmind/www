@@ -77,3 +77,26 @@ def test_image_builders_pin_one_buildkit_digest() -> None:
     )
     # The pinned builder's built-in frontend parses the Dockerfile; a `# syntax=` tag would pull a floating one.
     assert not re.search(r"^#\s*syntax=", dockerfile, re.MULTILINE | re.IGNORECASE)
+
+
+def test_lighthouse_and_gcloud_pins_stay_synchronized() -> None:
+    repository = Path(__file__).resolve().parents[1]
+    tools = _load_toml(repository / "mise.toml")["tools"]
+    lighthouse_script = (repository / "scripts" / "lighthouse.mjs").read_text(encoding="utf-8")
+    assert re.findall(r'^const LIGHTHOUSE_VERSION = "([^"]+)";$', lighthouse_script, re.MULTILINE) == [
+        tools["npm:lighthouse"]
+    ]
+
+    workflows = sorted((repository / ".github" / "workflows").glob("*.yml"))
+    gcloud_versions: list[str] = []
+    for workflow in workflows:
+        text = workflow.read_text(encoding="utf-8")
+        gcloud_steps = re.findall(r"uses: google-github-actions/setup-gcloud@", text)
+        versions = re.findall(
+            r"uses: google-github-actions/setup-gcloud@[^\n]+\n\s+with:\n\s+version:\s*([0-9.]+)",
+            text,
+        )
+        assert len(versions) == len(gcloud_steps), workflow.name
+        gcloud_versions.extend(versions)
+    assert gcloud_versions
+    assert len(set(gcloud_versions)) == 1

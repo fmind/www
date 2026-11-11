@@ -200,6 +200,9 @@ def test_load_news_sorts_newest_first_and_rejects_republished_links(tmp_path: Pa
 
 
 def test_load_news_names_unreadable_files(tmp_path: Path) -> None:
+    with pytest.raises(NewsError, match="cannot list editions"):
+        load_news(tmp_path / "missing-news")
+
     directory = tmp_path / "news"
     directory.mkdir()
     (directory / "2026-11-03.md").write_bytes(b"\xff\xfe")

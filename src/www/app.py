@@ -56,9 +56,9 @@ from www.news import (
     split_news_index,
 )
 from www.pages import (
-    ARTICLE_INDEX_STRUCTURED_DATA,
     agents_metadata,
     article_index_metadata,
+    article_index_structured_data,
     article_metadata,
     connect_metadata,
     home_metadata,
@@ -227,6 +227,12 @@ def _request_path(request: AppRequest) -> str:
     return request.scope["state"]["request_path"]
 
 
+def _has_encoded_slash(request: AppRequest) -> bool:
+    """Detect %2F in the raw request target so canonical slash routes redirect instead of serving."""
+    raw = request.scope.get("raw_path") or b""
+    return b"%2f" in raw.split(b"?", 1)[0].lower()
+
+
 @contextmanager
 def _timed(phases: dict[str, float], name: str) -> Generator[None]:
     """Record one startup phase's wall time in seconds."""
@@ -320,15 +326,17 @@ def create_app(
 
     # Page metadata and validated JSON-LD feed the renderer, so they count toward its phase.
     renderer_started = perf_counter()
+    image_sizes = application_assets.image_sizes
     home_structured_data = get_structured_data()
+    articles_structured_data = article_index_structured_data(image_sizes)
     home_page = home_metadata(home_structured_data)
-    connect_page = connect_metadata()
-    scan_page = scan_metadata()
+    connect_page = connect_metadata(image_sizes)
+    scan_page = scan_metadata(image_sizes)
     contact_card = _Snapshot.of(render_contact_card())
     not_found_page = not_found_metadata()
-    agents_page = agents_metadata()
-    privacy_page = privacy_metadata()
-    site_index_page = site_index_metadata()
+    agents_page = agents_metadata(image_sizes)
+    privacy_page = privacy_metadata(image_sizes)
+    site_index_page = site_index_metadata(image_sizes)
     site_pages_by_slug = {page.slug: page for page in SITE_PAGES}
     if unmatched := sorted(site_pages_by_slug.keys() ^ _SITE_VIEWS.keys()):
         msg = (
@@ -336,16 +344,16 @@ def create_app(
         )
         raise RuntimeError(msg)
     site_metadata_by_slug = {
-        slug: site_page_metadata(page, site_structured_data(page, application_assets.image_sizes))
+        slug: site_page_metadata(page, site_structured_data(page, image_sizes))
         for slug, page in site_pages_by_slug.items()
     }
-    news_page = news_index_metadata()
+    news_page = news_index_metadata(image_sizes)
     editions_by_slug = {edition.slug: edition for edition in editions}
     edition_metadata_by_slug = {edition.slug: news_edition_metadata(edition) for edition in editions}
     edition_neighbours = adjacent_editions(editions)
     news_context: dict[str, object] = {"index": split_news_index(editions), "news_feed_path": NEWS_FEED_PATH}
     article_metadata_by_slug = {
-        slug: article_metadata(article, get_structured_data(article), application_assets.image_sizes)
+        slug: article_metadata(article, get_structured_data(article), image_sizes)
         for slug, article in article_collection.by_slug.items()
     }
     # Rendering owns the single reviewed trusted-markup boundary for these
@@ -357,7 +365,7 @@ def create_app(
         biography_html=biography_html,
         structured_data=(
             home_structured_data,
-            ARTICLE_INDEX_STRUCTURED_DATA,
+            articles_structured_data,
             site_index_page.structured_data,
             connect_page.structured_data,
             scan_page.structured_data,
@@ -498,7 +506,7 @@ def create_app(
 
     @route("/news", http_method=_READ_METHODS, sync_to_thread=True)
     def news_index(request: AppRequest) -> Redirect | Response[bytes] | Response[str]:
-        if not _request_path(request).endswith("/"):
+        if not _request_path(request).endswith("/") or _has_encoded_slash(request):
             return _redirect("/news/")
         if prefers_markdown(request.headers.get("accept", "")):
             return _markdown_response(request, news_index_markdown, f"{METADATA.site_url}/news/", negotiated=True)
@@ -512,7 +520,7 @@ def create_app(
 
     @route("/news/{slug:str}", http_method=_READ_METHODS, sync_to_thread=True)
     def news_edition(slug: FromPath[str], request: AppRequest) -> Redirect | Response[bytes] | Response[str]:
-        if _request_path(request).endswith("/"):
+        if _request_path(request).endswith("/") and not _has_encoded_slash(request):
             edition = editions_by_slug.get(slug)
             if edition is None:
                 return render_not_found(request)
@@ -532,24 +540,26 @@ def create_app(
             edition = editions_by_slug.get(slug.removesuffix(".md"))
             if edition is None:
                 return render_not_found(request)
+            if _has_encoded_slash(request):
+                return _redirect(edition.markdown_path())
             return _markdown_response(request, news_markdown[edition.slug], edition.url, negotiated=False, noindex=True)
         return _redirect(f"/news/{quote(slug, safe='')}/")
 
     @route("/agents", http_method=_READ_METHODS, sync_to_thread=True)
     def agents(request: AppRequest) -> Redirect | Response[str]:
-        if _request_path(request).endswith("/"):
+        if _request_path(request).endswith("/") or _has_encoded_slash(request):
             return _redirect("/agents")
         return render_page(request, PageTemplate.AGENTS, agents_page)
 
     @route("/privacy", http_method=_READ_METHODS, sync_to_thread=True)
     def privacy(request: AppRequest) -> Redirect | Response[str]:
-        if _request_path(request).endswith("/"):
+        if _request_path(request).endswith("/") or _has_encoded_slash(request):
             return _redirect("/privacy")
         return render_page(request, PageTemplate.PRIVACY, privacy_page)
 
     @route("/connect", http_method=_READ_METHODS, sync_to_thread=True)
     def connect(request: AppRequest) -> Redirect | Response[str]:
-        if _request_path(request).endswith("/"):
+        if _request_path(request).endswith("/") or _has_encoded_slash(request):
             return _redirect("/connect")
         return render_page(
             request,
@@ -560,13 +570,13 @@ def create_app(
 
     @route("/scan", http_method=_READ_METHODS, sync_to_thread=True)
     def scan(request: AppRequest) -> Redirect | Response[str]:
-        if _request_path(request).endswith("/"):
+        if _request_path(request).endswith("/") or _has_encoded_slash(request):
             return _redirect("/scan")
         return render_page(request, PageTemplate.SCAN, scan_page, {"connect_url": CONNECT_URL})
 
     @route("/articles", http_method=_READ_METHODS, sync_to_thread=True)
     def articles_index(request: AppRequest) -> Redirect | Response[str]:
-        if not _request_path(request).endswith("/"):
+        if not _request_path(request).endswith("/") or _has_encoded_slash(request):
             return _redirect_keeping_query(request, "/articles/")
         view = article_index_data(
             page_articles,
@@ -577,7 +587,7 @@ def create_app(
         return render_page(
             request,
             PageTemplate.ARTICLES,
-            article_index_metadata(view),
+            article_index_metadata(view, articles_structured_data),
             {"view": view},
         )
 
@@ -585,7 +595,7 @@ def create_app(
     def article_redirect_or_markdown(
         slug: FromPath[str], request: AppRequest
     ) -> Redirect | Response[bytes] | Response[str]:
-        if _request_path(request).endswith("/"):
+        if _request_path(request).endswith("/") and not _has_encoded_slash(request):
             article = routable_articles.get(slug)
             if article is None:
                 return render_not_found(request)
@@ -610,13 +620,15 @@ def create_app(
             article = routable_articles.get(slug.removesuffix(".md"))
             if article is None:
                 return render_not_found(request)
+            if _has_encoded_slash(request):
+                return _redirect(article.markdown_path())
             # The fixed export is a duplicate representation; search engines credit the article page.
             return _markdown_response(request, markdown_snapshots[article.slug], article.url, negotiated=False)
         return _redirect_keeping_query(request, f"/articles/{quote(slug, safe='')}/")
 
     @route("/sites", http_method=_READ_METHODS, sync_to_thread=True)
     def sites_index(request: AppRequest) -> Redirect | Response[str]:
-        if not _request_path(request).endswith("/"):
+        if not _request_path(request).endswith("/") or _has_encoded_slash(request):
             return _redirect("/sites/")
         return render_page(
             request,
@@ -627,7 +639,7 @@ def create_app(
 
     @route("/sites/{slug:str}", http_method=_READ_METHODS, sync_to_thread=True)
     def site_page(slug: FromPath[str], request: AppRequest) -> Redirect | Response[str]:
-        if not _request_path(request).endswith("/"):
+        if not _request_path(request).endswith("/") or _has_encoded_slash(request):
             return _redirect_keeping_query(request, f"/sites/{quote(slug, safe='')}/")
         if slug not in site_pages_by_slug:
             return render_not_found(request)

@@ -18,6 +18,7 @@ when the edition changed on main since the draft. Neither touches the working tr
 
 import argparse
 import base64
+import contextlib
 import hashlib
 import html
 import http.client
@@ -89,6 +90,9 @@ def _tls_context() -> ssl.SSLContext:
 
 
 _TLS_CONTEXT = _tls_context()
+# RFC 6052 Well-Known Prefix embeds arbitrary IPv4 addresses (including loopback and
+# cloud metadata) inside IPv6; Python's ipaddress marks 64:ff9b::/96 as global.
+_RFC6052_NAT64 = ipaddress.IPv6Network("64:ff9b::/96")
 
 
 class PublicHTTPSConnection(http.client.HTTPSConnection):
@@ -100,7 +104,7 @@ class PublicHTTPSConnection(http.client.HTTPSConnection):
             raise OSError(f"{self.host}: no address found")
         for _, _, _, _, sockaddr in infos:
             address = ipaddress.ip_address(sockaddr[0])
-            if not address.is_global:
+            if not address.is_global or (isinstance(address, ipaddress.IPv6Address) and address in _RFC6052_NAT64):
                 raise ValueError(f"refusing non-global address {address} for {self.host}")
         last_error: OSError | None = None
         for family, socktype, proto, _, sockaddr in infos:
@@ -671,8 +675,9 @@ def draft(
     drafts.mkdir(parents=True, exist_ok=True)
     cutoff = time.time() - DRAFT_DAYS * 86_400
     for old in drafts.glob("*.json"):
-        if old.stat().st_mtime < cutoff:
-            old.unlink(missing_ok=True)
+        with contextlib.suppress(FileNotFoundError):
+            if old.stat().st_mtime < cutoff:
+                old.unlink(missing_ok=True)
     record = {"id": identifier, "slug": slug, "base": digest(base) if base else "", "markdown": markdown}
     (drafts / f"{identifier}.json").write_text(json.dumps(record, ensure_ascii=False, indent=2), encoding="utf-8")
     return preview(identifier, edition, len(existing), skipped)
@@ -736,7 +741,7 @@ def publish(identifier: str, *, repo: Path = Path(), drafts: Path = DRAFTS) -> s
         raise NewsError(f"refusing to push a commit that changes {changed}, not only {target}")
     # The pre-push hook tests the working tree, not this commit; CI gates the pushed commit before it deploys.
     git(repo, "push", "--quiet", "--no-verify", "origin", f"{new}:refs/heads/main")
-    record_path.unlink()
+    record_path.unlink(missing_ok=True)
     lines = [f"Published the {slug} edition ({len(edition.items)} links) as {new[:7]}."]
     if web := github_url(repo):
         lines.append(f"Checks: {web}/commit/{new}")

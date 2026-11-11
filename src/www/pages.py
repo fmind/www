@@ -113,6 +113,7 @@ def _enriched_page_structured_data(
     description: str,
     *,
     breadcrumb_label: str = "",
+    image_sizes: Mapping[str, tuple[int, int]] | None = None,
 ) -> str:
     page: dict[str, object] = {
         "@id": f"{canonical}#webpage",
@@ -123,7 +124,7 @@ def _enriched_page_structured_data(
         "isPartOf": {"@id": f"{METADATA.site_url}/#website"},
         "about": {"@id": f"{METADATA.site_url}/#person"},
         "inLanguage": "en",
-        "primaryImageOfPage": _image_object(_WEBSITE.image_url, _WEBSITE.image_alt),
+        "primaryImageOfPage": _image_object(_WEBSITE.image_url, _WEBSITE.image_alt, image_sizes),
     }
     graph: list[dict[str, object]] = [*IDENTITY_GRAPH]
     if breadcrumb_label:
@@ -156,6 +157,7 @@ def _web_page(
     breadcrumb_label: str = "",
     no_index: bool = False,
     preload_code_font: bool = False,
+    image_sizes: Mapping[str, tuple[int, int]] | None = None,
 ) -> PageMetadata:
     """Metadata for a hosted page whose JSON-LD describes that page, not the profile."""
     return replace(
@@ -169,23 +171,25 @@ def _web_page(
             title,
             description,
             breadcrumb_label="" if no_index else breadcrumb_label,
+            image_sizes=image_sizes,
         ),
         no_index=no_index,
         preload_code_font=preload_code_font,
     )
 
 
-def connect_metadata() -> PageMetadata:
+def connect_metadata(image_sizes: Mapping[str, tuple[int, int]] | None = None) -> PageMetadata:
     return _web_page(
         "ContactPage",
         title=f"Connect with {_IDENTITY}",
         description="Connect with Médéric Hurier (Fmind), freelance AI Architect based in Luxembourg. Find me on LinkedIn or save my contact details.",
         canonical=CONNECT_URL,
         breadcrumb_label="Connect",
+        image_sizes=image_sizes,
     )
 
 
-def agents_metadata() -> PageMetadata:
+def agents_metadata(image_sizes: Mapping[str, tuple[int, int]] | None = None) -> PageMetadata:
     return _web_page(
         "WebPage",
         title=f"For AI agents | {_IDENTITY}",
@@ -193,10 +197,11 @@ def agents_metadata() -> PageMetadata:
         canonical=f"{METADATA.site_url}/agents",
         breadcrumb_label="For AI agents",
         preload_code_font=True,
+        image_sizes=image_sizes,
     )
 
 
-def privacy_metadata() -> PageMetadata:
+def privacy_metadata(image_sizes: Mapping[str, tuple[int, int]] | None = None) -> PageMetadata:
     return _web_page(
         "WebPage",
         title=f"Privacy | {_IDENTITY}",
@@ -205,10 +210,11 @@ def privacy_metadata() -> PageMetadata:
         breadcrumb_label="Privacy",
         # The page names the _ga cookies in <code>.
         preload_code_font=True,
+        image_sizes=image_sizes,
     )
 
 
-def scan_metadata() -> PageMetadata:
+def scan_metadata(image_sizes: Mapping[str, tuple[int, int]] | None = None) -> PageMetadata:
     return _web_page(
         "ContactPage",
         title=f"Scan to connect | {_IDENTITY}",
@@ -216,22 +222,27 @@ def scan_metadata() -> PageMetadata:
         canonical=f"{METADATA.site_url}/scan",
         no_index=True,
         preload_code_font=True,
+        image_sizes=image_sizes,
     )
 
 
 _ARTICLE_INDEX_DESCRIPTION = (
     "Articles on AI agents, MLOps, cloud architecture, security, and pragmatic engineering systems."
 )
-ARTICLE_INDEX_STRUCTURED_DATA = _enriched_page_structured_data(
-    "CollectionPage",
-    _ARTICLES_URL,
-    _ARTICLE_INDEX_TITLE,
-    _ARTICLE_INDEX_DESCRIPTION,
-    breadcrumb_label="Articles",
-)
 
 
-def article_index_metadata(view: ArticleIndexView) -> PageMetadata:
+def article_index_structured_data(image_sizes: Mapping[str, tuple[int, int]] | None = None) -> str:
+    return _enriched_page_structured_data(
+        "CollectionPage",
+        _ARTICLES_URL,
+        _ARTICLE_INDEX_TITLE,
+        _ARTICLE_INDEX_DESCRIPTION,
+        breadcrumb_label="Articles",
+        image_sizes=image_sizes,
+    )
+
+
+def article_index_metadata(view: ArticleIndexView, structured_data: str = "") -> PageMetadata:
     preload = ""
     if view.results:
         preload = view.results[0].card_image_path()
@@ -250,7 +261,7 @@ def article_index_metadata(view: ArticleIndexView) -> PageMetadata:
         title=title,
         description=_ARTICLE_INDEX_DESCRIPTION,
         canonical=_ARTICLES_URL,
-        structured_data=ARTICLE_INDEX_STRUCTURED_DATA,
+        structured_data=structured_data or article_index_structured_data(),
         preload_image=preload,
         no_index=view.searching(),
     )
@@ -317,13 +328,14 @@ _NEWS_INDEX_DESCRIPTION = (
 )
 
 
-def news_index_metadata() -> PageMetadata:
+def news_index_metadata(image_sizes: Mapping[str, tuple[int, int]] | None = None) -> PageMetadata:
     page = _web_page(
         "CollectionPage",
         title=f"News | {_IDENTITY}",
         description=_NEWS_INDEX_DESCRIPTION,
         canonical=f"{METADATA.site_url}/news/",
         breadcrumb_label="News",
+        image_sizes=image_sizes,
     )
     return replace(page, feed_path=NEWS_FEED_PATH, feed_title="Fmind news")
 
@@ -386,13 +398,14 @@ def site_structured_data(
     )
 
 
-def site_index_metadata() -> PageMetadata:
+def site_index_metadata(image_sizes: Mapping[str, tuple[int, int]] | None = None) -> PageMetadata:
     return _web_page(
         "CollectionPage",
         title=f"Sites | {METADATA.site_name}",
         description="Source-backed decision tools for AI architecture, infrastructure, and operating economics.",
         canonical=_SITES_URL,
         breadcrumb_label="Sites",
+        image_sizes=image_sizes,
     )
 
 

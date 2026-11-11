@@ -252,7 +252,18 @@ def test_arxiv_rejects_xml_dtd_and_entity_declarations(payload: str) -> None:
     assert "disallowed XML declarations" in facts["error"]
 
 
-@pytest.mark.parametrize("address", ["127.0.0.1", "::1", "169.254.169.254", "100.64.0.1", "10.0.0.5"])
+@pytest.mark.parametrize(
+    "address",
+    [
+        "127.0.0.1",
+        "::1",
+        "169.254.169.254",
+        "100.64.0.1",
+        "10.0.0.5",
+        "64:ff9b::7f00:1",
+        "64:ff9b::a9fe:a9fe",
+    ],
+)
 def test_public_https_connection_rejects_non_global_addresses(monkeypatch: pytest.MonkeyPatch, address: str) -> None:
     family = news.socket.AF_INET6 if ":" in address else news.socket.AF_INET
     sockaddr = (address, 443, 0, 0) if ":" in address else (address, 443)

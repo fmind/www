@@ -30,13 +30,14 @@ jobs:
       - name: Set up pinned tools
         uses: ./.github/actions/setup-mise
         with:
-          tools: aqua:astral-sh/uv python node github:dobicinaitis/tailwind-cli-extra npm:playwright
+          tools: ${{ inputs.target == 'production' && 'node npm:playwright' || 'aqua:astral-sh/uv python node github:dobicinaitis/tailwind-cli-extra npm:playwright' }}
       - name: Install Python dependencies
+        if: inputs.target != 'production'
         run: uv sync --locked --no-dev
       - name: Install browser binaries and ephemeral runner libraries
         run: mise run install:browser:cross -- --with-deps
       - name: Exercise Firefox and WebKit
-        run: mise run test:browser:cross
+        run: mise run ${{ inputs.target == 'production' && '--skip-deps ' || '' }}test:browser:cross
       - name: Install Chromium for production journeys
         if: inputs.target == 'production'
         run: mise run install:browser
@@ -65,15 +66,16 @@ jobs:
       - name: Set up pinned tools
         uses: ./.github/actions/setup-mise
         with:
-          tools: aqua:astral-sh/uv python node github:dobicinaitis/tailwind-cli-extra npm:playwright npm:lighthouse
+          tools: ${{ inputs.target == 'production' && 'node npm:playwright npm:lighthouse' || 'aqua:astral-sh/uv python node github:dobicinaitis/tailwind-cli-extra npm:playwright npm:lighthouse' }}
       - name: Install Python dependencies
+        if: inputs.target != 'production'
         run: uv sync --locked --no-dev
       - name: Install Chromium
         run: mise run install:browser
       - name: Allow the pinned Chromium sandbox
         run: node scripts/lighthouse.mjs --allow-sandbox
       - name: Qualify portfolio pages
-        run: mise run test:lighthouse:local
+        run: mise run ${{ inputs.target == 'production' && '--skip-deps ' || '' }}test:lighthouse:local
       - name: Retain exact Lighthouse reports
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

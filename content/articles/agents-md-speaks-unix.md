@@ -47,7 +47,7 @@ git ls-files | rg '(^|/)AGENTS\.md$'
 
 This is tool **composition**. Git supplies tracked paths; Ripgrep selects the agent instruction files. Two existing programs cooperate without a custom integration. More involved workflows can become small Python programs, with explicit inputs and recovery logic, instead of ever longer shell one-liners.
 
-This is why the quality of a command matters to both of us. Useful errors, meaningful exit codes, structured output where appropriate, and predictable non-interactive behavior make a tool easier to use and combine. A command hanging on an invisible prompt leaves the agent stuck just as surely as it would leave a script stuck. My [CLI development guidance](https://github.com/fmind/dot/blob/main/skills/python-stack/references/cli-contracts.md) records those expectations.
+This is why the quality of a command matters to both of us. Useful errors, meaningful exit codes, structured output where appropriate, and predictable non-interactive behavior make a tool easier to use and combine. A command hanging on an invisible prompt leaves the agent stuck just as surely as it would leave a script stuck. My [CLI development guidance](https://github.com/fmind/dot/blob/main/skills/python-stack/references/argparse/GUIDE.md) records those expectations.
 
 Agent platforms can add scheduling, isolation, and remote coordination. For work on a local codebase, though, Unix already provides an extraordinary amount of flexibility. Improving one command can benefit every workflow that uses it.
 

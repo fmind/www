@@ -12,6 +12,7 @@ from www.news import NEWS_FEED_PATH, parse_edition
 from www.pages import (
     agents_metadata,
     article_index_metadata,
+    article_index_structured_data,
     connect_metadata,
     home_metadata,
     news_edition_metadata,
@@ -138,3 +139,18 @@ def test_site_metadata_is_a_web_application_and_disables_smooth_scroll() -> None
     ]
     assert f"{METADATA.site_url}/#person" in nodes
     assert metadata.instant_scroll
+
+
+def test_hosted_pages_honour_explicit_image_sizes() -> None:
+    override = {"/static/img/og-image.jpg": (800, 420)}
+    for raw in (
+        article_index_structured_data(override),
+        news_index_metadata(override).structured_data,
+        site_index_metadata(override).structured_data,
+        connect_metadata(override).structured_data,
+        scan_metadata(override).structured_data,
+        agents_metadata(override).structured_data,
+        privacy_metadata(override).structured_data,
+    ):
+        page = json.loads(raw)["@graph"][-1]
+        assert (page["primaryImageOfPage"]["width"], page["primaryImageOfPage"]["height"]) == (800, 420)

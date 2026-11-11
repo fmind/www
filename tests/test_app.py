@@ -1153,8 +1153,19 @@ def test_slash_aliases_share_mcp_policy_and_canonical_log_paths(
         logger.records.clear()
         for raw_path in (b"//privacy", b"///connect", b"/articles//", f"/{FONT_PATHS[0]}".encode()):
             assert portal.call(request, "GET", raw_path, browser)[0] == 200
-        status, headers = portal.call(request, "GET", b"/agents%2F", browser)
-        assert (status, headers["location"]) == (301, "/agents")
+        for raw_path, expected_location in (
+            (b"/agents%2F", "/agents"),
+            (b"/%2Fconnect", "/connect"),
+            (b"/articles%2F", "/articles/"),
+            (b"/articles/the-affordable-ai-agents%2F", "/articles/the-affordable-ai-agents/"),
+            (b"/articles%2Fthe-affordable-ai-agents/", "/articles/the-affordable-ai-agents/"),
+            (b"/articles%2Fthe-affordable-ai-agents.md", "/articles/the-affordable-ai-agents.md"),
+            (b"/news%2F", "/news/"),
+            (b"/sites%2F", "/sites/"),
+            (b"/sites/llm-self-hosting%2F", "/sites/llm-self-hosting/"),
+        ):
+            status, headers = portal.call(request, "GET", raw_path, browser)
+            assert (raw_path, status, headers["location"]) == (raw_path, 301, expected_location)
 
     assert [(event, values["path"]) for event, values in logger.records] == [
         (ANALYTICS_LOG_NAME, "/privacy"),

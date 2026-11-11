@@ -34,7 +34,7 @@ exclude_path = [
   "\\.git/",
   "\\.json$",
   "\\.toml$",
-  "\\.yml$",
+  "\\.ya?ml$",
   # Each edition's links are fetched by `scripts.news prepare` when curated; old news links rot by nature.
   "^(\\./)?content/news/",
   "^(\\./)?infra/",

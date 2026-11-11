@@ -300,8 +300,12 @@ def parse_edition(slug: str, text: str) -> NewsEdition:
 
 def load_news(directory: Path = Path("content/news")) -> tuple[NewsEdition, ...]:
     """Load every edition, newest first, and reject a link already published in another edition."""
+    try:
+        paths = sorted(directory.iterdir())
+    except OSError as error:
+        raise NewsError(f"{directory}: cannot list editions") from error
     editions = []
-    for path in sorted(directory.iterdir()):
+    for path in paths:
         if path.suffix != ".md":
             raise NewsError(f"{path}: an edition must be a YYYY-MM-DD.md Markdown file")
         try:
