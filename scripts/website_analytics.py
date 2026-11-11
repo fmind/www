@@ -30,6 +30,9 @@ MAX_DAYS = 90
 MAX_ROWS = 4_000_000
 MAX_BYTES = 3 * 1024**3
 MAX_PAGES = 1_000
+# A path logged as non-bot more often than this within one UTC minute or hour is a burst of automation.
+BURST_PER_MINUTE = 20
+BURST_PER_HOUR = 60
 
 
 class AnalyticsError(RuntimeError):
@@ -271,13 +274,35 @@ def collect(read: Callable[[str, dict[str, str]], bytes], days: Sequence[date]) 
     return events, duplicates
 
 
-def successful(event: Event) -> bool:
-    return event.bot is False and 200 <= event.status < 300
+def burst_indexes(events: Sequence[Event]) -> set[int]:
+    """Indexes of non-bot events whose path exceeds the per-minute or per-hour burst rate."""
+    minutes: Counter[tuple[str, int]] = Counter()
+    hours: Counter[tuple[str, int]] = Counter()
+    for event in events:
+        second = int(event.timestamp.timestamp())
+        minutes[event.path, second // 60] += 1
+        hours[event.path, second // 3600] += 1
+    return {
+        index
+        for index, event in enumerate(events)
+        if minutes[event.path, int(event.timestamp.timestamp()) // 60] > BURST_PER_MINUTE
+        or hours[event.path, int(event.timestamp.timestamp()) // 3600] > BURST_PER_HOUR
+    }
+
+
+def human_events(events: Sequence[Event]) -> tuple[list[Event], list[Event]]:
+    """Split non-bot events into human events and rate-burst automation."""
+    flagged = [event for event in events if event.bot is False]
+    automated = burst_indexes(flagged)
+    humans = [event for index, event in enumerate(flagged) if index not in automated]
+    bursts = [flagged[index] for index in sorted(automated)]
+    return humans, bursts
 
 
 def breakdown(events: list[Event], start: date, days: int, zone: ZoneInfo) -> dict[str, object]:
     """Aggregate one complete calendar window with explicit denominators."""
-    views = [event for event in events if successful(event)]
+    humans, bursts = human_events(events)
+    views = [event for event in humans if 200 <= event.status < 300]
     daily = Counter(event.timestamp.astimezone(zone).date().isoformat() for event in views)
     event_days = {event.timestamp.astimezone(zone).date() for event in events}
     referrers: Counter[str] = Counter()
@@ -294,9 +319,11 @@ def breakdown(events: list[Event], start: date, days: int, zone: ZoneInfo) -> di
         "daily_average": round(len(views) / days, 2),
         "bot_events": bots,
         "bot_share_percent": round(100 * bots / len(events), 2) if events else None,
+        "burst_events": len(bursts),
+        "burst_paths": dict(Counter(event.path for event in bursts).most_common(5)),
         "unknown_bot_events": sum(event.bot is None for event in events),
         "html_4xx": sum(400 <= event.status < 500 for event in events),
-        "non_bot_4xx": sum(event.bot is False and 400 <= event.status < 500 for event in events),
+        "non_bot_4xx": sum(400 <= event.status < 500 for event in humans),
         "daily_views": {
             (start + timedelta(days=i)).isoformat(): daily[(start + timedelta(days=i)).isoformat()] for i in range(days)
         },
@@ -319,8 +346,10 @@ def summarize(events: list[Event], *, end: date, days: int, zone: ZoneInfo, dupl
     previous_start = start - timedelta(days=days)
     current = [event for event in events if boundary(start, zone) <= event.timestamp < boundary(end, zone)]
     previous = [event for event in events if boundary(previous_start, zone) <= event.timestamp < boundary(start, zone)]
-    current_pages = Counter(event.path for event in current if successful(event))
-    previous_pages = Counter(event.path for event in previous if successful(event))
+    current_humans, _ = human_events(current)
+    previous_humans, _ = human_events(previous)
+    current_pages = Counter(event.path for event in current_humans if 200 <= event.status < 300)
+    previous_pages = Counter(event.path for event in previous_humans if 200 <= event.status < 300)
     paths = sorted(
         current_pages.keys() | previous_pages.keys(),
         key=lambda path: (-abs(current_pages[path] - previous_pages[path]), path),

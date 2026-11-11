@@ -7,5 +7,4 @@ resource "google_service_account" "cloudrun_sa" {
   depends_on   = [time_sleep.wait_for_apis]
 }
 
-# No project roles: production exports no traces (the optional OTLP exporter sends no
-# Google credentials), so the runtime identity holds no Cloud Trace permission.
+# No project roles: the runtime identity writes only stdout/stderr logs and holds no Cloud API permissions.

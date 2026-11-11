@@ -23,7 +23,13 @@ module.exports = defineConfig({
   projects: ["firefox", "webkit"].flatMap((browserName) =>
     [{ width: 1440, height: 900 }, { width: 390, height: 844 }].map((viewport) => ({
       name: `${browserName}-${viewport.width}`,
-      use: { browserName, viewport, colorScheme: "light", reducedMotion: "reduce" },
+      use: {
+        browserName,
+        viewport,
+        colorScheme: "light",
+        reducedMotion: "reduce",
+        userAgent: `Mozilla/5.0 (${browserName}; Playwright)`,
+      },
     }))
   ),
 });

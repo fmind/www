@@ -2,7 +2,6 @@
 
 import re
 import secrets
-from datetime import UTC, datetime
 from time import perf_counter
 from typing import Any, Protocol
 from urllib.parse import parse_qs, quote, urlsplit
@@ -41,6 +40,7 @@ _BOT_TOKENS = (
     # Automation and HTTP libraries rather than people.
     "headlesschrome",
     "chrome-lighthouse",
+    "playwright",
     "curl/",
     "wget/",
     "python-requests",
@@ -173,18 +173,9 @@ def request_trace_id(headers: Headers) -> str:
     return ""
 
 
-def trace_fields(cloud_trace: str = "", *, tracing: bool = False) -> dict[str, str]:
-    """Return log correlation fields: the Cloud Logging request trace and, when tracing, the active span."""
-    fields = {CLOUD_TRACE_LOG_KEY: cloud_trace} if cloud_trace else {}
-    if tracing:
-        # Deferred: only a configured tracer creates spans, so untraced processes skip OpenTelemetry.
-        from opentelemetry import trace
-
-        span_context = trace.get_current_span().get_span_context()
-        if span_context.is_valid:
-            fields["trace_id"] = format(span_context.trace_id, "032x")
-            fields["span_id"] = format(span_context.span_id, "016x")
-    return fields
+def trace_fields(cloud_trace: str = "") -> dict[str, str]:
+    """Return the Cloud Logging request trace correlation field when present."""
+    return {CLOUD_TRACE_LOG_KEY: cloud_trace} if cloud_trace else {}
 
 
 def _vary_accept_encoding(headers: MutableScopeHeaders) -> None:
@@ -238,12 +229,11 @@ _STRICT_TRANSPORT_SECURITY = "max-age=63072000; includeSubDomains; preload"
 class SiteMiddleware:
     """Enforce the HTTP boundary and emit bounded structured request records."""
 
-    def __init__(self, app: ASGIApp, config: Config, logger: Logger, *, tracing: bool = False) -> None:
+    def __init__(self, app: ASGIApp, config: Config, logger: Logger) -> None:
         self.app = app
         self.environment = config.environment
         self.project = config.google_cloud_project
         self.logger = logger
-        self.tracing = tracing
         # Fixed for the process: only the CSP nonce is built per response.
         self.security_headers = dict(_SECURITY_HEADERS)
         if self.environment is Environment.PRODUCTION:
@@ -286,7 +276,12 @@ class SiteMiddleware:
                 return
             finalized = True
 
-            if not path.startswith("/static/") and path not in _SILENT_PATHS:
+            # Cloud Run records every production request in run.googleapis.com/requests.
+            if (
+                self.environment is Environment.DEVELOPMENT
+                and not path.startswith("/static/")
+                and path not in _SILENT_PATHS
+            ):
                 log_values: dict[str, object] = {
                     "method": scope.get("method", ""),
                     "path": log_path(path),
@@ -294,14 +289,15 @@ class SiteMiddleware:
                     "size_bytes": size_bytes,
                     "duration_ms": round((perf_counter() - started_at) * 1000, 3),
                 }
-                log_values.update(trace_fields(cloud_trace, tracing=self.tracing))
+                log_values.update(trace_fields(cloud_trace))
                 self.logger.info("http request processed", **log_values)
 
-            # HEAD probes (link checkers, unfurlers) fetch no page, so they are not pageviews.
+            # HEAD probes (link checkers, unfurlers) and in-page fetch updates are not pageviews.
             if (
                 scope.get("method") == "GET"
                 and content_type.lower().startswith("text/html")
                 and not 300 <= status < 400
+                and request_headers.get("x-requested-with", "").strip().lower() != "fetch"
             ):
                 raw_query = scope.get("query_string", b"")
                 query: dict[str, list[str]] = {}
@@ -321,17 +317,12 @@ class SiteMiddleware:
 
                 self.logger.info(
                     ANALYTICS_LOG_NAME,
-                    timestamp=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
                     path=analytics_path(path, status),
                     status=status,
                     referer=referer_host(request_headers.get("referer", "")),
                     utm_source=analytics_dimension(first("utm_source")),
                     utm_medium=analytics_dimension(first("utm_medium")),
                     utm_campaign=analytics_dimension(first("utm_campaign")),
-                    # The public Cloud Run origin has no trusted geography
-                    # header boundary. Preserve the sink schema without
-                    # accepting a caller-controlled country dimension.
-                    country="",
                     bot=is_bot(request_headers.get("user-agent", "")),
                 )
 
@@ -357,8 +348,7 @@ class SiteMiddleware:
                 # The server sends the whole file; its declared length is the body size.
                 size_bytes = int(content_length) if content_length.isdecimal() else 0
             await send(message)
-            # Finalize while an inner OpenTelemetry request span is still
-            # current, so ordinary logs retain trace correlation.
+            # Finalize on the terminal response event so the logged size is complete before returning.
             if message["type"] == "http.response.pathsend" or (
                 message["type"] == "http.response.body" and not message.get("more_body", False)
             ):
@@ -394,9 +384,7 @@ class SiteMiddleware:
             status = 500
             raise
         finally:
-            # Also covers a non-conforming ASGI app that returns without a
-            # terminal body event. Normal responses already finalized while
-            # the inner OpenTelemetry span was current.
+            # Also covers a non-conforming ASGI app that returns without a terminal body event.
             finalize_logs()
 
     def _secure(self, headers: MutableScopeHeaders, nonce: str, *, cross_origin_resource: bool = False) -> None:

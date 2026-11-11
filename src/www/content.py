@@ -556,7 +556,7 @@ def parse_article(
         markdown = markdown_bytes.decode("utf-8")
         rendered = _render_markdown(markdown)
         _validate_body_media(static_dir, rendered.media)
-        # The body shows the cover with reviewed alt text (pub writes its `card alt`); social cards and
+        # The body shows the cover with reviewed alt text; social cards and
         # JSON-LD reuse it, so one description serves every surface. The title covers a body without it.
         cover_prefix = f"{_MEDIA_PREFIX}{slug}/cover."
         cover_alt = next((alt for source, alt in rendered.media if source.startswith(cover_prefix)), "")

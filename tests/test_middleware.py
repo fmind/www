@@ -1,6 +1,5 @@
 """HTTP boundary and privacy tests."""
 
-from datetime import datetime
 from typing import Any, cast
 
 import pytest
@@ -126,12 +125,13 @@ def test_production_apex_redirect_keeps_the_method_for_posts() -> None:
     assert response.headers["location"] == "https://www.fmind.dev/form?step=1"
 
 
-def test_head_requests_are_not_pageviews() -> None:
+def test_head_and_in_page_fetch_requests_are_not_pageviews() -> None:
     test_client, logger = client()
     with test_client:
         assert test_client.head("/").status_code == 200
+        assert test_client.get("/", headers={"X-Requested-With": "fetch"}).status_code == 200
 
-    assert [event for event, _ in logger.records] == ["http request processed"]
+    assert [event for event, _ in logger.records] == ["http request processed", "http request processed"]
 
 
 def test_pageview_log_keeps_only_bounded_dimensions() -> None:
@@ -149,20 +149,16 @@ def test_pageview_log_keeps_only_bounded_dimensions() -> None:
     assert response.status_code == 200
     pageview = next(values for event, values in logger.records if event == "analytics_pageview")
     assert pageview == {
-        "timestamp": pageview["timestamp"],
         "path": "/",
         "status": 200,
         "referer": "example.com",
         "utm_source": "newsletter",
         "utm_medium": "",
         "utm_campaign": "",
-        # Public Cloud Run requests may supply arbitrary X-Client-* headers.
-        # Keep the schema stable without treating either value as geography.
-        "country": "",
         "bot": True,
     }
-    assert isinstance(pageview["timestamp"], str)
-    assert datetime.fromisoformat(pageview["timestamp"])
+    assert "country" not in pageview
+    assert "timestamp" not in pageview
     assert "trace_id" not in pageview
     assert "span_id" not in pageview
 
@@ -208,6 +204,7 @@ def test_privacy_helpers_reject_unbounded_or_invalid_values() -> None:
         "Mozilla/5.0 (compatible; Google-InspectionTool/1.0)",
         "GoogleStackdriverMonitoring-UptimeChecks(https://cloud.google.com/monitoring)",
         "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/140.0 Safari/537.36",
+        "Mozilla/5.0 (firefox; Playwright)",
         "curl/8.9.1",
         "python-requests/2.32.3",
         "Python-urllib/3.14",
@@ -273,6 +270,11 @@ def test_request_logs_carry_the_cloud_trace_only_when_a_project_is_configured() 
     with local_client:
         assert local_client.get("/", headers=headers).status_code == 200
     assert all(CLOUD_TRACE_LOG_KEY not in values for _, values in local_logger.records)
+
+    production_client, production_logger = client(Environment.PRODUCTION, project="example-project")
+    with production_client:
+        assert production_client.get("http://www.fmind.dev/", headers=headers).status_code == 200
+    assert [event for event, _ in production_logger.records] == ["analytics_pageview"]
 
 
 @pytest.mark.anyio

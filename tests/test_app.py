@@ -14,10 +14,8 @@ from typing import Any
 
 import pytest
 from litestar import Litestar
-from litestar.plugins.opentelemetry import OpenTelemetryPlugin
 from litestar.testing import TestClient
 from litestar.types import HTTPDisconnectEvent, HTTPRequestEvent, Message
-from opentelemetry.sdk.trace import TracerProvider
 from PIL import Image
 
 import www.app as app_module
@@ -219,7 +217,8 @@ def test_profile_schema_describes_the_public_response(client: AppClient) -> None
 def test_calculator_script_is_only_delivered_on_its_page(client: AppClient) -> None:
     for path in ("/", "/connect", "/articles/", "/sites/", "/missing"):
         assert "async function updateScenario" not in client.get(path).text
-    assert "async function updateScenario" in client.get("/sites/llm-self-hosting/").text
+    for path in ("/sites/llm-self-hosting/", "/sites/mcp-context-cost/"):
+        assert "async function updateScenario" in client.get(path).text
 
 
 def test_canonical_redirects_preserve_only_the_established_queries(client: AppClient) -> None:
@@ -831,10 +830,7 @@ def test_http_boundary_preserves_head_and_unsupported_method_contract(
     assert unsupported.headers["content-type"].startswith("text/html")
     assert unsupported.headers["strict-transport-security"].startswith("max-age=63072000")
     assert "Page not found" in unsupported.text
-    assert any(
-        event == "http request processed" and values["method"] == "POST" and values["status"] == 404
-        for event, values in logger.records
-    )
+    assert [event for event, _ in logger.records] == ["application startup timed"]
 
 
 @pytest.mark.parametrize(
@@ -894,28 +890,6 @@ def test_unexpected_failures_are_logged_and_return_a_non_leaking_500(
     assert isinstance(error["exc_info"], RuntimeError)
 
 
-def test_unexpected_failure_log_carries_the_active_trace_context(
-    monkeypatch: pytest.MonkeyPatch,
-    make_app: Callable[..., Litestar],
-) -> None:
-    def fail_render(*_: object, **__: object) -> str:
-        raise RuntimeError("traced render failure")
-
-    provider = TracerProvider(shutdown_on_exit=False)
-    monkeypatch.setattr(app_module, "configure_telemetry", lambda: provider)
-    monkeypatch.setattr(app_module, "shutdown_telemetry", lambda _: True)
-    monkeypatch.setattr(app_module.Renderer, "render", fail_render)
-    logger = RecordingLogger()
-    failing_app = make_app(logger=logger)
-
-    with TestClient(failing_app, raise_server_exceptions=False) as test_client:
-        assert test_client.get("/").status_code == 500
-
-    error = next(values for event, values in logger.records if event == "unhandled request failure")
-    assert len(error["trace_id"]) == 32
-    assert len(error["span_id"]) == 16
-
-
 def test_unexpected_failure_log_joins_the_cloud_run_request_trace(
     monkeypatch: pytest.MonkeyPatch,
     make_app: Callable[..., Litestar],
@@ -923,7 +897,6 @@ def test_unexpected_failure_log_joins_the_cloud_run_request_trace(
     def fail_render(*_: object, **__: object) -> str:
         raise RuntimeError("untraced render failure")
 
-    monkeypatch.setattr(app_module, "configure_telemetry", lambda: None)
     monkeypatch.setattr(app_module.Renderer, "render", fail_render)
     logger = RecordingLogger()
     failing_app = make_app(
@@ -937,10 +910,9 @@ def test_unexpected_failure_log_joins_the_cloud_run_request_trace(
         assert response.status_code == 500
 
     expected = f"projects/example-project/traces/{trace_id}"
-    error = next(values for event, values in logger.records if event == "unhandled request failure")
-    request_log = next(values for event, values in logger.records if event == "http request processed")
-    assert error[CLOUD_TRACE_LOG_KEY] == request_log[CLOUD_TRACE_LOG_KEY] == expected
-    assert "trace_id" not in error
+    assert [event for event, _ in logger.records] == ["application startup timed", "unhandled request failure"]
+    error = logger.records[1][1]
+    assert error[CLOUD_TRACE_LOG_KEY] == expected
 
 
 def test_startup_fails_when_a_registered_site_page_has_no_view(
@@ -1185,62 +1157,10 @@ def test_slash_aliases_share_mcp_policy_and_canonical_log_paths(
         assert (status, headers["location"]) == (301, "/agents")
 
     assert [(event, values["path"]) for event, values in logger.records] == [
-        ("http request processed", "/privacy"),
         (ANALYTICS_LOG_NAME, "/privacy"),
-        ("http request processed", "/connect"),
         (ANALYTICS_LOG_NAME, "/connect"),
-        ("http request processed", "/articles/"),
         (ANALYTICS_LOG_NAME, "/articles/"),
-        ("http request processed", "/agents/"),
     ]
-
-
-def test_opentelemetry_is_opt_in_and_correlates_request_logs(
-    monkeypatch: pytest.MonkeyPatch,
-    make_app: Callable[..., Litestar],
-) -> None:
-    monkeypatch.setattr(app_module, "configure_telemetry", lambda: None)
-    uninstrumented = make_app(logger=RecordingLogger())
-    assert not any(isinstance(plugin, OpenTelemetryPlugin) for plugin in uninstrumented.plugins)
-
-    provider = TracerProvider(shutdown_on_exit=False)
-    logger = RecordingLogger()
-    monkeypatch.setattr(app_module, "configure_telemetry", lambda: provider)
-    instrumented = make_app(
-        config=Config(),
-        logger=logger,
-    )
-    assert any(isinstance(plugin, OpenTelemetryPlugin) for plugin in instrumented.plugins)
-
-    with TestClient(instrumented) as test_client:
-        assert test_client.get("/health").status_code == 200
-        assert test_client.get("/articles/").status_code == 200
-
-    request_log = next(values for event, values in logger.records if event == "http request processed")
-    assert len(request_log["trace_id"]) == 32
-    assert len(request_log["span_id"]) == 16
-    analytics = next(values for event, values in logger.records if event == "analytics_pageview")
-    assert "trace_id" not in analytics
-    assert "span_id" not in analytics
-
-
-def test_incomplete_telemetry_shutdown_is_reported(
-    monkeypatch: pytest.MonkeyPatch,
-    make_app: Callable[..., Litestar],
-) -> None:
-    provider = TracerProvider(shutdown_on_exit=False)
-    monkeypatch.setattr(app_module, "configure_telemetry", lambda: provider)
-    monkeypatch.setattr(app_module, "shutdown_telemetry", lambda _: False)
-    logger = RecordingLogger()
-    instrumented = make_app(logger=logger)
-
-    with TestClient(instrumented):
-        pass
-
-    assert (
-        "telemetry shutdown incomplete",
-        {"timeout_seconds": app_module.TELEMETRY_SHUTDOWN_TIMEOUT_SECONDS},
-    ) in logger.records
 
 
 @pytest.mark.parametrize("environment", [Environment.PRODUCTION, Environment.DEVELOPMENT])
@@ -1281,6 +1201,7 @@ def test_google_analytics_id_and_privacy_notice_are_published(client: AppClient)
     assert '"G-Z28QKD99V2"' in client.get("/").text
     privacy = client.get("/privacy").text
     assert "Google Analytics, only with your consent" in privacy
+    assert "Google keeps event data for 14 months." in privacy
     assert "Cookie settings" in privacy
     # Operational request logs keep IPs and user agents; the policy must say so.
     assert "Server logs" in privacy

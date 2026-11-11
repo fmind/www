@@ -47,6 +47,8 @@ def test_local_midnight_boundaries_bots_errors_and_missing_days() -> None:
     assert current["successful_non_bot_views"] == 2
     assert current["html_events"] == 6
     assert current["bot_events"] == 2
+    assert current["burst_events"] == 0
+    assert current["burst_paths"] == {}
     assert current["unknown_bot_events"] == 1
     assert current["html_4xx"] == 1
     assert current["referrers"] == {"same-site": 1, "example.org": 1}
@@ -64,6 +66,65 @@ def test_local_midnight_boundaries_bots_errors_and_missing_days() -> None:
     assert report["largest_page_changes"] == [
         {"path": "/current", "current": 2, "previous": 0, "change": 2},
         {"path": "/previous", "current": 0, "previous": 2, "change": -2},
+    ]
+
+
+def test_per_path_bursts_are_excluded_from_human_views_and_4xx() -> None:
+    base = datetime(2026, 9, 10, 12, 0, 0, tzinfo=UTC)
+    minute_burst = [
+        analytics.Event(
+            timestamp=base + timedelta(seconds=second),
+            path="/sites/llm-self-hosting/",
+            status=200,
+            bot=False,
+            referer="www.fmind.dev",
+            utm_source="",
+            utm_medium="",
+            utm_campaign="",
+        )
+        for second in range(21)
+    ]
+    hour_burst = [
+        analytics.Event(
+            timestamp=base + timedelta(hours=1, seconds=59 * index),
+            path="/404",
+            status=404,
+            bot=False,
+            referer="",
+            utm_source="",
+            utm_medium="",
+            utm_campaign="",
+        )
+        for index in range(61)
+    ]
+    calm = [
+        analytics.Event(
+            timestamp=base + timedelta(hours=2, seconds=index),
+            path="/launch/",
+            status=200,
+            bot=False,
+            referer="news.ycombinator.com",
+            utm_source="",
+            utm_medium="",
+            utm_campaign="",
+        )
+        for index in range(20)
+    ]
+    report = analytics.summarize(
+        [*minute_burst, *hour_burst, *calm],
+        end=date(2026, 9, 16),
+        days=7,
+        zone=ZoneInfo("Europe/Paris"),
+    )
+    current = report["current"]
+    assert isinstance(current, dict)
+    assert current["successful_non_bot_views"] == 20
+    assert current["burst_events"] == 82
+    assert current["burst_paths"] == {"/404": 61, "/sites/llm-self-hosting/": 21}
+    assert current["non_bot_4xx"] == 0
+    assert current["top_pages"] == {"/launch/": 20}
+    assert report["largest_page_changes"] == [
+        {"path": "/launch/", "current": 20, "previous": 0, "change": 20},
     ]
 
 

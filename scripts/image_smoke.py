@@ -17,7 +17,7 @@ from functools import partial
 from pathlib import Path
 from tempfile import TemporaryFile
 from types import FrameType
-from typing import NoReturn, Protocol, cast, override
+from typing import NoReturn, Protocol, override
 
 import anyio
 import httpx2
@@ -41,16 +41,11 @@ EXPECTED_UID = 10001
 HEALTH_TIMEOUT_SECONDS = 120
 COMMAND_OUTPUT_LIMIT = 16 * 1024
 RESPONSE_BODY_LIMIT = 2 * 1024 * 1024
-OTEL_ENDPOINT_NAMES = {
-    "OTEL_EXPORTER_OTLP_ENDPOINT",
-    "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT",
-}
 HOMEPAGE_TITLE_PREFIX = "<title>Médéric Hurier (Fmind)".encode()
 # Image IDs and repository digests share the same SHA-256 form.
 _IMAGE_DIGEST = re.compile(r"sha256:[0-9a-f]{64}\Z")
 _IMAGE_REFERENCE_CHARS = re.compile(r"[A-Za-z0-9][A-Za-z0-9_./:@-]*\Z")
 _CONTAINER_ID = re.compile(r"[0-9a-f]{12,64}\Z")
-_ENVIRONMENT_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*\Z")
 _EXPECTED_MCP_TOOLS = frozenset(("get_profile", "search_articles"))
 _EXPECTED_MCP_PROMPTS = frozenset(("assess_fit", "brief_me"))
 _MCP_SEARCH_QUERY = "kubeflow"
@@ -239,23 +234,6 @@ def parse_configured_user(output: str) -> tuple[int, int]:
     if value != f"{EXPECTED_UID}:{EXPECTED_UID}":
         raise SmokeError("image runtime user must be configured as 10001:10001")
     return EXPECTED_UID, EXPECTED_UID
-
-
-def exporter_environment_names(output: str) -> tuple[str, ...]:
-    """Return every exporter variable that must be blanked for the smoke run."""
-    try:
-        values = json.loads(output)
-    except json.JSONDecodeError as error:
-        raise SmokeError("docker image inspect returned invalid environment metadata") from error
-    if not isinstance(values, list) or not all(isinstance(item, str) for item in values):
-        raise SmokeError("docker image inspect returned invalid environment metadata")
-
-    names = set(OTEL_ENDPOINT_NAMES)
-    for item in cast(list[str], values):
-        name, separator, _ = item.partition("=")
-        if separator and name.startswith("OTEL_EXPORTER_") and _ENVIRONMENT_NAME.fullmatch(name):
-            names.add(name)
-    return tuple(sorted(names))
 
 
 def parse_container_id(output: str) -> str:
@@ -558,11 +536,6 @@ def smoke_image(target: str | Path | None = None, *, runner: Runner | None = Non
             ("docker", "image", "inspect", "--format", "{{json .Config.User}}", image_id), timeout=30
         ).output
     )
-    exporter_names = exporter_environment_names(
-        command_runner.run(
-            ("docker", "image", "inspect", "--format", "{{json .Config.Env}}", image_id), timeout=30
-        ).output
-    )
 
     container_name = f"www-image-smoke-{os.getpid()}-{secrets.token_hex(6)}"
     with container_guard(command_runner, container_name):
@@ -583,10 +556,10 @@ def smoke_image(target: str | Path | None = None, *, runner: Runner | None = Non
             "ENVIRONMENT=production",
             "--env",
             f"PORT={CONTAINER_PORT}",
+            "--pull",
+            "never",
+            image_id,
         ]
-        for name in exporter_names:
-            arguments.extend(("--env", f"{name}="))
-        arguments.extend(("--pull", "never", image_id))
         parse_container_id(command_runner.run(arguments, timeout=60).output)
 
         published_port = parse_published_port(

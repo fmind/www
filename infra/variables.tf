@@ -47,7 +47,7 @@ variable "image_uri" {
 }
 
 variable "monthly_budget_eur" {
-  description = "Monthly gross-cost alert for this project in EUR, about twice the highest month so far (EUR 4.27, October 2026)"
+  description = "Monthly gross-cost alert threshold for this project in EUR"
   type        = number
   default     = 10
 
@@ -60,7 +60,7 @@ variable "monthly_budget_eur" {
 variable "notification_email" {
   description = "The email address for alert notifications"
   type        = string
-  default     = "mederic.hurier@fmind.dev"
+  default     = "contact@fmind.dev"
 }
 
 variable "project_id" {

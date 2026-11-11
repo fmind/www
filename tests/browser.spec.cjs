@@ -866,6 +866,7 @@ test("calculator keeps edits made while an update is in flight", async ({ page }
     settle = resolve;
   });
   await page.route("**/sites/llm-self-hosting/?*", async (route) => {
+    expect(route.request().headers()["x-requested-with"]).toBe("fetch");
     await held;
     // The edit aborts this request, so the late continuation may be rejected.
     await route.continue().catch(() => {});
@@ -1652,6 +1653,8 @@ test("MCP context calculator toggles servers with the keyboard", async ({ page }
   }
   await expect(page.locator("#update-context")).toBeFocused();
   await page.keyboard.press("Enter");
+  await expect(page.locator("[data-update-status]")).toHaveText("Comparison updated.");
+  await expect(page.locator("#update-context")).toBeFocused();
   await expect(page).toHaveURL(/server=filesystem/);
   expect(new URL(page.url()).searchParams.getAll("server")).toEqual(["filesystem", "memory", "playwright"]);
   await expect(page.locator("#server-github")).not.toBeChecked();
@@ -1661,6 +1664,9 @@ test("MCP context calculator toggles servers with the keyboard", async ({ page }
   const models = page.getByRole("region", { name: /Cost by model/ });
   expect(await models.locator("tbody th a").allTextContents())
     .toEqual(["Claude Haiku 5.5", "Gemini 3.8 Flash", "Claude Sonnet 5.5", "Claude Opus 5.5", "GPT-6 Astra"]);
+  await page.locator("#reset-context").click();
+  await expect(page.locator("#server-github")).toBeChecked();
+  await expect(page.locator("#context-results")).toHaveText("17,536 tokens of tool definitions on every request");
 });
 
 test("MCP context calculator works without JavaScript and stays light", async ({ browser }, testInfo) => {

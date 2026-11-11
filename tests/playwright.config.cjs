@@ -33,13 +33,9 @@ module.exports = defineConfig({
   webServer: process.env.BROWSER_BASE_URL ? undefined : {
     command: "uv run --locked --no-dev www",
     cwd: process.cwd(),
-    // Playwright merges this into the child environment; empty values disable
-    // inherited collectors without changing the parent test process.
     env: {
       PORT: "8096",
       ENVIRONMENT: "production",
-      OTEL_EXPORTER_OTLP_ENDPOINT: "",
-      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: "",
     },
     url: baseURL + "/health",
     stdout: "ignore",

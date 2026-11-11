@@ -58,7 +58,7 @@ def stdlib_logging_config(
                 "formatter": "process",
                 "stream": stream,
             },
-            # SiteMiddleware owns one canonical access record per request.
+            # Cloud Run and SiteMiddleware own request logging.
             "discard": {"class": "logging.NullHandler"},
         },
         "loggers": {

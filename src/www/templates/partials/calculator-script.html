@@ -70,7 +70,10 @@ if (document.querySelector('[data-hosting-calculator]')) {
     current.querySelectorAll('[data-update-error]').forEach(function (error) { error.remove(); });
     current.setAttribute('aria-busy', 'true');
     try {
-      var response = await fetch(url, { signal: request.controller.signal });
+      var response = await fetch(url, {
+        headers: { 'X-Requested-With': 'fetch' },
+        signal: request.controller.signal,
+      });
       if (!response.ok) throw new Error('Calculator response: ' + response.status);
       var html = await response.text();
       // Never discard edits made while the request was in flight.

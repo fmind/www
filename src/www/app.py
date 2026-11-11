@@ -16,7 +16,6 @@ from litestar.config.compression import CompressionConfig
 from litestar.enums import HttpMethod
 from litestar.handlers import HTTPRouteHandler
 from litestar.params import FromPath
-from litestar.plugins import PluginProtocol
 from litestar.response import Redirect, Response
 from litestar.types import ASGIApp, Scope
 
@@ -90,7 +89,6 @@ from www.search import SearchIndex
 from www.sites.calculator import build_llm_self_hosting_view
 from www.sites.mcp_context_cost.calculator import view_from_query
 from www.static import static_asset_response
-from www.telemetry import TELEMETRY_SHUTDOWN_TIMEOUT_SECONDS, configure_telemetry, shutdown_telemetry
 
 _DAY_CACHE = "public, max-age=86400, must-revalidate"
 _HOUR_CACHE = "public, max-age=3600, must-revalidate"
@@ -680,32 +678,13 @@ def create_app(
     # An exact route, not a mount: a mount matches by prefix without a segment
     # boundary, so /mcpx or /mcp/foo would get Starlette's plain-text 404.
     mcp_route = asgi("/mcp", copy_scope=True)(mcp_app)
-    tracer_provider = configure_telemetry()
-    plugins: list[PluginProtocol] = []
-    if tracer_provider is not None:
-        # Deferred with the SDK: tracing is opt-in, so untraced processes never import it here.
-        from litestar.plugins.opentelemetry import OpenTelemetryConfig, OpenTelemetryPlugin
-
-        plugins.append(
-            OpenTelemetryPlugin(
-                # Emit one server span per request.
-                OpenTelemetryConfig(tracer_provider=tracer_provider, exclude_spans=["receive", "send"])
-            )
-        )
 
     @asynccontextmanager
     async def lifespan(_: Litestar) -> AsyncGenerator[None]:
         nonlocal server_card
-        try:
-            server_card = _Snapshot.of(await render_mcp_server_card(mcp_server))
-            async with mcp_app.router.lifespan_context(mcp_app):
-                yield
-        finally:
-            if tracer_provider is not None and not shutdown_telemetry(tracer_provider):
-                site_logger.error(
-                    "telemetry shutdown incomplete",
-                    timeout_seconds=TELEMETRY_SHUTDOWN_TIMEOUT_SECONDS,
-                )
+        server_card = _Snapshot.of(await render_mcp_server_card(mcp_server))
+        async with mcp_app.router.lifespan_context(mcp_app):
+            yield
 
     def method_not_allowed(request: AppRequest, _: Exception) -> Response[str]:
         # Keep unsupported methods on the same noindex 404 surface as unknown paths.
@@ -729,7 +708,7 @@ def create_app(
             "error_type": type(exc).__name__,
             "exc_info": exc,
         }
-        error_values.update(trace_fields(state.get("cloud_trace", ""), tracing=tracer_provider is not None))
+        error_values.update(trace_fields(state.get("cloud_trace", "")))
         site_logger.error(
             "unhandled request failure",
             **error_values,
@@ -766,14 +745,11 @@ def create_app(
         lifespan=[lifespan],
         logging_config=None,
         openapi_config=None,
-        plugins=plugins,
     )
     # Litestar applies configured middleware only after route resolution. Wrap
     # its full ASGI handler so routing errors and MCP responses receive
     # the same security, analytics, and access-log boundary as normal pages.
-    application.asgi_handler = SiteMiddleware(
-        application.asgi_handler, runtime_config, site_logger, tracing=tracer_provider is not None
-    )
+    application.asgi_handler = SiteMiddleware(application.asgi_handler, runtime_config, site_logger)
     phases["total"] = round(perf_counter() - started, 3)
     site_logger.info("application startup timed", phase_seconds=phases)
     return application

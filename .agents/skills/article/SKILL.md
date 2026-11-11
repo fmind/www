@@ -8,7 +8,7 @@ metadata:
 
 # Articles
 
-`content/articles/<slug>.md` is authoritative; revise or retire published articles only with owner authorization. New articles flow from `fmind/pub` (`pub publish` exports body, cover, and figures, runs `build:images`, and merges the PR). After editing `content.py` or `scripts/build_images.py`, run `SITE_REPOSITORY=$PWD mise -C ~/fmind/pub run check:site-contract` or update `pub` in step.
+`content/articles/<slug>.md` is authoritative; publish, revise, or retire articles only with owner authorization.
 
 1. **Validate frontmatter**: match filename and `slug`, require typed dates and `draft`, and reject unknown keys (including retired `canonical` and `syndicated`). Start the body with the cover image and descriptive alt text (reused for social cards and JSON-LD captions).
 1. **Check tags and code fences**: use unique tags from `src/www/tags.py` (new tags need a matching CSS rule and ≥1 article) and language-tagged code fences.

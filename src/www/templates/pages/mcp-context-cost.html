@@ -4,7 +4,9 @@
   {% set selected_ids = view.selected|map(attribute="server.id")|list %}
   {% set cheapest = view.models|first %}
   {% set priciest = view.models|last %}
-  <section class="bg-base-200 min-h-screen px-4 py-8 md:py-10">
+  {# The status stays outside the swapped region so assistive technology observes it before updates. #}
+  <p data-update-status class="sr-only" role="status"></p>
+  <section data-hosting-calculator class="bg-base-200 min-h-screen px-4 py-8 md:py-10">
     <div class="container mx-auto max-w-7xl space-y-6 md:space-y-8">
       {{ site_breadcrumb("MCP context cost") }}
       <header class="max-w-5xl">
@@ -28,7 +30,7 @@
         <div class="flex flex-wrap items-end gap-4">
           <div class="min-w-0 w-full sm:w-72"><label class="block font-semibold text-sm mb-2" for="requests">Model requests per day</label><input class="input w-full min-w-0" id="requests" name="requests" type="number" min="1" max="10000000" step="1" value="{{ view.requests_per_day }}" required aria-describedby="requests-help"/></div>
           <button id="update-context" class="btn btn-primary rounded-xl font-bold min-h-12" type="submit">Update estimate</button>
-          <a class="btn btn-ghost border border-base-300 rounded-xl min-h-12" href="/sites/mcp-context-cost/">Reset</a>
+          <a class="btn btn-ghost border border-base-300 rounded-xl min-h-12" id="reset-context" data-scenario-link href="/sites/mcp-context-cost/">Reset</a>
         </div>
         <p id="requests-help" class="text-sm text-base-content/70">Count every model call in an agent loop, not only user messages. A month is 30 days. Share the URL to save this scenario.</p>
       </form>
@@ -86,3 +88,5 @@
     </div>
   </section>
 {% endblock %}
+
+{% block page_scripts %}{% include "partials/calculator-script.html" %}{% endblock %}

@@ -20,7 +20,6 @@ from scripts.image_smoke import (
     _request,
     assert_runtime_read_only,
     container_guard,
-    exporter_environment_names,
     image_platform,
     main,
     parse_configured_user,
@@ -143,22 +142,6 @@ def test_parses_loopback_port_and_exact_numeric_runtime_user() -> None:
     for value in ("", "root", "0:0", "10000:10001", "10001:root"):
         with pytest.raises(SmokeError, match="10001:10001"):
             parse_configured_user(json.dumps(value))
-
-
-def test_clears_every_exporter_variable_declared_by_the_image() -> None:
-    image_environment = json.dumps(
-        [
-            "PATH=/app/.venv/bin:/usr/bin",
-            "OTEL_EXPORTER_OTLP_ENDPOINT=https://collector.example",
-            "OTEL_EXPORTER_OTLP_HEADERS=authorization=secret",
-        ]
-    )
-
-    assert exporter_environment_names(image_environment) == (
-        "OTEL_EXPORTER_OTLP_ENDPOINT",
-        "OTEL_EXPORTER_OTLP_HEADERS",
-        "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT",
-    )
 
 
 def test_http_contract_probe_uses_modern_mcp_discovery_and_lists_primitives(
