@@ -126,7 +126,7 @@ resource "google_monitoring_alert_policy" "uptime_health" {
 
       1. Run `curl -sSI https://www.${var.apex_domain}/health` and `curl -sSI https://${var.apex_domain}/health` to see which host fails and how (status or TLS).
       2. Run `gcloud run services describe ${var.service_name} --region=${var.region} --project=${var.project_id}` for readiness and traffic, then read the serving revision's error logs.
-      3. Run `gcloud beta run domain-mappings describe --domain=<host> --region=${var.region} --project=${var.project_id}` for mapping and certificate status; DNS is hosted outside Google Cloud.
+      3. Run `gcloud beta run domain-mappings describe --domain=<host> --region=${var.region} --project=${var.project_id}` for mapping and certificate status; authoritative DNS lives in a separate Cloud DNS project.
       4. Roll back a bad revision with `mise run deploy <digest-ref> <commit-sha>` (README, Deployment).
     EOT
     links {
@@ -141,9 +141,9 @@ resource "google_monitoring_alert_policy" "uptime_health" {
 }
 
 # Google renews managed certificates about a month before they expire, so fewer
-# than 21 days left means renewal is stuck, usually because the DNS records at
-# the external host drifted. Expiry would otherwise surface only as an outage.
-# Note: while the apex 301 redirects to www, Cloud Monitoring records
+# than 21 days left means renewal is stuck, usually because the records in the
+# authoritative Cloud DNS zone drifted. Expiry would otherwise surface only as
+# an outage. Note: while the apex 301 redirects to www, Cloud Monitoring records
 # time_until_ssl_cert_expires from the final hop (www); an expired apex
 # certificate still fails validate_ssl in uptime_health immediately.
 resource "google_monitoring_alert_policy" "tls_expiry" {
@@ -179,12 +179,12 @@ resource "google_monitoring_alert_policy" "tls_expiry" {
 
   documentation {
     mime_type = "text/markdown"
-    subject   = "Managed certificate for ${var.apex_domain} or www.${var.apex_domain} is not renewing"
+    subject   = "Managed certificate for www.${var.apex_domain} is not renewing"
     content   = <<-EOT
-      A host's Google-managed certificate has fewer than 21 days left, so renewal has stalled. When it expires, that host fails TLS.
+      The Google-managed certificate for www.${var.apex_domain} has fewer than 21 days left, so renewal has stalled (redirect-following probes evaluate the final www hop; an expired ${var.apex_domain} apex certificate fails validate_ssl in Uptime Check Failing immediately).
 
       1. Run `gcloud beta run domain-mappings describe --domain=<host> --region=${var.region} --project=${var.project_id}` and read the certificate and readiness conditions.
-      2. Compare the records the mapping expects (`status.resourceRecords`) with those at the external DNS host, and fix any drift there.
+      2. Compare the records the mapping expects (`status.resourceRecords`) with those in the authoritative Cloud DNS zone, and reconcile any drift there.
       3. Confirm the renewal with `echo | openssl s_client -connect <host>:443 -servername <host> 2>/dev/null | openssl x509 -noout -enddate`.
     EOT
     links {

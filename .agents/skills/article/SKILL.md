@@ -3,7 +3,11 @@ name: article
 description: Publish, revise, or retire www.fmind.dev articles under content/articles/.
 license: MIT
 metadata:
+  kind: task
   author: Médéric HURIER (Fmind)
+  source: github.com/fmind/www
+  created: "2026-08-07"
+  updated: "2026-11-11"
 ---
 
 # Articles

@@ -45,7 +45,7 @@ resource "google_billing_budget" "website" {
   display_name    = "${var.project_id} gross (EUR${var.monthly_budget_eur})"
 
   budget_filter {
-    projects               = ["projects/${data.google_project.current.number}"]
+    projects               = [for number in concat([data.google_project.current.number], var.budget_shared_project_numbers) : "projects/${number}"]
     calendar_period        = "MONTH"
     credit_types_treatment = "EXCLUDE_ALL_CREDITS"
   }

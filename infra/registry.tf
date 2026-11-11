@@ -32,5 +32,9 @@ resource "google_artifact_registry_repository" "repo" {
     }
   }
 
+  lifecycle {
+    prevent_destroy = true
+  }
+
   depends_on = [time_sleep.wait_for_apis]
 }

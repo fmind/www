@@ -3,7 +3,11 @@ name: finops-analytics
 description: Report www.fmind.dev GCP costs, budgets, trends, and optimizations from billing exports and live config.
 license: MIT
 metadata:
+  kind: task
   author: Médéric HURIER (Fmind)
+  source: github.com/fmind/www
+  created: "2026-09-19"
+  updated: "2026-11-11"
 ---
 
 # FinOps Analytics

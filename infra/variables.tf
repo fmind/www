@@ -22,6 +22,17 @@ variable "billing_account" {
   }
 }
 
+variable "budget_shared_project_numbers" {
+  description = "Numeric project IDs of companion projects sharing this gross-cost budget (supplied at plan/apply via TF_VAR_budget_shared_project_numbers, never committed)"
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition     = alltrue([for number in var.budget_shared_project_numbers : can(regex("^[0-9]{6,20}$", number))])
+    error_message = "budget_shared_project_numbers must contain numeric project numbers only."
+  }
+}
+
 variable "github_repository" {
   description = "The GitHub repository in the format owner/repo"
   type        = string

@@ -3,7 +3,11 @@ name: site
 description: Build source-backed decision tools under /sites/ with server-owned Python formulas and MCP parity.
 license: MIT
 metadata:
+  kind: task
   author: Médéric HURIER (Fmind)
+  source: github.com/fmind/www
+  created: "2026-09-06"
+  updated: "2026-11-11"
 ---
 
 # Decision Pages

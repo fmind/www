@@ -1,9 +1,9 @@
 # Custom domains served by the Cloud Run service.
 # https://docs.cloud.google.com/run/docs/mapping-custom-domains
 #
-# DNS for fmind.dev is hosted outside Google Cloud, so these mappings only make
-# Cloud Run accept each host and provision its managed certificate. The DNS
-# records they publish must be set at the DNS host by the owner.
+# DNS for fmind.dev is managed in a separate Cloud DNS project, so these
+# mappings only make Cloud Run accept each host and provision its managed
+# certificate. The DNS records they publish must match that authoritative zone.
 
 # Predates OpenTofu. It was adopted once, unchanged, with `tofu import
 # google_cloud_run_domain_mapping.www

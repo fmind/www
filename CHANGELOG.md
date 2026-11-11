@@ -294,7 +294,7 @@ All notable changes to this project are documented in this file.
 
 ### 🚀 Features
 
-- _(profile)_ Align public profiles and channels with pub
+- _(profile)_ Align public profiles and channels
 - _(sites)_ Refresh the LLM hosting catalog with Mistral Large 4
 
 ### 🐛 Bug Fixes
@@ -361,7 +361,7 @@ All notable changes to this project are documented in this file.
 - _(articles)_ Drop links to the retired MLOps Coding Assistant
 - _(privacy)_ Drop the retired AgentOps course site
 - _(articles)_ Link fmind.dev copies instead of Medium
-- _(skills)_ Route new articles through the pub workspace
+- _(skills)_ Update article publishing workflow
 - Correct module ownership and analytics partitioning
 - _(security)_ Record the October 29 advisory review
 - _(security)_ Document private repository posture

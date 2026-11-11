@@ -3,7 +3,11 @@ name: news
 description: Prepare, draft, validate, and publish www.fmind.dev daily news editions under content/news/.
 license: MIT
 metadata:
+  kind: task
   author: Médéric HURIER (Fmind)
+  source: github.com/fmind/www
+  created: "2026-11-03"
+  updated: "2026-11-11"
 ---
 
 # News

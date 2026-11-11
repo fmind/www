@@ -209,9 +209,14 @@ run "custom_domain_contract" {
 run "budget_alert_contract" {
   command = plan
 
+  variables {
+    budget_shared_project_numbers = ["123456789012"]
+  }
+
   assert {
     condition = (
       google_billing_budget.website.billing_account == "000000-AAAAAA-000000" &&
+      contains(google_billing_budget.website.budget_filter[0].projects, "projects/123456789012") &&
       google_billing_budget.website.budget_filter[0].calendar_period == "MONTH" &&
       google_billing_budget.website.budget_filter[0].credit_types_treatment == "EXCLUDE_ALL_CREDITS" &&
       google_billing_budget.website.amount[0].specified_amount[0].currency_code == "EUR" &&
@@ -219,7 +224,7 @@ run "budget_alert_contract" {
       [for rule in google_billing_budget.website.threshold_rules : rule.threshold_percent] == [0.5, 0.9, 1.0, 1.0] &&
       google_billing_budget.website.threshold_rules[3].spend_basis == "FORECASTED_SPEND"
     )
-    error_message = "The project needs a monthly gross-cost budget with 50/90/100% actual and 100% forecast alerts."
+    error_message = "The project needs a monthly gross-cost budget with shared-project support and 50/90/100% actual and 100% forecast alerts."
   }
 }
 

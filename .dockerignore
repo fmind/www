@@ -13,4 +13,4 @@
 # Generated files inside the allowed directories; the image builds its own stylesheet.
 **/__pycache__
 **/*.py[co]
-static/dist/styles.css
+static/dist

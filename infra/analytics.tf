@@ -34,6 +34,10 @@ resource "google_bigquery_dataset" "analytics" {
     service = var.service_name
   }
 
+  lifecycle {
+    prevent_destroy = true
+  }
+
   depends_on = [time_sleep.wait_for_apis]
 }
 

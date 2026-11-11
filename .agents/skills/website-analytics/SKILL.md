@@ -3,7 +3,11 @@ name: website-analytics
 description: Report www.fmind.dev traffic, top pages, referrers, campaigns, and trends from cookieless BigQuery analytics.
 license: MIT
 metadata:
+  kind: task
   author: Médéric HURIER (Fmind)
+  source: github.com/fmind/www
+  created: "2026-09-16"
+  updated: "2026-11-11"
 ---
 
 # Website Analytics
