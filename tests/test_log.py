@@ -67,5 +67,10 @@ def test_granian_logging_config_uses_one_process_sink() -> None:
         "propagate": False,
     }
     assert config["loggers"]["mcp"]["level"] == "WARNING"
+    assert config["loggers"]["mcp.server.transport_security"] == {
+        "handlers": ["discard"],
+        "level": "ERROR",
+        "propagate": False,
+    }
     assert config["loggers"]["granian.access"]["handlers"] == ["discard"]
     assert config["root"]["level"] == "WARNING"

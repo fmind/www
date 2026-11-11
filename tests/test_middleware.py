@@ -166,6 +166,13 @@ def test_pageview_log_keeps_only_bounded_dimensions() -> None:
     assert "trace_id" not in pageview
     assert "span_id" not in pageview
 
+    flood_client, flood_logger = client()
+    with flood_client:
+        flood_query = "&".join(f"p{index}=1" for index in range(40)) + "&utm_source=ignored"
+        assert flood_client.get(f"/?{flood_query}").status_code == 200
+    flood_pageview = next(values for event, values in flood_logger.records if event == "analytics_pageview")
+    assert flood_pageview["utm_source"] == ""
+
 
 def test_privacy_helpers_reject_unbounded_or_invalid_values() -> None:
     assert analytics_path("/private-id", 404) == "/404"

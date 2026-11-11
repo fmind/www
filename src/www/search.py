@@ -22,7 +22,7 @@ _TOKEN_BOUNDARY = re.compile(r"[^\w]+", re.UNICODE)
 @dataclass(frozen=True, slots=True)
 class _SearchDocument:
     terms: Counter[str]
-    length: int
+    norm: float
 
 
 def fold_plural(term: str) -> str:
@@ -49,11 +49,11 @@ def normalize_search_query(query: str) -> str:
 class SearchIndex:
     """Precomputed frequency index that owns its reverse-chronological collection."""
 
-    __slots__ = ("_articles", "_average_length", "_document_frequency", "_documents")
+    __slots__ = ("_articles", "_document_frequency", "_documents")
 
     def __init__(self, articles: tuple[Article, ...]) -> None:
         self._articles = articles
-        documents: list[_SearchDocument] = []
+        raw_documents: list[tuple[Counter[str], int]] = []
         document_frequency: Counter[str] = Counter()
         total = 0
         for article in articles:
@@ -66,12 +66,14 @@ class SearchIndex:
             ):
                 terms.update({term: count * boost for term, count in Counter(tokenize(text)).items()})
             length = sum(terms.values())
-            documents.append(_SearchDocument(terms, length))
+            raw_documents.append((terms, length))
             document_frequency.update(terms.keys())
             total += length
-        self._documents = tuple(documents)
+        average_length = total / len(raw_documents) if raw_documents else 1.0
+        self._documents = tuple(
+            _SearchDocument(terms, 1 - BM25_B + BM25_B * length / average_length) for terms, length in raw_documents
+        )
         self._document_frequency = document_frequency
-        self._average_length = total / len(documents) if documents else 0.0
 
     def search(self, query: str) -> tuple[Article, ...]:
         terms = tuple(sorted(set(tokenize(query))))
@@ -79,17 +81,20 @@ class SearchIndex:
             return ()
 
         document_count = float(len(self._documents))
+        weighted_terms = tuple(
+            (term, math.log(1 + (document_count - matches + 0.5) / (matches + 0.5)))
+            for term in terms
+            if (matches := float(self._document_frequency[term]))
+        )
+        if not weighted_terms:
+            return ()
+
         hits: list[tuple[float, int]] = []
         for position, document in enumerate(self._documents):
             score = 0.0
-            for term in terms:
-                frequency = float(document.terms[term])
-                if not frequency:
-                    continue
-                matches = float(self._document_frequency[term])
-                inverse_frequency = math.log(1 + (document_count - matches + 0.5) / (matches + 0.5))
-                norm = 1 - BM25_B + BM25_B * document.length / self._average_length
-                score += inverse_frequency * (frequency * (BM25_K1 + 1)) / (frequency + BM25_K1 * norm)
+            for term, inverse_frequency in weighted_terms:
+                if frequency := float(document.terms[term]):
+                    score += inverse_frequency * (frequency * (BM25_K1 + 1)) / (frequency + BM25_K1 * document.norm)
             if score > 0:
                 hits.append((score, position))
         # Python's sort is stable, so collection order remains the relevance tie-break.

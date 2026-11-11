@@ -354,6 +354,7 @@ class LLMSelfHostingView:
     # Billing hours per month, so templates never restate the constant.
     monthly_hours: float
     price_source_url: str
+    tpu_price_source_url: str
     current_pilot_config: str
     comparison_ready: bool
     # Exact serialized values keep resubmitted forms identical to shareable URLs.

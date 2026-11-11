@@ -1,6 +1,7 @@
 """Pure page metadata builders shared by routes and tests."""
 
 import json
+from collections.abc import Mapping
 from dataclasses import replace
 from functools import lru_cache
 from pathlib import Path
@@ -11,7 +12,7 @@ from PIL import UnidentifiedImageError
 from www.assets import STATIC_MANIFEST
 from www.connect import CONNECT_URL
 from www.content import image_dimensions
-from www.data import METADATA, get_application_structured_data, get_page_structured_data
+from www.data import IDENTITY_GRAPH, METADATA, json_ld
 from www.models import Article, ArticleIndexView, PageMetadata, SitePage
 from www.news import NEWS_FEED_PATH, NEWS_TOPICS, NewsEdition
 
@@ -67,9 +68,25 @@ def _static_image_size(image_url: str, manifest_path: str) -> tuple[int, int] | 
         return None
 
 
-def _image_object(url: str, caption: str) -> dict[str, object]:
+def _resolve_image_size(
+    image_url: str,
+    image_sizes: Mapping[str, tuple[int, int]] | None = None,
+) -> tuple[int, int] | None:
+    if image_sizes is not None:
+        prefix = f"{METADATA.site_url}/static/"
+        if not image_url.startswith(prefix):
+            return None
+        return image_sizes.get(f"/static/{image_url.removeprefix(prefix)}")
+    return _static_image_size(image_url, STATIC_MANIFEST)
+
+
+def _image_object(
+    url: str,
+    caption: str,
+    image_sizes: Mapping[str, tuple[int, int]] | None = None,
+) -> dict[str, object]:
     image: dict[str, object] = {"@type": "ImageObject", "url": url, "caption": caption}
-    if dimensions := _static_image_size(url, STATIC_MANIFEST):
+    if dimensions := _resolve_image_size(url, image_sizes):
         image["width"], image["height"] = dimensions
     return image
 
@@ -97,16 +114,24 @@ def _enriched_page_structured_data(
     *,
     breadcrumb_label: str = "",
 ) -> str:
-    payload = json.loads(get_page_structured_data(page_type, canonical, title, description))
-    graph: list[dict[str, Any]] = payload["@graph"]
-    page = graph[-1]
-    page["inLanguage"] = "en"
-    page["primaryImageOfPage"] = _image_object(_WEBSITE.image_url, _WEBSITE.image_alt)
+    page: dict[str, object] = {
+        "@id": f"{canonical}#webpage",
+        "@type": page_type,
+        "url": canonical,
+        "name": title,
+        "description": description,
+        "isPartOf": {"@id": f"{METADATA.site_url}/#website"},
+        "about": {"@id": f"{METADATA.site_url}/#person"},
+        "inLanguage": "en",
+        "primaryImageOfPage": _image_object(_WEBSITE.image_url, _WEBSITE.image_alt),
+    }
+    graph: list[dict[str, object]] = [*IDENTITY_GRAPH]
     if breadcrumb_label:
         breadcrumb = _breadcrumb_list(canonical, ("Home", _HOME_URL), (breadcrumb_label, canonical))
         page["breadcrumb"] = {"@id": breadcrumb["@id"]}
-        graph.insert(-1, breadcrumb)
-    return _dump_json_ld(payload)
+        graph.append(breadcrumb)
+    graph.append(page)
+    return json_ld(graph)
 
 
 def home_metadata(structured_data: str) -> PageMetadata:
@@ -231,7 +256,11 @@ def article_index_metadata(view: ArticleIndexView) -> PageMetadata:
     )
 
 
-def _enriched_article_structured_data(article: Article, structured_data: str) -> str:
+def _enriched_article_structured_data(
+    article: Article,
+    structured_data: str,
+    image_sizes: Mapping[str, tuple[int, int]] | None = None,
+) -> str:
     if not structured_data:
         return ""
     try:
@@ -251,7 +280,7 @@ def _enriched_article_structured_data(article: Article, structured_data: str) ->
     if article.tags:
         posting["articleSection"] = list(article.tags)
     image = posting.get("image")
-    if isinstance(image, dict) and (dimensions := _static_image_size(article.image_url, STATIC_MANIFEST)):
+    if isinstance(image, dict) and (dimensions := _resolve_image_size(article.image_url, image_sizes)):
         image["width"], image["height"] = dimensions
     breadcrumb = _breadcrumb_list(
         article.url,
@@ -263,7 +292,11 @@ def _enriched_article_structured_data(article: Article, structured_data: str) ->
     return _dump_json_ld(payload)
 
 
-def article_metadata(article: Article, structured_data: str) -> PageMetadata:
+def article_metadata(
+    article: Article,
+    structured_data: str,
+    image_sizes: Mapping[str, tuple[int, int]] | None = None,
+) -> PageMetadata:
     return PageMetadata(
         article=article,
         title=f"{article.title} | Fmind",
@@ -272,7 +305,7 @@ def article_metadata(article: Article, structured_data: str) -> PageMetadata:
         image_url=article.image_url,
         image_alt=article.image_alt,
         kind="article",
-        structured_data=_enriched_article_structured_data(article, structured_data),
+        structured_data=_enriched_article_structured_data(article, structured_data, image_sizes),
         preload_code_font="<code" in article.html,
         no_index=article.draft,
     )
@@ -309,25 +342,48 @@ def news_edition_metadata(edition: NewsEdition) -> PageMetadata:
     )
 
 
-def site_structured_data(page: SitePage) -> str:
-    payload = json.loads(get_application_structured_data(page.url, page.title, page.description))
-    graph: list[dict[str, Any]] = payload["@graph"]
-    nodes = {node["@id"]: node for node in graph if isinstance(node, dict) and "@id" in node}
+def site_structured_data(
+    page: SitePage,
+    image_sizes: Mapping[str, tuple[int, int]] | None = None,
+) -> str:
     breadcrumb = _breadcrumb_list(
         page.url,
         ("Home", _HOME_URL),
         ("Sites", _SITES_URL),
         (page.title, page.url),
     )
-    if webpage := nodes.get(f"{page.url}#webpage"):
-        webpage["inLanguage"] = "en"
-        webpage["breadcrumb"] = {"@id": breadcrumb["@id"]}
-        webpage["primaryImageOfPage"] = _image_object(_WEBSITE.image_url, _WEBSITE.image_alt)
-    if application := nodes.get(f"{page.url}#application"):
-        application["inLanguage"] = "en"
-        application["audience"] = {"@type": "Audience", "audienceType": page.audience}
-    graph.insert(-2, breadcrumb)
-    return _dump_json_ld(payload)
+    return json_ld(
+        [
+            *IDENTITY_GRAPH,
+            breadcrumb,
+            {
+                "@id": f"{page.url}#webpage",
+                "@type": "WebPage",
+                "url": page.url,
+                "name": page.title,
+                "description": page.description,
+                "isPartOf": {"@id": f"{METADATA.site_url}/#website"},
+                "mainEntity": {"@id": f"{page.url}#application"},
+                "inLanguage": "en",
+                "breadcrumb": {"@id": breadcrumb["@id"]},
+                "primaryImageOfPage": _image_object(_WEBSITE.image_url, _WEBSITE.image_alt, image_sizes),
+            },
+            {
+                "@id": f"{page.url}#application",
+                "@type": "WebApplication",
+                "name": page.title,
+                "description": page.description,
+                "url": page.url,
+                "applicationCategory": "BusinessApplication",
+                "operatingSystem": "Web",
+                "isAccessibleForFree": True,
+                "offers": {"@type": "Offer", "price": 0, "priceCurrency": "USD"},
+                "author": {"@id": f"{METADATA.site_url}/#person"},
+                "inLanguage": "en",
+                "audience": {"@type": "Audience", "audienceType": page.audience},
+            },
+        ]
+    )
 
 
 def site_index_metadata() -> PageMetadata:

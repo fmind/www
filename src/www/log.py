@@ -64,8 +64,10 @@ def stdlib_logging_config(
         "loggers": {
             "_granian": {"handlers": ["process"], "level": "INFO", "propagate": False},
             "granian.access": {"handlers": ["discard"], "level": "CRITICAL", "propagate": False},
-            # Keep protocol failures while dropping per-process lifecycle chatter.
+            # Keep protocol failures while dropping per-process lifecycle chatter and
+            # raw untrusted Host/Origin scanner headers logged by TransportSecurityMiddleware.
             "mcp": {"handlers": ["process"], "level": "WARNING", "propagate": False},
+            "mcp.server.transport_security": {"handlers": ["discard"], "level": "ERROR", "propagate": False},
         },
         "root": {"handlers": ["process"], "level": "WARNING"},
     }

@@ -62,12 +62,13 @@
     <meta name="twitter:description" content="{{ page.description }}"/>
     <meta name="twitter:image" content="{{ page.image_url }}"/>
     <meta name="twitter:image:alt" content="{{ page.image_alt }}"/>
+    <link rel="stylesheet" href="{{ stylesheet_url }}"/>
     <link rel="preload" href="{{ static_url('/static/fonts/GoogleSans-Variable.woff2') }}" crossorigin="anonymous" as="font" type="font/woff2"/>
     {% if page.preload_code_font %}
       <link rel="preload" href="{{ static_url('/static/fonts/GoogleSansCode-Variable.woff2') }}" crossorigin="anonymous" as="font" type="font/woff2"/>
     {% endif %}
     {% if page.preload_image %}
-      <link rel="preload" href="{{ page.preload_image }}" fetchpriority="high" as="image"/>
+      <link rel="preload" href="{{ static_url(page.preload_image) }}" fetchpriority="high" as="image"/>
     {% endif %}
     {% if page.is_home %}
       <link rel="preload" href="{{ static_url('static/img/avatar-192.webp') }}" imagesrcset="{{ static_url('static/img/avatar-192.webp') }} 192w, {{ static_url('static/img/avatar-280.webp') }} 280w, {{ static_url('static/img/avatar.webp') }} 384w" imagesizes="(max-width: 639px) 128px, (max-width: 768px) 160px, 192px" fetchpriority="high" as="image"/>
@@ -76,7 +77,6 @@
     <link rel="apple-touch-icon" sizes="180x180" href="{{ static_url('static/img/favicons/apple-touch-icon.png') }}"/>
     <link rel="icon" type="image/png" sizes="32x32" href="{{ static_url('static/img/favicons/favicon-32x32.png') }}"/>
     <link rel="icon" type="image/png" sizes="16x16" href="{{ static_url('static/img/favicons/favicon-16x16.png') }}"/>
-    <link rel="stylesheet" href="{{ stylesheet_url }}"/>
     {% if page.structured_data %}
       <script type="application/ld+json">{{ page.structured_data }}</script>
     {% endif %}

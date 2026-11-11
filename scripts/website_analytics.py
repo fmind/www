@@ -229,15 +229,15 @@ def collect(read: Callable[[str, dict[str, str]], bytes], days: Sequence[date]) 
     parameters: dict[str, str] = {"selectedFields": SELECTION}
     suffixes = [f"${day:%Y%m%d}" for day in days]
     # Size every partition before reading any row, so the cap fails before the download starts.
-    befores = [Metadata.model_validate_json(read(suffix, parameters)) for suffix in suffixes]
-    schemas = [validate_schema(before) for before in befores]
-    if not 0 <= sum(int(before.num_rows) for before in befores) <= MAX_ROWS:
+    initial = [Metadata.model_validate_json(read(suffix, parameters)) for suffix in suffixes]
+    schemas = [validate_schema(metadata) for metadata in initial]
+    if not 0 <= sum(int(metadata.num_rows) for metadata in initial) <= MAX_ROWS:
         raise AnalyticsError(f"Analytics exceeds the {MAX_ROWS:,} row cap; no partial report produced.")
     events: list[Event] = []
     duplicates = 0
     pages = 0
-    for suffix, before, fields in zip(suffixes, befores, schemas, strict=True):
-        expected = int(before.num_rows)
+    for suffix, metadata, fields in zip(suffixes, initial, schemas, strict=True):
+        expected = int(metadata.num_rows)
         raw_count = 0
         page_token = ""
         # A duplicate shares its timestamp, hence its partition, so the keys need not outlive it.
@@ -266,7 +266,7 @@ def collect(read: Callable[[str, dict[str, str]], bytes], days: Sequence[date]) 
                 raise AnalyticsError("Repeated analytics page token; no partial report produced.")
             page_token = page.page_token
         after = Metadata.model_validate_json(read(suffix, parameters))
-        if raw_count != expected or before != after:
+        if raw_count != expected or metadata != after:
             raise AnalyticsError("Analytics read incomplete or table changed; retry once when ingestion is settled.")
     return events, duplicates
 

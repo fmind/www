@@ -1,7 +1,7 @@
 {# Runs after the footer exists, so it can wire the footer's Cookie settings control. #}
 <script nonce="{{ nonce }}">
   (function () {
-    var id = '{{ metadata.google_analytics_id }}';
+    var id = {{ metadata.google_analytics_id | tojson }};
     var key = 'fmind-consent';
     var banner = document.getElementById('consent');
     // Local, test and preview origins never ask for consent or load Google Analytics.

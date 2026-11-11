@@ -303,7 +303,17 @@ class SiteMiddleware:
                 and content_type.lower().startswith("text/html")
                 and not 300 <= status < 400
             ):
-                query = parse_qs(scope.get("query_string", b"").decode("utf-8", "replace"), keep_blank_values=True)
+                raw_query = scope.get("query_string", b"")
+                query: dict[str, list[str]] = {}
+                if b"utm_" in raw_query.lower():
+                    try:
+                        query = parse_qs(
+                            raw_query.decode("utf-8", "replace"),
+                            keep_blank_values=True,
+                            max_num_fields=32,
+                        )
+                    except ValueError:
+                        query = {}
 
                 def first(name: str) -> str:
                     values = query.get(name)

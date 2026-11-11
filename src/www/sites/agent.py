@@ -1,5 +1,6 @@
 """Bounded agent access to the same calculator used by the website."""
 
+import re
 from dataclasses import replace
 from datetime import UTC, datetime
 
@@ -19,6 +20,11 @@ from www.sites.models import (
     HostingInputs,
     Quantization,
 )
+
+# Strip only web-form fallback clauses ("<reason>; <fallback> was/were used/kept/cleared"),
+# preserving semicolon-separated machine lists and guidance clauses in configuration_issue.
+_FALLBACK_CLAUSE = re.compile(r"; [^;]+ (?:was|were) (?:used|kept|cleared)$")
+_LEGACY_WEB_NODES = frozenset({"a4-cud-3y", "a4-flex"})
 
 
 # Comparison rows name catalog entries by id: repeating the full model, machine, and
@@ -96,11 +102,13 @@ def compare_hosting(parameters: dict[str, str]) -> HostingResult:
         raise ValueError(
             "preset replaces " + ", ".join(sorted(demand)) + " in advanced mode; send the preset or explicit demand.",
         )
+    if parameters.get("node") in _LEGACY_WEB_NODES:
+        raise ValueError("Invalid calculator parameters: GPU / TPU node (node) was not recognized")
     _, errors = parse_inputs(parameters)
     if errors:
         # Validation messages read "<reason>; <fallback applied by the web form>". MCP
         # rejects instead of falling back, so it reports only the reason.
-        reasons = (error.partition("; ")[0] for error in errors)
+        reasons = (_FALLBACK_CLAUSE.sub("", error) for error in errors)
         raise ValueError("Invalid calculator parameters: " + "; ".join(reasons))
     now = datetime.now(UTC)
     view = build_llm_self_hosting_view(parameters, now=now)
@@ -144,7 +152,13 @@ def compare_hosting(parameters: dict[str, str]) -> HostingResult:
         pilot_configuration=view.current_pilot_config,
         calculated_on=now.date().isoformat(),
         snapshot_date=view.snapshot_date,
-        sources={"models": view.model_source_url, "gke": view.gke_source_url, "compute": view.price_source_url},
+        sources={
+            "models": view.model_source_url,
+            "gke": view.gke_source_url,
+            "compute": view.price_source_url,
+            "tpu": view.tpu_price_source_url,
+            "flex_start": view.flex_start_source_url,
+        },
         units={
             "currency": "USD",
             "month": f"{MONTHLY_HOURS:g} hours",

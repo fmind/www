@@ -71,6 +71,12 @@ async def test_server_lists_twelve_read_only_tools_and_two_prompts(mcp_server: M
     assert search_tool.input_schema["properties"]["limit"]["default"] == 10
     assert search_tool.input_schema["properties"]["limit"]["maximum"] == 50
     assert search_tool.input_schema["properties"]["tag"]["anyOf"][0]["maxLength"] == 64
+    article_reader = next(tool for tool in tools if tool.name == "get_article")
+    assert "slug" in article_reader.input_schema["properties"]["slug"]["description"]
+    assert article_reader.output_schema is not None
+    assert "ArticleSectionLink" in article_reader.output_schema["$defs"]
+    news_reader = next(tool for tool in tools if tool.name == "get_news")
+    assert "YYYY-MM-DD" in news_reader.input_schema["properties"]["slug"]["description"]
     assert [prompt.name for prompt in prompts] == ["assess_fit", "brief_me"]
     assert [
         [argument.model_dump(by_alias=True, exclude_none=True) for argument in prompt.arguments or []]

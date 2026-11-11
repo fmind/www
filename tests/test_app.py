@@ -294,7 +294,7 @@ def test_branding_uses_small_navigation_asset_and_banner_preview(client: AppClie
     assert 'property="og:image:alt" content="Fmind.dev — AI, Agents, Security"' in home
     with Image.open(BytesIO(client.get("/static/img/logo.webp").content)) as logo:
         assert logo.format == "WEBP"
-        assert logo.size == (96, 96)
+        assert logo.size == (80, 80)
     with Image.open(BytesIO(client.get("/static/img/og-image.jpg").content)) as banner:
         assert banner.format == "JPEG"
         assert banner.size == (1200, 630)
@@ -1278,7 +1278,7 @@ def test_drafts_never_enter_production_discovery(
 
 def test_google_analytics_id_and_privacy_notice_are_published(client: AppClient) -> None:
     # The browser consent journey covers the banner behavior; this pins the measurement ID it loads.
-    assert "'G-Z28QKD99V2'" in client.get("/").text
+    assert '"G-Z28QKD99V2"' in client.get("/").text
     privacy = client.get("/privacy").text
     assert "Google Analytics, only with your consent" in privacy
     assert "Cookie settings" in privacy
@@ -1337,13 +1337,14 @@ def test_mcp_serves_no_subscription_streams(client: AppClient) -> None:
     assert listen.json()["error"]["code"] == -32601
 
 
-@pytest.mark.parametrize("path", ["/mcp/server-card", "/.well-known/mcp/server-card.json"])
+@pytest.mark.parametrize("path", ["/mcp/server-card", "/.well-known/mcp/server-card.json", "/connect.vcf"])
 def test_mcp_server_cards_compress_like_other_snapshots(client: AppClient, path: str) -> None:
     response = client.get(path, headers={"accept-encoding": "gzip"})
 
     assert response.status_code == 200
     assert response.headers["content-encoding"] == "gzip"
     assert response.headers["etag"].startswith('W/"')
+    assert client.get(path, headers={"if-none-match": response.headers["etag"]}).status_code == 304
 
 
 def test_warm_pages_reuse_startup_validated_json_ld(

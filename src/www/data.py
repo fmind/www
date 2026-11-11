@@ -497,59 +497,11 @@ def _identity_graph() -> list[dict[str, object]]:
     return [person, website]
 
 
-_IDENTITY_GRAPH: tuple[dict[str, object], ...] = tuple(_identity_graph())
+IDENTITY_GRAPH: tuple[dict[str, object], ...] = tuple(_identity_graph())
 
 
-def _json_ld(graph: list[dict[str, object]]) -> str:
+def json_ld(graph: list[dict[str, object]]) -> str:
     return json.dumps({"@context": "https://schema.org", "@graph": graph}, ensure_ascii=False, separators=(",", ":"))
-
-
-def get_page_structured_data(page_type: str, url: str, name: str, description: str) -> str:
-    """Build a connected WebPage-family graph for a hosted page other than the profile."""
-    return _json_ld(
-        [
-            *_IDENTITY_GRAPH,
-            {
-                "@id": f"{url}#webpage",
-                "@type": page_type,
-                "url": url,
-                "name": name,
-                "description": description,
-                "isPartOf": {"@id": f"{METADATA.site_url}/#website"},
-                "about": {"@id": f"{METADATA.site_url}/#person"},
-            },
-        ]
-    )
-
-
-def get_application_structured_data(url: str, name: str, description: str) -> str:
-    """Describe a free decision tool as a WebApplication inside the shared site graph."""
-    return _json_ld(
-        [
-            *_IDENTITY_GRAPH,
-            {
-                "@id": f"{url}#webpage",
-                "@type": "WebPage",
-                "url": url,
-                "name": name,
-                "description": description,
-                "isPartOf": {"@id": f"{METADATA.site_url}/#website"},
-                "mainEntity": {"@id": f"{url}#application"},
-            },
-            {
-                "@id": f"{url}#application",
-                "@type": "WebApplication",
-                "name": name,
-                "description": description,
-                "url": url,
-                "applicationCategory": "BusinessApplication",
-                "operatingSystem": "Web",
-                "isAccessibleForFree": True,
-                "offers": {"@type": "Offer", "price": 0, "priceCurrency": "USD"},
-                "author": {"@id": f"{METADATA.site_url}/#person"},
-            },
-        ]
-    )
 
 
 def get_structured_data(article: Article | None = None) -> str:
@@ -557,7 +509,7 @@ def get_structured_data(article: Article | None = None) -> str:
     person_id = f"{METADATA.site_url}/#person"
     profile_id = f"{METADATA.site_url}/#profile"
     website_id = f"{METADATA.site_url}/#website"
-    graph: list[dict[str, object]] = [*_IDENTITY_GRAPH]
+    graph: list[dict[str, object]] = [*IDENTITY_GRAPH]
     if article is None:
         graph.append(
             {
@@ -588,4 +540,4 @@ def get_structured_data(article: Article | None = None) -> str:
                 "keywords": list(article.tags),
             }
         )
-    return _json_ld(graph)
+    return json_ld(graph)

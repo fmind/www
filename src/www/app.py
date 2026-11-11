@@ -326,7 +326,7 @@ def create_app(
     home_page = home_metadata(home_structured_data)
     connect_page = connect_metadata()
     scan_page = scan_metadata()
-    contact_card = render_contact_card()
+    contact_card = _Snapshot.of(render_contact_card())
     not_found_page = not_found_metadata()
     agents_page = agents_metadata()
     privacy_page = privacy_metadata()
@@ -338,7 +338,8 @@ def create_app(
         )
         raise RuntimeError(msg)
     site_metadata_by_slug = {
-        slug: site_page_metadata(page, site_structured_data(page)) for slug, page in site_pages_by_slug.items()
+        slug: site_page_metadata(page, site_structured_data(page, application_assets.image_sizes))
+        for slug, page in site_pages_by_slug.items()
     }
     news_page = news_index_metadata()
     editions_by_slug = {edition.slug: edition for edition in editions}
@@ -346,7 +347,7 @@ def create_app(
     edition_neighbours = adjacent_editions(editions)
     news_context: dict[str, object] = {"index": split_news_index(editions), "news_feed_path": NEWS_FEED_PATH}
     article_metadata_by_slug = {
-        slug: article_metadata(article, get_structured_data(article))
+        slug: article_metadata(article, get_structured_data(article), application_assets.image_sizes)
         for slug, article in article_collection.by_slug.items()
     }
     # Rendering owns the single reviewed trusted-markup boundary for these
@@ -472,6 +473,13 @@ def create_app(
         ),
         _snapshot_route("/.well-known/agent-skills/index.json", skill_index, json_type, cors=True),
         _snapshot_route(AGENT_SKILL_PATH, skill_body, "text/markdown; charset=utf-8", cors=True),
+        _snapshot_route(
+            "/connect.vcf",
+            contact_card,
+            "text/vcard; charset=utf-8",
+            _NO_CACHE,
+            extra_headers={"content-disposition": 'attachment; filename="mederic-hurier.vcf"'},
+        ),
     ]
 
     @route(
@@ -498,6 +506,10 @@ def create_app(
             return _markdown_response(request, news_index_markdown, f"{METADATA.site_url}/news/", negotiated=True)
         response = render_page(request, PageTemplate.NEWS, news_page, news_context)
         response.headers["vary"] = "Accept"
+        response.headers["link"] = (
+            f'<{NEWS_FEED_PATH}>; rel="alternate"; type="application/atom+xml", '
+            '</api/news>; rel="alternate"; type="application/json"'
+        )
         return response
 
     @route("/news/{slug:str}", http_method=_READ_METHODS, sync_to_thread=True)
@@ -553,15 +565,6 @@ def create_app(
         if _request_path(request).endswith("/"):
             return _redirect("/scan")
         return render_page(request, PageTemplate.SCAN, scan_page, {"connect_url": CONNECT_URL})
-
-    @route("/connect.vcf", http_method=_READ_METHODS, sync_to_thread=False)
-    def contact() -> Response[bytes]:
-        return _static_response(
-            contact_card,
-            "text/vcard; charset=utf-8",
-            _NO_CACHE,
-            extra_headers={"content-disposition": 'attachment; filename="mederic-hurier.vcf"'},
-        )
 
     @route("/articles", http_method=_READ_METHODS, sync_to_thread=True)
     def articles_index(request: AppRequest) -> Redirect | Response[str]:
@@ -635,13 +638,17 @@ def create_app(
 
     @route("/", http_method=_READ_METHODS, sync_to_thread=True)
     def home(request: AppRequest) -> Response[str] | Response[bytes]:
-        headers = {"vary": "Accept", "link": AGENT_LINKS}
         if prefers_markdown(request.headers.get("accept", "")):
             return _snapshot_response(
-                request, home_markdown, "text/markdown; charset=utf-8", _HOUR_CACHE, cors=True, extra_headers=headers
+                request,
+                home_markdown,
+                "text/markdown; charset=utf-8",
+                _HOUR_CACHE,
+                cors=True,
+                extra_headers={"vary": "Accept", "link": f'<{METADATA.site_url}/>; rel="canonical", {AGENT_LINKS}'},
             )
         response = render_page(request, PageTemplate.HOME, home_page, home_context)
-        response.headers.update(headers)
+        response.headers.update({"vary": "Accept", "link": AGENT_LINKS})
         return response
 
     # Routes, not a 404 exception handler: exception handlers run synchronously
@@ -745,7 +752,6 @@ def create_app(
             privacy,
             agents,
             scan,
-            contact,
             articles_index,
             article_redirect_or_markdown,
             sites_index,

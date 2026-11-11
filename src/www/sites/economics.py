@@ -193,6 +193,4 @@ def api_monthly_cost(
 
 
 def utc_date(now: datetime) -> str:
-    if now.tzinfo is None:
-        now = now.replace(tzinfo=UTC)
     return now.astimezone(UTC).date().isoformat()

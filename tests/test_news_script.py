@@ -236,6 +236,73 @@ def test_empty_arxiv_feed_is_a_fetch_error() -> None:
     assert news.source_facts("https://arxiv.org/abs/0", web)["status"] == "fetch_error"
 
 
+@pytest.mark.parametrize(
+    "payload",
+    [
+        '<!DOCTYPE feed [<!ENTITY x "boom">]><feed xmlns="http://www.w3.org/2005/Atom"/>',
+        '<?xml version="1.0"?><!ENTITY x "boom"><feed xmlns="http://www.w3.org/2005/Atom"/>',
+    ],
+)
+def test_arxiv_rejects_xml_dtd_and_entity_declarations(payload: str) -> None:
+    web = FakeWeb({"https://export.arxiv.org/api/query?id_list=0": payload})
+    facts = news.source_facts("https://arxiv.org/abs/0", web)
+
+    assert facts["status"] == "fetch_error"
+    assert "disallowed XML declarations" in facts["error"]
+
+
+@pytest.mark.parametrize("address", ["127.0.0.1", "::1", "169.254.169.254", "100.64.0.1", "10.0.0.5"])
+def test_public_https_connection_rejects_non_global_addresses(monkeypatch: pytest.MonkeyPatch, address: str) -> None:
+    family = news.socket.AF_INET6 if ":" in address else news.socket.AF_INET
+    sockaddr = (address, 443, 0, 0) if ":" in address else (address, 443)
+    monkeypatch.setattr(
+        news.socket,
+        "getaddrinfo",
+        lambda *_args, **_kwargs: [(family, news.socket.SOCK_STREAM, 6, "", sockaddr)],
+    )
+    connection = news.PublicHTTPSConnection("rebind.example", 443, timeout=2.0)
+
+    with pytest.raises(ValueError, match="refusing non-global address"):
+        connection.connect()
+
+
+def test_public_https_connection_binds_verified_global_socket_and_sni(monkeypatch: pytest.MonkeyPatch) -> None:
+    connected: list[tuple[object, ...]] = []
+    wrapped: list[tuple[object, str]] = []
+
+    class FakeSocket:
+        def __init__(self, *_args: object) -> None:
+            self.timeout: float | None = None
+
+        def settimeout(self, value: float) -> None:
+            self.timeout = value
+
+        def connect(self, sockaddr: tuple[object, ...]) -> None:
+            connected.append(sockaddr)
+
+        def close(self) -> None:
+            pass
+
+    monkeypatch.setattr(
+        news.socket,
+        "getaddrinfo",
+        lambda *_args, **_kwargs: [(news.socket.AF_INET, news.socket.SOCK_STREAM, 6, "", ("93.184.216.34", 443))],
+    )
+    monkeypatch.setattr(news.socket, "socket", FakeSocket)
+    monkeypatch.setattr(
+        news._TLS_CONTEXT,  # noqa: SLF001
+        "wrap_socket",
+        lambda raw, *, server_hostname: wrapped.append((raw, server_hostname)) or "tls-socket",
+    )
+    connection = news.PublicHTTPSConnection("example.com", 443, timeout=3.0)
+    connection.connect()
+
+    assert connected == [("93.184.216.34", 443)]
+    assert len(wrapped) == 1
+    assert wrapped[0][1] == "example.com"
+    assert connection.sock == "tls-socket"
+
+
 def test_fetch_text_refuses_plain_http() -> None:
     with pytest.raises(ValueError, match="refusing non-HTTPS URL"):
         news.fetch_text("http://example.com/")

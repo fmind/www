@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
-from typing import Annotated
+from typing import Annotated, TypedDict
 
 from pydantic import Field
 
@@ -126,6 +126,11 @@ class ResearchPaper:
 class ArticleSection:
     identifier: str
     label: str
+
+
+class ArticleSectionLink(TypedDict):
+    title: str
+    url: str
 
 
 @dataclass(frozen=True, slots=True)

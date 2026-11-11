@@ -328,10 +328,16 @@ a.tag:hover {
   text-decoration-color: currentcolor;
 }
 
-/* Long archives need not lay out every off-screen card on first paint. */
+/* Long archives need not lay out every off-screen card on first paint. Keep the
+   initial LCP/above-the-fold pair in normal layout so first paint never defers them. */
 .article-index article.card {
   content-visibility: auto;
-  contain-intrinsic-block-size: auto 36rem;
+  contain-intrinsic-block-size: auto 31rem;
+}
+
+.article-index section:first-of-type article.card:nth-child(-n + 2) {
+  content-visibility: visible;
+  contain-intrinsic-block-size: none;
 }
 
 /* A style pass forced before the stylesheet arrives (such as a hit test or a DevTools call)
@@ -345,12 +351,12 @@ a.tag:hover {
 }
 
 /* While the fixed consent banner is open, keep keyboard focus scrolled above it (WCAG 2.4.11). */
-html:has(#consent:not([hidden])) {
+html:has(> body > #consent:not([hidden])) {
   scroll-padding-bottom: 16rem;
 }
 
 /* Room inside the footer, in its own color, so its last links can scroll above the open banner. */
-html:has(#consent:not([hidden])) body > footer {
+body > #consent:not([hidden]) ~ footer {
   padding-bottom: calc(1.5rem + 16rem);
 }
 

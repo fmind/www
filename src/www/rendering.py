@@ -65,9 +65,25 @@ NAV_LINKS: Final = (
 _RESERVED_CONTEXT: Final = frozenset(
     {"current_year", "metadata", "nav_links", "nonce", "page", "stylesheet_url"},
 )
-# SVG animation elements can rewrite an href to a javascript: URL through to/values/from.
+# SVG animation/foreignObject and nested document/form elements have no place in reviewed Markdown fragments.
 _UNSAFE_FRAGMENT_ELEMENTS: Final = frozenset(
-    {"animate", "animatemotion", "base", "embed", "iframe", "link", "meta", "object", "script", "set", "style"},
+    {
+        "animate",
+        "animatemotion",
+        "animatetransform",
+        "base",
+        "embed",
+        "foreignobject",
+        "form",
+        "iframe",
+        "link",
+        "meta",
+        "object",
+        "portal",
+        "script",
+        "set",
+        "style",
+    },
 )
 _UNSAFE_URL_PREFIXES: Final = ("data:", "javascript:", "vbscript:")
 _URL_ATTRIBUTES: Final = frozenset({"action", "formaction", "href", "poster", "src", "xlink:href"})
@@ -253,7 +269,7 @@ class _TrustedFragmentParser(HTMLParser):
             self._reject(f"must not contain <{tag.casefold()}> elements")
         for name, value in attrs:
             normalized_name = name.casefold()
-            if normalized_name.startswith("on") or normalized_name in {"srcdoc", "style"}:
+            if normalized_name.startswith("on") or normalized_name in {"ping", "srcdoc", "style"}:
                 self._reject(f"contains unsafe attribute {name!r}")
             if value is None:
                 continue

@@ -5,6 +5,15 @@
   "description": "Read-only access to Fmind's portfolio, articles, news, and sites.",
   "version": "2.10.0",
   "websiteUrl": "https://www.fmind.dev/",
+  "icons": [
+    {
+      "src": "https://www.fmind.dev/static/img/favicons/icon-192.png",
+      "mimeType": "image/png",
+      "sizes": [
+        "192x192"
+      ]
+    }
+  ],
   "remotes": [
     {
       "type": "streamable-http",

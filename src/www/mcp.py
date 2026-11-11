@@ -46,6 +46,7 @@ from www.data import (
 )
 from www.models import (
     Article,
+    ArticleSectionLink,
     ArticleSummary,
     CertificationBadge,
     CertificationEntry,
@@ -108,6 +109,8 @@ _PROMPT_RESULT_DESCRIPTIONS = {
 class _PortfolioMCPServer(MCPServer[None]):
     """Preserve prompt metadata and reject inputs that MCPServer would accept silently."""
 
+    _known_args: dict[str, tuple[str, ...]] | None = None
+
     @override
     async def list_tools(self) -> list[Tool]:
         # Advertise the closed argument set that call_tool enforces.
@@ -120,14 +123,17 @@ class _PortfolioMCPServer(MCPServer[None]):
     async def call_tool(
         self, name: str, arguments: dict[str, Any], context: Context[None, Any] | None = None
     ) -> CallToolResult | InputRequiredResult:
-        tool = next((tool for tool in await super().list_tools() if tool.name == name), None)
-        if tool is None:
+        if self._known_args is None:
+            self._known_args = {
+                tool.name: tuple(tool.input_schema.get("properties", ())) for tool in await super().list_tools()
+            }
+        known = self._known_args.get(name)
+        if known is None:
             # The spec lists unknown tools, like unknown prompts, as protocol errors
             # (-32602); the SDK would answer with an isError tool result instead.
             raise MCPError(INVALID_PARAMS, f"Unknown tool: {name}")
         # The SDK ignores unknown keys, so a misspelled argument would silently
         # apply its default. Fail like an invalid value: an isError tool result.
-        known = tool.input_schema.get("properties", {})
         if unknown := sorted(set(arguments) - set(known)):
             expected = ", ".join(known) or "no arguments"
             raise ToolError(f"Unknown argument(s) for {name}: {', '.join(unknown)}; expected: {expected}")
@@ -215,7 +221,7 @@ class ArticleResult(_ResultModel):
     article: ArticleSummary
     canonical_url: str
     markdown: str
-    sections: tuple[dict[str, str], ...]
+    sections: tuple[ArticleSectionLink, ...]
 
 
 class SearchNewsResult(_ResultModel):
@@ -228,11 +234,6 @@ class NewsResult(_ResultModel):
     edition: NewsEditionSummary
     canonical_url: str
     markdown: str
-
-
-def build_version() -> str:
-    """Return the package version in the server implementation format."""
-    return f"v{version('www')}"
 
 
 def create_mcp_server(
@@ -277,7 +278,7 @@ def create_mcp_server(
         ),
         website_url=_WEBSITE_URL,
         icons=_ICONS,
-        version=build_version(),
+        version=version("www"),
         cache_hints=_CACHE_HINTS,
         # Immutable snapshots never notify; serving subscriptions/listen would let any
         # anonymous POST hold an SSE stream and a request slot until the platform timeout.
@@ -411,7 +412,15 @@ def create_mcp_server(
         structured_output=True,
     )
     def get_article(
-        slug: Annotated[str, Field(min_length=1, max_length=200, pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$")],
+        slug: Annotated[
+            str,
+            Field(
+                min_length=1,
+                max_length=200,
+                pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                description="public article slug from search_articles or list_publications",
+            ),
+        ],
     ) -> ArticleResult:
         result = article_results.get(slug)
         if result is None:
@@ -482,6 +491,7 @@ def create_mcp_server(
                 min_length=10,
                 max_length=200,
                 pattern=r"^\d{4}-\d{2}-\d{2}(?:-[a-z0-9]+(?:-[a-z0-9]+)*)?$",
+                description="published news edition slug (YYYY-MM-DD or YYYY-MM-DD-topic) from search_news",
             ),
         ],
     ) -> NewsResult:
@@ -616,7 +626,7 @@ async def render_mcp_server_card(server: MCPServer[None]) -> bytes:
         "serverInfo": {
             "name": "www",
             "title": _TITLE,
-            "version": build_version(),
+            "version": version("www"),
             "websiteUrl": _WEBSITE_URL,
         },
         "description": _DESCRIPTION,

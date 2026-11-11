@@ -5,13 +5,14 @@ from typing import Any
 
 from granian import Granian
 from granian.constants import Interfaces
-from granian.http import HTTP1Settings
+from granian.http import HTTP1Settings, HTTP2Settings
 from granian.server import MPServer, MTServer
 
 from www.config import Config
 from www.log import stdlib_logging_config
 
 _HTTP1_HEADER_READ_TIMEOUT_MS = 5_000
+_HTTP2_MAX_HEADERS_SIZE = 65_536
 _WORKER_KILL_TIMEOUT_SECONDS = 8
 
 
@@ -24,6 +25,7 @@ def build_server(config: Config, *, log_dictconfig: dict[str, Any] | None = None
         interface=Interfaces.ASGI,
         websockets=False,
         http1_settings=HTTP1Settings(header_read_timeout=_HTTP1_HEADER_READ_TIMEOUT_MS),
+        http2_settings=HTTP2Settings(max_headers_size=_HTTP2_MAX_HEADERS_SIZE),
         # Cloud Run sends SIGKILL ten seconds after SIGTERM. Leave time for the
         # parent process itself to exit after a stuck worker is terminated.
         workers_kill_timeout=_WORKER_KILL_TIMEOUT_SECONDS,

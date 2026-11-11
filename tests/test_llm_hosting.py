@@ -1802,3 +1802,18 @@ def test_plan_defaults_and_alternatives_fail_closed_without_hardware(monkeypatch
     inputs, validation = parse_inputs({"mode": "simple", "preset": "document-pipeline"})
     assert validation == ("No compatible hardware for this test; select a compatible checkpoint, GPU and billing plan",)
     assert (inputs.billing_plan, inputs.node_pool_id) == (BillingPlan.ON_DEMAND, "g4-standard-48")
+
+
+@pytest.mark.parametrize(
+    ("model", "expected"),
+    [
+        ("mistral-large-4", "Validate multi-node serving"),
+        ("muse-spark-open", "Validate multi-node serving"),
+        ("kimi-k3", "Validate multi-node serving"),
+        ("glm-5-3", "Review commercial terms"),
+    ],
+)
+def test_multi_node_topology_takes_precedence_over_commercial_license_decision(model: str, expected: str) -> None:
+    row = next(entry for entry in view().comparison if entry.model.id == model)
+
+    assert row.decision == expected

@@ -170,8 +170,15 @@ class NewsEdition:
 
 def canonicalize_url(raw_url: str) -> str:
     """Normalize a URL for duplicate detection: standard hosts, no trackers, no fragment or trailing slash."""
-    parsed = urlparse(raw_url.strip())
-    if parsed.scheme not in ("http", "https") or not parsed.netloc:
+    cleaned = raw_url.strip()
+    if any(ord(char) <= 0x20 or ord(char) == 0x7F for char in cleaned):
+        raise NewsError(f"unsupported or invalid URL {raw_url!r}")
+    try:
+        parsed = urlparse(cleaned)
+        _ = parsed.port
+    except ValueError as error:
+        raise NewsError(f"unsupported or invalid URL {raw_url!r}") from error
+    if parsed.scheme not in ("http", "https") or not parsed.netloc or not parsed.hostname:
         raise NewsError(f"unsupported or invalid URL {raw_url!r}")
     if "@" in parsed.netloc:
         raise NewsError(f"URL {raw_url!r} carries credentials; share the public link")

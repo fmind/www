@@ -23,7 +23,7 @@ from www.data import (
     THESIS,
     YOUTUBE_SERIES,
 )
-from www.models import Article, ArticleIndexView, ArticleSummary, ArticleYear, Portfolio
+from www.models import Article, ArticleIndexView, ArticleSectionLink, ArticleSummary, ArticleYear, Portfolio
 from www.news import NEWS_FEED_PATH, atom_feed_root, utc_stamp, xml_document, xml_sub
 from www.search import SearchIndex, normalize_search_query
 from www.tags import TAGS, sort_tags
@@ -274,13 +274,21 @@ def render_profile_schema() -> bytes:
     return (json.dumps(schema, ensure_ascii=False, indent=2) + "\n").encode()
 
 
-def article_sections(article: Article) -> tuple[dict[str, str], ...]:
+_MARKDOWN_UI_KEYS = frozenset(
+    {"badge_type", "brand_color", "google_analytics_id", "icon", "image_alt", "image_url", "logo"}
+)
+
+
+def article_sections(article: Article) -> tuple[ArticleSectionLink, ...]:
     """List every heading anchor that the HTML renderer generated, at any level."""
-    return tuple({"title": heading.label, "url": f"{article.url}#{heading.identifier}"} for heading in article.headings)
+    return tuple(
+        ArticleSectionLink(title=heading.label, url=f"{article.url}#{heading.identifier}")
+        for heading in article.headings
+    )
 
 
 def render_home_markdown(articles: tuple[ArticleSummary, ...]) -> bytes:
-    """Render the complete public portfolio without scraping its HTML layout."""
+    """Render the complete public portfolio without scraping its HTML layout or leaking UI-only keys."""
     profile = _PORTFOLIO_ADAPTER.dump_python(portfolio_snapshot(articles), mode="json")
     lines = [
         f"# {METADATA.name} ({METADATA.alternate_name})",
@@ -293,6 +301,8 @@ def render_home_markdown(articles: tuple[ArticleSummary, ...]) -> bytes:
     def append(value: object, depth: int = 0) -> None:
         if isinstance(value, dict):
             for key, item in value.items():
+                if key in _MARKDOWN_UI_KEYS:
+                    continue
                 label = str(key).replace("_", " ").capitalize()
                 if isinstance(item, (dict, list)):
                     lines.append("  " * depth + f"- {label}:")
@@ -302,8 +312,15 @@ def render_home_markdown(articles: tuple[ArticleSummary, ...]) -> bytes:
         elif isinstance(value, list):
             for item in value:
                 if isinstance(item, dict):
-                    lines.append("  " * depth + "- Entry:")
-                    append(item, depth + 1)
+                    fields = [(k, v) for k, v in item.items() if k not in _MARKDOWN_UI_KEYS and v not in (None, "")]
+                    for index, (key, child) in enumerate(fields):
+                        indent = depth if index == 0 else depth + 1
+                        label = str(key).replace("_", " ").capitalize()
+                        if isinstance(child, (dict, list)):
+                            lines.append("  " * indent + f"- {label}:")
+                            append(child, indent + 1)
+                        else:
+                            lines.append("  " * indent + f"- {label}: {child}")
                 else:
                     append(item, depth)
         elif value not in (None, ""):

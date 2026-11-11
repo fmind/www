@@ -89,13 +89,17 @@ def test_negotiated_get_and_head_preserve_html_and_cache_variants(client: TestCl
 
 
 def test_home_markdown_has_public_profile_and_discovery(client: TestClient[Any]) -> None:
-    body = client.get("/", headers={"accept": "text/markdown"}).text
+    negotiated = client.get("/", headers={"accept": "text/markdown"})
+    body = negotiated.text
     profile = client.get("/api/profile").json()
     assert profile["metadata"]["name"] in body
     assert all(entry["title"] in body for entry in profile["articles"])
     assert all(entry["title"] in body for entry in profile["open_source"])
     assert all(paragraph in body for paragraph in profile["biography"])
     assert "/agents" in body
+    for noise in ("G-Z28QKD99V2", "brand_color", ".webp", "- Entry:"):
+        assert noise not in body
+    assert '<https://www.fmind.dev/>; rel="canonical"' in negotiated.headers["link"]
     for accept in ("text/html", "text/markdown"):
         assert 'rel="api-catalog"' in client.get("/", headers={"accept": accept}).headers["link"]
 
@@ -243,6 +247,8 @@ def test_calculator_matches_web_arithmetic_and_round_trips(parameters: dict[str,
         {"replicas": "100001"},
         {"throughput": "inf"},
         {"node": "imaginary"},
+        {"node": "a4-flex"},
+        {"node": "a4-cud-3y"},
         {"model": "imaginary"},
         {"quant": "imaginary"},
         {"node": "a4", "billing": "on-demand"},
@@ -284,6 +290,17 @@ def test_calculator_rejections_describe_no_web_fallback(parameters: dict[str, st
         compare_hosting(parameters)
 
     assert not re.search(r"\b(used|kept|cleared)\b", str(error.value)), str(error.value)
+
+
+def test_calculator_rejection_preserves_full_semicolon_machine_list() -> None:
+    with pytest.raises(ValueError, match="calculator parameter") as error:
+        compare_hosting({"mode": "advanced", "model": "qwen3-5-4b", "node": "ct6e-standard-8t"})
+
+    message = str(error.value)
+    assert "G2 \u00b7 1\u00d7 L4 \u00b7 24 GB; G4 \u00b7 1\u00d7 RTX PRO 6000 \u00b7 96 GB" in message
+    assert "A4 \u00b7 8\u00d7 B200 \u00b7 1,440 GB" in message
+    assert not re.search(r"\b(used|kept|cleared)\b", message)
+    assert {"tpu", "flex_start"} <= compare_hosting({}).sources.keys()
 
 
 def test_calculator_schema_and_structured_results_over_http(client: TestClient[Any]) -> None:

@@ -19,6 +19,7 @@ MODEL_SNAPSHOT = "2026-11-09"
 GKE_SOURCE_URL = "https://cloud.google.com/kubernetes-engine/pricing"
 FLEX_START_SOURCE_URL = "https://docs.cloud.google.com/kubernetes-engine/docs/concepts/dws"
 PRICE_SOURCE_URL = "https://cloud.google.com/products/compute/pricing/accelerator-optimized"
+TPU_PRICE_SOURCE_URL = "https://cloud.google.com/tpu/pricing"
 
 # Checkpoint tensor sizes include mixed precision and scales. Hardware restrictions
 # follow published runtime recipes; see sources.md for variants and provenance.

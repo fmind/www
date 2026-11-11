@@ -70,6 +70,8 @@ def test_server_runtime_bounds_slow_headers_and_cloud_run_shutdown() -> None:
     assert server.websockets is False
     assert server.http1_settings is not None
     assert server.http1_settings.header_read_timeout == 5_000
+    assert server.http2_settings is not None
+    assert server.http2_settings.max_headers_size == 65_536
     assert server.workers_kill_timeout == 8
     assert server.log_config is log_dictconfig
 

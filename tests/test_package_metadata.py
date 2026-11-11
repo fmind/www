@@ -13,12 +13,21 @@ def _load_toml(path: Path) -> dict[str, Any]:
 
 
 def test_release_versions_are_synchronized() -> None:
+    from importlib.metadata import version
+
     repository = Path(__file__).resolve().parents[1]
     project = _load_toml(repository / "pyproject.toml")
     server = json.loads((repository / "server.json").read_text(encoding="utf-8"))
 
     # uv.lock needs no assertion here: every `uv run --locked` fails when it trails pyproject.toml.
-    assert server["version"] == project["project"]["version"]
+    assert server["version"] == project["project"]["version"] == version("www")
+    assert server["icons"] == [
+        {
+            "src": "https://www.fmind.dev/static/img/favicons/icon-192.png",
+            "mimeType": "image/png",
+            "sizes": ["192x192"],
+        }
+    ]
 
 
 def test_python_runtime_pins_are_consistent() -> None:

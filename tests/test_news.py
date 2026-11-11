@@ -160,7 +160,18 @@ def test_canonicalize_url_normalizes_hosts_and_strips_trackers(raw: str, canonic
     assert canonicalize_url(raw) == canonical
 
 
-@pytest.mark.parametrize("raw", ["ftp://example.com/file", "javascript:alert(1)", "example.com/no-scheme"])
+@pytest.mark.parametrize(
+    "raw",
+    [
+        "ftp://example.com/file",
+        "javascript:alert(1)",
+        "example.com/no-scheme",
+        "https://[::1",
+        "https://example.com:bad",
+        "https://example.com/a\nb",
+        "https:///path-only",
+    ],
+)
 def test_canonicalize_url_rejects_non_web_urls(raw: str) -> None:
     with pytest.raises(NewsError, match="unsupported or invalid URL"):
         canonicalize_url(raw)
@@ -540,6 +551,10 @@ def test_news_api_and_index_markdown_serve_validated_archive(news_client: AppCli
     assert "Accept" in negotiated.headers["vary"].split(",")
     assert negotiated.text.startswith("# News — ")
     assert f"## [November 3, 2026]({METADATA.site_url}/news/2026-11-03/)" in negotiated.text
+
+    index_html = news_client.get("/news/")
+    assert '</news/feed.xml>; rel="alternate"; type="application/atom+xml"' in index_html.headers["link"]
+    assert '</api/news>; rel="alternate"; type="application/json"' in index_html.headers["link"]
 
 
 def test_search_news_editions_matches_items_and_edition_headers() -> None:

@@ -14,6 +14,7 @@ from .data import (
     MODEL_SNAPSHOT,
     PRICE_SOURCE_URL,
     QUANTIZATIONS,
+    TPU_PRICE_SOURCE_URL,
 )
 from .economics import (
     CLUSTER_HOURLY_USD,
@@ -138,10 +139,10 @@ def _hosting_decision(
 ) -> str:
     if estimate.compatibility_issue:
         return "Unsupported configuration"
-    if model.license_class != "Permissive":
-        return "Review commercial terms"
     if estimate.nodes_per_replica > 1:
         return "Validate multi-node serving"
+    if model.license_class != "Permissive":
+        return "Review commercial terms"
     if estimate.required_memory_gb < node.vram_gb * 0.25:
         return "Right-size the node pool"
     return "Pilot on this topology"
@@ -458,6 +459,7 @@ def build_llm_self_hosting_view(
         cluster_hourly_usd=CLUSTER_HOURLY_USD,
         monthly_hours=MONTHLY_HOURS,
         price_source_url=PRICE_SOURCE_URL,
+        tpu_price_source_url=TPU_PRICE_SOURCE_URL,
         current_pilot_config=current_pilot_config,
         comparison_ready=estimate.qualified and any(not row.request_issue for row in apis),
         form_values=scenario_parameters(replace(inputs, mode="advanced")),

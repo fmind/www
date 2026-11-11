@@ -19,10 +19,12 @@
 {%- endmacro %}
 
 {% macro article_card(article, priority=false) -%}
+  {% set card_path = article.card_image_path() %}
+  {% set card_size = image_size(card_path) %}
   <article class="card bg-base-100 border border-base-300 shadow-lg hover:shadow-xl transition-shadow overflow-hidden h-full">
     {# The title below links to the same page; keep the cover out of the tab order and screen-reader link list. #}
     <a href="/articles/{{ article.slug }}/" class="block" tabindex="-1" aria-hidden="true">
-      <img class="w-full aspect-[16/9] object-cover" src="{{ article.card_image_path() }}" alt="{{ article.image_alt }}" width="800" height="450" {% if priority %}fetchpriority="high"{% else %}loading="lazy"{% endif %} decoding="async"/>
+      <img class="w-full aspect-[16/9] object-cover" src="{{ static_url(card_path) }}" alt="{{ article.image_alt }}" width="{{ card_size[0] if card_size else 800 }}" height="{{ card_size[1] if card_size else 450 }}" {% if priority %}fetchpriority="high"{% else %}loading="lazy"{% endif %} decoding="async"/>
     </a>
     <div class="card-body p-5 sm:p-6">
       <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-base-content/65">
@@ -35,9 +37,9 @@
       </h3>
       <p class="text-base-content/75 leading-relaxed mt-2">{{ article.description }}</p>
       {% if article.tags %}
-        <ul class="flex flex-wrap gap-2 mt-4" aria-label="Article tags">
-          {% for tag in article.tags %}<li>{{ tag_badge(tag) }}</li>{% endfor %}
-        </ul>
+        <div class="flex flex-wrap gap-2 mt-4">
+          {% for tag in article.tags %}{{ tag_badge(tag) }}{% endfor %}
+        </div>
       {% endif %}
     </div>
   </article>

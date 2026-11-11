@@ -66,8 +66,13 @@ def render_api_catalog() -> bytes:
 def public_skill() -> tuple[bytes, bytes]:
     """Hash the exact packaged artifact served by the skill endpoint."""
     body = files("www").joinpath("agent_skills/fmind-research/SKILL.md").read_bytes()
+    text = body.decode()
+    if not text.startswith("---\n") or (closing := text.find("\n---\n", 4)) < 0:
+        raise ValueError("public skill is missing YAML frontmatter")
     description = next(
-        line.removeprefix("description: ") for line in body.decode().splitlines() if line.startswith("description: ")
+        line.removeprefix("description: ").strip()
+        for line in text[4:closing].splitlines()
+        if line.startswith("description: ")
     )
     index = {
         "$schema": "https://schemas.agentskills.io/discovery/0.2.0/schema.json",

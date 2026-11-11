@@ -22,9 +22,12 @@ import hashlib
 import html
 import http.client
 import io
+import ipaddress
 import json
 import os
 import re
+import socket
+import ssl
 import subprocess
 import sys
 import tarfile
@@ -79,7 +82,46 @@ class HttpsOnlyRedirect(urllib.request.HTTPRedirectHandler):
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 
-OPENER = urllib.request.build_opener(HttpsOnlyRedirect)
+_TLS_CONTEXT = ssl.create_default_context()
+
+
+class PublicHTTPSConnection(http.client.HTTPSConnection):
+    """Connect only to globally routable IPs, binding socket and TLS SNI without re-resolving DNS."""
+
+    def connect(self) -> None:
+        infos = socket.getaddrinfo(self.host, self.port, type=socket.SOCK_STREAM)
+        if not infos:
+            raise OSError(f"{self.host}: no address found")
+        for _, _, _, _, sockaddr in infos:
+            address = ipaddress.ip_address(sockaddr[0])
+            if not address.is_global:
+                raise ValueError(f"refusing non-global address {address} for {self.host}")
+        last_error: OSError | None = None
+        for family, socktype, proto, _, sockaddr in infos:
+            raw: socket.socket | None = None
+            try:
+                raw = socket.socket(family, socktype, proto)
+                if isinstance(self.timeout, int | float):
+                    raw.settimeout(self.timeout)
+                raw.connect(sockaddr)
+                self.sock = _TLS_CONTEXT.wrap_socket(raw, server_hostname=self.host)
+                return
+            except OSError as error:
+                if raw is not None:
+                    raw.close()
+                last_error = error
+        if last_error is not None:
+            raise last_error
+
+
+class PublicHTTPSHandler(urllib.request.HTTPSHandler):
+    """Route HTTPS fetches through PublicHTTPSConnection."""
+
+    def https_open(self, req: urllib.request.Request) -> http.client.HTTPResponse:
+        return self.do_open(PublicHTTPSConnection, req, context=_TLS_CONTEXT)
+
+
+OPENER = urllib.request.build_opener(HttpsOnlyRedirect, PublicHTTPSHandler)
 
 
 def fetch_text(url: str, max_bytes: int = MAX_BYTES) -> tuple[str, str]:
@@ -127,8 +169,8 @@ def _first(patterns: Sequence[str], text: str) -> str:
 def _meta(name: str) -> tuple[str, str]:
     attribute = "property" if name.startswith("og:") else "name"
     return (
-        rf"<meta[^>]+{attribute}=[\"']{name}[\"'][^>]+content=(?:\"([^\"]+)\"|'([^']+)')",
-        rf"<meta[^>]+content=(?:\"([^\"]+)\"|'([^']+)')[^>]+{attribute}=[\"']{name}[\"']",
+        rf"<meta\b[^>]{0, 2048}?{attribute}=[\"']{name}[\"'][^>]{0, 2048}?content=(?:\"([^\"]+)\"|'([^']+)')",
+        rf"<meta\b[^>]{0, 2048}?content=(?:\"([^\"]+)\"|'([^']+)')[^>]{0, 2048}?{attribute}=[\"']{name}[\"']",
     )
 
 
@@ -206,8 +248,11 @@ def _github(url: str, fetch: Fetch) -> dict[str, str]:
 def _arxiv(url: str, fetch: Fetch) -> dict[str, str]:
     paper = urlparse(url).path.split("/abs/")[-1].strip("/")
     _, body = fetch(f"https://export.arxiv.org/api/query?id_list={quote(paper)}")
+    folded = body.lower()
+    if "<!doctype" in folded or "<!entity" in folded:
+        raise ValueError("arXiv response contains disallowed XML declarations")
     namespace = {"a": "http://www.w3.org/2005/Atom"}
-    entry = ElementTree.fromstring(body).find("a:entry", namespace)  # noqa: S314 - arXiv's own API, no DTD use
+    entry = ElementTree.fromstring(body).find("a:entry", namespace)  # noqa: S314 - DTD/ENTITY rejected above
     if entry is None:
         return {}
     summary = _clean(entry.findtext("a:summary", default="", namespaces=namespace))
@@ -366,25 +411,29 @@ WRITER_SCHEMA: dict[str, Any] = {
 type Writer = Callable[[str], Mapping[str, Any]]
 
 
-def git(repo: Path, *args: str, stdin: str | None = None, env: Mapping[str, str] | None = None) -> str:
-    """Run one Git command in `repo` and return its stdout; a failure names the command and Git's message."""
+def _git_bytes(repo: Path, *args: str, stdin: bytes = b"", env: Mapping[str, str] | None = None) -> bytes:
+    """Run one Git command in `repo` with prompts disabled and return raw stdout."""
     try:
-        completed = subprocess.run(  # noqa: S603 - fixed executable, arguments never pass through a shell
+        return subprocess.run(  # noqa: S603 - fixed executable, arguments never pass through a shell
             ["git", *args],  # noqa: S607 - Git comes from the developer's PATH like every other task
             cwd=repo,
-            # An empty input closes stdin and Git may not prompt, so a missing credential fails instead of hanging.
-            input=stdin or "",
+            # Empty input closes stdin so a missing credential fails instead of hanging.
+            input=stdin,
             capture_output=True,
-            encoding="utf-8",
             check=True,
             env={**os.environ, "GIT_TERMINAL_PROMPT": "0", **(env or {})},
             timeout=GIT_TIMEOUT_SECONDS,
-        )
+        ).stdout
     except subprocess.CalledProcessError as error:
-        raise NewsError(f"git {args[0]} failed: {error.stderr.strip() or error}") from error
+        message = error.stderr.decode("utf-8", "replace").strip() or error
+        raise NewsError(f"git {args[0]} failed: {message}") from error
     except subprocess.TimeoutExpired as error:
         raise NewsError(_git_timeout(args[0])) from error
-    return completed.stdout
+
+
+def git(repo: Path, *args: str, stdin: str | None = None, env: Mapping[str, str] | None = None) -> str:
+    """Run one Git command in `repo` and return its UTF-8 stdout; a failure names the command and Git's message."""
+    return _git_bytes(repo, *args, stdin=(stdin or "").encode(), env=env).decode("utf-8")
 
 
 def _git_timeout(command: str) -> str:
@@ -402,20 +451,7 @@ def fetch_main(repo: Path) -> str:
 
 def snapshot(repo: Path, commit: str, target: Path) -> Path:
     """Extract content/news of `commit` into `target` and return that news directory."""
-    try:
-        archive = subprocess.run(  # noqa: S603 - fixed executable and arguments
-            ["git", "archive", "--format=tar", commit, "content/news"],  # noqa: S607
-            cwd=repo,
-            stdin=subprocess.DEVNULL,
-            capture_output=True,
-            check=True,
-            timeout=GIT_TIMEOUT_SECONDS,
-        ).stdout
-    except subprocess.CalledProcessError as error:
-        message = error.stderr.decode("utf-8", "replace").strip() or error
-        raise NewsError(f"git archive failed: {message}") from error
-    except subprocess.TimeoutExpired as error:
-        raise NewsError(_git_timeout("archive")) from error
+    archive = _git_bytes(repo, "archive", "--format=tar", commit, "content/news")
     with tarfile.open(fileobj=io.BytesIO(archive)) as tar:
         tar.extractall(target, filter="data")
     return target / "content" / "news"
@@ -630,7 +666,7 @@ def draft(
     cutoff = time.time() - DRAFT_DAYS * 86_400
     for old in drafts.glob("*.json"):
         if old.stat().st_mtime < cutoff:
-            old.unlink()
+            old.unlink(missing_ok=True)
     record = {"id": identifier, "slug": slug, "base": digest(base) if base else "", "markdown": markdown}
     (drafts / f"{identifier}.json").write_text(json.dumps(record, ensure_ascii=False, indent=2), encoding="utf-8")
     return preview(identifier, edition, len(existing), skipped)
