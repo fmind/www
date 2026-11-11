@@ -2,6 +2,22 @@
 
 All notable changes to this project are documented in this file.
 
+## [2.11.0] - 2026-11-11
+
+### 🚀 Features
+
+- _(sites)_ Streamline LLM hosting workloads and refresh frontier model catalogs
+
+### 🐛 Bug Fixes
+
+- _(www)_ Drop OTLP tracing, tighten analytics, and sync MCP UI
+- _(security)_ Enforce TLS 1.2 in news fetches and clear CodeQL shell sink
+- _(www)_ Harden news SSRF checks, canonical redirects, metadata snapshots, and links
+
+### 🧪 Testing
+
+- _(browser)_ Unroute consent contexts and skip same-origin proxy
+
 ## [2.10.1] - 2026-11-11
 
 ### 🐛 Bug Fixes
