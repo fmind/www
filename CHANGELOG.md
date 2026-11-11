@@ -17,6 +17,7 @@ All notable changes to this project are documented in this file.
 ### 🧪 Testing
 
 - _(browser)_ Unroute consent contexts and skip same-origin proxy
+- _(browser)_ Wait for distinct volume override URL before reload
 
 ### ⚙️ Build & CI
 
