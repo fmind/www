@@ -1,6 +1,7 @@
 """The news preparation script, with every network read replaced by a fake."""
 
 import base64
+import gzip
 import http.client
 import io
 import json
@@ -11,6 +12,7 @@ import ssl
 import subprocess
 import sys
 import urllib.request
+import zlib
 from collections.abc import Mapping
 from datetime import date
 from pathlib import Path
@@ -351,8 +353,9 @@ def test_redirects_off_https_are_refused_before_the_next_request(target: str) ->
 class FakeResponse:
     """Stand in for an HTTPResponse that streams chunks or fails mid-body."""
 
-    def __init__(self, *chunks: bytes | Exception) -> None:
+    def __init__(self, *chunks: bytes | Exception, headers: Mapping[str, str] | None = None) -> None:
         self.chunks = list(chunks)
+        self.headers = dict(headers or {})
 
     def __enter__(self) -> FakeResponse:
         return self
@@ -374,6 +377,91 @@ def test_fetch_text_reads_a_bounded_body_through_the_https_only_opener(monkeypat
     monkeypatch.setattr(news.OPENER, "open", lambda *_args, **_kwargs: FakeResponse(b"abc", b"def", b"ghi"))
 
     assert news.fetch_text("https://example.com/", max_bytes=5) == ("https://example.com/final", "abcde")
+
+
+def test_fetch_text_decompresses_gzip_and_deflate_bodies(monkeypatch: pytest.MonkeyPatch) -> None:
+    gzipped = gzip.compress(b"hello gzipped world")
+    raw_deflate = zlib.compressobj(wbits=-zlib.MAX_WBITS)
+    deflated_raw = raw_deflate.compress(b"raw deflate") + raw_deflate.flush()
+    deflated_zlib = zlib.compress(b"zlib deflate")
+
+    monkeypatch.setattr(
+        news.OPENER, "open", lambda *_a, **_k: FakeResponse(gzipped, headers={"Content-Encoding": "gzip"})
+    )
+    assert news.fetch_text("https://example.com/gz") == ("https://example.com/final", "hello gzipped world")
+
+    monkeypatch.setattr(
+        news.OPENER, "open", lambda *_a, **_k: FakeResponse(deflated_raw, headers={"Content-Encoding": "deflate"})
+    )
+    assert news.fetch_text("https://example.com/def1") == ("https://example.com/final", "raw deflate")
+
+    monkeypatch.setattr(
+        news.OPENER, "open", lambda *_a, **_k: FakeResponse(deflated_zlib, headers={"Content-Encoding": "deflate"})
+    )
+    assert news.fetch_text("https://example.com/def2") == ("https://example.com/final", "zlib deflate")
+
+    monkeypatch.setattr(
+        news.OPENER,
+        "open",
+        lambda *_a, **_k: FakeResponse(b"not-valid-deflate", headers={"Content-Encoding": "deflate"}),
+    )
+    with pytest.raises(OSError, match="error"):
+        news.fetch_text("https://example.com/bad-deflate")
+
+
+def test_aistudio_facts_read_docs_markdown_and_editorial_learn_json() -> None:
+    web = FakeWeb(
+        {
+            "https://aistudio.google.com/docs/whats-new-gemini-4-carbon.md": (
+                '# What\'s new in Gemini 4 Carbon {% id="top" %}\n\n'
+                "Gemini 4 Carbon (`gemini-4-carbon`) supports a 1M context window.\n"
+            ),
+            news.AISTUDIO_MANIFEST: json.dumps(
+                {
+                    "pages": {
+                        "gemini-4-carbon-developer-guide": {
+                            "contentId": "id-1",
+                            "title": "Gemini 4 Carbon: Developer Guide",
+                            "description": "Developer guide for Gemini 4 Carbon.",
+                        },
+                        "missing-body": {
+                            "contentId": "id-missing",
+                            "title": "Guide",
+                            "description": "Still described.",
+                        },
+                    }
+                }
+            ),
+            f"{news.AISTUDIO_PAGES}/id-1.json": json.dumps(
+                {
+                    "modules": [
+                        {"type": "hero", "content": {"headline": "Carbon Guide", "subhead": "Deep reasoning."}},
+                        {"type": "body_text", "content": {"sections": [{"body": "<p>Supports 1M tokens.</p>"}]}},
+                    ]
+                }
+            ),
+            "https://aistudio.google.com/prompts": ARTICLE,
+        }
+    )
+
+    doc = news.source_facts("https://aistudio.google.com/docs/whats-new-gemini-4-carbon", web)
+    learn = news.source_facts("https://aistudio.google.com/learn/gemini-4-carbon-developer-guide", web)
+    partial = news.source_facts("https://aistudio.google.com/learn/missing-body", web)
+    unknown = news.source_facts("https://aistudio.google.com/learn/unknown-slug", web)
+    other = news.source_facts("https://aistudio.google.com/prompts", web)
+
+    assert (doc["status"], doc["title"]) == ("ok", "What's new in Gemini 4 Carbon")
+    assert "1M context window" in doc["excerpt"]
+    assert (learn["status"], learn["title"], learn["description"]) == (
+        "ok",
+        "Gemini 4 Carbon: Developer Guide",
+        "Developer guide for Gemini 4 Carbon.",
+    )
+    assert "Supports 1M tokens." in learn["excerpt"]
+    assert (partial["status"], partial["title"]) == ("ok", "Guide")
+    assert partial["error"].startswith("editorial page: OSError:")
+    assert unknown["status"] == "fetch_error"
+    assert (other["status"], other["title"]) == ("ok", "A & B")
 
 
 def test_fetch_text_enforces_a_total_deadline_on_trickling_bodies(monkeypatch: pytest.MonkeyPatch) -> None:

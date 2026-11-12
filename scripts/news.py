@@ -35,6 +35,7 @@ import tarfile
 import tempfile
 import time
 import urllib.request
+import zlib
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, date, datetime, timedelta
@@ -61,6 +62,10 @@ DEADLINE_SECONDS = 20.0  # per source read, redirects included
 WORKERS = 8
 SHORTENERS = frozenset({"t.co", "bit.ly", "tinyurl.com", "lnkd.in", "buff.ly"})
 USER_AGENT = "Mozilla/5.0 (compatible; fmind-news; +https://www.fmind.dev/news/)"
+ACCEPT_HEADER = "text/html,application/xhtml+xml,application/xml;q=0.9,application/json;q=0.8,*/*;q=0.7"
+AISTUDIO_MANIFEST = "https://www.gstatic.com/aistudio-static/editorial/pages/_manifest.json"
+AISTUDIO_PAGES = "https://www.gstatic.com/aistudio-static/editorial/pages"
+_GZIP_MAGIC = b"\x1f\x8b"
 
 type Fetch = Callable[[str], tuple[str, str]]
 
@@ -134,12 +139,33 @@ class PublicHTTPSHandler(urllib.request.HTTPSHandler):
 OPENER = urllib.request.build_opener(HttpsOnlyRedirect, PublicHTTPSHandler)
 
 
+def _decompress(url: str, body: bytes, encoding: str, max_bytes: int) -> bytes:
+    """Decompress gzip or deflate HTTP payloads (including truncated streams) within `max_bytes`."""
+    kind = encoding.lower().strip()
+    if kind in ("gzip", "x-gzip") or body.startswith(_GZIP_MAGIC):
+        decompressor = zlib.decompressobj(zlib.MAX_WBITS | 16)
+    elif kind == "deflate":
+        decompressor = zlib.decompressobj(-zlib.MAX_WBITS)
+    else:
+        return body
+    try:
+        return decompressor.decompress(body, max_bytes)
+    except zlib.error as error:
+        if kind == "deflate":
+            try:
+                return zlib.decompressobj().decompress(body, max_bytes)
+            except zlib.error:
+                pass
+        raise OSError(f"{url}: {type(error).__name__}: {error}") from error
+
+
 def fetch_text(url: str, max_bytes: int = MAX_BYTES) -> tuple[str, str]:
     """Return the final URL and decoded body of one bounded, deadline-limited HTTPS read."""
     if urlparse(url).scheme != "https":
         raise ValueError(f"refusing non-HTTPS URL {url!r}")
     deadline = time.monotonic() + DEADLINE_SECONDS
-    request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT, "Accept": "*/*"})  # noqa: S310
+    headers = {"User-Agent": USER_AGENT, "Accept": ACCEPT_HEADER, "Accept-Encoding": "gzip, deflate"}
+    request = urllib.request.Request(url, headers=headers)  # noqa: S310
     body = bytearray()
     try:
         with OPENER.open(request, timeout=TIMEOUT_SECONDS) as response:
@@ -149,10 +175,12 @@ def fetch_text(url: str, max_bytes: int = MAX_BYTES) -> tuple[str, str]:
                 if time.monotonic() > deadline:
                     raise TimeoutError(f"{url}: read exceeded {DEADLINE_SECONDS:g} s")
             final_url = response.geturl() or url
+            encoding = getattr(response, "headers", {}).get("Content-Encoding", "")
     except http.client.HTTPException as error:
         # IncompleteRead, BadStatusLine, and LineTooLong are not OSErrors, and urllib does not wrap them.
         raise OSError(f"{url}: {type(error).__name__}: {error}") from error
-    return final_url, body.decode("utf-8", errors="replace")
+    decoded = _decompress(url, bytes(body), encoding, max_bytes).decode("utf-8", errors="replace")
+    return final_url, decoded
 
 
 def _json_object(body: str) -> dict[str, Any]:
@@ -315,6 +343,34 @@ def _page(url: str, fetch: Fetch) -> dict[str, str]:
     return facts
 
 
+def _aistudio(url: str, fetch: Fetch) -> dict[str, str]:
+    path = urlparse(url).path.strip("/")
+    if path.startswith("docs"):
+        stem = path.removesuffix(".md")
+        _, text = fetch(f"https://aistudio.google.com/{stem}.md")
+        title = _first((r"^#\s+(.+?)(?:\s+\{%.*)?$",), text)
+        body = _clean(re.sub(r"<[^>]+>|\{%.*?%\}", " ", text))
+        return {"title": title, "description": body[:600], "excerpt": body}
+    if not path.startswith("learn/"):
+        return _page(url, fetch)
+    slug = path.removeprefix("learn/").strip("/")
+    _, raw_manifest = fetch(AISTUDIO_MANIFEST)
+    pages = _json_object(raw_manifest).get("pages")
+    if not isinstance(pages, dict) or not isinstance(meta := pages.get(slug), dict):
+        return {}
+    facts = {"title": _clean(meta.get("title") or ""), "description": _clean(meta.get("description") or "")}
+    if content_id := meta.get("contentId"):
+        try:
+            _, raw_page = fetch(f"{AISTUDIO_PAGES}/{quote(str(content_id))}.json")
+            _json_object(raw_page)
+            chunks = re.findall(r'"(?:headline|subhead|body|text|description)"\s*:\s*"((?:[^"\\]|\\.)*)"', raw_page)
+            decoded = [_clean(re.sub(r"<[^>]+>", " ", json.loads(f'"{chunk}"'))) for chunk in chunks]
+            facts["excerpt"] = _clean(" ".join(piece for piece in decoded if piece))
+        except (OSError, ValueError) as error:
+            facts["error"] = f"editorial page: {type(error).__name__}: {error}"
+    return facts
+
+
 def source_facts(url: str, fetch: Fetch = fetch_text) -> dict[str, str]:
     """Collect the title, description, text excerpt, and duration that ground an edition line."""
     host = urlparse(url).netloc
@@ -327,6 +383,8 @@ def source_facts(url: str, fetch: Fetch = fetch_text) -> dict[str, str]:
         reader = _github
     elif host == "arxiv.org" and "/abs/" in url:
         reader = _arxiv
+    elif host == "aistudio.google.com":
+        reader = _aistudio
     result = {"url": url, "title": "", "description": "", "excerpt": "", "duration": ""}
     try:
         result.update(reader(url, fetch))
