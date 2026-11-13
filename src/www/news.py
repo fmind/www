@@ -35,10 +35,52 @@ _DESCRIPTION_MARKUP = re.compile(r"[\[\]<]|://")
 # A daily edition is YYYY-MM-DD; a special edition appends a topic, such as 2026-04-23-google-next.
 _UPDATED = re.compile(r"\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}:\d{2}Z)?")
 _SLUG = re.compile(r"^(?P<date>\d{4}-\d{2}-\d{2})(?:-(?P<topic>[a-z0-9]+(?:-[a-z0-9]+)*))?$")
-_STRIP_PARAMS = frozenset({"si", "fbclid", "gclid", "feature", "igshid", "spm", "ref", "taid", "share_id", "is"})
+_STRIP_PARAMS = frozenset(
+    {
+        "_bhlid",
+        "_ga",
+        "_gl",
+        "_hsenc",
+        "_hsmi",
+        "dclid",
+        "fbclid",
+        "feature",
+        "gbraid",
+        "gclid",
+        "guccounter",
+        "guce_referrer",
+        "guce_referrer_sig",
+        "igshid",
+        "is",
+        "li_fat_id",
+        "lipi",
+        "mkt_tok",
+        "msclkid",
+        "rb_clickid",
+        "rcm",
+        "ref",
+        "s_kwcid",
+        "share_id",
+        "si",
+        "spm",
+        "srsltid",
+        "taid",
+        "trackingid",
+        "trk",
+        "trkinfo",
+        "ttclid",
+        "twclid",
+        "vero_id",
+        "wbraid",
+        "wickedid",
+        "yclid",
+    }
+)
 # X share links append s= and t= trackers; elsewhere t= or s= can name a topic or a timestamp, so keep them.
 _X_STRIP_PARAMS = frozenset({"s", "t"})
-_STRIP_PREFIXES = ("utm_", "ref_", "mc_")
+# Blogger links append m=0 or m=1 to force a layout skin on *.blogspot.com and *.googleblog.com.
+_BLOGGER_SUFFIXES = (".blogspot.com", ".googleblog.com")
+_STRIP_PREFIXES = ("utm_", "ref_", "mc_", "hsa_", "gad_", "mtm_", "pk_", "oly_")
 _YOUTUBE_HOSTS = frozenset({"youtu.be", "youtube.com", "www.youtube.com", "m.youtube.com"})
 
 
@@ -207,10 +249,13 @@ def canonicalize_url(raw_url: str) -> str:
     ):
         return f"https://arxiv.org/abs/{paper}"
     strip = _STRIP_PARAMS | _X_STRIP_PARAMS if host == "x.com" else _STRIP_PARAMS
+    blogger = host in ("blogspot.com", "googleblog.com") or host.endswith(_BLOGGER_SUFFIXES)
     query = [
         (key, value)
         for key, value in parse_qsl(parsed.query, keep_blank_values=True)
-        if key.lower() not in strip and not key.lower().startswith(_STRIP_PREFIXES)
+        if key.lower() not in strip
+        and not key.lower().startswith(_STRIP_PREFIXES)
+        and not (blogger and key.lower() == "m" and value in ("0", "1"))
     ]
     path = path.rstrip("/")
     return urlunparse(("https", host, path, parsed.params, urlencode(query), ""))

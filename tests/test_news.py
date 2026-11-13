@@ -154,6 +154,16 @@ def test_parse_edition_rejects_invalid_files(slug: str, text: str, message: str)
         ("https://x.com/user/status/1?t=abc&s=20", "https://x.com/user/status/1"),
         ("https://forum.example.com/viewtopic.php?t=123", "https://forum.example.com/viewtopic.php?t=123"),
         ("https://example.com/p;v=2?flag&id=1", "https://example.com/p;v=2?flag=&id=1"),
+        (
+            "https://workspaceupdates.googleblog.com/2026/11/post.html?m=1",
+            "https://workspaceupdates.googleblog.com/2026/11/post.html",
+        ),
+        (
+            "https://myblog.blogspot.com/2026/11/post.html?m=0&utm_medium=rss",
+            "https://myblog.blogspot.com/2026/11/post.html",
+        ),
+        ("https://example.com/view?m=1&id=7", "https://example.com/view?m=1&id=7"),
+        ("https://example.com/post?_bhlid=abc&gad_source=1&hsa_acc=2&msclkid=3&srsltid=4", "https://example.com/post"),
     ],
 )
 def test_canonicalize_url_normalizes_hosts_and_strips_trackers(raw: str, canonical: str) -> None:
