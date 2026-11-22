@@ -1,5 +1,6 @@
 """Inventory-bound static files with conditional and range delivery."""
 
+import asyncio
 import mimetypes
 from pathlib import Path
 from typing import Any
@@ -13,6 +14,11 @@ from www.assets import ApplicationAssets
 from www.ranges import etag_matches, range_file_response, strong_etag_matches
 
 
+def _resolve_static_file(static_root: Path, relative_path: str) -> Path | None:
+    path = (static_root / relative_path).resolve()
+    return path if path.is_relative_to(static_root) and path.is_file() else None
+
+
 async def static_asset_response(
     asset_path: str, request: Request[Any, Any, Any], application_assets: ApplicationAssets, static_root: Path
 ) -> ASGIApp:
@@ -21,10 +27,15 @@ async def static_asset_response(
     asset_url = f"/static/{relative_path}"
     digest = application_assets.hashes.get(asset_url)
     # Look up the immutable URL inventory before touching the filesystem.
-    # Unknown paths (including NULs and dot segments) are client misses,
-    # and files added after startup must not become public accidentally.
-    path = (static_root / relative_path).resolve() if digest is not None else None
-    if path is None or not path.is_relative_to(static_root) or not path.is_file():
+    # Pre-resolved startup paths avoid per-request blocking I/O on the event loop;
+    # synthetic test snapshots without `files` resolve safely on a worker thread.
+    path: Path | None = None
+    if digest is not None:
+        if application_assets.files:
+            path = application_assets.files.get(asset_url)
+        else:
+            path = await asyncio.to_thread(_resolve_static_file, static_root, relative_path)
+    if path is None:
         body = b"404 page not found\n"
         is_head = request.method == HttpMethod.HEAD
         headers = {"cache-control": "no-cache", "content-type": "text/plain; charset=utf-8"}

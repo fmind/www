@@ -99,7 +99,7 @@ def test_main_configures_process_logging_before_serving(monkeypatch: pytest.Monk
     monkeypatch.setattr(main_module, "stdlib_logging_config", configure_process_logging)
     monkeypatch.setattr(main_module, "build_server", record_build)
 
-    main_module.main()
+    main_module.main(())
 
     assert configured == [config]
     assert observed == [(config, log_dictconfig)]

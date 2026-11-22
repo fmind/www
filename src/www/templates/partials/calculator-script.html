@@ -42,6 +42,7 @@ window.addEventListener('pageshow', function () {
 
 if (document.querySelector('[data-hosting-calculator]')) {
   var pendingScenario = null;
+  var currentScenario = location.pathname + location.search;
   var updateStatus = document.querySelector('[data-update-status]');
   var announcement;
   var formState = function () {
@@ -58,7 +59,8 @@ if (document.querySelector('[data-hosting-calculator]')) {
     updateStatus.textContent = '';
     announcement = setTimeout(function () { updateStatus.textContent = message; }, 100);
   };
-  async function updateScenario(url, source) {
+  async function updateScenario(url, source, options) {
+    var fromPopstate = Boolean(options && options.fromPopstate);
     // Only this same-origin, server-rendered calculator supplies replacement markup.
     // Elsewhere, such as a non-canonical calculator path, navigate normally instead of dropping the action.
     if (url.origin !== location.origin || url.pathname !== location.pathname) {
@@ -70,6 +72,8 @@ if (document.querySelector('[data-hosting-calculator]')) {
     pendingScenario = request;
     var current = document.querySelector('[data-hosting-calculator]');
     current.querySelectorAll('[data-update-error]').forEach(function (error) { error.remove(); });
+    clearTimeout(announcement);
+    updateStatus.textContent = '';
     current.setAttribute('aria-busy', 'true');
     try {
       var response = await fetch(url, {
@@ -79,36 +83,55 @@ if (document.querySelector('[data-hosting-calculator]')) {
       if (!response.ok) throw new Error('Calculator response: ' + response.status);
       var html = await response.text();
       // Never discard edits made while the request was in flight.
-      if (pendingScenario !== request || formState() !== request.state) return;
+      if (pendingScenario !== request || (!fromPopstate && formState() !== request.state)) return;
       var next = new DOMParser().parseFromString(html, 'text/html').querySelector('[data-hosting-calculator]');
       if (!next) throw new Error('Calculator markup is missing');
       // Keep the active control in the same viewport position; never pull focus back from outside the calculator.
       var active = document.activeElement;
       var inside = active && current.contains(active);
       var anchor = inside && active.id ? active : source;
+      var fallbackSource = inside ? active : source;
+      var fallbackEl = fallbackSource && fallbackSource.closest ? fallbackSource.closest('[id][tabindex]') : null;
+      var fallbackId = fallbackEl && current.contains(fallbackEl) ? fallbackEl.id : '';
+      var fallbackTop = fallbackId ? fallbackEl.getBoundingClientRect().top : null;
       var restoreFocus = inside || !active || active === document.body;
-      var top = anchor.getBoundingClientRect().top;
+      var top = anchor && anchor.getBoundingClientRect ? anchor.getBoundingClientRect().top : null;
       current.replaceWith(next);
       initializeCostCharts(next);
-      var replacement = anchor.id ? document.getElementById(anchor.id) : null;
-      if (!replacement && (anchor.id === 'advanced-mode' || anchor.id === 'simple-mode')) {
+      var replacement = anchor && anchor.id ? document.getElementById(anchor.id) : null;
+      if (!replacement && anchor && (anchor.id === 'advanced-mode' || anchor.id === 'simple-mode')) {
         replacement = document.getElementById(anchor.id === 'advanced-mode' ? 'simple-mode' : 'advanced-mode');
       }
       if (replacement) {
-        if (restoreFocus) replacement.focus({ preventScroll: true });
-        window.scrollBy({ top: replacement.getBoundingClientRect().top - top, behavior: 'instant' });
+        if (restoreFocus) replacement.focus(fromPopstate ? undefined : { preventScroll: true });
+        if (!fromPopstate && top !== null) window.scrollBy({ top: replacement.getBoundingClientRect().top - top, behavior: 'instant' });
+      } else {
+        var surviving = fallbackId ? document.getElementById(fallbackId) : null;
+        if (surviving) {
+          if (restoreFocus) surviving.focus(fromPopstate ? undefined : { preventScroll: true });
+          if (!fromPopstate && fallbackTop !== null) window.scrollBy({ top: surviving.getBoundingClientRect().top - fallbackTop, behavior: 'instant' });
+        } else if (restoreFocus) {
+          var fallback = document.getElementById('executive-result') || document.getElementById('main-content');
+          if (fallback) fallback.focus();
+        }
       }
       url.hash = '';
-      history.replaceState(history.state, '', url);
+      var nextScenario = url.pathname + url.search;
+      if (!fromPopstate && nextScenario !== currentScenario) {
+        history.pushState(history.state, '', url);
+      }
+      currentScenario = nextScenario;
       announce('Comparison updated.');
     } catch (error) {
       if (error.name !== 'AbortError' && pendingScenario === request) {
-        var alert = document.createElement('p');
+        var alert = document.createElement('div');
         alert.setAttribute('role', 'alert');
         alert.setAttribute('data-update-error', '');
-        alert.className = 'font-semibold mt-3';
+        alert.className = 'alert alert-error font-semibold';
         alert.textContent = 'Could not update the comparison. Please try again.';
-        source.insertAdjacentElement('afterend', alert);
+        var slot = current.querySelector('[data-update-error-slot]') || document.getElementById('calculator');
+        if (slot && slot.hasAttribute('data-update-error-slot')) slot.replaceChildren(alert);
+        else if (slot) slot.insertAdjacentElement('afterend', alert);
       }
     } finally {
       if (pendingScenario === request) {
@@ -117,6 +140,14 @@ if (document.querySelector('[data-hosting-calculator]')) {
       }
     }
   }
+  window.addEventListener('popstate', function () {
+    var targetScenario = location.pathname + location.search;
+    if (targetScenario === currentScenario) {
+      if (pendingScenario) cancelScenario();
+      return;
+    }
+    updateScenario(new URL(location.href), null, { fromPopstate: true });
+  });
   var formEdited = function (event) {
     // Editing the scenario supersedes a pending update instead of being overwritten by it.
     var form = event.target.form;

@@ -1,5 +1,7 @@
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import StrEnum
+from types import MappingProxyType
 from typing import Literal
 
 
@@ -358,6 +360,9 @@ class LLMSelfHostingView:
     current_pilot_config: str
     comparison_ready: bool
     # Exact serialized values keep resubmitted forms identical to shareable URLs.
-    form_values: dict[str, str]
+    form_values: Mapping[str, str]
     advanced_url: str
     simple_url: str
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "form_values", MappingProxyType(dict(self.form_values)))

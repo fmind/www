@@ -1,9 +1,12 @@
 var reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 var syncArticleVideos = function () {
-  if (!reducedMotion.matches) return;
-  document.querySelectorAll('.article-page video[autoplay]').forEach(function (video) {
-    video.pause();
-    video.removeAttribute('autoplay');
+  document.querySelectorAll('.article-page video[data-autoplay]').forEach(function (video) {
+    if (reducedMotion.matches) {
+      video.pause();
+    } else {
+      var promise = video.play();
+      if (promise && typeof promise.catch === 'function') promise.catch(function () {});
+    }
   });
 };
 syncArticleVideos();
@@ -45,8 +48,9 @@ if (articleNavigation) {
     pendingArticleUpdate = false;
     if (!articleWideScreen.matches) return;
     var current = null;
+    var scrollPadding = parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0;
     articleHeadings.forEach(function (heading) {
-      var offset = parseFloat(getComputedStyle(heading).scrollMarginTop) + 1;
+      var offset = scrollPadding + parseFloat(getComputedStyle(heading).scrollMarginTop) + 1;
       if (heading.getBoundingClientRect().top <= offset) current = heading.id;
     });
     articleLinks.forEach(function (link) {

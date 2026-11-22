@@ -50,10 +50,7 @@ def test_contact_card_includes_public_professional_details() -> None:
 
 def test_contact_portrait_is_embedded_without_source_metadata(tmp_path: Path) -> None:
     (tmp_path / "img").mkdir()
-    source = Image.new("RGB", (384, 384), "blue")
-    exif = Image.Exif()
-    exif[0x010E] = "private camera annotation"
-    source.save(tmp_path / "img/avatar.webp", exif=exif, icc_profile=b"private profile")
+    Image.new("RGB", (384, 384), "blue").save(tmp_path / "img/avatar-vcard.jpg", format="JPEG", quality=85)
     lines = connect.render_contact_card(tmp_path).decode().replace("\r\n ", "").split("\r\n")
     photo = next(line for line in lines if line.startswith("PHOTO;ENCODING=b;TYPE=JPEG:"))
     with Image.open(BytesIO(b64decode(photo.partition(":")[2], validate=True))) as decoded:
@@ -61,7 +58,14 @@ def test_contact_portrait_is_embedded_without_source_metadata(tmp_path: Path) ->
         assert decoded.size == (384, 384)
         assert not decoded.getexif()
         assert "icc_profile" not in decoded.info
-    assert "private" not in "\n".join(lines)
+
+    # The shipped static/img/avatar-vcard.jpg is also pre-built without EXIF/ICC metadata.
+    shipped = connect.render_contact_card().decode().replace("\r\n ", "").split("\r\n")
+    shipped_photo = next(line for line in shipped if line.startswith("PHOTO;ENCODING=b;TYPE=JPEG:"))
+    with Image.open(BytesIO(b64decode(shipped_photo.partition(":")[2], validate=True))) as decoded:
+        assert decoded.format == "JPEG"
+        assert not decoded.getexif()
+        assert "icc_profile" not in decoded.info
 
 
 def test_contact_portrait_failure_explains_recovery(tmp_path: Path) -> None:

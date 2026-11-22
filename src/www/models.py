@@ -10,12 +10,18 @@ CARD_COVER_WIDTH = 800
 DERIVATIVE_WIDTHS = (CARD_COVER_WIDTH, 1280)
 # Lowercase article-image source extensions, in the order an article cover is preferred.
 SOURCE_EXTENSIONS = (".webp", ".gif", ".png", ".jpg", ".jpeg")
+NEWS_FEED_PATH = "/news/feed.xml"
 _ZERO_DATE = datetime.min.replace(tzinfo=UTC)
 
 
 def utc_midnight(day: date) -> datetime:
     """Return the UTC instant at which a publication date starts."""
     return datetime(day.year, day.month, day.day, tzinfo=UTC)
+
+
+def utc_stamp(value: datetime) -> str:
+    """Format a UTC time as RFC 3339 with seconds and a Z suffix."""
+    return value.astimezone(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
 
 
 @dataclass(frozen=True, slots=True)

@@ -645,7 +645,7 @@ def generate_derivatives(
 
 def main(argv: Sequence[str] = ()) -> None:
     """Verify every repository derivative against its current source bytes."""
-    parser = ArgumentParser(description=__doc__)
+    parser = ArgumentParser(description=__doc__, allow_abbrev=False, suggest_on_error=True)
     parser.add_argument("--check", action="store_true", help="validate the derivative archive without writing")
     options = parser.parse_args(argv)
     try:

@@ -5,6 +5,7 @@ runs after promotion against the public origin and completes one MCP initialize
 there, because `/mcp` accepts only the public host.
 """
 
+import argparse
 import json
 import os
 import re
@@ -16,9 +17,18 @@ from typing import Any
 
 import httpx2
 
-from scripts.deploy import DeploymentTarget, DeploymentUsageError, validate_commit, validate_image_reference
+from scripts._cloud_run import (
+    DeploymentTarget,
+    DeploymentUsageError,
+    build_service_describe_command,
+    is_valid_revision_name,
+    validate_commit,
+    validate_image_reference,
+)
+from www.data import METADATA
+from www.mcp import MCP_PROTOCOL_VERSION
 
-PUBLIC_ORIGIN = "https://www.fmind.dev"
+PUBLIC_ORIGIN = METADATA.site_url
 PROBE_PATHS = ("/health", "/api/profile", "/.well-known/mcp/server-card.json")
 MCP_PATH = "/mcp"
 MAX_PROBE_BYTES = 1_048_576
@@ -27,7 +37,7 @@ _MCP_INITIALIZE = {
     "id": 1,
     "method": "initialize",
     "params": {
-        "protocolVersion": "2025-11-25",
+        "protocolVersion": MCP_PROTOCOL_VERSION,
         "capabilities": {},
         "clientInfo": {"name": "verify-deployment", "version": "1.0"},
     },
@@ -99,7 +109,7 @@ def verify_candidate(
     url = tagged[0].get("url")
     if not isinstance(url, str) or not re.fullmatch(url_pattern, url):
         raise VerificationError("candidate tag has no run.app URL for this service")
-    if not re.fullmatch(rf"{re.escape(service_name)}-[a-z0-9-]+\Z", revision):
+    if not is_valid_revision_name(revision, service_name):
         raise VerificationError("candidate revision name does not belong to this service")
     return revision, url
 
@@ -162,21 +172,7 @@ def describe_service(target: DeploymentTarget) -> dict[str, Any]:
     if executable is None:
         raise FileNotFoundError("gcloud is not installed")
     result = subprocess.run(  # noqa: S603 - fixed read-only gcloud argv.
-        (
-            executable,
-            "run",
-            "services",
-            "describe",
-            target.service_name,
-            "--project",
-            target.project_id,
-            "--billing-project",
-            target.project_id,
-            "--region",
-            target.region,
-            "--format=json",
-            "--quiet",
-        ),
+        build_service_describe_command(target, executable=executable, include_billing_project=True),
         stdin=subprocess.DEVNULL,
         capture_output=True,
         text=True,
@@ -203,7 +199,16 @@ def _required(name: str, environment: Mapping[str, str]) -> str:
 
 def main(arguments: Sequence[str] = (), *, environment: Mapping[str, str] | None = None) -> int:
     """Use read-only Cloud Run metadata and bounded HTTP requests; never mutate traffic."""
-    if tuple(arguments):
+    args = tuple(arguments)
+    if any(arg in ("-h", "--help") for arg in args):
+        argparse.ArgumentParser(
+            prog="python -m scripts.verify_deployment",
+            description="Verify IMAGE_REF and GITHUB_SHA own ready production traffic and public health.",
+            allow_abbrev=False,
+            suggest_on_error=True,
+        ).print_help()
+        return 0
+    if args:
         sys.stderr.write(_USAGE)
         return 2
     env = os.environ if environment is None else environment

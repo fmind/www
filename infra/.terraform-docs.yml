@@ -1,0 +1,23 @@
+# Docs: https://terraform-docs.io/user-guide/configuration/
+formatter: "markdown table"
+
+output:
+  file: "README.md"
+  mode: replace
+
+sort:
+  enabled: true
+  by: name
+
+settings:
+  anchor: true
+  color: false
+  default: true
+  description: true
+  escape: true
+  hide-empty: true
+  indent: 2
+  lockfile: false
+  required: true
+  sensitive: true
+  type: true

@@ -1,6 +1,9 @@
 """Run the production ASGI server."""
 
+import argparse
 import sys
+from collections.abc import Sequence
+from importlib.metadata import version
 from typing import Any
 
 from granian import Granian
@@ -33,8 +36,16 @@ def build_server(config: Config, *, log_dictconfig: dict[str, Any] | None = None
     )
 
 
-def main() -> None:
+def main(argv: Sequence[str] | None = None) -> None:
     """Validate configuration and serve the application."""
+    parser = argparse.ArgumentParser(
+        prog="www",
+        description="Serve the Fmind.dev Litestar application with Granian.",
+        allow_abbrev=False,
+        suggest_on_error=True,
+    )
+    parser.add_argument("--version", action="version", version=f"%(prog)s {version('www')}")
+    parser.parse_args(argv)
     try:
         config = Config.load()
     except ValueError as error:

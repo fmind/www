@@ -3,7 +3,16 @@
 from dataclasses import replace
 from datetime import UTC, datetime
 
-from .capacity import MONTHLY_HOURS, replicas_for_demand
+from .capacity import (
+    MONTHLY_HOURS,
+    automatic_node,
+    automatic_setup,
+    configuration_issue,
+    find_model,
+    find_node_pool,
+    find_quantization,
+    replicas_for_demand,
+)
 from .charts import hosting_cost_plot
 from .data import (
     DEMAND_PRESETS,
@@ -29,13 +38,7 @@ from .economics import (
 from .formatting import format_decimal, format_usd2
 from .inputs import (
     Query,
-    automatic_node,
-    automatic_setup,
-    configuration_issue,
     demand_preset,
-    find_model,
-    find_node_pool,
-    find_quantization,
     first_value,
     hosting_url,
     parse_inputs,
@@ -202,11 +205,7 @@ def _hosting_latency(inputs: HostingInputs) -> tuple[str, str]:
             "Confirm which configuration produced this pilot",
             "Re-submit the latency measurements to bind them to the current model, hardware, precision, and workload.",
         )
-    if (
-        inputs.measured_concurrency < inputs.concurrency
-        or inputs.measured_first_token == 0
-        or inputs.measured_completion == 0
-    ):
+    if not measurements_complete:
         return (
             "Responsiveness is still unproved",
             "Record p95 first-token and completion times at your target concurrency using this configuration.",

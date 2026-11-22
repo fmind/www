@@ -2,7 +2,7 @@
 
 Personal website and portfolio of [Médéric Hurier (Fmind)](https://www.fmind.dev/), freelance AI Architect (AI agents, MLOps, security), publishing technical articles, [daily tech news](https://www.fmind.dev/news/), server-rendered decision tools, and read-only [agent and MCP endpoints](https://www.fmind.dev/agents) (`/mcp`, `/api/profile`, `/api/news`, `/llms.txt`, `/llms-full.txt`).
 
-Built with Python, Litestar, strict Jinja, Tailwind CSS, DaisyUI, and Granian on Cloud Run (managed with `uv`, `mise`, Playwright, and OpenTofu)—no client framework, database, or runtime CDN.
+Built with Python, Litestar, strict Jinja, Tailwind CSS, DaisyUI, and Granian on Cloud Run (managed with `uv`, `mise`, Playwright, and OpenTofu), with no client framework, database, or runtime CDN.
 
 Server-rendered decision tools (GET forms + MCP):
 
@@ -11,13 +11,13 @@ Server-rendered decision tools (GET forms + MCP):
 
 ## Development
 
-Requires [mise](https://mise.jdx.dev/) and Docker Engine with Buildx (no cloud credentials; `mise.toml`, `mise.lock`, and `.mise/locks/` pin the toolchain and transitive npm packages).
+Requires [mise](https://mise.jdx.dev/) for local development, plus Docker Engine with Buildx for OCI image tasks (`mise run all`, `check:image`, `test:image`). No cloud credentials are required (`mise.toml`, `mise.lock`, and `.mise/locks/` pin the toolchain and transitive npm packages).
 
 ```bash
 mise install && mise run install && mise run watch
 ```
 
-Open `http://localhost:8080` (`PORT=8081` overrides the port; `GRANIAN_HOST=0.0.0.0` opts in to LAN access). `uv run --locked www` starts the production server (`HOST=127.0.0.1` locally, `0.0.0.0` in the container). See [`.env.example`](.env.example) for runtime variables (`.env` is not auto-loaded) and [AGENTS.md](AGENTS.md) for architecture and `.agents/skills/`.
+Open `http://localhost:8080` (`PORT=8081` overrides the port; `GRANIAN_HOST=0.0.0.0` opts in to LAN access). `uv run --locked www` starts the production server (`HOST=127.0.0.1` locally, `0.0.0.0` in the container). See [`.env.example`](.env.example) for runtime variables (`.env` is not auto-loaded; export variables in your shell) and [AGENTS.md](AGENTS.md) for architecture and `.agents/skills/`.
 
 ## Tasks
 
@@ -25,7 +25,7 @@ Open `http://localhost:8080` (`PORT=8081` overrides the port; `GRANIAN_HOST=0.0.
 
 | Command                                        | Purpose                                                                                             |
 | ---------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| `mise run all`                                 | Format, static checks, CSS build, pytest, OCI build/scan/smoke, and Chromium journeys               |
+| `mise run all`                                 | Static checks, CSS build, pytest, OCI build/scan/smoke, and Chromium journeys                       |
 | `mise run check`                               | Offline `check:local` (pre-commit) + network `check:network` (`uv`/npm/Trivy + OpenTofu, pre-push)  |
 | `mise run test`                                | Offline pytest (`≥91%` branch coverage, warnings as errors)                                         |
 | `mise run test:browser` / `test:browser:cross` | Chromium journeys (`:8096`), or Firefox/WebKit smoke (`:8097`, after `install:browser:cross`)       |
@@ -35,19 +35,29 @@ Open `http://localhost:8080` (`PORT=8081` overrides the port; `GRANIAN_HOST=0.0.
 | `mise run check:image` / `test:image [digest]` | Build and Trivy-scan `tmp/www-image.tar`, or smoke-test the archive/digest                          |
 | `mise run deploy <digest-ref> <commit-sha>`    | Cloud Run rollout or rollback of a qualified Artifact Registry digest                               |
 
-Set `BROWSER_BASE_URL=https://www.fmind.dev` to target production in browser suites, `mise run test:lighthouse -- --base-url <origin>` to audit a live origin across sitemap pages (performance-only misses retry twice for a median of `1`), or `gh workflow run quality.yml -f target=production` ([`quality.yml`](.github/workflows/quality.yml)) to run cross-browser and Lighthouse suites on GitHub runners.
+Targeting production:
+
+- Set `BROWSER_BASE_URL=https://www.fmind.dev` for browser suites.
+- Run `mise run test:lighthouse -- --base-url <origin>` for the 16-audit portfolio matrix (8 core pages, desktop and mobile, verified against `/sitemap.xml`; performance-only misses retry twice for a median of `1`).
+- Run `gh workflow run quality.yml -f target=production` ([`quality.yml`](.github/workflows/quality.yml)) for cross-browser and Lighthouse suites on GitHub runners.
 
 ## Deployment
 
-Cloud Run serves <https://www.fmind.dev/> in `www-fmind-dev` (`europe-west1`) with scale-to-zero (`min_instance_count = 0` on service and revision, max `5`, request-based CPU, `1` CPU, `512 MiB`, concurrency `32`, `30s` timeout). [`infra/`](infra/) and [infra](.agents/skills/infra/SKILL.md) manage Cloud Run, Artifact Registry, keyless Workload Identity Federation, alerts, and remote state (`gs://www-fmind-dev-tfstate/infra/state`); OpenTofu ignores the image and CI-managed traffic.
+Cloud Run serves [www.fmind.dev](https://www.fmind.dev/) in `www-fmind-dev` (`europe-west1`) with scale-to-zero (`min_instance_count = 0` on service and revision, max `5`, request-based CPU, `1` CPU, `512 MiB`, concurrency `32`, `30s` timeout). [`infra/`](infra/) and [infra](.agents/skills/infra/SKILL.md) manage Cloud Run, Artifact Registry, keyless Workload Identity Federation, alerts, and remote state (`gs://www-fmind-dev-tfstate/infra/state`); OpenTofu ignores the image and CI-managed traffic.
 
-Pushing to `main` runs `mise run all`, verifies `main` HEAD before build and rollout, pushes a non-root image with SBOM/provenance, and runs `mise run deploy <digest-ref> <commit-sha>` (Trivy scan, smoke test, no-traffic candidate health/digest/commit check, 100% traffic cutover, tag cleanup, and `test:deployed`):
+Pushing to `main` runs `mise run all`, verifies `main` HEAD before build and rollout, and pushes a non-root image with SBOM and provenance. It then runs `mise run deploy <digest-ref> <commit-sha>`, which gates Trivy, image smoke tests, no-traffic candidate health/digest/commit checks, 100% traffic cutover, tag cleanup, and `test:deployed`:
 
 ```bash
 mise run deploy europe-west1-docker.pkg.dev/www-fmind-dev/app/www-fmind-dev@sha256:<64-lowercase-hex> <40-lowercase-hex-commit>
 ```
 
-Authenticate Docker to Artifact Registry before manual `deploy`. Rollback after promotion is manual: redeploy the previous qualified digest and inspect error logs with the owner identity. See [release](.agents/skills/release/SKILL.md) for semver releases and MCP Registry publication (`server.json`), and [SECURITY.md](SECURITY.md) for vulnerability policy and advisory triage.
+Authenticate Docker (`gcloud auth configure-docker europe-west1-docker.pkg.dev`) before manual `deploy`. Rollback after promotion is manual:
+
+1. Find the prior revision digest via `gcloud run revisions list --service www-fmind-dev --project www-fmind-dev --region europe-west1`.
+1. Redeploy it via `mise run deploy <digest-ref> <commit-sha>`, or if a new advisory blocks its scan, shift traffic directly with `gcloud run services update-traffic www-fmind-dev --project www-fmind-dev --region europe-west1 --to-revisions <revision>=100` while shipping a patched release.
+1. Inspect error logs with the owner identity.
+
+See [release](.agents/skills/release/SKILL.md) for semver releases and MCP Registry publication (`server.json`), and [SECURITY.md](SECURITY.md) for vulnerability policy and advisory triage.
 
 ## Analytics and privacy
 
@@ -60,6 +70,6 @@ Authenticate Docker to Artifact Registry before manual `deploy`. Rollback after 
 
 ## License
 
-Application source code, `infra/`, and `scripts/` are licensed under the [MIT License](LICENSE).
+Application source code, `infra/`, and `scripts/` are licensed under the [MIT License](LICENSE). Self-hosted font subsets under `static/fonts/` ship under the SIL Open Font License 1.1.
 
-All rights are reserved on authored articles, news editions, and article media (`content/`, `static/img/articles/`), and on personal photographs and Fmind brand assets (`static/portrait.jpg`, `static/logo.png`, `static/img/avatar*.webp`, `static/img/logo.webp`, `static/img/og-image.jpg`, `static/img/favicons/`): they are excluded from MIT and may not be republished or redistributed without written permission. Third-party logos under `static/img/companies/` and `static/img/certifications/` remain the property of their respective owners and are also excluded from MIT.
+All rights are reserved on authored articles, news editions, and article media (`content/`, `static/img/articles/`), and on personal photographs and Fmind brand assets (`static/portrait.jpg`, `static/logo.png`, `static/banner.png`, `static/favicon.ico`, `static/img/avatar*.*`, `static/img/logo.webp`, `static/img/og-image.jpg`, `static/img/favicons/`): they are excluded from MIT and may not be republished or redistributed without written permission. Third-party logos under `static/img/companies/` and `static/img/certifications/` remain the property of their respective owners and are also excluded from MIT.

@@ -1,20 +1,15 @@
 """Pure page metadata builders shared by routes and tests."""
 
-import json
 from collections.abc import Mapping
 from dataclasses import replace
 from functools import lru_cache
 from pathlib import Path
-from typing import Any
 
-from PIL import UnidentifiedImageError
-
-from www.assets import STATIC_MANIFEST
+from www.assets import image_dimensions
 from www.connect import CONNECT_URL
-from www.content import image_dimensions
 from www.data import IDENTITY_GRAPH, METADATA, json_ld
-from www.models import Article, ArticleIndexView, PageMetadata, SitePage
-from www.news import NEWS_FEED_PATH, NEWS_TOPICS, NewsEdition
+from www.models import NEWS_FEED_PATH, Article, ArticleIndexView, PageMetadata, SitePage
+from www.news import NEWS_TOPICS, NewsEdition
 
 _IDENTITY = f"{METADATA.name} ({METADATA.alternate_name})"
 _ARTICLE_INDEX_TITLE = f"Articles | {_IDENTITY}"
@@ -29,42 +24,20 @@ _WEBSITE = PageMetadata(
 )
 
 
-@lru_cache(maxsize=4)
-def _manifest_image_sizes(manifest_path: str) -> dict[str, tuple[int, int]]:
-    """Read precomputed raster dimensions when the image build manifest is present."""
-    manifest = Path(manifest_path)
-    if not manifest.is_file():
-        return {}
-    try:
-        entries = json.loads(manifest.read_text(encoding="utf-8"))
-    except OSError, ValueError:
-        return {}
-    if not isinstance(entries, dict):
-        return {}
-    sizes: dict[str, tuple[int, int]] = {}
-    for route, entry in entries.items():
-        if isinstance(entry, dict) and isinstance(entry.get("width"), int) and isinstance(entry.get("height"), int):
-            sizes[route] = (entry["width"], entry["height"])
-    return sizes
-
-
 @lru_cache(maxsize=256)
-def _static_image_size(image_url: str, manifest_path: str) -> tuple[int, int] | None:
+def _static_image_size(image_url: str) -> tuple[int, int] | None:
     """Resolve (width, height) for a /static/ image URL without decoding pixel payloads."""
     prefix = f"{METADATA.site_url}/static/"
     if not image_url.startswith(prefix):
         return None
     relative = image_url.removeprefix(prefix)
-    route = f"/static/{relative}"
-    if dimensions := _manifest_image_sizes(manifest_path).get(route):
-        return dimensions
     static_root = Path("static").resolve()
     path = (static_root / relative).resolve()
     if not path.is_relative_to(static_root) or not path.is_file():
         return None
     try:
         return image_dimensions(path)
-    except OSError, UnidentifiedImageError:
+    except OSError, ValueError:
         return None
 
 
@@ -77,7 +50,7 @@ def _resolve_image_size(
         if not image_url.startswith(prefix):
             return None
         return image_sizes.get(f"/static/{image_url.removeprefix(prefix)}")
-    return _static_image_size(image_url, STATIC_MANIFEST)
+    return _static_image_size(image_url)
 
 
 def _image_object(
@@ -100,10 +73,6 @@ def _breadcrumb_list(url: str, *crumbs: tuple[str, str]) -> dict[str, object]:
             for position, (label, target) in enumerate(crumbs, start=1)
         ],
     }
-
-
-def _dump_json_ld(payload: dict[str, Any]) -> str:
-    return json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
 
 
 def _enriched_page_structured_data(
@@ -267,45 +236,46 @@ def article_index_metadata(view: ArticleIndexView, structured_data: str = "") ->
     )
 
 
-def _enriched_article_structured_data(
+def article_structured_data(
     article: Article,
-    structured_data: str,
     image_sizes: Mapping[str, tuple[int, int]] | None = None,
 ) -> str:
-    if not structured_data:
-        return ""
-    try:
-        payload = json.loads(structured_data)
-    except ValueError:
-        return structured_data
-    graph = payload.get("@graph")
-    if not isinstance(graph, list):
-        return structured_data
-    posting = next((node for node in graph if isinstance(node, dict) and node.get("@type") == "BlogPosting"), None)
-    if posting is None:
-        return structured_data
-    posting["publisher"] = {"@id": f"{METADATA.site_url}/#person"}
-    posting["inLanguage"] = "en"
-    posting["isAccessibleForFree"] = True
-    posting["timeRequired"] = f"PT{article.reading_minutes}M"
+    """Build the connected Person/WebSite/BreadcrumbList/BlogPosting graph directly once."""
+    person_id = f"{METADATA.site_url}/#person"
+    website_id = f"{METADATA.site_url}/#website"
+    canonical = article.url
+    posting: dict[str, object] = {
+        "@id": f"{canonical}#article",
+        "@type": "BlogPosting",
+        "headline": article.title,
+        "description": article.description,
+        "url": canonical,
+        "datePublished": article.date.date().isoformat(),
+        "dateModified": article.modified_date().date().isoformat(),
+        "author": {"@id": person_id},
+        "publisher": {"@id": person_id},
+        "isPartOf": {"@id": website_id},
+        "mainEntityOfPage": canonical,
+        "inLanguage": "en",
+        "isAccessibleForFree": True,
+        "timeRequired": f"PT{article.reading_minutes}M",
+        "image": _image_object(article.image_url, article.image_alt, image_sizes),
+        "keywords": list(article.tags),
+    }
     if article.tags:
         posting["articleSection"] = list(article.tags)
-    image = posting.get("image")
-    if isinstance(image, dict) and (dimensions := _resolve_image_size(article.image_url, image_sizes)):
-        image["width"], image["height"] = dimensions
     breadcrumb = _breadcrumb_list(
-        article.url,
+        canonical,
         ("Home", _HOME_URL),
         ("Articles", _ARTICLES_URL),
-        (article.title, article.url),
+        (article.title, canonical),
     )
-    graph.insert(-1, breadcrumb)
-    return _dump_json_ld(payload)
+    return json_ld([*IDENTITY_GRAPH, breadcrumb, posting])
 
 
 def article_metadata(
     article: Article,
-    structured_data: str,
+    structured_data: str | None = None,
     image_sizes: Mapping[str, tuple[int, int]] | None = None,
 ) -> PageMetadata:
     return PageMetadata(
@@ -316,7 +286,7 @@ def article_metadata(
         image_url=article.image_url,
         image_alt=article.image_alt,
         kind="article",
-        structured_data=_enriched_article_structured_data(article, structured_data, image_sizes),
+        structured_data=article_structured_data(article, image_sizes) if structured_data is None else structured_data,
         preload_code_font="<code" in article.html,
         no_index=article.draft,
     )

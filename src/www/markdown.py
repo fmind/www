@@ -115,7 +115,12 @@ class _InlineRewriter:
             target = self._rewrite(source)
             if target == source:
                 return matched
-            if label_end >= 0 and label_end + 1 < len(segment) and segment[label_end + 1] == "(":
+            if (
+                label_end >= 0
+                and state.pos > label_end + 1
+                and label_end + 1 < len(segment)
+                and segment[label_end + 1] == "("
+            ):
                 edit = _inline_destination_edit(state, label_end, target)
                 if edit is not None:
                     self._edits.append(edit)

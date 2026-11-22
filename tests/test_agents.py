@@ -319,3 +319,50 @@ def test_calculator_schema_and_structured_results_over_http(client: TestClient[A
     for parameters in ({"requests": 1000}, {"requests": "0"}, {"requests": "x" * 129}, {"unknown": "1"}):
         assert call_tool(client, "compare_llm_hosting", {"parameters": parameters})["isError"]
     assert call_tool(client, "compare_llm_hosting", {})["isError"]
+
+
+def test_mcp_search_pagination_annotations_and_production_origin_guard(client: TestClient[Any], make_app: Any) -> None:
+    from www.config import Config, Environment
+
+    # Read-only annotations explicitly declare non-destructive and idempotent hints.
+    tools = mcp_post(client, "tools/list", {}).json()["result"]["tools"]
+    for tool in tools:
+        annotations = tool["annotations"]
+        assert annotations["readOnlyHint"] is True
+        assert annotations["destructiveHint"] is False
+        assert annotations["idempotentHint"] is True
+
+    # Offset pagination slices search_articles and search_news cleanly.
+    page_all = call_tool(client, "search_articles", {"query": "python", "limit": 3})["structuredContent"]["articles"]
+    if len(page_all) >= 2:
+        page_offset = call_tool(client, "search_articles", {"query": "python", "limit": 1, "offset": 1})[
+            "structuredContent"
+        ]["articles"]
+        assert page_offset == [page_all[1]]
+
+    news_all = call_tool(client, "search_news", {"limit": 3})["structuredContent"]["editions"]
+    if len(news_all) >= 2:
+        news_offset = call_tool(client, "search_news", {"limit": 1, "offset": 1})["structuredContent"]["editions"]
+        assert news_offset == [news_all[1]]
+
+    # Unknown parameters name the offending key, and pilot without measurements fails closed.
+    with pytest.raises(ValueError, match="bogus_key"):
+        compare_hosting({"bogus_key": "1"})
+    with pytest.raises(ValueError, match="recorded latency measurements"):
+        compare_hosting({"mode": "advanced", "pilot": "reference"})
+
+    # Production MCP transport rejects localhost Origin headers.
+    with TestClient(
+        make_app(config=Config(environment=Environment.PRODUCTION)), base_url="https://www.fmind.dev"
+    ) as prod:
+        rejected = prod.post(
+            "/mcp",
+            headers={
+                "accept": "application/json",
+                "content-type": "application/json",
+                "host": "www.fmind.dev",
+                "origin": "http://localhost:8080",
+            },
+            json={"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}},
+        )
+        assert rejected.status_code == 403

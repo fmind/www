@@ -7,14 +7,14 @@ metadata:
   author: Médéric HURIER (Fmind)
   source: github.com/fmind/www
   created: "2026-08-07"
-  updated: "2026-11-11"
+  updated: "2026-11-22"
 ---
 
 # Articles
 
 `content/articles/<slug>.md` is authoritative; publish, revise, or retire articles only with owner authorization.
 
-1. **Validate frontmatter**: match filename and `slug`, require typed dates and `draft`, and reject unknown keys (including retired `canonical` and `syndicated`). Start the body with the cover image and descriptive alt text (reused for social cards and JSON-LD captions).
+1. **Validate frontmatter**: match filename and `slug`, require quoted ISO string dates (`YYYY-MM-DD`) and boolean `draft`, and reject unknown keys (including retired `canonical` and `syndicated`). Start the body with the cover image and descriptive alt text (reused for social cards and JSON-LD captions).
 1. **Check tags and code fences**: use unique tags from `src/www/tags.py` (new tags need a matching CSS rule and ≥1 article) and language-tagged code fences.
 1. **Build and verify media**: keep source images near 2.4MP, upright without EXIF rotation, with case-insensitively unique stems per folder (`<stem>-<width>.webp`). Covers are static `cover.{webp,gif,png,jpg,jpeg}`; other animated sources are ≤800px wide. Body images and MP4s live under `/static/img/articles/` with non-empty alt text. Run `mise run build:images` and commit derivatives plus `assets/image-derivatives.json` (`check:images` verifies hashes and recipes read-only).
 1. **Inspect layout and diagrams**: check desktop and mobile; figures must fit the 1280px column without horizontal scroll, with diagram labels ≥12px and height ≤1300px (fix unreadable diagrams at source).

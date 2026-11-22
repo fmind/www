@@ -109,14 +109,15 @@ def _coalesce(tokens: list[tuple[_TokenType, str]]) -> list[tuple[_TokenType, st
 def _split_lines(tokens: list[tuple[_TokenType, str]]) -> list[list[tuple[_TokenType, str]]]:
     lines: list[list[tuple[_TokenType, str]]] = []
     line: list[tuple[_TokenType, str]] = []
-    for token_type, value in tokens:
-        while "\n" in value:
-            head, value = value.split("\n", maxsplit=1)
+    for token_type, raw_value in tokens:
+        remaining = raw_value
+        while "\n" in remaining:
+            head, remaining = remaining.split("\n", maxsplit=1)
             line.append((token_type, head + "\n"))
             lines.append(line)
             line = []
-        if value:
-            line.append((token_type, value))
+        if remaining:
+            line.append((token_type, remaining))
     if line:
         lines.append(line)
     return lines

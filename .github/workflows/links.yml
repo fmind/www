@@ -9,6 +9,9 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+defaults:
+  run:
+    shell: bash
 concurrency:
   group: links
   cancel-in-progress: true
@@ -23,7 +26,7 @@ jobs:
         with:
           persist-credentials: false # the checker only reads the tree
       - name: Set up link checker
-        uses: ./.github/actions/setup-mise
+        uses: $/.github/actions/setup-mise
         with:
           tools: lychee
       - name: Check external content links

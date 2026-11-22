@@ -1,6 +1,8 @@
 """Export the public portrait from a private JPEG master without personal metadata."""
 
 import argparse
+import tempfile
+from collections.abc import Sequence
 from pathlib import Path
 
 from PIL import Image, ImageOps
@@ -14,6 +16,7 @@ def export_portrait(source: Path, destination: Path) -> None:
     """Retain orientation and the color profile, dropping camera and contact records."""
     if source.resolve().is_relative_to(STATIC.resolve()):
         raise ValueError("keep the original portrait outside static/ and pass that private master")
+    temporary: Path | None = None
     try:
         with Image.open(source) as original:
             # Pillow reports a JPEG that embeds an MPF secondary image (camera preview or
@@ -24,15 +27,25 @@ def export_portrait(source: Path, destination: Path) -> None:
             portrait = ImageOps.exif_transpose(original).convert("RGB")
             portrait.thumbnail((MAX_SIDE, MAX_SIDE), Image.Resampling.LANCZOS)
             portrait.info.clear()
-            portrait.save(destination, "JPEG", quality=90, optimize=True, progressive=True, icc_profile=profile)
+            with tempfile.NamedTemporaryFile(
+                dir=destination.parent, prefix=f".{destination.name}.", suffix=".tmp", delete=False
+            ) as handle:
+                temporary = Path(handle.name)
+            portrait.save(temporary, "JPEG", quality=90, optimize=True, progressive=True, icc_profile=profile)
+            temporary.chmod(0o644)
+            temporary.replace(destination)
+            temporary = None
     except OSError as error:
         raise RuntimeError("cannot export portrait: check the JPEG master and destination permissions") from error
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
+def main(argv: Sequence[str] | None = None) -> None:
+    parser = argparse.ArgumentParser(description=__doc__, allow_abbrev=False, suggest_on_error=True)
     parser.add_argument("source", type=Path, help="JPEG master outside the public static tree")
-    arguments = parser.parse_args()
+    arguments = parser.parse_args(argv)
     export_portrait(arguments.source, STATIC / "portrait.jpg")
 
 

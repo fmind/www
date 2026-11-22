@@ -10,6 +10,9 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 permissions:
   contents: read
+defaults:
+  run:
+    shell: bash
 env:
   # Only what `${{ env.* }}` expressions below read; tasks take the rest from mise.toml [env].
   PROJECT_ID: www-fmind-dev
@@ -20,6 +23,7 @@ env:
   SERVICE_ACCOUNT: "github-actions@www-fmind-dev.iam.gserviceaccount.com"
 jobs:
   verify:
+    name: Verify repository and image
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     outputs:
@@ -34,10 +38,22 @@ jobs:
           fetch-depth: 100
           persist-credentials: false # the gate only reads the tree, never pushes back
       - name: Set up mise tools
-        uses: ./.github/actions/setup-mise
-      - name: Install dependencies
-        # `all` installs Chromium itself; installing it here would repeat that.
-        run: mise run install:python
+        uses: $/.github/actions/setup-mise
+      - name: Cache uv downloads
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/uv
+          key: uv-${{ runner.os }}-${{ hashFiles('uv.lock') }}
+          restore-keys: uv-${{ runner.os }}-
+      - name: Cache Playwright browsers
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('.mise/locks/npm-playwright/**') }}
+      - name: Install dependencies and browser
+        run: |
+          mise run install:python
+          mise run install:browser
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
         with:
@@ -55,17 +71,22 @@ jobs:
           key: ${{ steps.trivy-cache.outputs.key }}
           restore-keys: trivy-db-${{ runner.os }}-
       - name: Full canonical gate
+        env:
+          # Authenticated GitHub API calls for `tflint --init` plugin downloads.
+          GITHUB_TOKEN: ${{ github.token }}
         run: mise run all
       - name: Verify the quality gate left the checkout unchanged
-        run: test -z "$(git status --porcelain)"
+        run: |
+          git status --short
+          test -z "$(git status --porcelain)"
       - name: Confirm the commit is still the head of main
         id: head
-        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        if: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: uv run --locked python -m scripts.deploy --check-head
       - name: Retain browser results on failure
-        if: failure()
+        if: ${{ failure() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: browser-results
@@ -73,12 +94,14 @@ jobs:
           retention-days: 14
           if-no-files-found: ignore
   deploy:
+    name: Build and deploy to Cloud Run
     needs: verify
-    if: needs.verify.outputs.head == 'true'
+    if: ${{ needs.verify.outputs.head == 'true' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
       contents: read
+      # Required for keyless GCP Workload Identity Federation to Artifact Registry and Cloud Run.
       id-token: write
     steps:
       - name: Git Checkout
@@ -86,7 +109,7 @@ jobs:
         with:
           persist-credentials: false # deploy authenticates to GCP via WIF, not git
       - name: Set up pinned deployment tools
-        uses: ./.github/actions/setup-mise
+        uses: $/.github/actions/setup-mise
         with:
           tools: aqua:astral-sh/uv python trivy
           cache: false # this job holds id-token; never read shared caches

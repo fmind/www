@@ -18,7 +18,6 @@ static/dist/styles.css
 tmp/
 # Per-host mise overrides such as IMAGE_PLATFORM on arm64 machines.
 mise.local.toml
-# Agent scratch prompts and Claude host directory (keeping only the .claude/skills bridge).
-.agents/prompts/
+# Claude host directory (keeping only the .claude/skills bridge).
 .claude/*
 !.claude/skills

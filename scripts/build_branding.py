@@ -1,5 +1,7 @@
 """Rebuild web branding from the full-resolution public PNG masters."""
 
+import argparse
+from collections.abc import Sequence
 from pathlib import Path
 
 from PIL import Image, ImageOps
@@ -36,8 +38,16 @@ def build_branding(static_dir: Path = STATIC) -> None:
     preview.paste(fitted, ((1200 - fitted.width) // 2, (630 - fitted.height) // 2), fitted)
     preview.save(static_dir / "img/og-image.jpg", quality=90, subsampling=0, optimize=True, progressive=True)
 
+    # Pre-build a metadata-free JPEG avatar for the vCard so serving needs no image decoder.
+    with Image.open(static_dir / "img/avatar.webp") as source:
+        avatar = ImageOps.exif_transpose(source).convert("RGB")
+    avatar.info.clear()
+    avatar.save(static_dir / "img/avatar-vcard.jpg", format="JPEG", quality=85, optimize=True)
 
-def main() -> None:
+
+def main(argv: Sequence[str] | None = None) -> None:
+    parser = argparse.ArgumentParser(description=__doc__, allow_abbrev=False, suggest_on_error=True)
+    parser.parse_args(argv)
     build_branding()
 
 

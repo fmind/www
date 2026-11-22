@@ -350,9 +350,18 @@ a.tag:hover {
   transition: none;
 }
 
-/* While the fixed consent banner is open, keep keyboard focus scrolled above it (WCAG 2.4.11). */
+/* Keep sticky header and consent banner from obscuring focused controls (WCAG 2.4.11). */
+html {
+  scroll-padding-top: 5rem;
+}
+
 html:has(> body > #consent:not([hidden])) {
   scroll-padding-bottom: 16rem;
+}
+
+[data-hosting-calculator][aria-busy='true'] {
+  opacity: 0.72;
+  transition: opacity 150ms ease;
 }
 
 /* Room inside the footer, in its own color, so its last links can scroll above the open banner. */
@@ -393,16 +402,12 @@ body > #consent:not([hidden]) ~ footer {
   text-decoration: underline;
 }
 
-/* Leave room for the header and the compact section toolbar. */
-.portfolio-content section[id] {
-  scroll-margin-top: 5rem;
-}
-
-/* The queries Tailwind compiles for the toolbar's `min-[1024px]:max-[1600px]`, so no fractional width falls between. */
+/* Leave room for the header and the compact section toolbar via html scroll-padding-top.
+   The queries match what Tailwind compiles for `min-[1024px]:max-[1600px]`, so no fractional width falls between. */
 @media (min-width: 1024px) {
   @media not all and (min-width: 1600px) {
-    .portfolio-content section[id] {
-      scroll-margin-top: 8rem;
+    html:has(#section-toolbar) {
+      scroll-padding-top: 8rem;
     }
   }
 }

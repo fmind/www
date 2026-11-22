@@ -8,12 +8,12 @@ from urllib.parse import parse_qs, urlparse, urlsplit
 import pytest
 
 import www.sites.calculator as calculator
+import www.sites.capacity as capacity
 import www.sites.economics as economics
-import www.sites.inputs as hosting_inputs
 from tests.llm_hosting_support import NOW, view
 from www.sites.agent import compare_hosting
 from www.sites.calculator import build_llm_self_hosting_view
-from www.sites.capacity import replicas_for_demand
+from www.sites.capacity import configuration_issue, find_node_pool, find_quantization, replicas_for_demand
 from www.sites.data import (
     API_BASELINES,
     DEFAULT_HOSTING_INPUTS,
@@ -35,9 +35,6 @@ from www.sites.formatting import (
     hosting_decision_title,
 )
 from www.sites.inputs import (
-    configuration_issue,
-    find_node_pool,
-    find_quantization,
     hosting_url,
     parse_inputs,
     scenario_parameters,
@@ -1352,10 +1349,8 @@ def test_cloud_tpu_multi_host_slices_and_gpu_vs_tpu_demand_comparison() -> None:
     assert muse_trillium_default.estimate.nodes_per_replica == 16
     assert muse_trillium_default.estimate.total_gpus == 128
 
-    assert (
-        hosting_inputs.nodes_for_model(muse_simple.selected_model, muse_trillium_default.selected_node, 256 * 20) == 32
-    )
-    assert hosting_inputs.nodes_for_model(muse_simple.selected_model, muse_tpu.node, 768 * 17) == 32
+    assert capacity.nodes_for_model(muse_simple.selected_model, muse_trillium_default.selected_node, 256 * 20) == 32
+    assert capacity.nodes_for_model(muse_simple.selected_model, muse_tpu.node, 768 * 17) == 32
     over_pod = configuration_issue(replace(muse_trillium_default.inputs, memory_overhead_pct=450))
     assert "exceeds the 256-chip Cloud TPU v6e Trillium pod limit" in over_pod
 
@@ -1831,7 +1826,7 @@ def test_plan_defaults_and_alternatives_fail_closed_without_hardware(monkeypatch
     monkeypatch.setattr(calculator, "automatic_setup", no_hardware)
     assert not build_llm_self_hosting_view({"mode": "simple"}, now=NOW).plan_alternatives
     # When no default plan has a machine, the page says so and prices a published on-demand rate.
-    monkeypatch.setattr(hosting_inputs, "automatic_setup", no_hardware)
+    monkeypatch.setattr(capacity, "automatic_setup", no_hardware)
     inputs, validation = parse_inputs({"mode": "simple", "preset": "document-pipeline"})
     assert validation == ("No compatible hardware for this test; select a compatible checkpoint, GPU and billing plan",)
     assert (inputs.billing_plan, inputs.node_pool_id) == (BillingPlan.ON_DEMAND, "g4-standard-48")

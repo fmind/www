@@ -42,9 +42,8 @@ from www.data import (
 from www.log import configure_logging
 from www.mcp import create_mcp_http_app, create_mcp_server, render_mcp_server_card
 from www.middleware import Logger, SiteMiddleware, log_path, sanitize_uri_bytes, trace_fields
-from www.models import PageMetadata
+from www.models import NEWS_FEED_PATH, PageMetadata, utc_stamp
 from www.news import (
-    NEWS_FEED_PATH,
     NewsEdition,
     adjacent_editions,
     load_news,
@@ -60,6 +59,7 @@ from www.pages import (
     article_index_metadata,
     article_index_structured_data,
     article_metadata,
+    article_structured_data,
     connect_metadata,
     home_metadata,
     news_edition_metadata,
@@ -245,8 +245,7 @@ def _timed(phases: dict[str, float], name: str) -> Generator[None]:
 
 def _security_policy() -> bytes:
     # RFC 9116 section 2.5.5 recommends an expiry less than a year ahead.
-    expires = datetime.now(UTC) + timedelta(days=364)
-    timestamp = expires.isoformat(timespec="seconds").replace("+00:00", "Z")
+    timestamp = utc_stamp(datetime.now(UTC) + timedelta(days=364))
     body = "\n".join(
         (
             f"# Security contact information for {METADATA.site_url.removeprefix('https://')} ({METADATA.name})",
@@ -316,7 +315,8 @@ def create_app(
         news_api = _Snapshot.of(render_news_json(editions))
         news_schema = _Snapshot.of(render_news_schema())
         news_index_markdown = _Snapshot.of(render_news_index_markdown(editions).encode())
-        news_markdown = {edition.slug: _Snapshot.of(render_news_markdown(edition).encode()) for edition in editions}
+        news_markdown_by_slug = {edition.slug: render_news_markdown(edition) for edition in editions}
+        news_markdown = {slug: _Snapshot.of(text.encode()) for slug, text in news_markdown_by_slug.items()}
         news_feed = _Snapshot.of(render_news_feed(editions).encode())
         # Weak: compression may re-encode the body, but the CSS it carries is identical.
         stylesheet_snapshot = _Snapshot(
@@ -353,7 +353,7 @@ def create_app(
     edition_neighbours = adjacent_editions(editions)
     news_context: dict[str, object] = {"index": split_news_index(editions), "news_feed_path": NEWS_FEED_PATH}
     article_metadata_by_slug = {
-        slug: article_metadata(article, get_structured_data(article), image_sizes)
+        slug: article_metadata(article, article_structured_data(article, image_sizes), image_sizes)
         for slug, article in article_collection.by_slug.items()
     }
     # Rendering owns the single reviewed trusted-markup boundary for these
@@ -545,34 +545,26 @@ def create_app(
             return _markdown_response(request, news_markdown[edition.slug], edition.url, negotiated=False, noindex=True)
         return _redirect(f"/news/{quote(slug, safe='')}/")
 
-    @route("/agents", http_method=_READ_METHODS, sync_to_thread=True)
-    def agents(request: AppRequest) -> Redirect | Response[str]:
-        if _request_path(request).endswith("/") or _has_encoded_slash(request):
-            return _redirect("/agents")
-        return render_page(request, PageTemplate.AGENTS, agents_page)
+    def _page_route(
+        path: str,
+        template: PageTemplate,
+        page: PageMetadata,
+        context: dict[str, object] | None = None,
+    ) -> HTTPRouteHandler:
+        @route(path, http_method=_READ_METHODS, sync_to_thread=True)
+        def static_page(request: AppRequest) -> Redirect | Response[str]:
+            if _request_path(request).endswith("/") or _has_encoded_slash(request):
+                return _redirect(path)
+            return render_page(request, template, page, context)
 
-    @route("/privacy", http_method=_READ_METHODS, sync_to_thread=True)
-    def privacy(request: AppRequest) -> Redirect | Response[str]:
-        if _request_path(request).endswith("/") or _has_encoded_slash(request):
-            return _redirect("/privacy")
-        return render_page(request, PageTemplate.PRIVACY, privacy_page)
+        return static_page
 
-    @route("/connect", http_method=_READ_METHODS, sync_to_thread=True)
-    def connect(request: AppRequest) -> Redirect | Response[str]:
-        if _request_path(request).endswith("/") or _has_encoded_slash(request):
-            return _redirect("/connect")
-        return render_page(
-            request,
-            PageTemplate.CONNECT,
-            connect_page,
-            {"linkedin_url": LINKEDIN_URL},
-        )
-
-    @route("/scan", http_method=_READ_METHODS, sync_to_thread=True)
-    def scan(request: AppRequest) -> Redirect | Response[str]:
-        if _request_path(request).endswith("/") or _has_encoded_slash(request):
-            return _redirect("/scan")
-        return render_page(request, PageTemplate.SCAN, scan_page, {"connect_url": CONNECT_URL})
+    page_routes = [
+        _page_route("/agents", PageTemplate.AGENTS, agents_page),
+        _page_route("/privacy", PageTemplate.PRIVACY, privacy_page),
+        _page_route("/connect", PageTemplate.CONNECT, connect_page, {"linkedin_url": LINKEDIN_URL}),
+        _page_route("/scan", PageTemplate.SCAN, scan_page, {"connect_url": CONNECT_URL}),
+    ]
 
     @route("/articles", http_method=_READ_METHODS, sync_to_thread=True)
     def articles_index(request: AppRequest) -> Redirect | Response[str]:
@@ -685,8 +677,9 @@ def create_app(
             markdown_by_slug,
             editions,
             profile_json_bytes=profile.body,
+            news_markdown_by_slug=news_markdown_by_slug,
         )
-        mcp_app = create_mcp_http_app(mcp_server)
+        mcp_app = create_mcp_http_app(mcp_server, environment=runtime_config.environment)
     # An exact route, not a mount: a mount matches by prefix without a segment
     # boundary, so /mcpx or /mcp/foo would get Starlette's plain-text 404.
     mcp_route = asgi("/mcp", copy_scope=True)(mcp_app)
@@ -739,10 +732,7 @@ def create_app(
             mcp_server_card,
             news_index,
             news_edition,
-            connect,
-            privacy,
-            agents,
-            scan,
+            *page_routes,
             articles_index,
             article_redirect_or_markdown,
             sites_index,

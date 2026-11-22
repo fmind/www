@@ -4,12 +4,20 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import replace
 from decimal import Decimal
 from hashlib import sha256
-from math import ceil, isfinite
+from math import isfinite
 from re import fullmatch
 from typing import Any
 from urllib.parse import urlencode
 
-from .capacity import MONTHLY_HOURS, replicas_for_demand
+from .capacity import (
+    MONTHLY_HOURS,
+    automatic_setup,
+    configuration_issue,
+    find_model,
+    find_node_pool,
+    replicas_for_demand,
+    workload_setup,
+)
 from .data import (
     DEFAULT_HOSTING_INPUTS,
     DEMAND_PRESETS,
@@ -21,14 +29,14 @@ from .models import (
     APIMode,
     BillingPlan,
     DemandPreset,
-    FrontierModel,
-    GKENodePool,
     HostingInputs,
-    Quantization,
 )
 
 type QueryValue = str | Sequence[str]
 type Query = Mapping[str, QueryValue]
+
+LEGACY_WEB_MODELS: Mapping[str, str] = {"kimi-k3": "kimi-k3-1-pro"}
+LEGACY_WEB_NODES: Mapping[str, str] = {"a4-cud-3y": "cud-3y", "a4-flex": "flex"}
 
 # DEFAULT_HOSTING_INPUTS describes this workload; unmatched presets and token mixes fall back to it.
 _DEFAULT_PRESET = next(preset for preset in DEMAND_PRESETS if preset.id == "small-team")
@@ -240,8 +248,8 @@ def parse_inputs(query: Query) -> tuple[HostingInputs, tuple[str, ...]]:
     if mode == "simple" and query.keys() & (advanced_keys - {"requests"}):
         validation.append("Advanced parameters require advanced mode; simple defaults were used")
     # Previously shared URLs encoded the A4 billing plan in the hardware ID or the superseded Kimi K3 ID.
-    legacy_plan = {"a4-cud-3y": "cud-3y", "a4-flex": "flex"}.get(first_value(query, "node") or "")
-    legacy_model = {"kimi-k3": "kimi-k3-1-pro"}.get(first_value(query, "model") or "")
+    legacy_plan = LEGACY_WEB_NODES.get(first_value(query, "node") or "")
+    legacy_model = LEGACY_WEB_MODELS.get(first_value(query, "model") or "")
     if legacy_plan or legacy_model:
         query = dict(query)
         if legacy_plan:
@@ -316,7 +324,7 @@ def parse_inputs(query: Query) -> tuple[HostingInputs, tuple[str, ...]]:
             raw_plan = _parse_choice(query, "billing", "on-demand", plans, validation)
         try:
             if raw_plan == "auto":
-                raw_plan, inputs, node = _workload_setup(inputs, preset)
+                raw_plan, inputs, node = workload_setup(inputs, preset)
             else:
                 inputs, node = automatic_setup(
                     inputs, BillingPlan(raw_plan), keep_checkpoint=first_value(query, "quant") not in (None, "", "auto")
@@ -374,205 +382,6 @@ def _parse_hosting_options(
         )
         inputs = replace(inputs, measured_first_token=0, measured_completion=0)
     return inputs
-
-
-def find_model(model_id: str) -> FrontierModel:
-    return next((model for model in FRONTIER_MODELS if model.id == model_id), FRONTIER_MODELS[0])
-
-
-def find_node_pool(node_id: str) -> GKENodePool:
-    return next((node for node in GKE_NODE_POOLS if node.id == node_id), GKE_NODE_POOLS[0])
-
-
-def find_quantization(quantization_id: str) -> Quantization:
-    """Return a catalog precision; parsing validates ids, so an unknown one is a bug."""
-    for item in QUANTIZATIONS:
-        if item.id == quantization_id:
-            return item
-    # LookupError, not ValueError: automatic selection treats ValueError as "no machine fits".
-    msg = f"Unknown checkpoint precision {quantization_id!r}; parse it with parse_inputs first"
-    raise LookupError(msg)
-
-
-def configuration_issue(inputs: HostingInputs, *, check_workload: bool = True) -> str:
-    """Fail closed on known checkpoint, kernel, topology and delivery constraints."""
-    model = find_model(inputs.model_id)
-    node = find_node_pool(inputs.node_pool_id)
-    quantization = find_quantization(inputs.quantization_id)
-    if quantization.id not in model.supported_quantizations:
-        return f"{model.name} has no verified {quantization.name} checkpoint in this catalog"
-    if model.required_node_ids and node.id not in model.required_node_ids:
-        names = "; ".join(find_node_pool(node_id).name for node_id in model.required_node_ids)
-        return f"{model.name} requires one of the verified machines: {names}"
-    precision_nodes = dict(model.quantization_node_ids).get(quantization.id)
-    if precision_nodes and node.id not in precision_nodes:
-        precision = quantization.name.partition(" · ")[0]
-        names = "; ".join(find_node_pool(node_id).name for node_id in precision_nodes)
-        return f"The {model.name} {precision} checkpoint is verified only on: {names}"
-    if node.id == "ct6e-standard-8t" and quantization.id != "fp16":
-        return (
-            "Cloud TPU v6e Trillium requires a 16-bit BF16 checkpoint in this catalog; "
-            "CUDA quantized formats are not supported on Trillium"
-        )
-    if node.id == "tpu7x-standard-4t" and quantization.id not in ("fp8", "fp16"):
-        return (
-            "Cloud TPU7x Ironwood requires an FP8 or 16-bit BF16 checkpoint in this catalog; "
-            "CUDA 4-bit formats are not supported on TPU"
-        )
-    if quantization.id == "fp8" and node.id == "a2-ultra-1g":
-        return (
-            "A100 does not support the selected native FP8 W8A8 kernels; choose 16-bit or an Ada/Hopper/Blackwell GPU"
-        )
-    if quantization.id == "nvfp4" and node.id not in ("g4-standard-48", "a4"):
-        return f"{quantization.name} requires Blackwell hardware in this conservative compatibility snapshot"
-    for node_id, context_limit in model.node_context_limits:
-        if (
-            check_workload
-            and node.id == node_id
-            and inputs.input_tokens_request + inputs.output_tokens_request > context_limit
-        ):
-            return f"The verified {model.name} recipe on {node.name} is limited to {context_limit:,} context tokens"
-    required = required_memory_gb(model, quantization, inputs.memory_overhead_pct)
-    nodes = nodes_for_model(model, node, required)
-    if nodes > 1 and not node.multi_host:
-        return (
-            f"{model.name} does not fit on one {node.name}; this catalog does not support sharding across those nodes"
-        )
-    if node.id == "ct6e-standard-8t" and nodes > 32:
-        return f"{model.name} exceeds the 256-chip Cloud TPU v6e Trillium pod limit"
-    if inputs.billing_plan is BillingPlan.FLEX and inputs.api_mode is not APIMode.BATCH:
-        return "Flex-start queues bounded jobs and does not support this interactive serving comparison; select batch or reserved capacity"
-    return ""
-
-
-def automatic_setup(
-    inputs: HostingInputs,
-    plan: BillingPlan,
-    *,
-    keep_checkpoint: bool = False,
-    pools: Sequence[GKENodePool] = GKE_NODE_POOLS,
-) -> tuple[HostingInputs, GKENodePool]:
-    """Pick the lowest-cost machine for the checkpoint, else for the model's next supported one.
-
-    A checkpoint can lack hardware with this plan (Mistral Large 4 NVFP4 runs only on A4, which
-    has no on-demand rate) or reject the workload (Nemotron NVFP4 on G4 stops at 16,384 context
-    tokens). Unless the caller chose the precision, prefer the first checkpoint whose machine
-    accepts the workload (the current one, the model default, then the other supported ones);
-    otherwise keep the first compatible one, so the caller reports its limit.
-    """
-    model = find_model(inputs.model_id)
-    others = () if keep_checkpoint else (model.default_quantization, *model.supported_quantizations)
-    candidates = [replace(inputs, quantization_id=q) for q in dict.fromkeys((inputs.quantization_id, *others))]
-    compatible: tuple[HostingInputs, GKENodePool] | None = None
-    first_error: ValueError | None = None
-    for candidate in candidates:
-        try:
-            node = automatic_node(candidate, plan, pools)
-        except ValueError as exc:
-            first_error = first_error or exc
-            continue
-        if not configuration_issue(replace(candidate, node_pool_id=node.id, billing_plan=plan)):
-            return candidate, node
-        compatible = compatible or (candidate, node)
-    if compatible:
-        return compatible
-    raise first_error or ValueError(f"No compatible hardware for {model.name} under {plan}")
-
-
-def _workload_plans(preset: DemandPreset) -> tuple[BillingPlan, ...]:
-    """Plans a workload takes without a commitment: batch jobs can queue on Flex-start, services cannot."""
-    if preset.api_mode is APIMode.BATCH:
-        return (BillingPlan.FLEX, BillingPlan.ON_DEMAND)
-    return (BillingPlan.ON_DEMAND,)
-
-
-def _workload_setup(inputs: HostingInputs, preset: DemandPreset) -> tuple[str, HostingInputs, GKENodePool]:
-    """Size the workload's default plan: the lowest-cost setup among its no-commitment plans."""
-    model = find_model(inputs.model_id)
-    best: tuple[tuple[bool, bool, float], BillingPlan, HostingInputs, GKENodePool] | None = None
-    first_error: ValueError | None = None
-    for plan in _workload_plans(preset):
-        try:
-            candidate, node = automatic_setup(inputs, plan)
-        except ValueError as exc:
-            first_error = first_error or exc
-            continue
-        required = required_memory_gb(
-            model, find_quantization(candidate.quantization_id), candidate.memory_overhead_pct
-        )
-        nodes = nodes_for_model(model, node, required)
-        # Same order as automatic_node: a setup the workload fits, then one host, then price.
-        rank = (
-            bool(configuration_issue(replace(candidate, node_pool_id=node.id, billing_plan=plan))),
-            nodes > 1,
-            nodes * node.price(plan).hourly_usd,
-        )
-        if best is None or rank < best[0]:
-            best = (rank, plan, candidate, node)
-    if best is None:
-        raise first_error or ValueError(f"No compatible hardware for {model.name}")
-    return best[1].value, best[2], best[3]
-
-
-def automatic_node(
-    inputs: HostingInputs,
-    plan: BillingPlan,
-    pools: Sequence[GKENodePool] = GKE_NODE_POOLS,
-) -> GKENodePool:
-    """Minimize published compute cost under the shared throughput assumption."""
-    quant = find_quantization(inputs.quantization_id)
-    model = find_model(inputs.model_id)
-    required = required_memory_gb(model, quant, inputs.memory_overhead_pct)
-    candidates = [
-        node
-        for node in pools
-        if any(price.plan is plan for price in node.prices)
-        and not configuration_issue(replace(inputs, node_pool_id=node.id, billing_plan=plan), check_workload=False)
-    ]
-    if not candidates:
-        raise ValueError(f"No compatible hardware for {model.name} under {plan}")
-    workload_candidates = [
-        node for node in candidates if not configuration_issue(replace(inputs, node_pool_id=node.id, billing_plan=plan))
-    ]
-    # If every recipe rejects the request, preserve a compatible checkpoint/GPU
-    # so parse_inputs can report the actual context limit and reject the scenario.
-    return min(
-        workload_candidates or candidates,
-        key=lambda node: (
-            nodes_for_model(model, node, required) > 1,
-            nodes_for_model(model, node, required) * node.price(plan).hourly_usd,
-            nodes_for_model(model, node, required),
-        ),
-    )
-
-
-def weight_memory_gb(model: FrontierModel, quantization: Quantization) -> float:
-    """Published tensor bytes include mixed precision and quantization scales.
-
-    Every supported checkpoint lists its size (tests enforce it); the nominal fallback only
-    sizes a precision the model lacks, which configuration_issue reports as unsupported.
-    """
-    return next(
-        (size for precision, size in model.checkpoint_memory if precision == quantization.id),
-        model.parameters_b * quantization.bytes_per_param,
-    )
-
-
-def required_memory_gb(model: FrontierModel, quantization: Quantization, overhead_pct: float) -> float:
-    """Checkpoint weights plus the runtime memory reserve."""
-    return weight_memory_gb(model, quantization) * (1 + overhead_pct / 100)
-
-
-def nodes_for_model(model: FrontierModel, node: GKENodePool, required_memory: float) -> int:
-    minimum = next((count for node_id, count in model.node_minimums if node_id == node.id), 1)
-    nodes = max(minimum, ceil(required_memory / node.vram_gb))
-    if nodes > 1 and node.id == "ct6e-standard-8t":
-        # Trillium 2D torus slices scale in powers of two: 8, 16, 32, 64, 128, or 256 chips (1..32 8-chip units).
-        return 1 << (nodes - 1).bit_length()
-    if nodes > 1 and node.id == "tpu7x-standard-4t":
-        # Ironwood 3D torus slices are 1, 2, 4, 8, or 16 4-chip hosts up to one 64-chip cube, then multiples of 16.
-        return 1 << (nodes - 1).bit_length() if nodes <= 16 else ceil(nodes / 16) * 16
-    return nodes
 
 
 def pilot_configuration_id(inputs: HostingInputs) -> str:

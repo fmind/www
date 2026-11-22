@@ -33,7 +33,7 @@ If the job is one data plane for services, models, and tools, the product under 
 
 LiteLLM is open source. The MIT tree is real, large, and [self-hostable at $0](https://docs.litellm.ai/docs/enterprise). Saying it is "not OSS" is false. The precise claim from the evaluation is sharper: the controls a platform team needs next are not in that MIT tree.
 
-The root [LICENSE](https://github.com/BerriAI/litellm/blob/main/LICENSE) splits the repository. Content outside `enterprise/` is MIT. Content under `enterprise/` uses the [BerriAI Enterprise license](https://github.com/BerriAI/litellm/blob/main/enterprise/LICENSE.md), which forbids production use without a valid subscription and allows copies only for development and testing. The gate is `LITELLM_LICENSE`. The official table is the source of truth:
+The root [LICENSE](https://github.com/BerriAI/litellm/blob/main/LICENSE) splits the repository. Content outside `enterprise/` is MIT. Content under `litellm/enterprise/` uses the [BerriAI Enterprise license](https://github.com/BerriAI/litellm/blob/main/litellm/enterprise/LICENSE.md), which forbids production use without a valid subscription and allows copies only for development and testing. The gate is `LITELLM_LICENSE`. The official table is the source of truth:
 
 | Area           | OSS                          | Enterprise                                    |
 | -------------- | ---------------------------- | --------------------------------------------- |

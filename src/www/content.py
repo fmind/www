@@ -1,7 +1,6 @@
 """Strict article loading and safe Markdown rendering."""
 
 import html
-import os
 import re
 import tomllib
 from collections.abc import Iterator, Mapping, Sequence
@@ -15,8 +14,8 @@ from markdown_it.renderer import RendererHTML
 from markdown_it.token import Token
 from markdown_it.utils import EnvType, OptionsDict
 from mdit_py_plugins.footnote import footnote_plugin
-from PIL import Image, UnidentifiedImageError
 
+from www.assets import image_dimensions, video_dimensions
 from www.data import METADATA
 from www.highlighting import highlight_code
 from www.markdown import rewrite_markdown_links
@@ -392,71 +391,6 @@ def _validate_body_media(static_dir: Path, media: Sequence[tuple[str, str]]) -> 
             raise ArticleError(f"body media {source!r} needs alt text")
 
 
-def _webp_chunk_dimensions(chunk: bytes, prefix: bytes, size: int) -> tuple[int, int] | None:
-    if chunk == b"VP8X" and size == 10 and len(prefix) == 10:
-        width = int.from_bytes(prefix[4:7], "little") + 1
-        height = int.from_bytes(prefix[7:10], "little") + 1
-        return (width, height) if width * height <= (1 << 32) - 1 else None
-    if chunk == b"VP8 " and size >= 10 and len(prefix) == 10:
-        if prefix[0] & 1 or prefix[3:6] != b"\x9d\x01\x2a":
-            return None
-        width = int.from_bytes(prefix[6:8], "little") & 0x3FFF
-        height = int.from_bytes(prefix[8:10], "little") & 0x3FFF
-        return (width, height) if width and height else None
-    if chunk == b"VP8L" and size >= 5 and len(prefix) >= 5 and prefix[0] == 0x2F:
-        packed = int.from_bytes(prefix[1:5], "little")
-        if packed >> 29:
-            return None
-        return (packed & 0x3FFF) + 1, ((packed >> 14) & 0x3FFF) + 1
-    return None
-
-
-def _webp_size(path: Path) -> tuple[int, int] | None:
-    """Read bounded WebP metadata while validating the complete RIFF shape."""
-    with path.open("rb") as image:
-        header = image.read(12)
-        if len(header) != 12 or header[:4] != b"RIFF" or header[8:] != b"WEBP":
-            return None
-        file_size = os.fstat(image.fileno()).st_size
-        if int.from_bytes(header[4:8], "little") + 8 != file_size:
-            return None
-
-        # Pillow's WebP plugin reads the complete compressed payload merely to
-        # obtain dimensions. Validate every RIFF chunk boundary, but read only
-        # the ten-byte dimension prefix so startup does not reread large media.
-        offset = 12
-        dimensions: tuple[int, int] | None = None
-        while offset < file_size:
-            chunk_header = image.read(8)
-            if len(chunk_header) != 8:
-                return None
-            chunk_size = int.from_bytes(chunk_header[4:8], "little")
-            data_end = offset + 8 + chunk_size
-            next_offset = data_end + (chunk_size & 1)
-            if data_end > file_size or next_offset > file_size:
-                return None
-            if dimensions is None:
-                prefix = image.read(min(chunk_size, 10))
-                dimensions = _webp_chunk_dimensions(chunk_header[:4], prefix, chunk_size)
-                if dimensions is None:
-                    return None
-            if chunk_size & 1:
-                image.seek(data_end)
-                if image.read(1) != b"\0":
-                    return None
-            image.seek(next_offset)
-            offset = next_offset
-        return dimensions
-
-
-def image_dimensions(path: Path) -> tuple[int, int]:
-    """Return raster dimensions, reading only bounded WebP metadata when possible."""
-    if dimensions := _webp_size(path):
-        return dimensions
-    with Image.open(path) as image:
-        return image.size
-
-
 def _image_size(static_dir: Path, source: str, known: Mapping[str, tuple[int, int]] | None = None) -> tuple[int, int]:
     path = _asset_path(static_dir, source)
     # The image build records dimensions so a cold start need not read lazily fetched media.
@@ -464,8 +398,20 @@ def _image_size(static_dir: Path, source: str, known: Mapping[str, tuple[int, in
         return dimensions
     try:
         return image_dimensions(path)
-    except (OSError, UnidentifiedImageError) as error:
+    except (OSError, ValueError) as error:
         raise ArticleError(f"decode body image {source.removeprefix('/')!r}: {error}") from error
+
+
+def _video_size(
+    static_dir: Path, source: str, known: Mapping[str, tuple[int, int]] | None = None
+) -> tuple[int, int] | None:
+    if known and (dimensions := known.get(source)):
+        return dimensions
+    path = _asset_path(static_dir, source)
+    try:
+        return video_dimensions(path)
+    except OSError:
+        return None
 
 
 def _source_set(static_dir: Path, source: str, source_width: int) -> tuple[str, str]:
@@ -484,10 +430,17 @@ def _source_set(static_dir: Path, source: str, source_width: int) -> tuple[str, 
 
 
 def enhance_body_images(body: str, static_dir: Path, image_sizes: Mapping[str, tuple[int, int]] | None = None) -> str:
-    body = _VIDEO.sub(
-        r'<video muted loop playsinline autoplay controls aria-label="\2"><source src="\1" type="video/mp4">Your browser does not support embedded video.</video>',
-        body,
-    )
+    def replace_video(match: re.Match[str]) -> str:
+        source, alt = match.group(1), match.group(2)
+        dimensions = _video_size(static_dir, source, image_sizes)
+        size_attrs = f' width="{dimensions[0]}" height="{dimensions[1]}"' if dimensions else ""
+        # Start playback via data-autoplay in JS only when prefers-reduced-motion is not active.
+        return (
+            f'<video{size_attrs} muted loop playsinline data-autoplay controls aria-label="{alt}">'
+            f'<source src="{source}" type="video/mp4">Your browser does not support embedded video.</video>'
+        )
+
+    body = _VIDEO.sub(replace_video, body)
     body = _FIGURE.sub(
         r'<figure><a href="\2" target="_blank" rel="noopener" aria-label="\3 (opens the full-resolution image in a new tab)">\1</a></figure>',
         body,

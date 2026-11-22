@@ -6,6 +6,7 @@ resource "google_cloud_run_v2_service" "web" {
   location            = var.region
   ingress             = "INGRESS_TRAFFIC_ALL"
   deletion_protection = true
+  labels              = local.default_labels
 
   # Bound the whole service, including traffic splits between revisions.
   scaling {

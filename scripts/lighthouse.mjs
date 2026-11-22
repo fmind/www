@@ -6,6 +6,7 @@ import { access, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises
 import { dirname, isAbsolute, join, resolve, sep } from "node:path";
 import process from "node:process";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { parseArgs } from "node:util";
 
 const LIGHTHOUSE_VERSION = "13.5.0";
 const AUDIT_TIMEOUT_MS = 150_000;
@@ -34,13 +35,12 @@ const PORTFOLIO_PATHS = [
 ];
 
 function usage() {
-  return `Usage: node scripts/lighthouse.mjs --base-url <origin> | --allow-sandbox
+  return `Usage: node scripts/lighthouse.mjs --base-url <origin>
 
 Run the strict Lighthouse ${LIGHTHOUSE_VERSION} portfolio matrix with the Chromium pinned by Playwright.
 
 Options:
   --base-url <origin>  Candidate origin to audit.
-  --allow-sandbox      Load an Ubuntu AppArmor userns profile for the pinned Chromium executable.
   -h, --help           Show this help.
 
 Audits the homepage, contact and privacy pages, archive indexes, and both calculators
@@ -52,43 +52,31 @@ performance of the ${PERFORMANCE_RUNS} runs is 1 and every run keeps the other c
 `;
 }
 
-function optionValue(argument, name, argv, index) {
-  const prefix = `${name}=`;
-  if (argument.startsWith(prefix)) return { value: argument.slice(prefix.length), nextIndex: index };
-  if (argument !== name) return undefined;
-  if (index + 1 >= argv.length || argv[index + 1].startsWith("-")) throw new Error(`${name} requires a value`);
-  return { value: argv[index + 1], nextIndex: index + 1 };
-}
-
 function parseArguments(argv) {
-  const options = { allowSandbox: false, baseUrl: undefined, help: false };
-
-  for (let index = 0; index < argv.length; index += 1) {
-    const argument = argv[index];
-    if (argument === "--help" || argument === "-h") {
-      options.help = true;
-      continue;
-    }
-    if (argument === "--allow-sandbox") {
-      options.allowSandbox = true;
-      continue;
-    }
-
-    const parsed = optionValue(argument, "--base-url", argv, index);
-    if (parsed) {
-      if (options.baseUrl !== undefined) throw new Error("--base-url may only be specified once");
-      options.baseUrl = parsed.value;
-      index = parsed.nextIndex;
-      continue;
-    }
-    throw new Error(`unknown argument: ${argument}`);
+  let parsed;
+  try {
+    parsed = parseArgs({
+      args: argv,
+      allowPositionals: false,
+      strict: true,
+      options: {
+        "base-url": { type: "string", multiple: true },
+        help: { type: "boolean", short: "h", default: false },
+      },
+    });
+  } catch (error) {
+    throw new Error(error.message, { cause: error });
   }
 
-  if (options.allowSandbox && options.baseUrl !== undefined) {
-    throw new Error("--allow-sandbox cannot be combined with --base-url");
+  const baseUrls = parsed.values["base-url"] ?? [];
+  if (baseUrls.length > 1) throw new Error("--base-url may only be specified once");
+  const baseUrl = baseUrls[0];
+  if (baseUrl !== undefined && (baseUrl === "" || baseUrl.startsWith("-"))) {
+    throw new Error("--base-url requires a value");
   }
-  if (!options.help && !options.allowSandbox && !options.baseUrl) throw new Error("--base-url is required");
-  return options;
+  const help = Boolean(parsed.values.help);
+  if (!help && !baseUrl) throw new Error("--base-url is required");
+  return { baseUrl, help };
 }
 
 function normalizeBaseUrl(value) {
@@ -634,46 +622,10 @@ async function writeSummary(outputDirectory, manifest, results, status) {
   return summary;
 }
 
-async function allowChromiumSandbox(
-  chromiumPath,
-  { outputDirectory = OUTPUT_DIRECTORY, runProcessImplementation = runProcess } = {},
-) {
-  if (typeof chromiumPath !== "string" || !isAbsolute(chromiumPath) || !/^\/[A-Za-z0-9._/-]+$/u.test(chromiumPath)) {
-    throw new Error(`invalid Chromium executable path: ${JSON.stringify(chromiumPath)}`);
-  }
-  await access(chromiumPath, fsConstants.X_OK);
-  const profileDirectory = resolveArtifactDirectory(outputDirectory);
-  await mkdir(profileDirectory, { recursive: true });
-  const profilePath = join(profileDirectory, "www-lighthouse-chromium.apparmor");
-  const destination = "/etc/apparmor.d/www-lighthouse-chromium";
-  const profile = [
-    "abi <abi/4.0>,",
-    "include <tunables/global>",
-    `profile www-lighthouse-chromium "${chromiumPath}" flags=(unconfined) {`,
-    "  userns,",
-    "}",
-    "",
-  ].join("\n");
-  await writeTextAtomic(profilePath, profile);
-  try {
-    const installResult = await runProcessImplementation("sudo", ["install", "-m", "0644", profilePath, destination]);
-    if (installResult.code !== 0) throw new Error(processFailure("sudo install apparmor profile", installResult));
-    const parserResult = await runProcessImplementation("sudo", ["apparmor_parser", "-r", destination]);
-    if (parserResult.code !== 0) throw new Error(processFailure("sudo apparmor_parser", parserResult));
-  } finally {
-    await rm(profilePath, { force: true });
-  }
-}
-
 async function run() {
   const options = parseArguments(process.argv.slice(2));
   if (options.help) {
     process.stdout.write(usage());
-    return;
-  }
-  if (options.allowSandbox) {
-    const toolchain = await discoverToolchain();
-    await allowChromiumSandbox(toolchain.chromiumPath);
     return;
   }
 
@@ -735,7 +687,6 @@ if (import.meta.main) {
 }
 
 export {
-  allowChromiumSandbox,
   buildAuditPlan,
   CATEGORIES,
   describeFailure,

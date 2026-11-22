@@ -6,6 +6,9 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+defaults:
+  run:
+    shell: bash
 concurrency:
   group: security-${{ github.ref }}
   cancel-in-progress: true
@@ -21,9 +24,9 @@ jobs:
           fetch-depth: 0
           persist-credentials: false # scanners only read the checkout
       - name: Set up security scanners
-        uses: ./.github/actions/setup-mise
+        uses: $/.github/actions/setup-mise
         with:
-          tools: aqua:astral-sh/uv betterleaks trivy
+          tools: aqua:astral-sh/uv betterleaks jactionlint shellcheck trivy
       - name: Scan complete Git history
         run: mise run check:leaks:full
       - name: Scan Dockerfile and infrastructure configuration
@@ -35,13 +38,19 @@ jobs:
       - name: Audit locked dependencies
         if: ${{ !cancelled() }}
         run: mise run check:vuln
+      - name: Verify workflow action pins online
+        if: ${{ !cancelled() }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: mise run check:actions:online
   deployed-image:
     name: Scan images receiving production traffic
-    if: github.ref == 'refs/heads/main'
+    if: ${{ github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
       contents: read
+      # Required for read-only GCP Workload Identity Federation to inspect Cloud Run and Artifact Registry.
       id-token: write
     steps:
       - name: Checkout scanner policy
@@ -49,7 +58,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Set up scanner and runtime
-        uses: ./.github/actions/setup-mise
+        uses: $/.github/actions/setup-mise
         with:
           tools: python trivy
           cache: false # this job holds id-token; never read shared caches

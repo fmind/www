@@ -4,6 +4,7 @@ import http.client
 import json
 import ssl
 import subprocess
+from collections.abc import Mapping
 from datetime import UTC, date, datetime, timedelta, tzinfo
 from email.message import Message
 from urllib.error import HTTPError, URLError
@@ -191,8 +192,8 @@ class FakeRead:
         self.responses = iter(responses)
         self.calls: list[tuple[str, dict[str, str]]] = []
 
-    def __call__(self, suffix: str, parameters: dict[str, str]) -> bytes:
-        self.calls.append((suffix, parameters))
+    def __call__(self, suffix: str, parameters: Mapping[str, str]) -> bytes:
+        self.calls.append((suffix, dict(parameters)))
         return next(self.responses)
 
 

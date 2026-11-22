@@ -74,6 +74,8 @@ resource "time_sleep" "wait_for_apis" {
   depends_on = [
     google_project_service.artifactregistry,
     google_project_service.bigquery,
+    google_project_service.billingbudgets,
+    google_project_service.cloudbilling,
     google_project_service.iam,
     google_project_service.iamcredentials,
     google_project_service.logging,

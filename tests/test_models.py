@@ -4,7 +4,7 @@ from typing import Any, cast
 
 import pytest
 
-from www.data import BIOGRAPHY, METADATA, SITE_PAGES, article_filter_url, get_structured_data, markdown_to_html
+from www.data import BIOGRAPHY, METADATA, SITE_PAGES, article_filter_url, markdown_to_html
 from www.models import Article, ArticleIndexView, utc_midnight
 from www.tags import TAGS, is_tag, sort_tags, tag_names
 
@@ -96,6 +96,8 @@ def test_template_helpers_keep_safe_markdown_filters_and_json_ld() -> None:
     )
     assert article_filter_url("Agent", "model serving") == "/articles/?tag=Agent&q=model+serving"
 
-    structured = get_structured_data(article())
+    from www.pages import article_structured_data
+
+    structured = article_structured_data(article())
     assert f'"mainEntityOfPage":"{METADATA.site_url}/articles/example/"' in structured
     assert '"dateModified":"2026-02-02"' in structured

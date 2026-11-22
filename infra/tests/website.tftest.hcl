@@ -24,7 +24,8 @@ mock_provider "google-beta" {}
 mock_provider "time" {}
 
 variables {
-  billing_account = "000000-AAAAAA-000000"
+  billing_account               = "000000-AAAAAA-000000"
+  budget_shared_project_numbers = []
 }
 
 run "website_cost_and_recovery_contract" {
@@ -210,21 +211,22 @@ run "budget_alert_contract" {
   command = plan
 
   variables {
-    budget_shared_project_numbers = ["123456789012"]
+    budget_shared_project_numbers = ["123456789012", "123456789012"]
   }
 
   assert {
     condition = (
-      google_billing_budget.website.billing_account == "000000-AAAAAA-000000" &&
-      contains(google_billing_budget.website.budget_filter[0].projects, "projects/123456789012") &&
+      nonsensitive(google_billing_budget.website.billing_account) == "000000-AAAAAA-000000" &&
+      contains(nonsensitive(google_billing_budget.website.budget_filter[0].projects), "projects/123456789012") &&
+      length(nonsensitive(google_billing_budget.website.budget_filter[0].projects)) == 2 &&
       google_billing_budget.website.budget_filter[0].calendar_period == "MONTH" &&
       google_billing_budget.website.budget_filter[0].credit_types_treatment == "EXCLUDE_ALL_CREDITS" &&
       google_billing_budget.website.amount[0].specified_amount[0].currency_code == "EUR" &&
       google_billing_budget.website.amount[0].specified_amount[0].units == "10" &&
-      [for rule in google_billing_budget.website.threshold_rules : rule.threshold_percent] == [0.5, 0.9, 1.0, 1.0] &&
-      google_billing_budget.website.threshold_rules[3].spend_basis == "FORECASTED_SPEND"
+      [for rule in google_billing_budget.website.threshold_rules : rule.threshold_percent] == [0.5, 0.8, 0.9, 1.0, 1.0] &&
+      google_billing_budget.website.threshold_rules[4].spend_basis == "FORECASTED_SPEND"
     )
-    error_message = "The project needs a monthly gross-cost budget with shared-project support and 50/90/100% actual and 100% forecast alerts."
+    error_message = "The project needs a monthly gross-cost budget with deduplicated shared-project support and 50/80/90/100% actual plus 100% forecast alerts."
   }
 }
 
@@ -309,11 +311,29 @@ run "alerting_contract" {
   }
 
   assert {
+    condition = (
+      google_logging_project_bucket_config.default.bucket_id == "_Default" &&
+      google_logging_project_bucket_config.default.retention_days == 30
+    )
+    error_message = "Operational Cloud Logging retention must be pinned to 30 days in code."
+  }
+
+  assert {
+    condition = (
+      strcontains(google_monitoring_alert_policy.instance_saturation.conditions[0].condition_threshold[0].filter, "run.googleapis.com/container/instance_count") &&
+      google_monitoring_alert_policy.instance_saturation.conditions[0].condition_threshold[0].comparison == "COMPARISON_GT" &&
+      google_monitoring_alert_policy.instance_saturation.conditions[0].condition_threshold[0].threshold_value == 3
+    )
+    error_message = "Instance saturation must alert when active instances reach 4 or more (80% of the 5-instance cap)."
+  }
+
+  assert {
     condition = alltrue([for policy in [
       google_monitoring_alert_policy.uptime_health,
       google_monitoring_alert_policy.tls_expiry,
       google_monitoring_alert_policy.cloudrun_5xx_errors,
       google_monitoring_alert_policy.error_logs,
+      google_monitoring_alert_policy.instance_saturation,
       ] : policy.severity != null && length(policy.documentation) == 1 && length(policy.documentation[0].content) > 0
     ])
     error_message = "Every alert policy needs a severity and a runbook."

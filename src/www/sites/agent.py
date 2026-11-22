@@ -1,6 +1,7 @@
 """Bounded agent access to the same calculator used by the website."""
 
 import re
+from collections.abc import Mapping
 from dataclasses import replace
 from datetime import UTC, datetime
 
@@ -10,7 +11,13 @@ from www.data import METADATA
 from www.sites.calculator import build_llm_self_hosting_view
 from www.sites.capacity import MONTHLY_HOURS
 from www.sites.data import DEFAULT_HOSTING_INPUTS
-from www.sites.inputs import hosting_url, parse_inputs, scenario_parameters
+from www.sites.inputs import (
+    LEGACY_WEB_MODELS,
+    LEGACY_WEB_NODES,
+    hosting_url,
+    parse_inputs,
+    scenario_parameters,
+)
 from www.sites.models import (
     APIComparison,
     DemandPreset,
@@ -24,8 +31,7 @@ from www.sites.models import (
 # Strip only web-form fallback clauses ("<reason>; <fallback> was/were used/kept/cleared"),
 # preserving semicolon-separated machine lists and guidance clauses in configuration_issue.
 _FALLBACK_CLAUSE = re.compile(r"; [^;]+ (?:was|were) (?:used|kept|cleared)$")
-_LEGACY_WEB_MODELS = frozenset({"kimi-k3"})
-_LEGACY_WEB_NODES = frozenset({"a4-cud-3y", "a4-flex"})
+_MEASUREMENT_KEYS = frozenset({"measured-concurrency", "measured-first", "measured-complete"})
 
 
 # Comparison rows name catalog entries by id: repeating the full model, machine, and
@@ -85,15 +91,18 @@ class HostingResult(BaseModel):
     limitations: tuple[str, ...]
 
 
-def compare_hosting(parameters: dict[str, str]) -> HostingResult:
+def compare_hosting(parameters: Mapping[str, str]) -> HostingResult:
     """Reject silent input fallback before running the shared web calculator."""
     allowed = scenario_parameters(replace(DEFAULT_HOSTING_INPUTS, mode="advanced")).keys() | {
         "pilot",
         "confirm-pilot",
         "preset",
     }
-    if parameters.keys() - allowed:
-        raise ValueError("Unknown calculator parameter; use the parameters returned by an empty call or /agents.")
+    if unknown := sorted(parameters.keys() - allowed):
+        raise ValueError(
+            f"Unknown calculator parameter(s): {', '.join(unknown)}; "
+            "use the parameters returned by an empty call or /agents."
+        )
     if any(not value or value.strip() != value for value in parameters.values()):
         raise ValueError("Calculator parameter values must be nonempty and have no surrounding whitespace.")
     # The web form resubmits every field with a preset button, so outside simple mode a
@@ -103,9 +112,9 @@ def compare_hosting(parameters: dict[str, str]) -> HostingResult:
         raise ValueError(
             "preset replaces " + ", ".join(sorted(demand)) + " in advanced mode; send the preset or explicit demand.",
         )
-    if parameters.get("model") in _LEGACY_WEB_MODELS:
+    if parameters.get("model") in LEGACY_WEB_MODELS:
         raise ValueError("Invalid calculator parameters: Model (model) was not recognized")
-    if parameters.get("node") in _LEGACY_WEB_NODES:
+    if parameters.get("node") in LEGACY_WEB_NODES:
         raise ValueError("Invalid calculator parameters: GPU / TPU node (node) was not recognized")
     _, errors = parse_inputs(parameters)
     if errors:
@@ -113,6 +122,11 @@ def compare_hosting(parameters: dict[str, str]) -> HostingResult:
         # rejects instead of falling back, so it reports only the reason.
         reasons = (_FALLBACK_CLAUSE.sub("", error) for error in errors)
         raise ValueError("Invalid calculator parameters: " + "; ".join(reasons))
+    if (parameters.keys() & {"pilot", "confirm-pilot"}) and not (parameters.keys() & _MEASUREMENT_KEYS):
+        raise ValueError(
+            "Invalid calculator parameters: pilot and confirm-pilot require recorded latency measurements "
+            "(measured-concurrency, measured-first, measured-complete)."
+        )
     now = datetime.now(UTC)
     view = build_llm_self_hosting_view(parameters, now=now)
     return HostingResult(

@@ -1,5 +1,6 @@
 """Fail-closed argument boundary for CI and manual Cloud Run rollouts."""
 
+import argparse
 import os
 import re
 import secrets
@@ -9,69 +10,44 @@ import subprocess
 import sys
 import threading
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass
 from pathlib import Path
 from types import FrameType
 
-_DIGEST = re.compile(r"sha256:[0-9a-f]{64}\Z")
-_COMMIT = re.compile(r"[0-9a-f]{40}\Z")
-_CONFIG_VALUE = re.compile(r"[a-z][a-z0-9-]*[a-z0-9]\Z")
+from scripts import verify_deployment
+from scripts._cloud_run import (
+    _COMMIT,
+    _CONFIG_VALUE,
+    DeploymentTarget,
+    DeploymentUsageError,
+    validate_commit,
+    validate_image_reference,
+)
+
 _REPOSITORY = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]*/[A-Za-z0-9][A-Za-z0-9_.-]*\Z")
-_CONFIG_NAMES = ("REGION", "PROJECT_ID", "REPOSITORY", "SERVICE_NAME")
 # The CI deploy action labels revisions `commit-sha=<GITHUB_SHA>`; release
 # verification reads the same label, so a manual rollout must restamp it.
 COMMIT_LABEL = "commit-sha"
 MANUAL_TAG = "manual-candidate"
-# Cleared alongside MANUAL_TAG on promotion so no legacy CI candidate tag remains public.
-CI_TAG = "candidate"
 # One hung gate or gcloud call must fail inside the 20-minute deploy job, leaving time to remove the candidate tag.
 COMMAND_TIMEOUT_SECONDS: float = 600
 TIMEOUT_EXIT = 124  # the exit status coreutils `timeout` uses
 _USAGE = "usage: mise run deploy <digest-ref> <commit-sha> | python -m scripts.deploy --check-head\n"
-
-
-class DeploymentUsageError(ValueError):
-    """The manual deployment request does not match the digest-and-commit contract."""
-
-
-@dataclass(frozen=True, slots=True)
-class DeploymentTarget:
-    """Repository-owned Cloud Run and Artifact Registry coordinates."""
-
-    region: str
-    project_id: str
-    repository: str
-    service_name: str
-
-    def __post_init__(self) -> None:
-        for name, value in zip(_CONFIG_NAMES, self.as_tuple(), strict=True):
-            if not _CONFIG_VALUE.fullmatch(value):
-                raise DeploymentUsageError(f"{name} is missing or invalid")
-
-    def as_tuple(self) -> tuple[str, str, str, str]:
-        return self.region, self.project_id, self.repository, self.service_name
-
-    @property
-    def image_repository(self) -> str:
-        return f"{self.region}-docker.pkg.dev/{self.project_id}/{self.repository}/{self.service_name}"
-
-    @classmethod
-    def from_environment(cls, environment: Mapping[str, str] = os.environ) -> DeploymentTarget:
-        return cls(*(environment.get(name, "") for name in _CONFIG_NAMES))
-
 
 type Runner = Callable[[Sequence[str]], int]
 type Verifier = Callable[[DeploymentTarget, str, str, str], None]
 
 
 def run_command(arguments: Sequence[str]) -> int:
-    """Run validated mise or gcloud argv with inherited streams and signals, for at most COMMAND_TIMEOUT_SECONDS.
+    """Run validated mise or gcloud argv with closed stdin and signals, for at most COMMAND_TIMEOUT_SECONDS.
 
     A timeout returns TIMEOUT_EXIT like any failed step, so the caller still removes the candidate tag.
     """
     try:
         return subprocess.run(  # noqa: S603 - fixed, validated argv only.
-            tuple(arguments), check=False, timeout=COMMAND_TIMEOUT_SECONDS
+            tuple(arguments),
+            stdin=subprocess.DEVNULL,
+            check=False,
+            timeout=COMMAND_TIMEOUT_SECONDS,
         ).returncode
     except subprocess.TimeoutExpired:
         sys.stderr.write(
@@ -79,21 +55,6 @@ def run_command(arguments: Sequence[str]) -> int:
             " inspect the Cloud Run service, then rerun the deployment\n"
         )
         return TIMEOUT_EXIT
-
-
-def validate_image_reference(image_reference: str, target: DeploymentTarget) -> str:
-    """Accept only an immutable digest in this service's repository."""
-    repository, separator, digest = image_reference.rpartition("@")
-    if separator != "@" or repository != target.image_repository or not _DIGEST.fullmatch(digest):
-        raise DeploymentUsageError(f"image must match {target.image_repository}@sha256:<64 lowercase hex>")
-    return image_reference
-
-
-def validate_commit(commit: str) -> str:
-    """Accept only a full lowercase Git commit SHA."""
-    if not _COMMIT.fullmatch(commit):
-        raise DeploymentUsageError("commit must be a full 40-character lowercase SHA")
-    return commit
 
 
 def build_gate_commands(image_reference: str) -> tuple[tuple[str, ...], ...]:
@@ -148,9 +109,7 @@ def build_deploy_commands(
             f"--tag={MANUAL_TAG}",
             "--quiet",
         ),
-        # Drop both candidate tags on promotion: a tagged revision stays publicly reachable after traffic moves on
-        # (a 2026-10-12 build was still served on its manual-candidate URL on 2026-10-24). Clearing the CI tag
-        # keeps a rolled-back or failed CI revision off its candidate URL. gcloud skips tags the service lacks.
+        # Drop the candidate tag on promotion: a tagged revision stays publicly reachable after traffic moves on.
         (
             "gcloud",
             "run",
@@ -158,7 +117,7 @@ def build_deploy_commands(
             "update-traffic",
             *scope,
             f"--to-revisions={revision}=100",
-            f"--remove-tags={MANUAL_TAG},{CI_TAG}",
+            f"--remove-tags={MANUAL_TAG}",
             "--quiet",
         ),
         # Like CI after a failed or cancelled candidate: an unpromoted revision loses its public tag URL now.
@@ -167,24 +126,20 @@ def build_deploy_commands(
 
 
 def verify_created_revision(target: DeploymentTarget, image: str, commit: str, expected_revision: str) -> None:
-    """Reuse CI acceptance without a module-level cycle with its argument types."""
-    from scripts.verify_deployment import describe_service, probe, verify_candidate
-
-    revision, url = verify_candidate(
-        describe_service(target), image, commit, tag=MANUAL_TAG, service_name=target.service_name
+    """Verify the newly created no-traffic candidate revision and probe its tagged URL."""
+    revision, url = verify_deployment.verify_candidate(
+        verify_deployment.describe_service(target), image, commit, tag=MANUAL_TAG, service_name=target.service_name
     )
     if revision != expected_revision:
         raise DeploymentUsageError("manual candidate was replaced by another deployment; traffic was not promoted")
-    probe(url, timeout=65)
+    verify_deployment.probe(url, timeout=65)
 
 
 def verify_promoted_release(target: DeploymentTarget, image: str, commit: str, expected_revision: str) -> None:
     """Run the `test:deployed` checks: the promoted revision owns all traffic and serves the public origin."""
-    from scripts.verify_deployment import describe_service, probe_public_origin, verify_service
-
-    if verify_service(describe_service(target), image, commit) != expected_revision:
+    if verify_deployment.verify_service(verify_deployment.describe_service(target), image, commit) != expected_revision:
         raise DeploymentUsageError("another deployment replaced the manual release after promotion")
-    probe_public_origin()
+    verify_deployment.probe_public_origin()
 
 
 def check_main_head(environment: Mapping[str, str] = os.environ) -> int:
@@ -222,15 +177,20 @@ def check_main_head(environment: Mapping[str, str] = os.environ) -> int:
         return 1
 
 
-def _safe_detail(error: BaseException) -> str:
-    """Reuse the CI rule for which failure text may reach a log, without a module-level import cycle."""
-    from scripts.verify_deployment import safe_detail
-
-    return safe_detail(error)
-
-
 def _raise_interrupt(_signum: int, _frame: FrameType | None) -> None:
     raise KeyboardInterrupt
+
+
+def _build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="python -m scripts.deploy",
+        description="Gate, deploy, and verify one immutable Artifact Registry digest on Cloud Run.",
+        allow_abbrev=False,
+        suggest_on_error=True,
+    )
+    parser.add_argument("--check-head", action="store_true", help="check whether GITHUB_SHA is still main HEAD")
+    parser.add_argument("args", nargs="*", metavar="ARG", help="<digest-ref> <commit-sha>")
+    return parser
 
 
 def main(
@@ -245,9 +205,13 @@ def main(
 
     An unpromoted candidate loses its manual tag; a promoted one gets the `test:deployed` checks.
     """
-    release_arguments = tuple(sys.argv[1:] if arguments is None else arguments)
-    if release_arguments == ("--check-head",):
+    raw_args = tuple(sys.argv[1:] if arguments is None else arguments)
+    if any(arg in ("-h", "--help") for arg in raw_args):
+        _build_parser().print_help()
+        return 0
+    if raw_args == ("--check-head",):
         return check_main_head()
+    release_arguments = raw_args
     try:
         deployment_target = target or DeploymentTarget.from_environment()
         suffix = f"manual-{secrets.token_hex(6)}"
@@ -274,10 +238,9 @@ def main(
             if not (returncode := execute(commands[0])):
                 try:
                     (verifier or verify_created_revision)(*release)
-                except Exception as error:
-                    # Fail closed; only our own invariant messages are printed, never provider diagnostics.
+                except Exception as error:  # noqa: BLE001 - fail closed without leaking provider diagnostics
                     sys.stderr.write(
-                        f"candidate verification failed: {_safe_detail(error)}; traffic was not promoted\n"
+                        f"candidate verification failed: {verify_deployment.safe_detail(error)}; traffic was not promoted\n"
                     )
                     returncode = 1
                 else:
@@ -297,9 +260,9 @@ def main(
             return returncode
         try:
             (post_verifier or verify_promoted_release)(*release)
-        except Exception as error:
+        except Exception as error:  # noqa: BLE001 - fail closed without leaking provider diagnostics
             sys.stderr.write(
-                f"promoted release verification failed: {_safe_detail(error)}; traffic stays on the new revision,"
+                f"promoted release verification failed: {verify_deployment.safe_detail(error)}; traffic stays on the new revision,"
                 " so inspect it or redeploy the preceding qualified digest\n"
             )
             return 1

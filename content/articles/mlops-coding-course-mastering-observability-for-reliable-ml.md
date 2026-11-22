@@ -15,7 +15,7 @@ This article dives deep into the essential tools and practices for achieving com
 
 Coin-operated telescope overlooking a coastal city and its harbor — Photo by [Elisa Schmidt](https://unsplash.com/@elisasch) on [Unsplash](https://unsplash.com)
 
-_Note: The course is also available on the_ [_MLOps Community Learning Platform_](https://learn.mlops.community/courses/languages/mlops-coding-course/)
+_Note: The course was also previously listed on the MLOps Community Learning Platform._
 
 ### Why Observability is Your ML’s Guardian Angel 😇
 

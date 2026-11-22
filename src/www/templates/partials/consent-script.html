@@ -41,28 +41,46 @@
         });
       });
     };
+    var syncButtons = function (current) {
+      banner.querySelectorAll('[data-consent]').forEach(function (button) {
+        var pressed = current === button.getAttribute('data-consent');
+        button.setAttribute('aria-pressed', pressed ? 'true' : 'false');
+      });
+    };
+    var dismiss = function () {
+      var focused = banner.contains(document.activeElement);
+      banner.hidden = true;
+      // Return focus to the opener when reopened; on first dismissal keep focus visible at top of main content.
+      var target = opener || document.getElementById('main-content');
+      opener = null;
+      if (focused && target) target.focus({ preventScroll: true });
+    };
     banner.querySelectorAll('[data-consent]').forEach(function (button) {
       button.addEventListener('click', function () {
         var choice = button.getAttribute('data-consent');
         try { localStorage.setItem(key, choice); } catch (error) {}
         if (choice === 'granted') load(); else forget();
-        var focused = banner.contains(document.activeElement);
-        banner.hidden = true;
-        // Hiding the focused button would drop keyboard focus to <body>: return it to the
-        // control that opened the banner, or to the footer control that reopens it.
-        var target = opener || document.querySelector('[data-consent-open]');
-        if (focused && target) target.focus({ preventScroll: !opener });
+        syncButtons(choice);
+        dismiss();
       });
+    });
+    banner.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape' && opener) {
+        event.preventDefault();
+        dismiss();
+      }
     });
     document.querySelectorAll('[data-consent-open]').forEach(function (control) {
       control.hidden = false;
       control.addEventListener('click', function () {
         opener = control;
+        syncButtons(stored());
         banner.hidden = false;
         banner.querySelector('button').focus();
       });
     });
     var choice = stored();
+    syncButtons(choice);
     if (choice === 'granted') load();
     else if (choice !== 'denied') banner.hidden = false;
   })();

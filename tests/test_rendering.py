@@ -34,6 +34,7 @@ from www.data import (
 from www.pages import (
     article_index_metadata,
     article_metadata,
+    article_structured_data,
     home_metadata,
     not_found_metadata,
     site_index_metadata,
@@ -273,7 +274,7 @@ def test_renderer_renders_all_six_pages_with_real_domain_contexts(
         ),
         PageTemplate.ARTICLE: renderer.render(
             PageTemplate.ARTICLE,
-            page=article_metadata(article, get_structured_data(article)),
+            page=article_metadata(article, article_structured_data(article)),
             nonce=nonce,
             context={
                 "article": article,
@@ -376,7 +377,7 @@ def test_article_section_navigation_requires_two_sections(
     renderer = Renderer(application_assets(), article_html=(article.html,))
     rendered = renderer.render(
         PageTemplate.ARTICLE,
-        page=article_metadata(article, get_structured_data(article)),
+        page=article_metadata(article, article_structured_data(article)),
         nonce="test-nonce",
         context={
             "article": article,

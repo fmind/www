@@ -7,21 +7,25 @@ import os
 import subprocess
 import sys
 from collections import Counter
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal, InvalidOperation
 from typing import Annotated, NamedTuple
 from urllib.error import HTTPError
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlsplit
 from urllib.request import Request, urlopen
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError
 
+from www.data import METADATA
+
 PROJECT = "www-fmind-dev"
 TABLE = f"{PROJECT}.website_analytics.run_googleapis_com_stderr"
 ENDPOINT = f"https://bigquery.googleapis.com/bigquery/v2/projects/{PROJECT}/datasets/website_analytics/tables/run_googleapis_com_stderr"
+_SITE_HOST = (urlsplit(METADATA.site_url).hostname or "").lower()
+SAME_SITE_HOSTS = frozenset((_SITE_HOST, _SITE_HOST.removeprefix("www.")))
 PAYLOAD_FIELDS = ("msg", "path", "status", "bot", "referer", "utm_source", "utm_medium", "utm_campaign")
 SELECTION = ",".join(("timestamp", "insertId", *(f"jsonPayload.{name}" for name in PAYLOAD_FIELDS)))
 MAX_DAYS = 90
@@ -145,7 +149,7 @@ class Reader:
     token: str
     downloaded: int = 0
 
-    def __call__(self, suffix: str, parameters: dict[str, str]) -> bytes:
+    def __call__(self, suffix: str, parameters: Mapping[str, str]) -> bytes:
         request = Request(  # noqa: S310 - fixed first-party HTTPS endpoint.
             ENDPOINT + suffix + "?" + urlencode(parameters),
             headers={"Authorization": f"Bearer {self.token}", "x-goog-user-project": PROJECT},
@@ -171,7 +175,7 @@ class Reader:
         return body
 
 
-def decode_event(row: Row, fields: list[SchemaField]) -> tuple[Event, str | None]:
+def decode_event(row: Row, fields: Sequence[SchemaField]) -> tuple[Event, str | None]:
     """Decode positional REST values against the projected live schema, returning the event and its insertId."""
     values = {field.name: cell.v for field, cell in zip(fields, row.f, strict=True)}
     payload = values["jsonPayload"]
@@ -227,7 +231,7 @@ def validate_schema(metadata: Metadata) -> list[SchemaField]:
     return fields
 
 
-def collect(read: Callable[[str, dict[str, str]], bytes], days: Sequence[date]) -> tuple[list[Event], int]:
+def collect(read: Callable[[str, Mapping[str, str]], bytes], days: Sequence[date]) -> tuple[list[Event], int]:
     """Read whole day partitions with stable metadata; a truncated read is never a sample."""
     parameters: dict[str, str] = {"selectedFields": SELECTION}
     suffixes = [f"${day:%Y%m%d}" for day in days]
@@ -299,7 +303,7 @@ def human_events(events: Sequence[Event]) -> tuple[list[Event], list[Event]]:
     return humans, bursts
 
 
-def breakdown(events: list[Event], start: date, days: int, zone: ZoneInfo) -> dict[str, object]:
+def breakdown(events: Sequence[Event], start: date, days: int, zone: ZoneInfo) -> dict[str, object]:
     """Aggregate one complete calendar window with explicit denominators."""
     humans, bursts = human_events(events)
     views = [event for event in humans if 200 <= event.status < 300]
@@ -309,7 +313,7 @@ def breakdown(events: list[Event], start: date, days: int, zone: ZoneInfo) -> di
     campaigns: Counter[tuple[str, str, str]] = Counter()
     for event in views:
         host = event.referer.lower()
-        referrers["same-site" if host in ("www.fmind.dev", "fmind.dev") else host or "direct / unknown"] += 1
+        referrers["same-site" if host in SAME_SITE_HOSTS else host or "direct / unknown"] += 1
         if event.utm_source or event.utm_medium or event.utm_campaign:
             campaigns[(event.utm_source, event.utm_medium, event.utm_campaign)] += 1
     bots = sum(event.bot is True for event in events)
@@ -340,7 +344,9 @@ def breakdown(events: list[Event], start: date, days: int, zone: ZoneInfo) -> di
     }
 
 
-def summarize(events: list[Event], *, end: date, days: int, zone: ZoneInfo, duplicates: int = 0) -> dict[str, object]:
+def summarize(
+    events: Sequence[Event], *, end: date, days: int, zone: ZoneInfo, duplicates: int = 0
+) -> dict[str, object]:
     """Compare adjacent complete local-date windows; do not assume human identity."""
     start = end - timedelta(days=days)
     previous_start = start - timedelta(days=days)
@@ -382,8 +388,8 @@ def summarize(events: list[Event], *, end: date, days: int, zone: ZoneInfo, dupl
     }
 
 
-def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
+def main(argv: Sequence[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__, allow_abbrev=False, suggest_on_error=True)
     parser.add_argument("--days", type=int, choices=range(1, MAX_DAYS + 1), default=7, metavar=f"1..{MAX_DAYS}")
     parser.add_argument("--end-date", type=date.fromisoformat, help="Exclusive local date; default: today")
     parser.add_argument("--timezone", default="Europe/Paris")

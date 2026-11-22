@@ -175,7 +175,7 @@
                     <p class="text-sm text-base-content/85 mt-4 leading-relaxed">{{ project.description }}</p>
                   </div>
                   <div class="card-actions justify-end mt-6">
-                    <a class="btn btn-sm btn-ghost hover:bg-base-300 font-semibold gap-1" href="{{ project.repo or project.href }}" target="_blank" rel="noopener noreferrer">View Code <span class="group-hover:translate-x-1 transition-transform inline-block">→</span></a>
+                    <a class="btn btn-sm btn-ghost hover:bg-base-300 font-semibold gap-1" href="{{ project.repo or project.href }}" target="_blank" rel="noopener noreferrer">View Code<span class="sr-only"> for {{ project.title }}</span> <span aria-hidden="true" class="group-hover:translate-x-1 transition-transform inline-block">→</span></a>
                   </div>
                 </div>
               </div>
@@ -188,7 +188,7 @@
           </h3>
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {% for playlist in youtube_series %}
-              <a class="card bg-base-200 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 border border-base-300 block group overflow-hidden" href="{{ playlist.url }}" target="_blank" rel="noopener noreferrer"><div class="h-0.5 bg-gradient-to-r from-primary to-blue-bright"></div><div class="card-body p-6"><h4 class="card-title text-base-content group-hover:text-primary transition-colors flex items-center gap-1.5 select-none"><span class="font-bold text-lg">{{ playlist.title }}</span>{{ icon("external_link", "w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity shrink-0") }}</h4><p class="text-sm text-base-content/85 mt-3 leading-relaxed">{{ playlist.description }}</p><div class="card-actions justify-end mt-6"><div class="btn btn-sm btn-ghost hover:bg-base-300 font-semibold gap-1">{{ playlist.cta }} <span class="group-hover:translate-x-1 transition-transform inline-block">→</span></div></div></div></a>
+              <a class="card bg-base-200 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 border border-base-300 block group overflow-hidden" href="{{ playlist.url }}" target="_blank" rel="noopener noreferrer"><div class="h-0.5 bg-gradient-to-r from-primary to-blue-bright"></div><div class="card-body p-6"><h4 class="card-title text-base-content group-hover:text-primary transition-colors flex items-center gap-1.5 select-none"><span class="font-bold text-lg">{{ playlist.title }}</span>{{ icon("external_link", "w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity shrink-0") }}</h4><p class="text-sm text-base-content/85 mt-3 leading-relaxed">{{ playlist.description }}</p><div class="card-actions justify-end mt-6"><div class="btn btn-sm btn-ghost hover:bg-base-300 font-semibold gap-1">{{ playlist.cta }} <span aria-hidden="true" class="group-hover:translate-x-1 transition-transform inline-block">→</span></div></div></div></a>
             {% endfor %}
           </div>
         </div>

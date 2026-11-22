@@ -13,13 +13,18 @@ on:
         default: local
 permissions:
   contents: read
+defaults:
+  run:
+    shell: bash
 concurrency:
   group: quality-${{ github.ref }}-${{ inputs.target || 'local' }}
   cancel-in-progress: true
 env:
   BROWSER_BASE_URL: ${{ inputs.target == 'production' && 'https://www.fmind.dev' || '' }}
+  QUALITY_TARGET: ${{ inputs.target || 'local' }}
 jobs:
   browsers:
+    name: Cross-browser journeys
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -28,11 +33,18 @@ jobs:
         with:
           persist-credentials: false
       - name: Set up pinned tools
-        uses: ./.github/actions/setup-mise
+        uses: $/.github/actions/setup-mise
         with:
           tools: ${{ inputs.target == 'production' && 'node npm:playwright' || 'aqua:astral-sh/uv python node github:dobicinaitis/tailwind-cli-extra npm:playwright' }}
+      - name: Cache uv downloads
+        if: ${{ inputs.target != 'production' }}
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/uv
+          key: uv-${{ runner.os }}-${{ hashFiles('uv.lock') }}
+          restore-keys: uv-${{ runner.os }}-
       - name: Install Python dependencies
-        if: inputs.target != 'production'
+        if: ${{ inputs.target != 'production' }}
         run: uv sync --locked --no-dev
       - name: Install browser binaries and ephemeral runner libraries
         run: |
@@ -45,12 +57,17 @@ jobs:
             | sudo tee /etc/apt/apt.conf.d/99quality-timeouts >/dev/null
           mise run install:browser:cross -- --with-deps
       - name: Exercise Firefox and WebKit
-        run: mise run ${{ inputs.target == 'production' && '--skip-deps ' || '' }}test:browser:cross
+        run: |
+          if [ "$QUALITY_TARGET" = "production" ]; then
+            mise run --skip-deps test:browser:cross
+          else
+            mise run test:browser:cross
+          fi
       - name: Install Chromium for production journeys
-        if: inputs.target == 'production'
+        if: ${{ inputs.target == 'production' }}
         run: mise run install:browser
       - name: Exercise production Chromium journeys
-        if: inputs.target == 'production'
+        if: ${{ inputs.target == 'production' }}
         run: mise run --skip-deps test:browser
       - name: Retain browser evidence
         if: ${{ !cancelled() }}
@@ -64,6 +81,7 @@ jobs:
           # Green local runs leave no evidence; the default `warn` would annotate every one.
           if-no-files-found: ignore
   lighthouse:
+    name: Lighthouse portfolio matrix
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -72,18 +90,42 @@ jobs:
         with:
           persist-credentials: false
       - name: Set up pinned tools
-        uses: ./.github/actions/setup-mise
+        uses: $/.github/actions/setup-mise
         with:
           tools: ${{ inputs.target == 'production' && 'node npm:playwright npm:lighthouse' || 'aqua:astral-sh/uv python node github:dobicinaitis/tailwind-cli-extra npm:playwright npm:lighthouse' }}
+      - name: Cache uv downloads
+        if: ${{ inputs.target != 'production' }}
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/uv
+          key: uv-${{ runner.os }}-${{ hashFiles('uv.lock') }}
+          restore-keys: uv-${{ runner.os }}-
       - name: Install Python dependencies
-        if: inputs.target != 'production'
+        if: ${{ inputs.target != 'production' }}
         run: uv sync --locked --no-dev
       - name: Install Chromium
         run: mise run install:browser
       - name: Allow the pinned Chromium sandbox
-        run: node scripts/lighthouse.mjs --allow-sandbox
+        run: |
+          chromium_path="$(NODE_PATH="$(mise where npm:playwright)/node_modules" node -e 'console.log(require("playwright").chromium.executablePath())')"
+          profile="$(mktemp)"
+          trap 'rm -f "$profile"' EXIT
+          cat > "$profile" <<EOF
+          abi <abi/4.0>,
+          include <tunables/global>
+          profile www-lighthouse-chromium "$chromium_path" flags=(unconfined) {
+            userns,
+          }
+          EOF
+          sudo install -m 0644 "$profile" /etc/apparmor.d/www-lighthouse-chromium
+          sudo apparmor_parser -r /etc/apparmor.d/www-lighthouse-chromium
       - name: Qualify portfolio pages
-        run: mise run ${{ inputs.target == 'production' && '--skip-deps ' || '' }}test:lighthouse:local
+        run: |
+          if [ "$QUALITY_TARGET" = "production" ]; then
+            mise run --skip-deps test:lighthouse:local
+          else
+            mise run test:lighthouse:local
+          fi
       - name: Retain exact Lighthouse reports
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

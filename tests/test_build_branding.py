@@ -11,6 +11,9 @@ def test_build_branding_writes_sized_ui_assets_without_unused_icons(tmp_path: Pa
     (tmp_path / "img" / "favicons").mkdir(parents=True)
     Image.new("RGBA", (512, 512), (26, 115, 232, 255)).save(tmp_path / "logo.png")
     Image.new("RGBA", (1600, 600), (26, 115, 232, 255)).save(tmp_path / "banner.png")
+    exif = Image.Exif()
+    exif[0x010E] = "private camera annotation"
+    Image.new("RGB", (384, 384), "blue").save(tmp_path / "img/avatar.webp", exif=exif, icc_profile=b"private")
 
     build_branding(tmp_path)
 
@@ -30,3 +33,7 @@ def test_build_branding_writes_sized_ui_assets_without_unused_icons(tmp_path: Pa
     with Image.open(tmp_path / "img/og-image.jpg") as preview:
         assert (preview.format, preview.size, preview.mode) == ("JPEG", (1200, 630), "RGB")
         assert preview.info.get("progressive")
+    with Image.open(tmp_path / "img/avatar-vcard.jpg") as avatar:
+        assert (avatar.format, avatar.size, avatar.mode) == ("JPEG", (384, 384), "RGB")
+        assert not avatar.getexif()
+        assert "icc_profile" not in avatar.info

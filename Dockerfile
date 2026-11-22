@@ -1,3 +1,4 @@
+# check=error=true
 # Docs: https://docs.docker.com/reference/dockerfile/
 # One stage per architecture: BuildKit builds only the stage TARGETARCH selects, so each
 # build downloads just the Tailwind binary it runs.
@@ -17,13 +18,14 @@ ADD --chmod=0755 --checksum=sha256:a7e0f2ea7e639ebef82d16c40819764d42bdb2d79c30e
 FROM tailwind-${TARGETARCH} AS tailwind
 
 # Both stages share one pinned base, so the digest is stated once.
-FROM python:3.14.10-slim@sha256:af8a5aa14780025dbfbcfbc81bd8a91ebd87711dd5b0f48ed71090949dd7cb1d AS base
+FROM python:3.14.10-slim@sha256:9aaa474097d094040649f2162a627c0049b408f52138d980916788d80f04802f AS base
 
 FROM base AS build
 ENV UV_COMPILE_BYTECODE=1
 ENV UV_LINK_MODE=copy
+ENV UV_PYTHON_DOWNLOADS=0
 WORKDIR /app
-COPY --from=ghcr.io/astral-sh/uv:0.13.7@sha256:96f40d3904aad8d0bd010539001d36c8e2188b981e1334471a90c4a1d93bb490 /uv /uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv:0.13.9@sha256:d3b601f0c7b118bc1753febf7c41cc80981df678445e0254284eecf84db79a7d /uv /uvx /bin/
 COPY --from=tailwind /tailwindcss-extra /usr/local/bin/tailwindcss-extra
 RUN --mount=type=cache,target=/root/.cache/uv \
   --mount=type=bind,source=uv.lock,target=uv.lock \

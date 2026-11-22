@@ -1,0 +1,6 @@
+# Exclude tracked lockfiles and generated manifests from interactive code search (rg, fd).
+uv.lock
+mise.lock
+.mise/locks/
+assets/image-derivatives.json
+scripts/mcp_context_cost/measurement-package-lock.json

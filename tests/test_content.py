@@ -247,18 +247,11 @@ def test_images_get_figures_dimensions_responsive_ladder_and_loading(tmp_path: P
 @pytest.mark.parametrize("kind", [b"VP8 ", b"VP8L", b"VP8X"])
 def test_webp_dimensions_use_bounded_headers(
     tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
     kind: bytes,
 ) -> None:
     path = tmp_path / "image.webp"
     path.write_bytes(webp_image(37, 19, kind))
 
-    def unexpected_pillow_decode(_path: Path) -> None:
-        pytest.fail("valid WebP dimensions must not require a complete Pillow decode")
-
-    monkeypatch.setattr(content_module.Image, "open", unexpected_pillow_decode)
-
-    # The optimization is intentionally private; this proves integration skips Pillow.
     assert content_module._image_size(tmp_path, "/static/image.webp") == (37, 19)  # noqa: SLF001
 
 
@@ -291,6 +284,8 @@ def test_webp_dimensions_reject_malformed_riff_and_chunk_bounds(tmp_path: Path) 
     unknown_dimension_chunk = bytearray(lossy)
     unknown_dimension_chunk[12:16] = b"JUNK"
 
+    from www import assets as assets_module
+
     for name, data in {
         "declared-size.webp": declared_size,
         "first-chunk.webp": first_chunk,
@@ -307,7 +302,8 @@ def test_webp_dimensions_reject_malformed_riff_and_chunk_bounds(tmp_path: Path) 
     }.items():
         path = tmp_path / name
         path.write_bytes(data)
-        assert content_module._webp_size(path) is None, name  # noqa: SLF001
+        with pytest.raises(ValueError, match="cannot identify image file"):
+            assets_module.image_dimensions(path)
 
 
 def test_unrecognized_body_image_keeps_contextual_article_error(tmp_path: Path) -> None:
@@ -323,6 +319,8 @@ def test_unrecognized_body_image_keeps_contextual_article_error(tmp_path: Path) 
 
 
 def test_real_webp_dimensions_match_pillow() -> None:
+    from www import assets as assets_module
+
     paths = sorted(Path("static/img/articles").rglob("*.webp"))
 
     # Published articles are immutable, so the archive only grows: a floor catches lost
@@ -331,7 +329,7 @@ def test_real_webp_dimensions_match_pillow() -> None:
     for path in paths:
         with Image.open(path) as source_image:
             expected = source_image.size
-        assert content_module._webp_size(path) == expected, path  # noqa: SLF001
+        assert assets_module.image_dimensions(path) == expected, path
 
 
 def test_body_image_path_cannot_escape_static_tree(tmp_path: Path) -> None:
@@ -382,7 +380,7 @@ def test_inline_images_stay_inline_and_explicit_mp4_becomes_video(tmp_path: Path
 
     assert item.html.count("<figure>") == 0
     assert '<img decoding="async" width="16" height="16"' in item.html
-    assert "<video muted loop playsinline autoplay controls" in item.html
+    assert "<video muted loop playsinline data-autoplay controls" in item.html
     assert 'aria-label="editor demo"' in item.html
 
 
@@ -650,3 +648,39 @@ def test_known_image_sizes_skip_reading_media_but_keep_path_validation(tmp_path:
     assert content_module._image_size(tmp_path, "/static/missing.webp", known) == (10, 5)  # noqa: SLF001
     with pytest.raises(ArticleError, match="escapes the static asset tree"):
         content_module._image_size(tmp_path, "/static/../outside.webp", {"/static/../outside.webp": (1, 1)})  # noqa: SLF001
+
+
+def test_shortcut_reference_before_parenthesized_prose_resolves_cleanly() -> None:
+    source_md = "See [Guide] (for details).\n\n[Guide]: /articles/example/\n"
+    rendered = content_module._render_markdown(source_md).markdown  # noqa: SLF001
+    assert "[Guide](https://www.fmind.dev/articles/example/) (for details)." in rendered
+
+
+def test_absolute_article_html_rewrites_real_attributes_without_corrupting_code_blocks() -> None:
+    from www.publications import absolute_article_html
+
+    body = (
+        '<p><a href="/articles/">Articles</a> and <a href="#top">Top</a></p>'
+        '<pre><code>&lt;a href="/api/v1"&gt;sample&lt;/a&gt;</code></pre>'
+    )
+    rewritten = absolute_article_html(body, fragment_base="https://www.fmind.dev/articles/demo/")
+    assert 'href="https://www.fmind.dev/articles/"' in rewritten
+    assert 'href="https://www.fmind.dev/articles/demo/#top"' in rewritten
+    assert '&lt;a href="/api/v1"&gt;sample&lt;/a&gt;' in rewritten
+
+
+def test_real_mp4_video_dimensions_are_parsed_and_emitted_with_data_autoplay() -> None:
+    from www.assets import video_dimensions
+
+    mp4 = Path("static/img/articles/how-to-configure-vs-code-for-ai-ml-and-mlops-development-in-python/04.mp4")
+    dimensions = video_dimensions(mp4)
+    assert dimensions is not None
+    width, height = dimensions
+    assert width > 0
+    assert height > 0
+    article = parse_article(
+        "content/articles/how-to-configure-vs-code-for-ai-ml-and-mlops-development-in-python.md",
+        Path("content/articles/how-to-configure-vs-code-for-ai-ml-and-mlops-development-in-python.md").read_bytes(),
+        Path("static"),
+    )
+    assert f'<video width="{width}" height="{height}" muted loop playsinline data-autoplay controls' in article.html

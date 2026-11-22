@@ -196,20 +196,19 @@ def test_every_route_preserves_landmarks_single_h1_and_sticky_anchor_clearance(c
 
 def test_article_metadata_resolves_manifest_dimensions_and_tolerates_missing_or_external_media(
     snapshots: tuple[ApplicationAssets, ArticleCollection],
-    tmp_path: Any,
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from dataclasses import replace
 
-    from www import pages
-    from www.data import get_structured_data
     from www.models import Article
-    from www.pages import article_metadata
+    from www.pages import article_metadata, article_structured_data
 
     sample = snapshots[1].all[0]
+    image_sizes = {"/static/img/synthetic.webp": (1600, 900)}
 
     def posting_image(candidate: Article) -> dict[str, Any]:
-        enriched = json.loads(article_metadata(candidate, get_structured_data(candidate)).structured_data)
+        enriched = json.loads(
+            article_metadata(candidate, article_structured_data(candidate, image_sizes)).structured_data
+        )
         posting = next(node for node in enriched["@graph"] if node["@type"] == "BlogPosting")
         return posting["image"]
 
@@ -219,20 +218,6 @@ def test_article_metadata_resolves_manifest_dimensions_and_tolerates_missing_or_
         replace(sample, image_url="https://www.fmind.dev/static/img/nonexistent-cover.webp")
     )
 
-    manifest_ok = tmp_path / "manifest-ok.json"
-    manifest_ok.write_text(
-        json.dumps({"/static/img/synthetic.webp": {"hash": "12345678", "size": 100, "width": 1600, "height": 900}}),
-        encoding="utf-8",
-    )
-    monkeypatch.setattr(pages, "STATIC_MANIFEST", str(manifest_ok))
     synthetic_img = posting_image(replace(sample, image_url="https://www.fmind.dev/static/img/synthetic.webp"))
     assert synthetic_img["width"] == 1600
     assert synthetic_img["height"] == 900
-
-    for bad_name, payload in (("corrupt.json", "{corrupt"), ("list.json", "[]")):
-        bad_manifest = tmp_path / bad_name
-        bad_manifest.write_text(payload, encoding="utf-8")
-        monkeypatch.setattr(pages, "STATIC_MANIFEST", str(bad_manifest))
-        assert "width" not in posting_image(
-            replace(sample, image_url="https://www.fmind.dev/static/img/synthetic.webp")
-        )

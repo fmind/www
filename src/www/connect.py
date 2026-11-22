@@ -1,11 +1,8 @@
 """Conference contact details derived from the public portfolio."""
 
 from base64 import b64encode
-from io import BytesIO
 from pathlib import Path
 from urllib.parse import urlsplit
-
-from PIL import Image
 
 from www.data import BADGES, EXPERTISE, LANGUAGES, LEADERSHIP, METADATA, WORK_CITY, WORK_COUNTRY
 
@@ -25,19 +22,17 @@ def _text(value: str) -> str:
 
 
 def _portrait(static_dir: Path) -> str:
-    """Embed the public portrait as JPEG without camera or location metadata."""
-    path = static_dir / "img/avatar.webp"
+    """Embed the pre-generated, metadata-stripped public portrait JPEG."""
+    path = static_dir / "img/avatar-vcard.jpg"
     try:
-        with Image.open(path) as source:
-            portrait = source.convert("RGB")
-            portrait.thumbnail((384, 384))
-            portrait.info.clear()
-            output = BytesIO()
-            portrait.save(output, format="JPEG", quality=85)
+        payload = path.read_bytes()
     except OSError as error:
-        msg = f"read public contact portrait {path}: restore the committed avatar image"
+        msg = f"read public contact portrait {path}: run `mise run build:branding`"
         raise RuntimeError(msg) from error
-    return b64encode(output.getvalue()).decode("ascii")
+    if len(payload) < 4 or not payload.startswith(b"\xff\xd8") or not payload.endswith(b"\xff\xd9"):
+        msg = f"invalid public contact portrait {path}: run `mise run build:branding`"
+        raise RuntimeError(msg)
+    return b64encode(payload).decode("ascii")
 
 
 def _uri(value: str) -> str:

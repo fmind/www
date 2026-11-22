@@ -17,10 +17,11 @@ import www.sites.inputs as hosting_inputs
 from tests.llm_hosting_support import view
 from www.sites.agent import compare_hosting
 from www.sites.calculator import build_llm_self_hosting_view
+from www.sites.capacity import find_node_pool
 from www.sites.data import API_BASELINES, DEFAULT_HOSTING_INPUTS, DEMAND_PRESETS, FRONTIER_MODELS, GKE_NODE_POOLS
 from www.sites.economics import CLUSTER_HOURLY_USD
 from www.sites.formatting import format_usd2
-from www.sites.inputs import find_node_pool, hosting_url, scenario_parameters
+from www.sites.inputs import hosting_url, scenario_parameters
 from www.sites.models import BillingPlan
 
 PAGE = "/sites/llm-self-hosting/?mode=advanced"
@@ -216,10 +217,10 @@ def test_catalog_hides_footprints_of_unsupported_checkpoints(client: AppClient) 
     rows = re.findall(r"<tr>(.*?)</tr>", html[html.index('id="frontier-table"') :], flags=re.DOTALL)
     nemotron = next(row for row in rows if ">Nemotron 3.5 Super VL</a>" in row)  # Recipes stop at 114,688 tokens.
     qwen = next(row for row in rows if ">Qwen3.5 4B</a>" in row)
-    assert nemotron.count("<td>—</td>") == 2
+    assert len(re.findall(r"<td(?:\s+[^>]*)?>—</td>", nemotron)) == 2
     assert " GB</td>" not in nemotron
     assert " GB</td>" in qwen
-    assert "<td>—</td>" not in qwen
+    assert not re.search(r"<td(?:\s+[^>]*)?>—</td>", qwen)
     # The fleet cell names the row's own machine and precision, not the visitor's selection.
     assert "1 node / 1 GPU" in qwen
     assert f"{find_node_pool('g2-standard-12').name} · 16-bit</span>" in qwen

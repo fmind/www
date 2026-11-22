@@ -23,9 +23,9 @@ resource "google_bigquery_dataset" "billing" {
     user_by_email = "billing-export-bigquery@system.gserviceaccount.com"
   }
 
-  labels = {
+  labels = merge(local.default_labels, {
     purpose = "finops"
-  }
+  })
 
   lifecycle {
     prevent_destroy = true
@@ -45,7 +45,7 @@ resource "google_billing_budget" "website" {
   display_name    = "${var.project_id} gross (EUR${var.monthly_budget_eur})"
 
   budget_filter {
-    projects               = [for number in concat([data.google_project.current.number], var.budget_shared_project_numbers) : "projects/${number}"]
+    projects               = distinct([for number in concat([data.google_project.current.number], var.budget_shared_project_numbers) : "projects/${number}"])
     calendar_period        = "MONTH"
     credit_types_treatment = "EXCLUDE_ALL_CREDITS"
   }
@@ -60,6 +60,9 @@ resource "google_billing_budget" "website" {
 
   threshold_rules {
     threshold_percent = 0.5
+  }
+  threshold_rules {
+    threshold_percent = 0.8
   }
   threshold_rules {
     threshold_percent = 0.9
@@ -77,8 +80,5 @@ resource "google_billing_budget" "website" {
     monitoring_notification_channels = [google_monitoring_notification_channel.email.id]
   }
 
-  depends_on = [
-    google_project_service.billingbudgets,
-    google_project_service.cloudbilling,
-  ]
+  depends_on = [time_sleep.wait_for_apis]
 }

@@ -5,17 +5,18 @@ from datetime import UTC, datetime
 from math import ceil, floor
 from typing import Literal
 
-from .capacity import MONTHLY_HOURS, serving_capacity
+from .capacity import (
+    MONTHLY_HOURS,
+    configuration_issue,
+    nodes_for_model,
+    required_memory_gb,
+    serving_capacity,
+    weight_memory_gb,
+)
 from .data import (
     API_BASELINES,
 )
-from .inputs import (
-    configuration_issue,
-    nodes_for_model,
-    pilot_configuration_id,
-    required_memory_gb,
-    weight_memory_gb,
-)
+from .inputs import pilot_configuration_id
 from .models import (
     APIBaseline,
     APIMode,

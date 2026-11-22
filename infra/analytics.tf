@@ -29,10 +29,9 @@ resource "google_bigquery_dataset" "analytics" {
   default_partition_expiration_ms = 180 * 24 * 60 * 60 * 1000
   delete_contents_on_destroy      = false
 
-  labels = {
+  labels = merge(local.default_labels, {
     privacy = "cookieless"
-    service = var.service_name
-  }
+  })
 
   lifecycle {
     prevent_destroy = true

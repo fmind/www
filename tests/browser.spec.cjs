@@ -70,8 +70,8 @@ test(
       const settings = page.getByRole("button", { name: "Cookie settings", exact: true });
       await banner.getByRole("button", { name: "Reject", exact: true }).click();
       await expect(banner).toBeHidden();
-      // Focus leaves the hidden banner for the control that reopens it, without scrolling there.
-      await expect(settings).toBeFocused();
+      // Initial dismissal moves focus into main content without jumping down to the footer.
+      await expect(page.locator("#main-content")).toBeFocused();
       expect(await page.evaluate(() => scrollY)).toBe(0);
       expect(await page.evaluate(() => localStorage.getItem("fmind-consent"))).toBe("denied");
       await page.reload();
@@ -79,6 +79,12 @@ test(
       await page.locator("footer").getByRole("link", { name: "Privacy", exact: true }).click();
       await expect(page).toHaveURL(/\/privacy$/);
       expect(google).toEqual([]);
+      // Reopening from Cookie settings supports Escape to dismiss and returns focus to the opener.
+      await settings.click();
+      await expect(banner).toBeVisible();
+      await page.keyboard.press("Escape");
+      await expect(banner).toBeHidden();
+      await expect(settings).toBeFocused();
       await settings.click();
       await banner.getByRole("button", { name: "Accept", exact: true }).click();
       await expect.poll(() => google.length).toBe(1);
@@ -942,6 +948,67 @@ test("cost slider stays synchronized after back navigation", async ({ page }) =>
   expect(state.href).toBe(state.url);
 });
 
+test("hash-only navigation preserves unsaved calculator edits without refetching", async ({ page }) => {
+  await page.goto(calculator + "?mode=advanced");
+  let fetches = 0;
+  await page.route("**/sites/llm-self-hosting/?*", async (route) => {
+    fetches += 1;
+    await route.continue();
+  });
+  await page.locator("#requests").fill("777");
+  await page.locator("a[href=\"#cost-explorer\"]").click();
+  await expect(page).toHaveURL(/#cost-explorer$/);
+  await expect(page.locator("#requests")).toHaveValue("777");
+  await page.goBack();
+  await expect(page).not.toHaveURL(/#cost-explorer$/);
+  await expect(page.locator("#requests")).toHaveValue("777");
+  expect(fetches).toBe(0);
+});
+
+test("in-place scenario links keep focus inside the updated section", async ({ page }) => {
+  await page.goto(`${calculator}?model=gemma-4-26b-a4b`);
+  const planLink = page.locator("#recommended-fleet a[data-scenario-link]").first();
+  const planHref = await planLink.getAttribute("href");
+  await planLink.focus();
+  await planLink.press("Enter");
+  await expect(page).toHaveURL(new URL(planHref, page.url()).href);
+  await expect(page.locator("[data-update-status]")).toHaveText("Comparison updated.");
+  await expect(page.locator("#recommended-fleet")).toBeFocused();
+  await expect(page.locator("#recommended-fleet")).toBeInViewport();
+  const inspectLink = page.locator("#hosting-accelerators a[data-scenario-link]").first();
+  const inspectHref = await inspectLink.getAttribute("href");
+  await inspectLink.focus();
+  await inspectLink.press("Enter");
+  await expect(page).toHaveURL(new URL(inspectHref, page.url()).href);
+  await expect(page.locator("[data-update-status]")).toHaveText("Comparison updated.");
+  await expect(page.locator("#hosting-accelerators")).toBeFocused();
+  await expect(page.locator("#hosting-accelerators")).toBeInViewport();
+  const precisionLink = page.locator("a[id^='precision-'][data-scenario-link]").first();
+  const precisionId = await precisionLink.getAttribute("id");
+  const precisionHref = await precisionLink.getAttribute("href");
+  await precisionLink.focus();
+  await precisionLink.press("Enter");
+  await expect(page).toHaveURL(new URL(precisionHref, page.url()).href);
+  await expect(page.locator("[data-update-status]")).toHaveText("Comparison updated.");
+  await expect(page.locator(`#${precisionId}`)).toBeFocused();
+  await expect(page.locator(`#${precisionId}`)).toBeInViewport();
+  // Navigating back while focused on an ID-less link inside a surviving section anchors focus on that section.
+  const idlessAccelLink = page.locator("#hosting-accelerators a[data-scenario-link]").first();
+  await idlessAccelLink.focus();
+  await page.goBack();
+  await expect(page).toHaveURL(new URL(inspectHref, page.url()).href);
+  await expect(page.locator("[data-update-status]")).toHaveText("Comparison updated.");
+  await expect(page.locator("#hosting-accelerators")).toBeFocused();
+  await expect(page.locator("#hosting-accelerators")).toBeInViewport();
+  // Navigating back from a deep advanced-only control to simple mode scrolls focus onto the visible results heading.
+  await page.locator(`#${precisionId}`).focus();
+  await page.goBack();
+  await expect(page).toHaveURL(new URL(planHref, page.url()).href);
+  await expect(page.locator("[data-update-status]")).toHaveText("Comparison updated.");
+  await expect(page.locator("#executive-result")).toBeFocused();
+  await expect(page.locator("#executive-result")).toBeInViewport();
+});
+
 test("invalid optional inputs are visible when they receive focus", async ({ page }) => {
   await page.goto(calculator + "?mode=advanced");
   await page.locator("#measured-first").fill("4000");
@@ -1709,6 +1776,35 @@ test("MCP context calculator toggles servers with the keyboard", async ({ page }
   await page.locator("#reset-context").click();
   await expect(page.locator("#server-github")).toBeChecked();
   await expect(page.locator("#context-results")).toHaveText("17,536 tokens of tool definitions on every request");
+  // Browser Back after Reset restores the previous pushed calculator state.
+  await page.goBack();
+  await expect(page).toHaveURL(/server=filesystem/);
+  await expect(page.locator("#server-github")).not.toBeChecked();
+  await expect(page.locator("#context-results")).toHaveText("6,379 tokens of tool definitions on every request");
+});
+
+test("reduced motion keeps autoplay article videos paused and reverse tab stays clear of sticky header", async ({
+  browser,
+}, testInfo) => {
+  const context = await browser.newContext({ ...testInfo.project.use, reducedMotion: "reduce" });
+  try {
+    const page = await context.newPage();
+    await page.goto("/articles/how-to-configure-vs-code-for-ai-ml-and-mlops-development-in-python/");
+    const video = page.locator("video[data-autoplay]").first();
+    await expect(video).toBeVisible();
+    expect(await video.evaluate((el) => el.paused)).toBe(true);
+    expect(await video.getAttribute("width")).not.toBeNull();
+    expect(await video.getAttribute("height")).not.toBeNull();
+    // Focusing an element scrolled off-screen above the viewport must clear the sticky header (WCAG 2.4.11).
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    const headerHeight = await page.locator("header").first().evaluate((el) => el.getBoundingClientRect().height);
+    const upperLink = page.locator("article a[href]").first();
+    await upperLink.focus();
+    const top = await upperLink.evaluate((el) => el.getBoundingClientRect().top);
+    expect(top).toBeGreaterThanOrEqual(headerHeight - 1);
+  } finally {
+    await context.close();
+  }
 });
 
 test("MCP context calculator works without JavaScript and stays light", async ({ browser }, testInfo) => {

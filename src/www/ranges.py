@@ -79,9 +79,8 @@ def range_file_response(
 
     async def response(scope: Scope, receive: Receive, send: Send) -> None:
         del receive
-        file = await asyncio.to_thread(_open_regular_file, path)
+        file, size = await asyncio.to_thread(_open_regular_file, path)
         try:
-            size = os.fstat(file.fileno()).st_size
             request_headers = Headers.from_scope(scope)
             if_range = request_headers.get("if-range")
             method = scope.get("method", "GET")
@@ -143,16 +142,17 @@ def range_file_response(
     return response
 
 
-def _open_regular_file(path: Path) -> BinaryIO:
+def _open_regular_file(path: Path) -> tuple[BinaryIO, int]:
     # O_NONBLOCK prevents an attacker-controlled FIFO from stalling a worker
     # before fstat can enforce the regular-file boundary.
     flags = os.O_RDONLY | os.O_CLOEXEC | os.O_NONBLOCK
     descriptor = os.open(path, flags)
     try:
-        if not stat.S_ISREG(os.fstat(descriptor).st_mode):
+        metadata = os.fstat(descriptor)
+        if not stat.S_ISREG(metadata.st_mode):
             msg = f"static asset is not a regular file: {path}"
             raise ValueError(msg)
-        return os.fdopen(descriptor, "rb", buffering=0)
+        return os.fdopen(descriptor, "rb", buffering=0), metadata.st_size
     except BaseException:
         os.close(descriptor)
         raise

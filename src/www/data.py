@@ -1,12 +1,12 @@
 """Immutable portfolio copy shared by HTML, JSON, feeds, and MCP."""
 
 import json
+from collections.abc import Mapping, Sequence
 from urllib.parse import urlencode
 
 from markdown_it import MarkdownIt
 
 from www.models import (
-    Article,
     CertificationBadge,
     CertificationEntry,
     ExpertiseCard,
@@ -500,44 +500,27 @@ def _identity_graph() -> list[dict[str, object]]:
 IDENTITY_GRAPH: tuple[dict[str, object], ...] = tuple(_identity_graph())
 
 
-def json_ld(graph: list[dict[str, object]]) -> str:
-    return json.dumps({"@context": "https://schema.org", "@graph": graph}, ensure_ascii=False, separators=(",", ":"))
+def json_ld(graph: Sequence[Mapping[str, object]]) -> str:
+    return json.dumps(
+        {"@context": "https://schema.org", "@graph": list(graph)}, ensure_ascii=False, separators=(",", ":")
+    )
 
 
-def get_structured_data(article: Article | None = None) -> str:
-    """Build the connected Person/WebSite/ProfilePage or BlogPosting graph."""
+def get_structured_data() -> str:
+    """Build the connected Person/WebSite/ProfilePage graph for the homepage."""
     person_id = f"{METADATA.site_url}/#person"
     profile_id = f"{METADATA.site_url}/#profile"
     website_id = f"{METADATA.site_url}/#website"
-    graph: list[dict[str, object]] = [*IDENTITY_GRAPH]
-    if article is None:
-        graph.append(
-            {
-                "@id": profile_id,
-                "@type": "ProfilePage",
-                "url": f"{METADATA.site_url}/",
-                "name": METADATA.title,
-                "description": METADATA.description,
-                "mainEntity": {"@id": person_id},
-                "isPartOf": {"@id": website_id},
-            }
-        )
-    else:
-        canonical = article.url
-        graph.append(
-            {
-                "@id": f"{canonical}#article",
-                "@type": "BlogPosting",
-                "headline": article.title,
-                "description": article.description,
-                "url": canonical,
-                "datePublished": article.date.date().isoformat(),
-                "dateModified": article.modified_date().date().isoformat(),
-                "author": {"@id": person_id},
-                "isPartOf": {"@id": website_id},
-                "mainEntityOfPage": canonical,
-                "image": {"@type": "ImageObject", "url": article.image_url, "caption": article.image_alt},
-                "keywords": list(article.tags),
-            }
-        )
+    graph: list[Mapping[str, object]] = [
+        *IDENTITY_GRAPH,
+        {
+            "@id": profile_id,
+            "@type": "ProfilePage",
+            "url": f"{METADATA.site_url}/",
+            "name": METADATA.title,
+            "description": METADATA.description,
+            "mainEntity": {"@id": person_id},
+            "isPartOf": {"@id": website_id},
+        },
+    ]
     return json_ld(graph)

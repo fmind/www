@@ -171,7 +171,9 @@ def test_ai_architect_identity_is_shared_by_public_surfaces(client: AppClient) -
         body = client.get(path).text
         assert "AI Architect" in body
         assert "AI Security Architect" not in body
-    assert json.loads(Path("server.json").read_text())["title"] == "Fmind Freelance AI Architect Website"
+    assert (
+        json.loads(Path("server.json").read_text(encoding="utf-8"))["title"] == "Fmind Freelance AI Architect Website"
+    )
 
 
 def test_identity_location_and_services_are_discoverable(client: AppClient) -> None:

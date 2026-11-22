@@ -1,5 +1,8 @@
 # Docs: https://jactionlint.jdx.dev/config
-profile: default
+profile: pedantic
 rules:
-  # Dependabot runs security updates only, which ignore cooldowns; version updates are off.
+  # Dependabot runs security updates only, which ignore cooldowns; version updates are managed deliberately.
   dependabot-cooldown: off
+  dependabot-missing-actions-update: off
+  # Pin updates are reviewed manually via check:actions:online rather than held on release cooldown.
+  action-release-cooldown: off

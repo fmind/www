@@ -5,6 +5,7 @@
     "**/*-lock.json",
     ".git",
     ".mise/locks/**",
+    "infra/README.md",
     "tmp/",
     "static/dist/**"
   ],

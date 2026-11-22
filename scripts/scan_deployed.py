@@ -1,15 +1,23 @@
 """Resolve and scan every serving Cloud Run revision with Trivy."""
 
+import argparse
 import json
 import os
-import re
 import subprocess
 import sys
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Protocol
 
-from scripts.deploy import DeploymentTarget, DeploymentUsageError, validate_image_reference
+from scripts._cloud_run import (
+    DeploymentTarget,
+    DeploymentUsageError,
+    is_valid_revision_name,
+    validate_image_reference,
+)
+from scripts._cloud_run import (
+    build_service_describe_command as _build_service_describe_command,
+)
 
 type CompletedProcess = subprocess.CompletedProcess[str]
 # A Trivy scan pulls the image and may download its database; the scheduled job allows 20 minutes in total.
@@ -85,26 +93,13 @@ def extract_serving_revisions(service_data: object) -> list[str]:
 
 def validate_revision_name(revision: str, service_name: str) -> None:
     """Verify the revision name conforms to the repository service naming pattern."""
-    pattern = rf"^{re.escape(service_name)}-[a-z0-9-]+\Z"
-    if not re.fullmatch(pattern, revision):
+    if not is_valid_revision_name(revision, service_name):
         raise ScanError(f"revision name '{revision}' does not match service pattern '{service_name}-*'")
 
 
 def build_service_describe_command(target: DeploymentTarget) -> tuple[str, ...]:
     """Construct gcloud command to fetch Cloud Run service traffic configuration."""
-    return (
-        "gcloud",
-        "run",
-        "services",
-        "describe",
-        target.service_name,
-        "--project",
-        target.project_id,
-        "--region",
-        target.region,
-        "--format=json(status.traffic)",
-        "--quiet",
-    )
+    return _build_service_describe_command(target, format_spec="json(status.traffic)")
 
 
 def build_revision_describe_command(revision: str, target: DeploymentTarget) -> tuple[str, ...]:
@@ -129,6 +124,8 @@ def build_trivy_evidence_command(digest: str, output_path: Path) -> tuple[str, .
     return (
         "trivy",
         "image",
+        "--config",
+        "/dev/null",
         "--platform",
         "linux/amd64",
         "--scanners",
@@ -225,7 +222,16 @@ def main(
     environment: Mapping[str, str] = os.environ,
 ) -> int:
     """Resolve targets and run deployed image security qualification."""
-    if list(sys.argv[1:] if arguments is None else arguments):
+    args = tuple(sys.argv[1:] if arguments is None else arguments)
+    if any(arg in ("-h", "--help") for arg in args):
+        argparse.ArgumentParser(
+            prog="python -m scripts.scan_deployed",
+            description="Resolve and scan every serving or tagged Cloud Run revision with Trivy.",
+            allow_abbrev=False,
+            suggest_on_error=True,
+        ).print_help()
+        return 0
+    if args:
         sys.stderr.write("usage: python -m scripts.scan_deployed\n")
         return 2
     try:

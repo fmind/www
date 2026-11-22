@@ -1,5 +1,6 @@
 """Smoke-test the already-built production image archive through Docker."""
 
+import argparse
 import asyncio
 import http.client
 import json
@@ -433,6 +434,8 @@ async def _probe_mcp(port: int) -> None:
 def _probe_modern_mcp(port: int) -> None:
     try:
         asyncio.run(_probe_mcp(port))
+    except SmokeError:
+        raise
     except Exception as error:
         # SDK task groups can wrap protocol failures. Keep credentials and raw
         # response payloads out of CLI diagnostics while retaining the cause.
@@ -580,14 +583,20 @@ def smoke_image(target: str | Path | None = None, *, runner: Runner | None = Non
 
 
 def main(arguments: Sequence[str] | None = None) -> int:
-    args = sys.argv[1:] if arguments is None else arguments
-    if len(args) > 1:
-        sys.stderr.write("usage: python -m scripts.image_smoke [<image-archive-or-reference>]\n")
-        return 2
-    target = args[0] if args else None
+    parser = argparse.ArgumentParser(
+        prog="python -m scripts.image_smoke",
+        description=__doc__,
+        allow_abbrev=False,
+        suggest_on_error=True,
+    )
+    parser.add_argument("target", nargs="?", default=None, help="OCI archive path or remote image reference")
+    try:
+        parsed = parser.parse_args(arguments)
+    except SystemExit as exit_signal:
+        return exit_signal.code if isinstance(exit_signal.code, int) else 1
     try:
         with _termination_handlers():
-            smoke_image(target)
+            smoke_image(parsed.target)
     except TerminationRequestedError as error:
         sys.stderr.write(f"image smoke interrupted: {error}\n")
         return 128 + error.signal_number

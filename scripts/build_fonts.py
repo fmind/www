@@ -1,4 +1,4 @@
-#!/usr/bin/env -S uv run --script
+#!/usr/bin/env -S uv run --quiet --script
 # /// script
 # requires-python = ">=3.14"
 # dependencies = ["fonttools[woff]==4.65.0"]
@@ -15,13 +15,17 @@ Google's own brand use; the output is verified to contain none.
 Run it after bumping a release tag, then commit the regenerated WOFF2 files.
 """
 
+import argparse
 import hashlib
 import io
 import sys
+import tempfile
 import urllib.request
 import zipfile
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
+from types import MappingProxyType
 
 REPOSITORY = Path(__file__).resolve().parent.parent
 STATIC_FONTS = REPOSITORY / "static" / "fonts"
@@ -47,7 +51,7 @@ class FontBuild:
     # SHA-256 of the release asset, matching the digest GitHub publishes for it.
     sha256: str
     member: str
-    axes: dict[str, tuple[float, float] | float]
+    axes: Mapping[str, tuple[float, float] | float]
     features: tuple[str, ...]
     unicodes: str
     output: str
@@ -65,7 +69,7 @@ GOOGLE_SANS = FontBuild(
     url="https://github.com/googlefonts/googlesans/releases/download/v14.000/GoogleSans-v14.000.zip",
     sha256="d338f0e74f5eabead86a85b87edf4cc50cd6561196dbe173d1db4139e95b3ca7",
     member="build/GoogleSans/variable/GoogleSans[GRAD,opsz,wght].ttf",
-    axes={"wght": (400, 700), "GRAD": 0},
+    axes=MappingProxyType({"wght": (400, 700), "GRAD": 0}),
     features=("kern", "liga", "calt", "tnum"),
     unicodes=f"{LATIN},{PROSE_MARKS}",
     output="GoogleSans-Variable.woff2",
@@ -76,7 +80,7 @@ GOOGLE_SANS_CODE = FontBuild(
     url="https://github.com/googlefonts/googlesans-code/releases/download/v7.001/GoogleSansCode-v7.001.zip",
     sha256="eebba2a438882396e8530cad6d6cb80182b0afb6e9e0ad07b7340359a53ba2e9",
     member="GoogleSansCode[MONO,wght].ttf",
-    axes={"wght": (300, 800), "MONO": 1},
+    axes=MappingProxyType({"wght": (300, 800), "MONO": 1}),
     features=("kern", "calt"),
     unicodes=f"{LATIN},{BOX_DRAWING}",
     output="GoogleSansCode-Variable.woff2",
@@ -126,42 +130,56 @@ def build(font_build: FontBuild) -> tuple[int, int]:
     from fontTools.ttLib import TTFont  # ty: ignore[import-not-found]
     from fontTools.varLib import instancer  # ty: ignore[import-not-found]
 
-    archive = zipfile.ZipFile(io.BytesIO(download(font_build)))
+    with zipfile.ZipFile(io.BytesIO(download(font_build))) as archive:
+        member_bytes = archive.read(font_build.member)
     # Preserve the upstream timestamp through both serialization passes so a
     # rebuild does not change immutable asset hashes just because time passed.
-    font = TTFont(io.BytesIO(archive.read(font_build.member)), recalcTimestamp=False)
-    instancer.instantiateVariableFont(font, font_build.axes, inplace=True)
-    # Round-trip the instance: the subsetter reads variation tables that only
-    # become consistent once the clamped font has been serialized again.
     instanced = io.BytesIO()
-    font.save(instanced)
-    font = TTFont(instanced, recalcTimestamp=False)
+    with TTFont(io.BytesIO(member_bytes), recalcTimestamp=False) as source_font:
+        instancer.instantiateVariableFont(source_font, dict(font_build.axes), inplace=True)
+        # Round-trip the instance: the subsetter reads variation tables that only
+        # become consistent once the clamped font has been serialized again.
+        source_font.save(instanced)
 
-    options = subset.Options()
-    options.flavor = "woff2"
-    options.layout_features = list(font_build.features)
-    # Layout closure would pull in every glyph a feature can produce, including
-    # the reserved Google logo ligatures. Keeping the glyph set cmap-driven
-    # drops them (and the rules that reach them) at the cost of the optional
-    # fi/fl ligature glyphs, which this design never relies on.
-    options.layout_closure = False
-    subsetter = subset.Subsetter(options=options)
-    subsetter.populate(unicodes=parse_unicodes(font_build.unicodes))
-    subsetter.subset(font)
+    instanced.seek(0)
+    with TTFont(instanced, recalcTimestamp=False) as font:
+        options = subset.Options()
+        options.flavor = "woff2"
+        options.layout_features = list(font_build.features)
+        # Layout closure would pull in every glyph a feature can produce, including
+        # the reserved Google logo ligatures. Keeping the glyph set cmap-driven
+        # drops them (and the rules that reach them) at the cost of the optional
+        # fi/fl ligature glyphs, which this design never relies on.
+        options.layout_closure = False
+        subsetter = subset.Subsetter(options=options)
+        subsetter.populate(unicodes=parse_unicodes(font_build.unicodes))
+        subsetter.subset(font)
 
-    reserved = [name for name in font.getGlyphOrder() if "logo" in name.lower()]
-    if reserved:
-        msg = f"{font_build.family} subset retained reserved brand glyphs: {reserved}"
-        raise RuntimeError(msg)
+        reserved = [name for name in font.getGlyphOrder() if "logo" in name.lower()]
+        if reserved:
+            msg = f"{font_build.family} subset retained reserved brand glyphs: {reserved}"
+            raise RuntimeError(msg)
 
-    destination = font_build.destination
-    previous = destination.stat().st_size if destination.is_file() else 0
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    subset.save_font(font, destination, options)
+        destination = font_build.destination
+        previous = destination.stat().st_size if destination.is_file() else 0
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        with tempfile.NamedTemporaryFile(
+            dir=destination.parent, prefix=f".{destination.name}.", suffix=".tmp", delete=False
+        ) as handle:
+            temporary = Path(handle.name)
+        try:
+            subset.save_font(font, temporary, options)
+            temporary.chmod(0o644)
+            temporary.replace(destination)
+        except BaseException:
+            temporary.unlink(missing_ok=True)
+            raise
     return previous, destination.stat().st_size
 
 
-def main() -> int:
+def main(argv: Sequence[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__, allow_abbrev=False, suggest_on_error=True)
+    parser.parse_args(argv)
     for font_build in BUILDS:
         previous, current = build(font_build)
         change = f"{previous / 1024:.1f} KB -> " if previous else ""

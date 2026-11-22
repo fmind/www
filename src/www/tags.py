@@ -1,5 +1,7 @@
 """Closed, display-ordered article tag vocabulary."""
 
+from collections.abc import Iterable
+
 from www.models import Tag
 
 TAGS = (
@@ -29,5 +31,5 @@ def is_tag(name: str) -> bool:
     return name in _TAG_ORDER
 
 
-def sort_tags(tags: tuple[str, ...] | list[str] | set[str]) -> tuple[str, ...]:
+def sort_tags(tags: Iterable[str]) -> tuple[str, ...]:
     return tuple(sorted(tags, key=lambda name: (tag_order(name), name)))

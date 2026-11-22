@@ -5,6 +5,7 @@ resource "google_artifact_registry_repository" "repo" {
   repository_id = var.repository_id
   description   = "Docker repository for the www portfolio application"
   format        = "DOCKER"
+  labels        = local.default_labels
 
   cleanup_policy_dry_run = false
 

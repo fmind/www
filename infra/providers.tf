@@ -24,6 +24,22 @@ terraform {
     bucket = "www-fmind-dev-tfstate"
     prefix = "infra/state"
   }
+
+  # Ready-to-migrate OpenTofu state/plan encryption with Cloud KMS (two-step migration):
+  # 1. Provision a dedicated KMS keyring + symmetric key in europe-west1 (outside this state).
+  # 2. Add an `encryption {}` block with `key_provider "gcp_kms"`, `method "aes_gcm"`, and
+  #    `method "unencrypted" "migrate" {}` as `state.fallback`, run `tofu apply -refresh-only`
+  #    to re-encrypt state, verify the GCS state object is encrypted, then drop `fallback` and set `enforced = true`.
+  # Ref: https://opentofu.org/docs/language/state/encryption/
+}
+
+locals {
+  default_labels = {
+    env         = "production"
+    service     = var.service_name
+    owner       = "fmind"
+    cost-center = "www"
+  }
 }
 
 provider "google" {

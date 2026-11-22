@@ -23,6 +23,7 @@
         {% if view.inputs.mode == "advanced" %}{{ demand_form(view) }}<div id="hosting-options" class="space-y-6">{{ fleet_form(view) }}{{ api_options(view) }}</div>{% endif %}
         <div class="flex flex-wrap items-center gap-4"><button id="update-comparison" class="btn btn-primary rounded-xl font-bold min-h-12" type="submit">Update comparison</button><a class="btn btn-ghost border border-base-300 rounded-xl min-h-12" id="reset-scenario" data-scenario-link href="/sites/llm-self-hosting/">Reset</a><p class="text-sm text-base-content/70">Share the URL to save this scenario.</p></div>
       </form>
+      <div data-update-error-slot></div>
       {{ results(view) }}
       {% if view.inputs.mode == "advanced" %}
       {% if not view.estimate.compatibility_issue %}{{ cost_explorer(view) }}
@@ -36,16 +37,16 @@
           <p class="text-base-content/75 leading-relaxed mt-3">Released checkpoint formats and published serving recipes. Each model is sized on its own lowest-cost compatible machine for your pricing plan, preferring one host, with your workload and fleet settings; models without a compatible machine have no usable estimate.</p>
         </div>
         {% call comparison_table("Open-weight model comparison, scroll horizontally on small screens", "Open-weight models and modeled GKE footprint and cost", table_class="table table-zebra w-full") %}
-          <thead class="text-base-content"><tr><th scope="col">Model</th><th scope="col">License</th><th scope="col">Memory</th><th scope="col">Fleet</th><th scope="col">Monthly</th><th scope="col">Decision</th></tr></thead>
+          <thead class="text-base-content"><tr><th scope="col">Model</th><th scope="col">License</th><th scope="col" class="text-right">Memory</th><th scope="col">Fleet</th><th scope="col" class="text-right">Monthly</th><th scope="col">Decision</th></tr></thead>
           <tbody>
             {% for row in view.comparison %}
               <tr>
                 <th scope="row"><a class="link link-primary font-semibold" href="{{ row.model.weights_url }}" target="_blank" rel="noopener noreferrer">{{ row.model.name }}</a><span class="block text-xs font-normal text-base-content/70 mt-1">{{ row.model.creator }} · {{ model_size(row.model) }} parameters</span></th>
                 <td><a class="link" href="{{ row.model.weights_url }}" target="_blank" rel="noopener noreferrer">{{ row.model.license }}</a><span class="block text-xs text-base-content/70">{{ row.model.license_class }}</span></td>
                 {# Unsupported rows have no real checkpoint or topology to size. #}
-                {% if row.estimate.compatibility_issue %}<td>—</td><td>—</td>{% else %}<td>{{ format_decimal(row.estimate.required_memory_gb, 0) }} GB</td>
+                {% if row.estimate.compatibility_issue %}<td class="text-right tabular-nums">—</td><td>—</td>{% else %}<td class="text-right tabular-nums whitespace-nowrap">{{ format_decimal(row.estimate.required_memory_gb, 0) }} GB</td>
                 <td>{{ format_count(row.estimate.total_nodes, "node") }} / {{ format_count(row.estimate.total_gpus, row.node.chip) }}<span class="block text-xs text-base-content/70">{{ row.node.name }} · {{ row.quantization.name.split(" · ")[0] }}</span></td>{% endif %}
-                <td>{% if row.estimate.compatibility_issue %}Unavailable{% else %}{{ format_usd(row.estimate.total_monthly_usd) }}{% endif %}</td>
+                <td class="text-right tabular-nums whitespace-nowrap">{% if row.estimate.compatibility_issue %}Unavailable{% else %}{{ format_usd(row.estimate.total_monthly_usd) }}{% endif %}</td>
                 <td>{{ row.decision }}</td>
               </tr>
             {% endfor %}

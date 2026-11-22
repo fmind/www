@@ -15,22 +15,25 @@ dependencies = [
   "litestar[brotli]>=2.24.0,<3",
   "markdown-it-py>=4.3.0,<5",
   "markupsafe>=3.0.3,<4",
-  "mcp>=2.1.1,<3",
-  "mcp-types>=2.1.1,<3",
+  "mcp>=2.3.0,<3",
+  "mcp-types>=2.3.0,<3",
   "mdit-py-plugins>=0.6.1,<0.7",
-  "pillow>=13.0.0,<14",
   "pydantic>=2.14.2,<3",
   "pygments>=2.21.0,<3",
-  "structlog>=26.1.0,<27",
+  "starlette>=1.0.0,<2",
 ]
 
 [dependency-groups]
 ops = ["anyio>=4.15.1,<5", "httpx2>=2.12.0,<3"]
 dev = [
   { include-group = "ops" },
+  "deptry>=0.24.0,<1",
   "granian[reload]>=2.8.2,<3",
   "jsonschema>=4.26.0,<5",
+  "pillow>=13.0.0,<14",
   "pytest-cov>=7.1.0,<8",
+  "pytest-socket>=0.7.0,<1",
+  "pytest-timeout>=2.3.1,<3",
   "pytest>=9.1.1,<10",
   "ruff>=0.17.1,<0.18",
   "ty>=0.0.100,<0.1",
@@ -41,8 +44,11 @@ dev = [
 www = "www.__main__:main"
 
 [build-system]
-requires = ["uv_build==0.13.7"]
+requires = ["uv_build==0.13.9"]
 build-backend = "uv_build"
+
+[tool.deptry]
+known_first_party = ["www", "scripts"]
 
 [tool.ruff]
 line-length = 120
@@ -58,7 +64,9 @@ select = [
   "ARG", # flake8-unused-arguments: enforce clean callable signatures
   "ASYNC", # flake8-async: async/await pitfalls and best practices
   "B", # flake8-bugbear: common bugs and design defects
+  "BLE", # flake8-blind-except: prevent silent bare/broad except blocks
   "C4", # flake8-comprehensions: clean list/dict/set comprehensions
+  "DTZ", # flake8-datetimez: enforce timezone-aware datetimes
   "E", # pycodestyle errors: style guide errors
   "ERA", # eradicate: detect and remove commented-out code
   "F", # pyflakes: logical errors and unused imports/variables
@@ -70,6 +78,8 @@ select = [
   "PERF", # perflint: performance anti-patterns
   "PGH", # pygrep-hooks: require specific suppression rules
   "PIE", # flake8-pie: miscellaneous code improvements
+  "PLE", # pylint errors: catch definite bugs
+  "PLW", # pylint warnings: catch suspicious constructs
   "PT", # flake8-pytest-style: idiomatic pytest patterns
   "PTH", # flake8-use-pathlib: prefer modern pathlib over os.path
   "Q", # flake8-quotes: consistent quote usage
@@ -96,12 +106,16 @@ ignore = [
   "T201", # diagnostic output is useful in test helpers.
 ]
 
-[tool.pytest.ini_options]
+[tool.ty.rules]
+blanket-ignore-comment = "error"
+
+[tool.pytest]
 testpaths = ["tests"]
-addopts = ["-ra", "--strict-config", "--strict-markers"]
+strict = true
+addopts = ["-ra", "--disable-socket", "--allow-hosts=127.0.0.1,::1", "--allow-unix-socket"]
 filterwarnings = ["error"]
 pythonpath = ["src", "."]
-xfail_strict = true
+timeout = "60"
 
 [tool.coverage.run]
 branch = true

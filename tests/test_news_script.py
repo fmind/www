@@ -19,7 +19,7 @@ from pathlib import Path
 
 import pytest
 
-from scripts import news
+from scripts import news, news_fetch
 
 ARTICLE = (
     '<html><head><meta property="og:title" content="A &amp; B"><meta name="description" content=\'It "works".\'>'
@@ -101,7 +101,7 @@ def test_prepare_reports_unreachable_shorteners_as_invalid(tmp_path: Path) -> No
 
 
 def test_page_facts_read_open_graph_and_body_length() -> None:
-    facts = news.source_facts("https://example.com/new", FakeWeb({"https://example.com/new": ARTICLE}))
+    facts = news_fetch.source_facts("https://example.com/new", FakeWeb({"https://example.com/new": ARTICLE}))
 
     assert facts["status"] == "ok"
     assert facts["title"] == "A & B"
@@ -112,7 +112,7 @@ def test_page_facts_read_open_graph_and_body_length() -> None:
 
 
 def test_fetch_errors_are_reported_not_swallowed() -> None:
-    facts = news.source_facts("https://example.com/down", FakeWeb({}))
+    facts = news_fetch.source_facts("https://example.com/down", FakeWeb({}))
 
     assert facts["status"] == "fetch_error"
     assert facts["error"] == "OSError: no route to https://example.com/down"
@@ -129,7 +129,7 @@ def test_youtube_facts_use_oembed_and_watch_page() -> None:
         }
     )
 
-    facts = news.source_facts(url, web)
+    facts = news_fetch.source_facts(url, web)
 
     assert (facts["title"], facts["description"], facts["duration"]) == ("Talk", "Line one Line two", "1h 2m")
 
@@ -139,8 +139,8 @@ def test_youtube_requires_watch_page_description_instead_of_guessing_from_author
     oembed = "https://www.youtube.com/oembed?url=https%3A%2F%2Fwww.youtube.com%2Fwatch%3Fv%3Dabc&format=json"
     meta = json.dumps({"title": "Talk", "author_name": "Speaker"})
 
-    failed_watch = news.source_facts(url, FakeWeb({oembed: meta}))
-    empty_watch = news.source_facts(url, FakeWeb({oembed: meta, url: '"lengthSeconds":"120"'}))
+    failed_watch = news_fetch.source_facts(url, FakeWeb({oembed: meta}))
+    empty_watch = news_fetch.source_facts(url, FakeWeb({oembed: meta, url: '"lengthSeconds":"120"'}))
 
     assert (failed_watch["status"], failed_watch["title"], failed_watch["description"]) == ("fetch_error", "Talk", "")
     assert failed_watch["error"] == f"watch page: OSError: no route to {url}"
@@ -159,7 +159,7 @@ def test_github_facts_combine_api_license_topics_and_readme() -> None:
         }
     )
 
-    facts = news.source_facts("https://github.com/org/tool", web)
+    facts = news_fetch.source_facts("https://github.com/org/tool", web)
 
     assert facts["title"] == "org/tool"
     assert facts["description"] == "A tool."
@@ -179,8 +179,8 @@ def test_github_keeps_repository_facts_without_a_readme_only_when_described() ->
         {"https://api.github.com/repos/org/tool": json.dumps({"full_name": "org/tool", "license": {"spdx_id": "MIT"}})}
     )
 
-    ok_facts = news.source_facts("https://github.com/org/tool", described)
-    empty_facts = news.source_facts("https://github.com/org/tool", undescribed)
+    ok_facts = news_fetch.source_facts("https://github.com/org/tool", described)
+    empty_facts = news_fetch.source_facts("https://github.com/org/tool", undescribed)
 
     assert (ok_facts["status"], ok_facts["title"], ok_facts["description"], ok_facts["excerpt"]) == (
         "ok",
@@ -204,7 +204,7 @@ def test_github_keeps_repository_facts_without_a_readme_only_when_described() ->
 def test_github_non_repo_paths_and_api_outages_fall_back_to_page_facts(url: str) -> None:
     web = FakeWeb({url: ARTICLE})
 
-    facts = news.source_facts(url, web)
+    facts = news_fetch.source_facts(url, web)
 
     assert (facts["status"], facts["title"]) == ("ok", "A & B")
 
@@ -226,8 +226,8 @@ def test_arxiv_and_x_facts() -> None:
         }
     )
 
-    paper = news.source_facts("https://arxiv.org/abs/2601.00001", arxiv)
-    tweet = news.source_facts("https://x.com/a/status/1", post)
+    paper = news_fetch.source_facts("https://arxiv.org/abs/2601.00001", arxiv)
+    tweet = news_fetch.source_facts("https://x.com/a/status/1", post)
 
     assert (paper["title"], paper["description"]) == ("Paper", "Finds things.")
     assert (tweet["title"], tweet["description"]) == ("A on X", "Shipped v2")
@@ -236,7 +236,7 @@ def test_arxiv_and_x_facts() -> None:
 def test_empty_arxiv_feed_is_a_fetch_error() -> None:
     web = FakeWeb({"https://export.arxiv.org/api/query?id_list=0": '<feed xmlns="http://www.w3.org/2005/Atom"/>'})
 
-    assert news.source_facts("https://arxiv.org/abs/0", web)["status"] == "fetch_error"
+    assert news_fetch.source_facts("https://arxiv.org/abs/0", web)["status"] == "fetch_error"
 
 
 @pytest.mark.parametrize(
@@ -248,7 +248,7 @@ def test_empty_arxiv_feed_is_a_fetch_error() -> None:
 )
 def test_arxiv_rejects_xml_dtd_and_entity_declarations(payload: str) -> None:
     web = FakeWeb({"https://export.arxiv.org/api/query?id_list=0": payload})
-    facts = news.source_facts("https://arxiv.org/abs/0", web)
+    facts = news_fetch.source_facts("https://arxiv.org/abs/0", web)
 
     assert facts["status"] == "fetch_error"
     assert "disallowed XML declarations" in facts["error"]
@@ -267,14 +267,14 @@ def test_arxiv_rejects_xml_dtd_and_entity_declarations(payload: str) -> None:
     ],
 )
 def test_public_https_connection_rejects_non_global_addresses(monkeypatch: pytest.MonkeyPatch, address: str) -> None:
-    family = news.socket.AF_INET6 if ":" in address else news.socket.AF_INET
+    family = news_fetch.socket.AF_INET6 if ":" in address else news_fetch.socket.AF_INET
     sockaddr = (address, 443, 0, 0) if ":" in address else (address, 443)
     monkeypatch.setattr(
-        news.socket,
+        news_fetch.socket,
         "getaddrinfo",
-        lambda *_args, **_kwargs: [(family, news.socket.SOCK_STREAM, 6, "", sockaddr)],
+        lambda *_args, **_kwargs: [(family, news_fetch.socket.SOCK_STREAM, 6, "", sockaddr)],
     )
-    connection = news.PublicHTTPSConnection("rebind.example", 443, timeout=2.0)
+    connection = news_fetch.PublicHTTPSConnection("rebind.example", 443, timeout=2.0)
 
     with pytest.raises(ValueError, match="refusing non-global address"):
         connection.connect()
@@ -298,17 +298,19 @@ def test_public_https_connection_binds_verified_global_socket_and_sni(monkeypatc
             pass
 
     monkeypatch.setattr(
-        news.socket,
+        news_fetch.socket,
         "getaddrinfo",
-        lambda *_args, **_kwargs: [(news.socket.AF_INET, news.socket.SOCK_STREAM, 6, "", ("93.184.216.34", 443))],
+        lambda *_args, **_kwargs: [
+            (news_fetch.socket.AF_INET, news_fetch.socket.SOCK_STREAM, 6, "", ("93.184.216.34", 443))
+        ],
     )
-    monkeypatch.setattr(news.socket, "socket", FakeSocket)
+    monkeypatch.setattr(news_fetch.socket, "socket", FakeSocket)
     monkeypatch.setattr(
-        news._TLS_CONTEXT,  # noqa: SLF001
+        news_fetch._TLS_CONTEXT,  # noqa: SLF001
         "wrap_socket",
         lambda raw, *, server_hostname: wrapped.append((raw, server_hostname)) or "tls-socket",
     )
-    connection = news.PublicHTTPSConnection("example.com", 443, timeout=3.0)
+    connection = news_fetch.PublicHTTPSConnection("example.com", 443, timeout=3.0)
     connection.connect()
 
     assert connected == [("93.184.216.34", 443)]
@@ -323,20 +325,20 @@ def test_tls_context_enforces_tls_1_2_minimum(monkeypatch: pytest.MonkeyPatch) -
         context.minimum_version = ssl.TLSVersion.MINIMUM_SUPPORTED
         return context
 
-    monkeypatch.setattr(news.ssl, "create_default_context", relaxed_default_context)
+    monkeypatch.setattr(news_fetch.ssl, "create_default_context", relaxed_default_context)
 
-    assert news._tls_context().minimum_version == ssl.TLSVersion.TLSv1_2  # noqa: SLF001
-    assert news._TLS_CONTEXT.minimum_version >= ssl.TLSVersion.TLSv1_2  # noqa: SLF001
+    assert news_fetch._tls_context().minimum_version == ssl.TLSVersion.TLSv1_2  # noqa: SLF001
+    assert news_fetch._TLS_CONTEXT.minimum_version >= ssl.TLSVersion.TLSv1_2  # noqa: SLF001
 
 
 def test_fetch_text_refuses_plain_http() -> None:
     with pytest.raises(ValueError, match="refusing non-HTTPS URL"):
-        news.fetch_text("http://example.com/")
+        news_fetch.fetch_text("http://example.com/")
 
 
 @pytest.mark.parametrize("target", ["http://127.0.0.1:8080/admin", "ftp://example.com/file"])
 def test_redirects_off_https_are_refused_before_the_next_request(target: str) -> None:
-    handler = news.HttpsOnlyRedirect()
+    handler = news_fetch.HttpsOnlyRedirect()
     request = urllib.request.Request("https://example.com/start")
     response = io.BytesIO(b"moved")
 
@@ -374,9 +376,9 @@ class FakeResponse:
 
 
 def test_fetch_text_reads_a_bounded_body_through_the_https_only_opener(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(news.OPENER, "open", lambda *_args, **_kwargs: FakeResponse(b"abc", b"def", b"ghi"))
+    monkeypatch.setattr(news_fetch.OPENER, "open", lambda *_args, **_kwargs: FakeResponse(b"abc", b"def", b"ghi"))
 
-    assert news.fetch_text("https://example.com/", max_bytes=5) == ("https://example.com/final", "abcde")
+    assert news_fetch.fetch_text("https://example.com/", max_bytes=5) == ("https://example.com/final", "abcde")
 
 
 def test_fetch_text_decompresses_gzip_and_deflate_bodies(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -386,27 +388,29 @@ def test_fetch_text_decompresses_gzip_and_deflate_bodies(monkeypatch: pytest.Mon
     deflated_zlib = zlib.compress(b"zlib deflate")
 
     monkeypatch.setattr(
-        news.OPENER, "open", lambda *_a, **_k: FakeResponse(gzipped, headers={"Content-Encoding": "gzip"})
+        news_fetch.OPENER, "open", lambda *_a, **_k: FakeResponse(gzipped, headers={"Content-Encoding": "gzip"})
     )
-    assert news.fetch_text("https://example.com/gz") == ("https://example.com/final", "hello gzipped world")
+    assert news_fetch.fetch_text("https://example.com/gz") == ("https://example.com/final", "hello gzipped world")
 
     monkeypatch.setattr(
-        news.OPENER, "open", lambda *_a, **_k: FakeResponse(deflated_raw, headers={"Content-Encoding": "deflate"})
+        news_fetch.OPENER, "open", lambda *_a, **_k: FakeResponse(deflated_raw, headers={"Content-Encoding": "deflate"})
     )
-    assert news.fetch_text("https://example.com/def1") == ("https://example.com/final", "raw deflate")
+    assert news_fetch.fetch_text("https://example.com/def1") == ("https://example.com/final", "raw deflate")
 
     monkeypatch.setattr(
-        news.OPENER, "open", lambda *_a, **_k: FakeResponse(deflated_zlib, headers={"Content-Encoding": "deflate"})
+        news_fetch.OPENER,
+        "open",
+        lambda *_a, **_k: FakeResponse(deflated_zlib, headers={"Content-Encoding": "deflate"}),
     )
-    assert news.fetch_text("https://example.com/def2") == ("https://example.com/final", "zlib deflate")
+    assert news_fetch.fetch_text("https://example.com/def2") == ("https://example.com/final", "zlib deflate")
 
     monkeypatch.setattr(
-        news.OPENER,
+        news_fetch.OPENER,
         "open",
         lambda *_a, **_k: FakeResponse(b"not-valid-deflate", headers={"Content-Encoding": "deflate"}),
     )
     with pytest.raises(OSError, match="error"):
-        news.fetch_text("https://example.com/bad-deflate")
+        news_fetch.fetch_text("https://example.com/bad-deflate")
 
 
 def test_aistudio_facts_read_docs_markdown_and_editorial_learn_json() -> None:
@@ -416,7 +420,10 @@ def test_aistudio_facts_read_docs_markdown_and_editorial_learn_json() -> None:
                 '# What\'s new in Gemini 4 Carbon {% id="top" %}\n\n'
                 "Gemini 4 Carbon (`gemini-4-carbon`) supports a 1M context window.\n"
             ),
-            news.AISTUDIO_MANIFEST: json.dumps(
+            "https://aistudio.google.com/docs/plain-doc.md": (
+                "\n\n# Plain Heading\n\nBody paragraph without braces.\n"
+            ),
+            news_fetch.AISTUDIO_MANIFEST: json.dumps(
                 {
                     "pages": {
                         "gemini-4-carbon-developer-guide": {
@@ -432,11 +439,19 @@ def test_aistudio_facts_read_docs_markdown_and_editorial_learn_json() -> None:
                     }
                 }
             ),
-            f"{news.AISTUDIO_PAGES}/id-1.json": json.dumps(
+            f"{news_fetch.AISTUDIO_PAGES}/id-1.json": json.dumps(
                 {
                     "modules": [
                         {"type": "hero", "content": {"headline": "Carbon Guide", "subhead": "Deep reasoning."}},
-                        {"type": "body_text", "content": {"sections": [{"body": "<p>Supports 1M tokens.</p>"}]}},
+                        {
+                            "type": "body_text",
+                            "content": {
+                                "sections": [
+                                    {"body": "<p>Supports 1M tokens.</p>"},
+                                    {"code": 'example {"body":"ignored fake"} literal'},
+                                ]
+                            },
+                        },
                     ]
                 }
             ),
@@ -444,20 +459,24 @@ def test_aistudio_facts_read_docs_markdown_and_editorial_learn_json() -> None:
         }
     )
 
-    doc = news.source_facts("https://aistudio.google.com/docs/whats-new-gemini-4-carbon", web)
-    learn = news.source_facts("https://aistudio.google.com/learn/gemini-4-carbon-developer-guide", web)
-    partial = news.source_facts("https://aistudio.google.com/learn/missing-body", web)
-    unknown = news.source_facts("https://aistudio.google.com/learn/unknown-slug", web)
-    other = news.source_facts("https://aistudio.google.com/prompts", web)
+    doc = news_fetch.source_facts("https://aistudio.google.com/docs/whats-new-gemini-4-carbon", web)
+    plain = news_fetch.source_facts("https://aistudio.google.com/docs/plain-doc", web)
+    learn = news_fetch.source_facts("https://aistudio.google.com/learn/gemini-4-carbon-developer-guide", web)
+    partial = news_fetch.source_facts("https://aistudio.google.com/learn/missing-body", web)
+    unknown = news_fetch.source_facts("https://aistudio.google.com/learn/unknown-slug", web)
+    other = news_fetch.source_facts("https://aistudio.google.com/prompts", web)
 
     assert (doc["status"], doc["title"]) == ("ok", "What's new in Gemini 4 Carbon")
     assert "1M context window" in doc["excerpt"]
+    assert (plain["status"], plain["title"]) == ("ok", "Plain Heading")
+    assert plain["excerpt"] == "# Plain Heading Body paragraph without braces."
     assert (learn["status"], learn["title"], learn["description"]) == (
         "ok",
         "Gemini 4 Carbon: Developer Guide",
         "Developer guide for Gemini 4 Carbon.",
     )
     assert "Supports 1M tokens." in learn["excerpt"]
+    assert "ignored fake" not in learn["excerpt"]
     assert (partial["status"], partial["title"]) == ("ok", "Guide")
     assert partial["error"].startswith("editorial page: OSError:")
     assert unknown["status"] == "fetch_error"
@@ -465,11 +484,11 @@ def test_aistudio_facts_read_docs_markdown_and_editorial_learn_json() -> None:
 
 
 def test_fetch_text_enforces_a_total_deadline_on_trickling_bodies(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(news, "DEADLINE_SECONDS", -1.0)  # already past after the first chunk
-    monkeypatch.setattr(news.OPENER, "open", lambda *_args, **_kwargs: FakeResponse(b"a", b"b", b"c"))
+    monkeypatch.setattr(news_fetch, "DEADLINE_SECONDS", -1.0)  # already past after the first chunk
+    monkeypatch.setattr(news_fetch.OPENER, "open", lambda *_args, **_kwargs: FakeResponse(b"a", b"b", b"c"))
 
     with pytest.raises(TimeoutError, match="read exceeded"):
-        news.fetch_text("https://example.com/")
+        news_fetch.fetch_text("https://example.com/")
 
 
 @pytest.mark.parametrize(
@@ -480,9 +499,9 @@ def test_fetch_text_enforces_a_total_deadline_on_trickling_bodies(monkeypatch: p
 def test_malformed_http_responses_are_fetch_errors(
     monkeypatch: pytest.MonkeyPatch, failure: http.client.HTTPException
 ) -> None:
-    monkeypatch.setattr(news.OPENER, "open", lambda *_args, **_kwargs: FakeResponse(b"<p>", failure))
+    monkeypatch.setattr(news_fetch.OPENER, "open", lambda *_args, **_kwargs: FakeResponse(b"<p>", failure))
 
-    facts = news.source_facts("https://example.com/broken")
+    facts = news_fetch.source_facts("https://example.com/broken")
 
     assert facts["status"] == "fetch_error"
     assert facts["error"].startswith(f"OSError: https://example.com/broken: {type(failure).__name__}")
@@ -502,7 +521,7 @@ def test_malformed_http_responses_are_fetch_errors(
 )
 @pytest.mark.parametrize("body", ["[]", "null"])
 def test_non_object_api_bodies_are_fetch_errors(url: str, api: str, body: str) -> None:
-    facts = news.source_facts(url, FakeWeb({api: body}))
+    facts = news_fetch.source_facts(url, FakeWeb({api: body}))
 
     assert facts["status"] == "fetch_error"
     assert facts["error"].startswith("ValueError: expected a JSON object")
@@ -538,7 +557,7 @@ def test_page_keeps_custom_elements_that_share_a_boilerplate_prefix() -> None:
         "<nav class='site'>dropped</nav ><p>more</p></article><nav>z</nav>"
     )
 
-    facts = news.source_facts("https://example.com/a", FakeWeb({"https://example.com/a": page}))
+    facts = news_fetch.source_facts("https://example.com/a", FakeWeb({"https://example.com/a": page}))
 
     assert facts["excerpt"] == "Hello menu world more"
 
@@ -555,9 +574,9 @@ def test_page_searches_each_unclosed_tag_for_a_closer_only_once(monkeypatch: pyt
             closers.append(pattern)
         return compile_pattern(pattern, flags)
 
-    monkeypatch.setattr(news.re, "compile", recording_compile)
+    monkeypatch.setattr(news_fetch.re, "compile", recording_compile)
 
-    facts = news.source_facts("https://example.com/a", FakeWeb({"https://example.com/a": page}))
+    facts = news_fetch.source_facts("https://example.com/a", FakeWeb({"https://example.com/a": page}))
 
     assert facts["excerpt"] == "body text"
     assert closers == [r"</svg\s*>", r"</nav\s*>", r"</main\s*>", r"</article\s*>"]
@@ -858,9 +877,11 @@ def test_publish_tests_never_touch_the_repository_running_them(tmp_path: Path) -
             f"{Path(__file__)}::test_draft_and_publish_push_only_the_edition_on_top_of_origin",
         ],
         env=environment,
+        stdin=subprocess.DEVNULL,
         check=True,
         capture_output=True,
         text=True,
+        timeout=60,
     )
 
     assert run_git(tmp_path / "outer.git", "rev-parse", "main") == before
@@ -881,3 +902,25 @@ def test_git_never_prompts_and_names_a_timeout(tmp_path: Path, monkeypatch: pyte
     assert isinstance(failure.value.__cause__, subprocess.TimeoutExpired)
     with pytest.raises(news.NewsError, match=r"git archive timed out after 120 s"):
         news.snapshot(tmp_path, "HEAD", tmp_path)
+
+
+def test_meta_and_writer_envelope_hardening(monkeypatch: pytest.MonkeyPatch) -> None:
+    html = '<meta data-rh="true" property="og:title" lang="en" content="Multi-Attr Title">'
+    assert news_fetch._first(news_fetch._meta("og:title"), html) == "Multi-Attr Title"  # noqa: SLF001
+    assert "link-shared document" in news.skip_reason(
+        {"status": "ok", "url": "https://example.com/go", "final_url": "https://docs.google.com/document/d/1"}
+    )
+
+    calls: list[list[str]] = []
+
+    def denied_run(command: list[str], **_: object) -> subprocess.CompletedProcess[str]:
+        calls.append(command)
+        payload = {"status": "SUCCESS", "denied_actions": ["read_file"], "structured_output": {"items": []}}
+        return subprocess.CompletedProcess(command, 0, json.dumps(payload), "")
+
+    monkeypatch.setattr(news.subprocess, "run", denied_run)
+    with pytest.raises(news.NewsError, match="denied tool action"):
+        news.agy_writer("prompt")
+    assert "--sandbox" in calls[0]
+    settings = json.loads(calls[0][calls[0].index("--settings") + 1])
+    assert settings["allowNonWorkspaceAccess"] is False

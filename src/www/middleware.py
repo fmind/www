@@ -10,9 +10,10 @@ from litestar.datastructures import Headers, MutableScopeHeaders
 from litestar.types import ASGIApp, Message, Receive, Scope, Send
 
 from www.config import Config, Environment
+from www.data import METADATA
 
-CANONICAL_APEX = "fmind.dev"
-CANONICAL_TARGET = "https://www.fmind.dev"
+CANONICAL_TARGET = METADATA.site_url
+CANONICAL_APEX = (urlsplit(METADATA.site_url).hostname or "").removeprefix("www.")
 ANALYTICS_LOG_NAME = "analytics_pageview"
 
 _BOT_TOKENS = (

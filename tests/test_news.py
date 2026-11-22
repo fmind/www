@@ -164,6 +164,8 @@ def test_parse_edition_rejects_invalid_files(slug: str, text: str, message: str)
         ),
         ("https://example.com/view?m=1&id=7", "https://example.com/view?m=1&id=7"),
         ("https://example.com/post?_bhlid=abc&gad_source=1&hsa_acc=2&msclkid=3&srsltid=4", "https://example.com/post"),
+        ("https://[2001:db8::1]/path?utm_source=x", "https://[2001:db8::1]/path"),
+        ("https://[2001:db8::1]:8443/path", "https://[2001:db8::1]:8443/path"),
     ],
 )
 def test_canonicalize_url_normalizes_hosts_and_strips_trackers(raw: str, canonical: str) -> None:
@@ -180,6 +182,8 @@ def test_canonicalize_url_normalizes_hosts_and_strips_trackers(raw: str, canonic
         "https://example.com:bad",
         "https://example.com/a\nb",
         "https:///path-only",
+        "https://./path",
+        "https://mobile./path",
     ],
 )
 def test_canonicalize_url_rejects_non_web_urls(raw: str) -> None:
@@ -601,3 +605,16 @@ def test_search_news_editions_ranks_by_precomputed_field_boosts() -> None:
     again = parse_edition("2026-11-02", "- [Kubernetes release](https://example.com/y): About it.\n")
     assert (in_title, hash(in_title)) == (again, hash(again))
     assert "search_terms" not in repr(in_title)
+
+
+def test_canonicalize_url_normalizes_youtube_encoding_and_default_ports_idempotently() -> None:
+    from www.news import TITLE_CHAR_LIMIT
+
+    yt = canonicalize_url("https://www.youtube.com.:443/watch?v=abc%20def&t=10")
+    assert yt == "https://www.youtube.com/watch?v=abc+def"
+    assert canonicalize_url(yt) == yt
+    assert canonicalize_url("https://Example.COM.:443/path/") == "https://example.com/path"
+
+    overlong = "A" * (TITLE_CHAR_LIMIT + 1)
+    with pytest.raises(NewsError, match=f"at most {TITLE_CHAR_LIMIT} characters"):
+        parse_edition("2026-11-03", f"- [{overlong}](https://example.com/x): Short note.\n")

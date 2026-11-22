@@ -5,7 +5,7 @@
 # locations every five minutes, about 104k executions a month for both, inside
 # the free million per project. Alerting charges start no sooner than September
 # 2027 at $0.35 per metric reference a month; uptime-metric policies are exempt,
-# so only the 5xx and log-match conditions would then cost about $0.70 a month.
+# so the 5xx, log-match, and instance-saturation conditions would then cost about $1.05 a month.
 
 locals {
   # Alert emails link these public runbooks directly on main.
@@ -276,6 +276,66 @@ resource "google_monitoring_alert_policy" "error_logs" {
     links {
       display_name = "README: Deployment"
       url          = local.runbook_deployment
+    }
+  }
+}
+
+# Pin the default Cloud Logging bucket retention to 30 days in code so operational
+# logs cannot silently drift from the privacy policy (README: Analytics and privacy).
+resource "google_logging_project_bucket_config" "default" {
+  project        = var.project_id
+  location       = "global"
+  bucket_id      = "_Default"
+  retention_days = 30
+
+  depends_on = [time_sleep.wait_for_apis]
+}
+
+# Warn before hitting the five-instance ceiling so sustained bot floods or viral
+# traffic surface before Cloud Run starts aborting requests with 429.
+resource "google_monitoring_alert_policy" "instance_saturation" {
+  display_name = "Cloud Run Instance Saturation - ${var.service_name}"
+  combiner     = "OR"
+  severity     = "WARNING"
+  conditions {
+    display_name = "Active Cloud Run instances >= 4 (80% of 5-instance cap)"
+    condition_threshold {
+      filter          = "resource.type = \"cloud_run_revision\" AND resource.labels.service_name = \"${var.service_name}\" AND metric.type = \"run.googleapis.com/container/instance_count\" AND metric.labels.state = \"active\""
+      duration        = "300s"
+      comparison      = "COMPARISON_GT"
+      threshold_value = 3
+      aggregations {
+        alignment_period     = "60s"
+        per_series_aligner   = "ALIGN_MAX"
+        cross_series_reducer = "REDUCE_SUM"
+      }
+    }
+  }
+
+  notification_channels = [
+    google_monitoring_notification_channel.email.name
+  ]
+
+  alert_strategy {
+    auto_close = "172800s"
+  }
+
+  documentation {
+    mime_type = "text/markdown"
+    subject   = "${var.service_name} sustained 4+ active instances (near the 5-instance cap)"
+    content   = <<-EOT
+      Active Cloud Run instances stayed at or above 4 (80% of the 5-instance cap) for 5 minutes.
+
+      1. Check request rate, top paths, and user agents in Cloud Logging to separate legitimate traffic spikes from scraper bursts.
+      2. Confirm latency and 429 aborts in Cloud Monitoring; raising the five-instance cap requires explicit owner approval.
+    EOT
+    links {
+      display_name = "README: Deployment"
+      url          = local.runbook_deployment
+    }
+    links {
+      display_name = "Infra skill"
+      url          = local.runbook_infra
     }
   }
 }

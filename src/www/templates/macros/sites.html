@@ -20,7 +20,7 @@
 {%- endmacro %}
 
 {% macro info_section(id, title, heading="h2") -%}
-  <section id="{{ id }}" aria-labelledby="{{ id }}-title" class="rounded-xl border border-base-300 bg-base-100 p-5">
+  <section id="{{ id }}" tabindex="-1" aria-labelledby="{{ id }}-title" class="rounded-xl border border-base-300 bg-base-100 p-5">
     <{{ heading }} id="{{ id }}-title" class="font-heading text-lg font-bold">{{ title }}</{{ heading }}>
     {{ caller() }}
   </section>
@@ -186,7 +186,7 @@
   {% set blocker = break_even_blocker(view) %}
   <section aria-labelledby="executive-result" class="space-y-5">
     <div class="rounded-2xl border border-primary/30 bg-primary/5 p-5 md:p-6">
-      <h2 id="executive-result" class="font-heading text-2xl md:text-3xl font-bold scroll-mt-24">{{ hosting_decision_title(view) }}</h2>
+      <h2 id="executive-result" tabindex="-1" class="font-heading text-2xl md:text-3xl font-bold scroll-mt-24">{{ hosting_decision_title(view) }}</h2>
       <p class="text-base-content/80 mt-3 max-w-3xl">{{ hosting_decision_copy(view) }}</p>
     </div>
     <p class="text-sm text-base-content/75">{{ view.demand_label }} · {{ format_decimal(view.inputs.requests_per_day, 0) }} calls/active day ({{ format_employee_equivalent(view.inputs.requests_per_day) }}) · {{ format_decimal(view.estimate.requests_month, 0) }} calls/month over {{ format_ungrouped(view.inputs.active_days, 0) }} active days.</p>
@@ -205,7 +205,7 @@
       <thead class="text-base-content"><tr><th scope="col">Model</th><th scope="col" class="text-right">Per month</th></tr></thead>
       <tbody>{% for row in view.apis|sort(attribute="monthly_usd") %}<tr>
         <th scope="row"><a class="link link-primary" href="{{ row.baseline.source_url }}">{{ row.baseline.name }}</a>{% if row.needs_review %}<span class="block text-xs font-normal mt-1">Price needs review</span>{% endif %}</th>
-        <td class="text-right font-semibold">{% if row.request_issue %}Unavailable{% else %}{{ format_usd2(row.monthly_usd) }}{% endif %}</td>
+        <td class="text-right tabular-nums font-semibold">{% if row.request_issue %}Unavailable{% else %}{{ format_usd2(row.monthly_usd) }}{% endif %}</td>
       </tr>{% endfor %}</tbody>
     {% endcall %}
     {% call info_section("hosting-break-even", "When could self-hosting cost less?", heading="h3") %}
@@ -235,7 +235,7 @@
   <section aria-labelledby="executive-result" class="space-y-6">
     <div>
       <p class="text-sm uppercase tracking-[0.18em] text-primary font-semibold">Your scenario · {{ view.demand_label }}</p>
-      <h2 id="executive-result" class="text-3xl md:text-4xl font-heading font-bold mt-2 scroll-mt-24">What your demand actually costs</h2>
+      <h2 id="executive-result" tabindex="-1" class="text-3xl md:text-4xl font-heading font-bold mt-2 scroll-mt-24">What your demand actually costs</h2>
       <a class="link link-primary text-sm inline-flex min-h-6 items-center mt-3" href="#calculator">Change assumptions ↑</a>
       <p class="text-base-content/75 mt-3">{{ format_decimal(view.inputs.requests_per_day, 0) }} calls/active day ({{ format_employee_equivalent(view.inputs.requests_per_day) }}) · {{ format_decimal(view.estimate.requests_month, 0) }} requests/month · {{ format_number(view.estimate.input_tokens_month) }} input tokens · {{ format_number(view.estimate.output_tokens_month) }} output tokens.</p>
     </div>
@@ -257,20 +257,20 @@
     </div>
     {{ api_cards(view) }}
     {% call comparison_table("API cost comparison", "Monthly costs and break-even at the selected input and output token mix", wrapper_class="hidden md:block overflow-x-auto rounded-2xl border border-base-300 bg-base-100 shadow-sm focus-visible:outline-2 focus-visible:outline-primary") %}
-      <thead class="text-base-content"><tr><th scope="col">Option</th><th scope="col">Standard input / output<br/>USD per 1M tokens</th><th scope="col">Your monthly bill</th><th scope="col">Per 1,000 requests</th><th scope="col">Self-hosting break-even</th></tr></thead>
+      <thead class="text-base-content"><tr><th scope="col">Option</th><th scope="col" class="text-right">Standard input / output<br/>USD per 1M tokens</th><th scope="col" class="text-right">Your monthly bill</th><th scope="col" class="text-right">Per 1,000 requests</th><th scope="col">Self-hosting break-even</th></tr></thead>
       <tbody>
         <tr class="bg-primary/5">
           <th scope="row">Your GKE fleet<span class="block font-normal text-xs mt-1">{{ view.selected_node.name }}</span></th>
-          {% if view.estimate.compatibility_issue %}<td colspan="4">Unavailable: {{ view.estimate.compatibility_issue }}</td>{% else %}<td>Fixed fleet cost</td>
-          <td class="font-bold whitespace-nowrap">{{ format_usd2(view.estimate.total_monthly_usd) }}</td>
-          <td>{% if view.estimate.demand_fits and view.estimate.daily_demand_fits %}{{ format_usd2(view.estimate.per_thousand_requests_usd) }}{% else %}<span>Insufficient capacity</span>{% endif %}</td>
+          {% if view.estimate.compatibility_issue %}<td colspan="4">Unavailable: {{ view.estimate.compatibility_issue }}</td>{% else %}<td class="text-right">Fixed fleet cost</td>
+          <td class="text-right tabular-nums font-bold whitespace-nowrap">{{ format_usd2(view.estimate.total_monthly_usd) }}</td>
+          <td class="text-right tabular-nums">{% if view.estimate.demand_fits and view.estimate.daily_demand_fits %}{{ format_usd2(view.estimate.per_thousand_requests_usd) }}{% else %}<span>Insufficient capacity</span>{% endif %}</td>
           <td>Reference fleet<span class="block text-xs mt-1">{{ format_ungrouped(view.estimate.demand_capacity_pct, 1) }}% of usable capacity needed</span></td>{% endif %}
         </tr>
         {% for row in view.apis|sort(attribute="monthly_usd") %}
           <tr>
             <th scope="row"><a class="link link-primary" href="{{ row.baseline.source_url }}" target="_blank" rel="noopener noreferrer">{{ row.baseline.name }}</a></th>
-            <td class="whitespace-nowrap">{{ format_usd2(row.baseline.input_per_million) }} / {{ format_usd2(row.baseline.output_per_million) }}</td>
-            {% if row.request_issue %}<td colspan="3" class="font-semibold">Unavailable: {{ row.request_issue }}</td>{% else %}<td class="font-bold whitespace-nowrap">{{ format_usd2(row.monthly_usd) }}</td><td>{{ format_usd2(row.per_thousand_requests_usd) }}</td><td>{% if blocker %}{{ blocker }}{% else %}{{ format_number(row.break_even_requests) }} requests/month{{ break_even_note(view, row, "span", "block text-xs mt-1") }}{% endif %}</td>{% endif %}
+            <td class="text-right tabular-nums whitespace-nowrap">{{ format_usd2(row.baseline.input_per_million) }} / {{ format_usd2(row.baseline.output_per_million) }}</td>
+            {% if row.request_issue %}<td colspan="3" class="font-semibold">Unavailable: {{ row.request_issue }}</td>{% else %}<td class="text-right tabular-nums font-bold whitespace-nowrap">{{ format_usd2(row.monthly_usd) }}</td><td class="text-right tabular-nums">{{ format_usd2(row.per_thousand_requests_usd) }}</td><td>{% if blocker %}{{ blocker }}{% else %}{{ format_number(row.break_even_requests) }} requests/month{{ break_even_note(view, row, "span", "block text-xs mt-1") }}{% endif %}</td>{% endif %}
           </tr>
         {% endfor %}
       </tbody>
@@ -296,7 +296,7 @@
         <article class="rounded-2xl border border-base-300 bg-base-100 p-6">
           <h3 class="font-heading text-xl font-bold">{{ row.quantization.name }}</h3>
           <p class="font-heading text-3xl font-bold text-primary mt-4">{{ format_ungrouped(row.estimate.weight_memory_gb, 1) }} GB<span class="block font-body text-sm font-normal text-base-content/70 mt-1">weights only, per replica</span></p>
-          {% if row.estimate.compatibility_issue %}<p class="font-semibold mt-4">Unavailable: {{ row.estimate.compatibility_issue }}</p>{% else %}<p class="font-semibold mt-4">{{ row.node.name }} · {{ format_usd2(row.estimate.total_monthly_usd) }}/month</p><a data-scenario-link class="link link-primary inline-flex min-h-6 items-center mt-3" href="{{ row.url }}">Use this checkpoint</a>{% endif %}
+          {% if row.estimate.compatibility_issue %}<p class="font-semibold mt-4">Unavailable: {{ row.estimate.compatibility_issue }}</p>{% else %}<p class="font-semibold mt-4">{{ row.node.name }} · {{ format_usd2(row.estimate.total_monthly_usd) }}/month</p><a id="precision-{{ row.quantization.id }}" data-scenario-link class="link link-primary inline-flex min-h-6 items-center mt-3" href="{{ row.url }}">Use this checkpoint</a>{% endif %}
           <p class="text-sm text-base-content/75 leading-relaxed mt-3">{{ row.quantization.guidance }}</p>
         </article>
       {% endfor %}

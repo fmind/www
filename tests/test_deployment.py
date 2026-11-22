@@ -95,7 +95,7 @@ def test_valid_release_restamps_commit_and_routes_traffic_to_the_new_revision() 
             "update-traffic",
             *SCOPE,
             "--to-revisions=www-fmind-dev-manual-test=100",
-            "--remove-tags=manual-candidate,candidate",
+            "--remove-tags=manual-candidate",
             "--quiet",
         ),
         CLEANUP,
@@ -336,10 +336,12 @@ def test_module_invocation_rejects_missing_digest_without_gcloud() -> None:
 
     result = subprocess.run(
         (sys.executable, "-m", "scripts.deploy"),
+        stdin=subprocess.DEVNULL,
         check=False,
         capture_output=True,
         text=True,
         env=environment,
+        timeout=30,
     )
 
     assert result.returncode == 2
@@ -409,3 +411,31 @@ def test_timed_out_candidate_update_drops_the_manual_tag_without_moving_traffic(
         "deploy: gcloud run services update timed out after 600s;"
         " inspect the Cloud Run service, then rerun the deployment\n"
     )
+
+
+@pytest.mark.parametrize(
+    "module",
+    [
+        "www",
+        "scripts.deploy",
+        "scripts.verify_deployment",
+        "scripts.scan_deployed",
+        "scripts.image_smoke",
+        "scripts.build_branding",
+        "scripts.build_images",
+        "scripts.build_portrait",
+        "scripts.website_analytics",
+        "scripts.news",
+    ],
+)
+def test_cli_modules_exit_zero_on_help(module: str) -> None:
+    result = subprocess.run(  # noqa: S603 - fixed interpreter and parametrized first-party module
+        (sys.executable, "-m", module, "--help"),
+        stdin=subprocess.DEVNULL,
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "usage:" in result.stdout.lower()

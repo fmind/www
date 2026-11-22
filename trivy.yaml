@@ -1,0 +1,12 @@
+# Docs: https://trivy.dev/docs/latest/references/configuration/config-file/
+disable-telemetry: true
+skip-version-check: true
+exit-code: 1
+timeout: 15m
+scan:
+  file-patterns:
+    - 'pnpm:aube-lock\.yaml'
+  skip-dirs:
+    - tmp
+vulnerability:
+  ignore-unfixed: true

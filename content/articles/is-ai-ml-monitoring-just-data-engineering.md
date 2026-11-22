@@ -34,7 +34,7 @@ We can also spot some differences specific to AI/ML pipelines:
 - There is an AI/ML model used at some point.
 - … and that’s it!
 
-[**Does the use of an AI/ML model make a big difference in a data pipeline?**](https://mlops.community/mlops-is-mostly-data-engineering/) On the one hand, it is just another step that takes data in and generates data out. On the other hand, AI/ML models require extra attention to properly handle the methodology (e.g., avoiding data leakage), hardware (e.g., using GPUs), and new components (e.g., model registries). As this additional complexity requires a specific set of skills and expertise, I tend to think this difference matters. The best proof is that we need specific engineers to manage these challenges (i.e., ML engineers).
+**Does the use of an AI/ML model make a big difference in a data pipeline?** On the one hand, it is just another step that takes data in and generates data out. On the other hand, AI/ML models require extra attention to properly handle the methodology (e.g., avoiding data leakage), hardware (e.g., using GPUs), and new components (e.g., model registries). As this additional complexity requires a specific set of skills and expertise, I tend to think this difference matters. The best proof is that we need specific engineers to manage these challenges (i.e., ML engineers).
 
 Let’s now explore how this question affects AI/ML monitoring.
 

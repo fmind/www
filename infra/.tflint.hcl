@@ -1,9 +1,14 @@
 // Docs: https://github.com/terraform-linters/tflint/blob/master/docs/user-guide/config.md
-// Only the terraform ruleset, which ships inside the tflint binary. The
-// google ruleset is a plugin that `tflint --init` downloads from the GitHub API,
-// which rate-limits calls without a token. `check:tofu` already needs network
-// access for `tofu init` provider schemas; it should not also need a GitHub token.
+// Both the built-in terraform ruleset and the pinned Google Cloud ruleset run in
+// `check:tofu` (`tflint --chdir=infra --init` downloads the plugin once; CI sets
+// GITHUB_TOKEN to avoid GitHub API rate limits).
 plugin "terraform" {
   enabled = true
   preset  = "recommended"
+}
+
+plugin "google" {
+  enabled = true
+  version = "0.41.0"
+  source  = "github.com/terraform-linters/tflint-ruleset-google"
 }

@@ -9,16 +9,15 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
-from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
-from xml.etree import ElementTree
+from urllib.parse import parse_qsl, unquote, urlencode, urlparse, urlunparse
 
 from pydantic import TypeAdapter
 
 from www.data import METADATA
-from www.models import utc_midnight
+from www.models import NEWS_FEED_PATH, utc_midnight, utc_stamp
+from www.publications import atom_feed_root, xml_document, xml_sub
 from www.search import tokenize
 
-NEWS_FEED_PATH = "/news/feed.xml"
 FEED_EDITION_LIMIT = 30
 # /news/ shows the latest edition in full, the rest of its week as preview cards, and older editions one per line.
 RECENT_DAYS = 7
@@ -29,6 +28,7 @@ NEWS_TOPICS = "AI agents, Python, security, Google Cloud, and engineering"
 # A corrected or extended edition starts with front matter: +++, updated = "YYYY-MM-DD" or a UTC
 # "YYYY-MM-DDTHH:MM:SSZ" timestamp (scripts.news stamps links added later the same day), +++.
 DESCRIPTION_WORD_LIMIT = 30
+TITLE_CHAR_LIMIT = 200
 _LINE = re.compile(r"^- \[(?P<title>[^\[\]]+)\]\((?P<url>https://\S+?)\): (?P<description>\S.*)$")
 # Descriptions are plain prose: the .md export serves them raw, so no Markdown links, autolinks, or HTML.
 _DESCRIPTION_MARKUP = re.compile(r"[\[\]<]|://")
@@ -217,39 +217,45 @@ def canonicalize_url(raw_url: str) -> str:
         raise NewsError(f"unsupported or invalid URL {raw_url!r}")
     try:
         parsed = urlparse(cleaned)
-        _ = parsed.port
+        port = parsed.port
     except ValueError as error:
         raise NewsError(f"unsupported or invalid URL {raw_url!r}") from error
     if parsed.scheme not in ("http", "https") or not parsed.netloc or not parsed.hostname:
         raise NewsError(f"unsupported or invalid URL {raw_url!r}")
     if "@" in parsed.netloc:
         raise NewsError(f"URL {raw_url!r} carries credentials; share the public link")
-    host = parsed.netloc.lower().removeprefix("mobile.")
-    if host in ("twitter.com", "www.twitter.com", "www.x.com"):
-        host = "x.com"
-    if host in ("www.arxiv.org", "export.arxiv.org"):
-        host = "arxiv.org"
+    hostname = parsed.hostname.lower().removeprefix("mobile.").rstrip(".")
+    if not hostname:
+        raise NewsError(f"unsupported or invalid URL {raw_url!r}")
+    if hostname in ("twitter.com", "www.twitter.com", "www.x.com"):
+        hostname = "x.com"
+    if hostname in ("www.arxiv.org", "export.arxiv.org"):
+        hostname = "arxiv.org"
+    host = f"[{hostname}]" if ":" in hostname else hostname
+    netloc = f"{host}:{port}" if port is not None and port not in (80, 443) else host
     path = parsed.path
-    if host in _YOUTUBE_HOSTS:
+    if hostname in _YOUTUBE_HOSTS and netloc == hostname:
         video = ""
-        if host == "youtu.be":
-            video = path.strip("/").split("/")[0]
+        if hostname == "youtu.be":
+            video = unquote(path.strip("/").split("/")[0])
         elif path.startswith(("/live/", "/shorts/", "/embed/")):
             parts = [part for part in path.split("/") if part]
-            video = parts[1] if len(parts) > 1 else ""
+            video = unquote(parts[1]) if len(parts) > 1 else ""
         else:
             video = dict(parse_qsl(parsed.query)).get("v", "")
         if video:
-            return f"https://www.youtube.com/watch?v={video}"
-        host = "www.youtube.com"
+            return f"https://www.youtube.com/watch?{urlencode({'v': video})}"
+        hostname = "www.youtube.com"
+        netloc = hostname
     if (
-        host == "arxiv.org"
+        hostname == "arxiv.org"
+        and netloc == hostname
         and path.startswith(("/pdf/", "/html/"))
         and (paper := path.removeprefix("/pdf/").removeprefix("/html/").removesuffix(".pdf").strip("/"))
     ):
         return f"https://arxiv.org/abs/{paper}"
-    strip = _STRIP_PARAMS | _X_STRIP_PARAMS if host == "x.com" else _STRIP_PARAMS
-    blogger = host in ("blogspot.com", "googleblog.com") or host.endswith(_BLOGGER_SUFFIXES)
+    strip = _STRIP_PARAMS | _X_STRIP_PARAMS if hostname == "x.com" else _STRIP_PARAMS
+    blogger = hostname in ("blogspot.com", "googleblog.com") or hostname.endswith(_BLOGGER_SUFFIXES)
     query = [
         (key, value)
         for key, value in parse_qsl(parsed.query, keep_blank_values=True)
@@ -258,26 +264,7 @@ def canonicalize_url(raw_url: str) -> str:
         and not (blogger and key.lower() == "m" and value in ("0", "1"))
     ]
     path = path.rstrip("/")
-    return urlunparse(("https", host, path, parsed.params, urlencode(query), ""))
-
-
-def utc_stamp(value: datetime) -> str:
-    """Format a UTC time as RFC 3339 with seconds and a Z suffix."""
-    return value.astimezone(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
-
-
-def xml_sub(parent: ElementTree.Element, name: str, text: str = "", **attributes: str) -> ElementTree.Element:
-    """Append one feed or sitemap element with its text and attributes."""
-    child = ElementTree.SubElement(parent, name, attributes)
-    child.text = text
-    return child
-
-
-def xml_document(element: ElementTree.Element) -> str:
-    """Serialize a feed or sitemap with a declaration and a final newline."""
-    # Indented output reads well when a browser or feed reader shows the raw XML.
-    ElementTree.indent(element)
-    return '<?xml version="1.0" encoding="UTF-8"?>\n' + ElementTree.tostring(element, encoding="unicode") + "\n"
+    return urlunparse(("https", netloc, path, parsed.params, urlencode(query), ""))
 
 
 def _split_front_matter(slug: str, text: str, edition_date: date) -> tuple[datetime, str, int]:
@@ -317,19 +304,22 @@ def parse_edition(slug: str, text: str) -> NewsEdition:
         raise NewsError(f"{slug}: {match['date']} is not a calendar date") from error
     updated, body, first_line = _split_front_matter(slug, text, edition_date)
     items: list[NewsItem] = []
-    for number, line in enumerate(body.splitlines(), first_line):
-        line = line.strip()
-        if not line:
+    for number, raw_line in enumerate(body.splitlines(), first_line):
+        stripped = raw_line.strip()
+        if not stripped:
             continue
-        entry = _LINE.fullmatch(line)
+        entry = _LINE.fullmatch(stripped)
         if entry is None:
             raise NewsError(f"{slug}:{number}: expected '- [Title](https://...): Description'")
+        title = entry["title"].strip()
+        if not title or len(title) > TITLE_CHAR_LIMIT:
+            raise NewsError(f"{slug}:{number}: title must be non-empty and at most {TITLE_CHAR_LIMIT} characters")
         description = entry["description"].strip()
         if _DESCRIPTION_MARKUP.search(description):
             raise NewsError(f"{slug}:{number}: description must be plain text, without links, brackets, or HTML")
         if (words := len(description.split())) > DESCRIPTION_WORD_LIMIT:
             raise NewsError(f"{slug}:{number}: description has {words} words; keep it to {DESCRIPTION_WORD_LIMIT}")
-        items.append(NewsItem(entry["title"].strip(), entry["url"], description))
+        items.append(NewsItem(title, entry["url"], description))
     if not items:
         raise NewsError(f"{slug}: edition has no links")
     topic = (match["topic"] or "").replace("-", " ").title()
@@ -504,26 +494,6 @@ def _edition_html(edition: NewsEdition) -> str:
         for item in edition.items
     )
     return f"<ul>{entries}</ul>"
-
-
-def atom_feed_root(
-    title: str, page_path: str, feed_path: str, updated: datetime, subtitle: str = ""
-) -> ElementTree.Element:
-    """Build the shared Atom feed header for hosted publications."""
-    feed = ElementTree.Element("feed", xmlns="http://www.w3.org/2005/Atom")
-    xml_sub(feed, "title", title)
-    if subtitle:
-        xml_sub(feed, "subtitle", subtitle)
-    xml_sub(feed, "id", f"{METADATA.site_url}{page_path}")
-    xml_sub(feed, "updated", utc_stamp(updated))
-    xml_sub(feed, "link", href=f"{METADATA.site_url}{feed_path}", rel="self", type="application/atom+xml")
-    xml_sub(feed, "link", href=f"{METADATA.site_url}{page_path}", rel="alternate", type="text/html")
-    # Atom `icon` is the square branding image feed readers show next to the feed name.
-    xml_sub(feed, "icon", f"{METADATA.site_url}/static/img/favicons/icon-192.png")
-    author = xml_sub(feed, "author")
-    xml_sub(author, "name", METADATA.name)
-    xml_sub(author, "uri", f"{METADATA.site_url}/")
-    return feed
 
 
 def render_news_feed(editions: Sequence[NewsEdition]) -> str:

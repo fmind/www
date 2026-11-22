@@ -3,11 +3,11 @@ name: infra
 description: Change www.fmind.dev GCP resources under infra/ with OpenTofu while preserving state, cost, and WIF gates.
 license: MIT
 metadata:
-  kind: runbook
+  kind: task
   author: Médéric HURIER (Fmind)
   source: github.com/fmind/www
   created: "2026-08-07"
-  updated: "2026-11-11"
+  updated: "2026-11-22"
 ---
 
 # Infrastructure
@@ -22,10 +22,12 @@ metadata:
 1. **Apply and verify**: apply only the reviewed plan within owner authorization, then read back state, readiness, traffic, scaling, IAM, and logs, and delete temp plan files.
 
 ```bash
+plan="$(mktemp "${TMPDIR:-/tmp}/www-infra.XXXXXX.tfplan")" && chmod 600 "$plan"
 tofu -chdir=infra init -input=false
-tofu -chdir=infra plan -input=false -out=/tmp/www-infra.tfplan
-tofu -chdir=infra show /tmp/www-infra.tfplan
-tofu -chdir=infra apply /tmp/www-infra.tfplan
+tofu -chdir=infra plan -input=false -out="$plan"
+tofu -chdir=infra show "$plan"
+tofu -chdir=infra apply "$plan"
+rm -f "$plan"
 ```
 
 See [SECURITY.md](../../../SECURITY.md#data-and-recovery) for state-bucket recovery checks and WIF trust rules. Each SA trusts one workflow via `attribute.workflow_ref` (`deploy.yml` or `security.yml`); apply WIF updates before renaming workflows while no run is active, and never create SA keys. Template applies create no-traffic revisions until the next CI deploy promotes a verified image; registry cleanup retains ≥30 versions and 30 days for rollback. Refs: [OpenTofu CLI](https://opentofu.org/docs/cli/), [Cloud Run scaling](https://docs.cloud.google.com/run/docs/configuring/min-instances).
