@@ -1,5 +1,6 @@
 # Docs: https://lefthook.dev/configuration/
 glob_matcher: doublestar
+output: [summary, failure, execution_out]
 
 # Jobs run in list order: formatters fix and restage only the staged files, then checks validate the tree.
 pre-commit:
@@ -14,7 +15,7 @@ pre-commit:
       stage_fixed: true
     - name: format OpenTofu
       # tofu fmt rejects other HCL files such as infra/.tflint.hcl.
-      glob: "infra/**/*.{tf,tfvars,tftest.hcl}"
+      glob: "infra/**/*.{tf,tofu,tfvars,tftest.hcl,tofutest.hcl}"
       run: mise run format:tofu {staged_files}
       stage_fixed: true
     - name: check
@@ -23,7 +24,7 @@ pre-push:
   parallel: true
   jobs:
     # Trivy downloads its vulnerability and misconfiguration databases; CI runs both through `check`.
-    - name: scan vulnerabilities
+    - name: network checks
       run: mise run check:network
     - name: test
       run: mise run test

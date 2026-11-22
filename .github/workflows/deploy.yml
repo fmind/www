@@ -24,7 +24,7 @@ env:
 jobs:
   verify:
     name: Verify repository and image
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 25
     outputs:
       head: ${{ steps.head.outputs.head }}
@@ -49,7 +49,7 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('.mise/locks/npm-playwright/**') }}
+          key: playwright-${{ runner.os }}-ubuntu-26.04-${{ hashFiles('.mise/locks/npm-playwright/**') }}
       - name: Install dependencies and browser
         run: |
           mise run install:python
@@ -97,7 +97,7 @@ jobs:
     name: Build and deploy to Cloud Run
     needs: verify
     if: ${{ needs.verify.outputs.head == 'true' }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 20
     permissions:
       contents: read
@@ -114,7 +114,7 @@ jobs:
           tools: aqua:astral-sh/uv python trivy
           cache: false # this job holds id-token; never read shared caches
       - name: Install locked smoke environment
-        run: uv sync --locked --no-dev --group ops
+        run: UV_MALWARE_CHECK=1 uv sync --locked --no-dev --group ops --preview-features malware-check
       - name: Stop unless the commit is still the head of main
         # The verify output can be stale: a re-run of this job reuses it while main moved on.
         # Fail closed here so an older commit never replaces a newer release.

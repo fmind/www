@@ -22,7 +22,7 @@
       window.gtag = function () { window.dataLayer.push(arguments); };
       window.gtag('consent', 'default', { analytics_storage: 'granted', ad_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied' });
       window.gtag('js', new Date());
-      window.gtag('config', id, { allow_google_signals: false, allow_ad_personalization_signals: false });
+      window.gtag('config', id, { allow_google_signals: false, allow_ad_personalization_signals: false, cookie_flags: 'SameSite=Lax;Secure' });
       var script = document.createElement('script');
       script.async = true;
       script.src = 'https://www.googletagmanager.com/gtag/js?id=' + encodeURIComponent(id);
@@ -37,7 +37,7 @@
         var name = cookie.split('=')[0].trim();
         if (name !== '_ga' && name.indexOf('_ga_') !== 0) return;
         ['', '; domain=.fmind.dev', '; domain=www.fmind.dev'].forEach(function (domain) {
-          document.cookie = name + '=; Max-Age=0; path=/' + domain;
+          document.cookie = name + '=; Max-Age=0; path=/; Secure; SameSite=Lax' + domain;
         });
       });
     };

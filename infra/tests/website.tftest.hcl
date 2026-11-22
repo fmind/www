@@ -268,14 +268,16 @@ run "alerting_contract" {
   assert {
     condition = (
       google_monitoring_uptime_check_config.health.monitored_resource[0].labels["host"] == "www.fmind.dev" &&
+      google_monitoring_uptime_check_config.health.timeout == "60s" &&
       google_monitoring_uptime_check_config.health.http_check[0].validate_ssl &&
       length(google_monitoring_uptime_check_config.health.http_check[0].accepted_response_status_codes) == 0 &&
       google_monitoring_uptime_check_config.apex.monitored_resource[0].labels["host"] == "fmind.dev" &&
+      google_monitoring_uptime_check_config.apex.timeout == "60s" &&
       google_monitoring_uptime_check_config.apex.http_check[0].validate_ssl &&
       google_monitoring_uptime_check_config.apex.http_check[0].path == "/health" &&
       length(google_monitoring_uptime_check_config.apex.http_check[0].accepted_response_status_codes) == 0
     )
-    error_message = "Both hosts need a TLS-validating /health uptime check accepting the final 2xx response after redirects."
+    error_message = "Both hosts need a 60s TLS-validating /health uptime check accepting the final 2xx response after redirects."
   }
 
   assert {
@@ -328,12 +330,23 @@ run "alerting_contract" {
   }
 
   assert {
+    condition = (
+      strcontains(google_monitoring_alert_policy.request_latency.conditions[0].condition_threshold[0].filter, "run.googleapis.com/request_latencies") &&
+      google_monitoring_alert_policy.request_latency.conditions[0].condition_threshold[0].aggregations[0].per_series_aligner == "ALIGN_PERCENTILE_95" &&
+      google_monitoring_alert_policy.request_latency.conditions[0].condition_threshold[0].threshold_value == 2000 &&
+      google_monitoring_alert_policy.request_latency.severity == "WARNING"
+    )
+    error_message = "Request latency must alert at WARNING when p95 exceeds 2,000 ms."
+  }
+
+  assert {
     condition = alltrue([for policy in [
       google_monitoring_alert_policy.uptime_health,
       google_monitoring_alert_policy.tls_expiry,
       google_monitoring_alert_policy.cloudrun_5xx_errors,
       google_monitoring_alert_policy.error_logs,
       google_monitoring_alert_policy.instance_saturation,
+      google_monitoring_alert_policy.request_latency,
       ] : policy.severity != null && length(policy.documentation) == 1 && length(policy.documentation[0].content) > 0
     ])
     error_message = "Every alert policy needs a severity and a runbook."

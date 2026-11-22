@@ -1,9 +1,10 @@
 # Docs: https://trivy.dev/docs/latest/references/configuration/config-file/
-disable-telemetry: true
-skip-version-check: true
 exit-code: 1
 timeout: 15m
 scan:
+  # Keep scans local: no usage data or version notices to Aqua (top-level keys are ignored).
+  disable-telemetry: true
+  skip-version-check: true
   file-patterns:
     - 'pnpm:aube-lock\.yaml'
   skip-dirs:

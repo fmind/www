@@ -16,7 +16,7 @@ from litestar.types import ASGIApp, HTTPRequestEvent, Message
 from tests.conftest import asgi_scope
 from www.config import Config
 from www.middleware import SiteMiddleware
-from www.ranges import _stream, etag_matches, range_file_response, strong_etag_matches
+from www.ranges import _open_regular_file, _stream, etag_matches, range_file_response, strong_etag_matches
 
 _BODY = b"0123456789abcdef"
 _CACHE_CONTROL = "public, max-age=86400, must-revalidate"
@@ -210,6 +210,9 @@ def test_empty_file_ignores_a_non_overlapping_range(tmp_path: Path) -> None:
         "bytes=--5",
         "bytes=x-5",
         "bytes=0-x",
+        # Syntactically invalid ranges stay malformed even when start >= size.
+        "bytes=999999-abc",
+        "bytes=999999-1",
         # RFC 9110 positions are digits only, without a sign.
         "bytes=+1-5",
         "bytes=-+5",
@@ -225,6 +228,50 @@ def test_malformed_ranges_return_unsized_416(asset: Path, range_header: str) -> 
     assert response.content == b"invalid range\n"
     assert response.headers["content-length"] == "14"
     assert "content-range" not in response.headers
+
+
+@pytest.mark.parametrize("range_header", ["bytes=0-abc", "bytes=5-1"])
+def test_empty_file_still_rejects_malformed_ranges(tmp_path: Path, range_header: str) -> None:
+    path = tmp_path / "empty.bin"
+    path.write_bytes(b"")
+
+    with _client(path) as client:
+        response = client.get("/video.mp4", headers={"range": range_header})
+
+    assert response.status_code == 416
+    assert response.content == b"invalid range\n"
+    assert "content-range" not in response.headers
+
+
+def test_known_size_pathsend_and_head_avoid_opening_file_descriptor(
+    asset: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def fail_open(_path: Path) -> tuple[Any, int]:
+        raise AssertionError("HEAD and pathsend with startup-verified size must not open the file")
+
+    monkeypatch.setattr("www.ranges._open_regular_file", fail_open)
+    response = range_file_response(
+        asset, content_type=_CONTENT_TYPE, cache_control=_CACHE_CONTROL, etag=_ETAG, size=len(_BODY)
+    )
+    extensions: dict[str, dict[object, object]] = {"http.response.pathsend": {}}
+    full = asyncio.run(_invoke(response, extensions=extensions))
+    assert full[-1] == {"type": "http.response.pathsend", "path": str(asset)}
+
+    messages: list[Message] = []
+
+    async def head_run() -> None:
+        async def receive() -> HTTPRequestEvent:
+            return {"type": "http.request", "body": b"", "more_body": False}
+
+        async def send(message: Message) -> None:
+            messages.append(message)
+
+        await response(asgi_scope(method="HEAD", raw_path=b"/video.mp4"), receive, send)
+
+    asyncio.run(head_run())
+    assert messages[0]["type"] == "http.response.start"
+    assert messages[0]["status"] == 200
+    assert messages[-1] == {"type": "http.response.body", "body": b"", "more_body": False}
 
 
 def test_a_file_that_shrinks_mid_stream_fails_instead_of_sending_a_short_body() -> None:
@@ -314,6 +361,33 @@ def test_non_regular_path_is_rejected_before_response_start(tmp_path: Path) -> N
 
     with pytest.raises(ValueError, match="not a regular file"):
         asyncio.run(_invoke(response))
+
+
+def test_cancelled_stream_still_closes_file_descriptor(asset: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    opened: list[Any] = []
+
+    def tracking_open(path: Path) -> tuple[Any, int]:
+        handle, size = _open_regular_file(path)
+        opened.append(handle)
+        return handle, size
+
+    monkeypatch.setattr("www.ranges._open_regular_file", tracking_open)
+    app = range_file_response(asset, content_type=_CONTENT_TYPE, cache_control="no-cache", etag=_ETAG)
+
+    async def run() -> None:
+        async def receive() -> HTTPRequestEvent:
+            return {"type": "http.request", "body": b"", "more_body": False}
+
+        async def send(message: Message) -> None:
+            if message["type"] == "http.response.start":
+                raise asyncio.CancelledError
+
+        await app(asgi_scope(raw_path=b"/video.mp4"), receive, send)
+
+    with pytest.raises(asyncio.CancelledError):
+        asyncio.run(run())
+    assert len(opened) == 1
+    assert opened[0].closed
 
 
 async def _invoke(

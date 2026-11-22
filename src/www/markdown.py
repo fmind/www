@@ -46,15 +46,8 @@ def _reference_suffix(target: str, title: str) -> str:
 
 
 def _quote_link_title(title: str) -> str:
-    """Escape unescaped double quotes while retaining authored backslashes."""
-    quoted: list[str] = []
-    escaped = False
-    for character in title:
-        if character == '"' and not escaped:
-            quoted.append("\\")
-        quoted.append(character)
-        escaped = character == "\\" and not escaped
-    return "".join(quoted)
+    """Escape backslashes and double quotes in an unescaped Markdown link title."""
+    return title.replace("\\", "\\\\").replace('"', '\\"')
 
 
 def _inline_destination_edit(

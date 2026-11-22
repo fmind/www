@@ -126,6 +126,8 @@ def build_trivy_evidence_command(digest: str, output_path: Path) -> tuple[str, .
         "image",
         "--config",
         "/dev/null",
+        "--disable-telemetry",
+        "--skip-version-check",
         "--platform",
         "linux/amd64",
         "--scanners",

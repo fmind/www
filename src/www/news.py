@@ -127,10 +127,10 @@ class NewsItem:
     title: str
     url: str
     description: str
+    domain: str = field(init=False)
 
-    @property
-    def domain(self) -> str:
-        return urlparse(self.url).netloc.removeprefix("www.")
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "domain", urlparse(self.url).netloc.removeprefix("www."))
 
     def summary(self) -> NewsItemSummary:
         return NewsItemSummary(
@@ -463,13 +463,15 @@ def render_news_schema() -> bytes:
     return (json.dumps(schema, ensure_ascii=False, indent=2) + "\n").encode()
 
 
-def search_news_editions(editions: Sequence[NewsEdition], query: str) -> tuple[NewsEditionSummary, ...]:
-    """Search editions by relevance across edition dates, topics, link titles, domains, URLs, and descriptions."""
+def search_news_page(
+    editions: Sequence[NewsEdition], query: str, *, offset: int = 0, limit: int | None = None
+) -> tuple[tuple[NewsEditionSummary, ...], int]:
+    """Search editions by relevance and materialize summaries only for the requested page."""
     terms = tuple(dict.fromkeys(tokenize(query)))
     if not terms or not editions:
-        return ()
+        return (), 0
 
-    hits: list[tuple[int, int, NewsEditionSummary]] = []
+    hits: list[tuple[int, int, NewsEdition, tuple[NewsItem, ...] | None]] = []
     for position, edition in enumerate(editions):
         edition_terms, item_terms = edition.search_terms
         header_matches = all(term in edition_terms for term in terms)
@@ -481,11 +483,18 @@ def search_news_editions(editions: Sequence[NewsEdition], query: str) -> tuple[N
                 matched_items.append(item)
                 edition_score += sum(counts[term] for term in terms)
         if header_matches:
-            hits.append((edition_score, position, edition.summary()))
+            hits.append((edition_score, position, edition, None))
         elif matched_items:
-            hits.append((edition_score, position, edition.summary(matched_items)))
+            hits.append((edition_score, position, edition, tuple(matched_items)))
     hits.sort(key=lambda hit: (-hit[0], hit[1]))
-    return tuple(summary for _, _, summary in hits)
+    window = hits[offset:] if limit is None else hits[offset : offset + limit]
+    return tuple(edition.summary(items) for _, _, edition, items in window), len(hits)
+
+
+def search_news_editions(editions: Sequence[NewsEdition], query: str) -> tuple[NewsEditionSummary, ...]:
+    """Search editions by relevance across edition dates, topics, link titles, domains, URLs, and descriptions."""
+    results, _ = search_news_page(editions, query)
+    return results
 
 
 def _edition_html(edition: NewsEdition) -> str:

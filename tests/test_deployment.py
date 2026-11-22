@@ -34,8 +34,19 @@ SCOPE = (
     "--region",
     "europe-west1",
 )
-# Removes only the manual tag of an unpromoted candidate; it never moves traffic.
-CLEANUP = ("gcloud", "run", "services", "update-traffic", *SCOPE, "--remove-tags=manual-candidate", "--quiet")
+
+
+def cleanup_command(tag: str) -> tuple[str, ...]:
+    # Removes only the tag of an unpromoted candidate; it never moves traffic.
+    return ("gcloud", "run", "services", "update-traffic", *SCOPE, f"--remove-tags={tag}", "--quiet")
+
+
+def created_tag(commands: Sequence[tuple[str, ...]]) -> str:
+    for command in commands:
+        for argument in command:
+            if argument.startswith("--tag="):
+                return argument.removeprefix("--tag=")
+    raise AssertionError("no --tag= argument recorded in gcloud commands")
 
 
 @pytest.fixture(autouse=True)
@@ -85,7 +96,7 @@ def test_valid_release_restamps_commit_and_routes_traffic_to_the_new_revision() 
             f"--update-labels=commit-sha={VALID_COMMIT}",
             "--revision-suffix=manual-test",
             "--no-traffic",
-            "--tag=manual-candidate",
+            "--tag=manual-test",
             "--quiet",
         ),
         (
@@ -95,10 +106,10 @@ def test_valid_release_restamps_commit_and_routes_traffic_to_the_new_revision() 
             "update-traffic",
             *SCOPE,
             "--to-revisions=www-fmind-dev-manual-test=100",
-            "--remove-tags=manual-candidate",
+            "--remove-tags=manual-test",
             "--quiet",
         ),
-        CLEANUP,
+        cleanup_command("manual-test"),
     )
 
 
@@ -153,7 +164,7 @@ def test_interrupted_rollout_cleans_up_the_candidate_tag_without_moving_traffic(
         raise KeyboardInterrupt
 
     assert main((VALID_IMAGE, VALID_COMMIT), target=TARGET, runner=runner, verifier=interrupt) == 130
-    assert runner.commands[-1] == CLEANUP
+    assert runner.commands[-1] == cleanup_command(created_tag(runner.commands))
     assert not any(argument.startswith("--to-revisions") for command in runner.commands for argument in command)
     assert capsys.readouterr().err == "deployment interrupted; traffic was not promoted\n"
 
@@ -181,8 +192,8 @@ def test_failed_update_preserves_exit_status_and_never_moves_traffic() -> None:
     runner = RecordingRunner(0, 0, 9)
 
     assert main((VALID_IMAGE, VALID_COMMIT), target=TARGET, runner=runner) == 9
-    # A failed update may still leave a tagged revision; the cleanup removes the tag without routing traffic.
-    assert runner.commands[-1] == CLEANUP
+    # A failed update may still leave a tagged revision; the cleanup removes only this rollout's tag.
+    assert runner.commands[-1] == cleanup_command(created_tag(runner.commands))
     assert runner.gcloud_steps == ["update", "update-traffic"]
 
 
@@ -191,17 +202,29 @@ def test_failed_traffic_promotion_is_reported_and_drops_the_manual_tag() -> None
 
     assert main((VALID_IMAGE, VALID_COMMIT), target=TARGET, runner=runner) == 7
     assert runner.gcloud_steps == ["update", "update-traffic", "update-traffic"]
-    assert runner.commands[-1] == CLEANUP
+    assert runner.commands[-1] == cleanup_command(created_tag(runner.commands))
 
 
 def test_failed_tag_cleanup_is_reported_without_masking_the_failure(capsys: pytest.CaptureFixture[str]) -> None:
     runner = RecordingRunner(0, 0, 9, 4)
 
     assert main((VALID_IMAGE, VALID_COMMIT), target=TARGET, runner=runner) == 9
+    tag = created_tag(runner.commands)
     assert (
-        capsys.readouterr().err
-        == "removing the manual-candidate tag failed; remove it by hand, since its tag URL stays public\n"
+        capsys.readouterr().err == f"removing the {tag} tag failed; remove it by hand, since its tag URL stays public\n"
     )
+
+
+def test_concurrent_rollouts_use_distinct_candidate_tags() -> None:
+    first, second = RecordingRunner(0, 0, 9), RecordingRunner(0, 0, 9)
+
+    assert main((VALID_IMAGE, VALID_COMMIT), target=TARGET, runner=first) == 9
+    assert main((VALID_IMAGE, VALID_COMMIT), target=TARGET, runner=second) == 9
+    first_tag = created_tag(first.commands)
+    second_tag = created_tag(second.commands)
+    assert first_tag != second_tag
+    assert first.commands[-1] == cleanup_command(first_tag)
+    assert second.commands[-1] == cleanup_command(second_tag)
 
 
 def test_concurrent_revision_after_verification_never_receives_manual_traffic() -> None:
@@ -226,9 +249,15 @@ def test_manual_verifier_checks_expected_revision_before_probing(
 ) -> None:
     expected = "www-fmind-dev-manual-test"
     actual = "www-fmind-dev-concurrent" if replaced else expected
-    url = "https://manual-candidate---www-fmind-dev-example.run.app"
+    url = "https://manual-test---www-fmind-dev-example.run.app"
+    seen_tags: list[str] = []
+
+    def fake_verify_candidate(*_args: object, **kwargs: object) -> tuple[str, str]:
+        seen_tags.append(str(kwargs["tag"]))
+        return actual, url
+
     monkeypatch.setattr(verify_deployment, "describe_service", lambda _: {})
-    monkeypatch.setattr(verify_deployment, "verify_candidate", lambda *_args, **_kwargs: (actual, url))
+    monkeypatch.setattr(verify_deployment, "verify_candidate", fake_verify_candidate)
     probes: list[str] = []
     monkeypatch.setattr(verify_deployment, "probe", lambda origin, **_: probes.append(origin))
     if replaced:
@@ -238,6 +267,7 @@ def test_manual_verifier_checks_expected_revision_before_probing(
     else:
         VERIFY_CREATED_REVISION(TARGET, VALID_IMAGE, VALID_COMMIT, expected)
         assert probes == [url]
+    assert seen_tags == ["manual-test"]
 
 
 # Our own invariant messages reach the log; any other failure shows only its type, never provider text.
@@ -263,8 +293,8 @@ def test_failed_candidate_verification_never_promotes_or_exposes_diagnostics(
         raise error
 
     assert main((VALID_IMAGE, VALID_COMMIT), target=TARGET, runner=runner, verifier=fail) == 1
-    # The failed candidate loses its public tag URL now, as in CI, instead of at the next manual rollout.
-    assert runner.commands[-1] == CLEANUP
+    # The failed candidate loses only its own public tag URL immediately.
+    assert runner.commands[-1] == cleanup_command(created_tag(runner.commands))
     assert not any(argument.startswith("--to-revisions") for command in runner.commands for argument in command)
     assert capsys.readouterr().err == f"candidate verification failed: {detail}; traffic was not promoted\n"
 
@@ -405,7 +435,7 @@ def test_timed_out_candidate_update_drops_the_manual_tag_without_moving_traffic(
     monkeypatch.setattr(deploy.subprocess, "run", fake_run)
 
     assert main((VALID_IMAGE, VALID_COMMIT), target=TARGET) == deploy.TIMEOUT_EXIT
-    assert calls[-1] == CLEANUP
+    assert calls[-1] == cleanup_command(created_tag(calls))
     assert not any(argument.startswith("--to-revisions") for command in calls for argument in command)
     assert capsys.readouterr().err == (
         "deploy: gcloud run services update timed out after 600s;"

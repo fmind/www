@@ -11,6 +11,7 @@ from litestar.types import ASGIApp, Message, Receive, Scope, Send
 
 from www.config import Config, Environment
 from www.data import METADATA
+from www.log import CLOUD_TRACE_LOG_KEY, CURRENT_CLOUD_TRACE
 
 CANONICAL_TARGET = METADATA.site_url
 CANONICAL_APEX = (urlsplit(METADATA.site_url).hostname or "").removeprefix("www.")
@@ -82,8 +83,6 @@ _REFERER_SCHEMES = frozenset({"http", "https", "android-app"})
 _DNS_LABEL = re.compile(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?")
 _MAX_REFERER_LENGTH = 2048
 _MAX_LOG_PATH_LENGTH = 512
-# Cloud Logging joins a log entry to its request log through this special field.
-CLOUD_TRACE_LOG_KEY = "logging.googleapis.com/trace"
 _TRACEPARENT = re.compile(r"00-([0-9a-f]{32})-[0-9a-f]{16}-[0-9a-f]{2}")
 _CLOUD_TRACE_CONTEXT = re.compile(r"([0-9a-f]{32})/[0-9]{1,20}(?:;o=[0-9])?")
 _NULL_TRACE_ID = "0" * 32
@@ -377,6 +376,7 @@ class SiteMiddleware:
             await send_wrapper({"type": "http.response.body", "body": body, "more_body": False})
             return
 
+        trace_token = CURRENT_CLOUD_TRACE.set(cloud_trace) if cloud_trace else None
         try:
             await self.app(scope, receive, send_wrapper)
         except BaseException:
@@ -385,6 +385,8 @@ class SiteMiddleware:
             status = 500
             raise
         finally:
+            if trace_token is not None:
+                CURRENT_CLOUD_TRACE.reset(trace_token)
             # Also covers a non-conforming ASGI app that returns without a terminal body event.
             finalize_logs()
 

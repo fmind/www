@@ -70,16 +70,23 @@ def range_file_response(
     content_type: str,
     cache_control: str,
     etag: str,
+    size: int | None = None,
 ) -> ASGIApp:
     """Return an ASGI app that streams one local file with single byte-range support.
 
     A full GET uses the server's pathsend extension when offered, so the route
     must be excluded from compression, which needs ordinary response-body events.
+    When `size` comes from the startup-verified static inventory, HEAD and
+    pathsend responses avoid opening and closing an unused file descriptor.
     """
 
     async def response(scope: Scope, receive: Receive, send: Send) -> None:
         del receive
-        file, size = await asyncio.to_thread(_open_regular_file, path)
+        file: BinaryIO | None = None
+        if size is None:
+            file, file_size = await asyncio.to_thread(_open_regular_file, path)
+        else:
+            file_size = size
         try:
             request_headers = Headers.from_scope(scope)
             if_range = request_headers.get("if-range")
@@ -100,10 +107,10 @@ def range_file_response(
             byte_range: _ByteRange | None = None
             if honor_range:
                 try:
-                    byte_range = _parse_range(specifier, size)
+                    byte_range = _parse_range(specifier, file_size)
                 except _NoOverlapError:
-                    if size:
-                        await _send_error(send, _NO_OVERLAP_BODY, size)
+                    if file_size:
+                        await _send_error(send, _NO_OVERLAP_BODY, file_size)
                         return
                     # An empty representation can satisfy clients that always send Range.
                 except _MalformedRangeError:
@@ -112,7 +119,15 @@ def range_file_response(
 
             partial = byte_range is not None
             if byte_range is None:
-                byte_range = _ByteRange(start=0, length=size)
+                byte_range = _ByteRange(start=0, length=file_size)
+            use_pathsend = not partial and "http.response.pathsend" in (scope.get("extensions") or {})
+            needs_stream = method != "HEAD" and byte_range.length > 0 and not use_pathsend
+            if needs_stream and file is None:
+                file, live_size = await asyncio.to_thread(_open_regular_file, path)
+                if live_size != file_size:
+                    msg = "static asset changed while it was being served"
+                    raise OSError(msg)
+
             response_headers = [
                 (b"accept-ranges", b"bytes"),
                 (b"cache-control", cache_control.encode("latin-1")),
@@ -121,23 +136,29 @@ def range_file_response(
                 (b"content-type", content_type.encode("latin-1")),
             ]
             if partial:
-                response_headers.append((b"content-range", byte_range.content_range(size).encode("ascii")))
+                response_headers.append((b"content-range", byte_range.content_range(file_size).encode("ascii")))
 
             await send({"type": "http.response.start", "status": 206 if partial else 200, "headers": response_headers})
             if method == "HEAD" or byte_range.length == 0:
                 await send({"type": "http.response.body", "body": b"", "more_body": False})
                 return
 
-            if not partial and "http.response.pathsend" in (scope.get("extensions") or {}):
+            if use_pathsend:
                 # Granian hands the file to the kernel instead of paying one
                 # event-loop/thread-pool round trip per chunk.
                 await send(cast(Message, {"type": "http.response.pathsend", "path": str(path)}))
                 return
 
+            if file is None:
+                msg = "file handle unavailable for streaming response"
+                raise RuntimeError(msg)
             await asyncio.to_thread(file.seek, byte_range.start)
             await _stream(file, byte_range.length, send)
         finally:
-            await asyncio.to_thread(file.close)
+            # Close synchronously: the descriptor is an unbuffered O_RDONLY | O_NONBLOCK regular file,
+            # so closing cannot block and remains non-cancellable if a client disconnects mid-stream.
+            if file is not None:
+                file.close()
 
     return response
 
@@ -191,12 +212,13 @@ def _parse_range(value: str, size: int) -> _ByteRange | None:
     first, last = (part.strip(" \t") for part in specifier.split("-", 1))
     if first:
         start = _parse_decimal(first)
+        end = _parse_decimal(last) if last else None
+        if end is not None and end < start:
+            raise _MalformedRangeError
         if start >= size:
             raise _NoOverlapError
-        end = _parse_decimal(last) if last else size - 1
-        if end < start:
-            raise _MalformedRangeError
-        return _ByteRange(start=start, length=min(end, size - 1) - start + 1)
+        resolved_end = min(end, size - 1) if end is not None else size - 1
+        return _ByteRange(start=start, length=resolved_end - start + 1)
 
     if not last or last.startswith("-"):
         raise _MalformedRangeError

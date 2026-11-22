@@ -25,10 +25,10 @@ from www.tags import is_tag, tag_names
 WORDS_PER_MINUTE = 200
 FIGURE_SIZES = "(max-width: 1312px) calc(100vw - 2rem), 1280px"
 _SLUG = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
-_VIDEO = re.compile(r'<img src="(/static/img/articles/[^"]+\.mp4)" alt="([^"]*)">')
-_FIGURE = re.compile(r'<p>(<img src="(/static/img/articles/[^"]+)" alt="([^"]*)">)</p>')
+_VIDEO = re.compile(r'<img src="(/static/img/articles/[^"]+\.mp4)" alt="([^"]*)"(?: [^>]*)?>')
+_FIGURE = re.compile(r'<p>(<img src="(/static/img/articles/[^"]+)" alt="([^"]*)"(?: [^>]*)?>)</p>')
 _CAPTION = re.compile(
-    r'<figure><a ([^>]*)><img src="([^"]+)" alt="([^"]*)"></a></figure>\s*<p>(.*?)</p>',
+    r'<figure><a ([^>]*)><img src="([^"]+)" alt="([^"]*)"([^>]*)></a></figure>\s*<p>(.*?)</p>',
     re.DOTALL,
 )
 _IMAGE = re.compile(r'<img src="(/static/img/articles/[^"]+)"')
@@ -174,26 +174,42 @@ def _parse_date(field: str, value: str) -> datetime:
     return utc_midnight(parsed)
 
 
-def _cover(static_dir: Path, slug: str) -> str:
-    directory = static_dir / "img" / "articles" / slug
-    # Accept every source format that `build_images.py` derives from, case-insensitively
-    # as it does, and pick by its fixed preference order when several exist.
-    covers = sorted(path for path in directory.glob("cover.*") if path.stem == "cover" and path.is_file())
+def _cover(static_dir: Path, slug: str, static_files: Mapping[str, Path] | None = None) -> str:
+    prefix = f"/static/img/articles/{slug}/cover."
+    if static_files is not None:
+        candidates = sorted(
+            route
+            for route in static_files
+            if route.startswith(prefix)
+            and "/" not in route.removeprefix(prefix)
+            and PurePosixPath(route).stem == "cover"
+        )
+    else:
+        directory = static_dir / "img" / "articles" / slug
+        # Accept every source format that `build_images.py` derives from, case-insensitively
+        # as it does, and pick by its fixed preference order when several exist.
+        candidates = sorted(
+            f"/static/img/articles/{slug}/{path.name}"
+            for path in directory.glob("cover.*")
+            if path.stem == "cover" and path.is_file()
+        )
     for extension in SOURCE_EXTENSIONS:
-        for candidate in covers:
-            if candidate.suffix.lower() == extension:
-                return f"/static/img/articles/{slug}/{candidate.name}"
+        for candidate in candidates:
+            if PurePosixPath(candidate).suffix.lower() == extension:
+                return candidate
     raise ArticleError(
         f'missing article cover under "static/img/articles/{slug}": '
         f"expected one of {', '.join(f'cover{extension}' for extension in SOURCE_EXTENSIONS)}"
     )
 
 
-def _card_cover(static_dir: Path, slug: str) -> str:
+def _card_cover(static_dir: Path, slug: str, static_files: Mapping[str, Path] | None = None) -> str:
     relative = f"img/articles/{slug}/cover-800.webp"
-    if not (static_dir / relative).is_file():
+    route = f"/static/{relative}"
+    exists = route in static_files if static_files is not None else (static_dir / relative).is_file()
+    if not exists:
         raise ArticleError(f'missing card cover "static/{relative}": run `mise run build:images`')
-    return f"/static/{relative}"
+    return route
 
 
 def _heading_slug(text: str) -> str:
@@ -361,10 +377,10 @@ def _caption_text(fragment: str) -> str:
 
 def _fold_captions(body: str) -> str:
     def replace(match: re.Match[str]) -> str:
-        link, source, alt, caption = match.groups()
+        link, source, alt, extra, caption = match.groups()
         if not _caption_text(alt) or _caption_text(caption) != _caption_text(alt):
             return match.group(0)
-        return f'<figure><a {link}><img src="{source}" alt=""></a><figcaption>{caption}</figcaption></figure>'
+        return f'<figure><a {link}><img src="{source}" alt=""{extra}></a><figcaption>{caption}</figcaption></figure>'
 
     return _CAPTION.sub(replace, body)
 
@@ -380,12 +396,20 @@ def _asset_path(static_dir: Path, source: str) -> Path:
     return path
 
 
-def _validate_body_media(static_dir: Path, media: Sequence[tuple[str, str]]) -> None:
+def _asset_exists(static_dir: Path, source: str, static_files: Mapping[str, Path] | None = None) -> bool:
+    if static_files is not None:
+        return source in static_files
+    return _asset_path(static_dir, source).is_file()
+
+
+def _validate_body_media(
+    static_dir: Path, media: Sequence[tuple[str, str]], static_files: Mapping[str, Path] | None = None
+) -> None:
     """Reject body images and videos that cannot render: CSP allows only local media."""
     for source, alt in media:
         if not source.startswith(_MEDIA_PREFIX):
             raise ArticleError(f"body media {source!r} must be a file under {_MEDIA_PREFIX}")
-        if not _asset_path(static_dir, source).is_file():
+        if not _asset_exists(static_dir, source, static_files):
             raise ArticleError(f"missing body media {source!r}")
         if not alt.strip():
             raise ArticleError(f"body media {source!r} needs alt text")
@@ -405,23 +429,25 @@ def _image_size(static_dir: Path, source: str, known: Mapping[str, tuple[int, in
 def _video_size(
     static_dir: Path, source: str, known: Mapping[str, tuple[int, int]] | None = None
 ) -> tuple[int, int] | None:
+    path = _asset_path(static_dir, source)
     if known and (dimensions := known.get(source)):
         return dimensions
-    path = _asset_path(static_dir, source)
     try:
         return video_dimensions(path)
     except OSError:
         return None
 
 
-def _source_set(static_dir: Path, source: str, source_width: int) -> tuple[str, str]:
+def _source_set(
+    static_dir: Path, source: str, source_width: int, static_files: Mapping[str, Path] | None = None
+) -> tuple[str, str]:
     path = PurePosixPath(source)
     candidates: list[str] = []
     for width in DERIVATIVE_WIDTHS:
         if width >= source_width:
             continue
         derivative = str(path.with_name(f"{path.stem}-{width}.webp"))
-        if _asset_path(static_dir, derivative).is_file():
+        if _asset_exists(static_dir, derivative, static_files):
             candidates.append(f"{derivative} {width}w")
     if not candidates:
         return "", ""
@@ -429,7 +455,12 @@ def _source_set(static_dir: Path, source: str, source_width: int) -> tuple[str, 
     return ", ".join(candidates), FIGURE_SIZES
 
 
-def enhance_body_images(body: str, static_dir: Path, image_sizes: Mapping[str, tuple[int, int]] | None = None) -> str:
+def enhance_body_images(
+    body: str,
+    static_dir: Path,
+    image_sizes: Mapping[str, tuple[int, int]] | None = None,
+    static_files: Mapping[str, Path] | None = None,
+) -> str:
     def replace_video(match: re.Match[str]) -> str:
         source, alt = match.group(1), match.group(2)
         dimensions = _video_size(static_dir, source, image_sizes)
@@ -452,7 +483,7 @@ def enhance_body_images(body: str, static_dir: Path, image_sizes: Mapping[str, t
         nonlocal position
         source = match.group(1)
         width, height = _image_size(static_dir, source, image_sizes)
-        srcset, sizes = _source_set(static_dir, source, width)
+        srcset, sizes = _source_set(static_dir, source, width, static_files)
         # The first figure may be visible, but text can push it far below the fold.
         # Let the browser prioritize it instead of competing with fonts and CSS.
         loading = "" if position == 0 else ' loading="lazy"'
@@ -468,6 +499,7 @@ def parse_article(
     data: bytes,
     static_dir: Path = Path("static"),
     image_sizes: Mapping[str, tuple[int, int]] | None = None,
+    static_files: Mapping[str, Path] | None = None,
 ) -> Article:
     try:
         header, markdown_bytes = split_frontmatter(data)
@@ -504,16 +536,16 @@ def parse_article(
         updated = _parse_date("updated", updated_value) if updated_value else published
         if updated < published:
             raise ArticleError("updated date must not precede publish date")
-        image_path = _cover(static_dir, slug)
-        card_image_path = _card_cover(static_dir, slug)
+        image_path = _cover(static_dir, slug, static_files)
+        card_image_path = _card_cover(static_dir, slug, static_files)
         markdown = markdown_bytes.decode("utf-8")
         rendered = _render_markdown(markdown)
-        _validate_body_media(static_dir, rendered.media)
+        _validate_body_media(static_dir, rendered.media, static_files)
         # The body shows the cover with reviewed alt text; social cards and
         # JSON-LD reuse it, so one description serves every surface. The title covers a body without it.
         cover_prefix = f"{_MEDIA_PREFIX}{slug}/cover."
         cover_alt = next((alt for source, alt in rendered.media if source.startswith(cover_prefix)), "")
-        body = enhance_body_images(rendered.html, static_dir, image_sizes)
+        body = enhance_body_images(rendered.html, static_dir, image_sizes, static_files)
         word_count = len(markdown.split())
         reading_minutes = max(1, (word_count + WORDS_PER_MINUTE - 1) // WORDS_PER_MINUTE)
         article_url = f"{METADATA.site_url}/articles/{slug}/"
@@ -547,6 +579,7 @@ def load_articles(
     content_dir: Path = Path("content/articles"),
     static_dir: Path = Path("static"),
     image_sizes: Mapping[str, tuple[int, int]] | None = None,
+    static_files: Mapping[str, Path] | None = None,
 ) -> ArticleCollection:
     names = tuple(sorted(content_dir.glob("*.md")))
     if not names:
@@ -555,7 +588,7 @@ def load_articles(
     articles: list[Article] = []
     for path in names:
         # A file name must equal its slug, so two files never share one.
-        article = parse_article(path.as_posix(), path.read_bytes(), static_dir, image_sizes)
+        article = parse_article(path.as_posix(), path.read_bytes(), static_dir, image_sizes, static_files)
         articles.append(article)
         by_slug[article.slug] = article
     articles.sort(key=lambda article: (-article.date.timestamp(), article.slug))

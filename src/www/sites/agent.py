@@ -16,6 +16,7 @@ from www.sites.inputs import (
     LEGACY_WEB_NODES,
     hosting_url,
     parse_inputs,
+    pilot_configuration_id,
     scenario_parameters,
 )
 from www.sites.models import (
@@ -31,7 +32,6 @@ from www.sites.models import (
 # Strip only web-form fallback clauses ("<reason>; <fallback> was/were used/kept/cleared"),
 # preserving semicolon-separated machine lists and guidance clauses in configuration_issue.
 _FALLBACK_CLAUSE = re.compile(r"; [^;]+ (?:was|were) (?:used|kept|cleared)$")
-_MEASUREMENT_KEYS = frozenset({"measured-concurrency", "measured-first", "measured-complete"})
 
 
 # Comparison rows name catalog entries by id: repeating the full model, machine, and
@@ -116,17 +116,24 @@ def compare_hosting(parameters: Mapping[str, str]) -> HostingResult:
         raise ValueError("Invalid calculator parameters: Model (model) was not recognized")
     if parameters.get("node") in LEGACY_WEB_NODES:
         raise ValueError("Invalid calculator parameters: GPU / TPU node (node) was not recognized")
-    _, errors = parse_inputs(parameters)
+    parsed, errors = parse_inputs(parameters)
     if errors:
         # Validation messages read "<reason>; <fallback applied by the web form>". MCP
         # rejects instead of falling back, so it reports only the reason.
         reasons = (_FALLBACK_CLAUSE.sub("", error) for error in errors)
         raise ValueError("Invalid calculator parameters: " + "; ".join(reasons))
-    if (parameters.keys() & {"pilot", "confirm-pilot"}) and not (parameters.keys() & _MEASUREMENT_KEYS):
-        raise ValueError(
-            "Invalid calculator parameters: pilot and confirm-pilot require recorded latency measurements "
-            "(measured-concurrency, measured-first, measured-complete)."
-        )
+    pilot_keys = parameters.keys() & {"pilot", "confirm-pilot"}
+    if pilot_keys:
+        if not any((parsed.measured_concurrency, parsed.measured_first_token, parsed.measured_completion)):
+            raise ValueError(
+                "Invalid calculator parameters: pilot and confirm-pilot require recorded latency measurements "
+                "(measured-concurrency, measured-first, measured-complete)."
+            )
+        expected_pilot = pilot_configuration_id(parsed)
+        if any(parameters[key] != expected_pilot for key in pilot_keys):
+            raise ValueError(
+                "Invalid calculator parameters: pilot and confirm-pilot must match the current pilot_configuration."
+            )
     now = datetime.now(UTC)
     view = build_llm_self_hosting_view(parameters, now=now)
     return HostingResult(

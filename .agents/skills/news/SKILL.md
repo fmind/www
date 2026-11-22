@@ -35,7 +35,7 @@ Editions live at `content/news/YYYY-MM-DD.md` (or `YYYY-MM-DD-topic.md` for spec
 1. **Validate**: run `uv run --locked pytest tests/test_news.py` (after `mise run build:css` if needed), show the ranked preview, and wait for owner approval.
 1. **Publish**: with deploy authority, set `updated` frontmatter when modifying a published edition, commit only the edition (`feat(news): add YYYY-MM-DD edition` or `fix(news): ...`), push `main`, watch `deploy.yml`, and verify `/news/<slug>/` and `/news/feed.xml` live.
 
-## From Chat {#chat}
+## From Chat
 
 For phone-submitted links, run only these two commands without touching the checkout, fetching pages manually, or running Git:
 

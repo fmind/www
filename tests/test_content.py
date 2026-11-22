@@ -384,6 +384,24 @@ def test_inline_images_stay_inline_and_explicit_mp4_becomes_video(tmp_path: Path
     assert 'aria-label="editor demo"' in item.html
 
 
+def test_titled_body_media_still_renders_figures_and_videos(tmp_path: Path) -> None:
+    static = assets(tmp_path)
+    (static / "img" / "articles" / "example" / "clip.mp4").write_bytes(b"ftyp")
+    markdown = (
+        '![figure alt](/static/img/articles/example/figure.png "Figure tooltip")\n\n'
+        "figure alt\n\n"
+        '![video alt](/static/img/articles/example/clip.mp4 "Video tooltip")\n'
+    )
+
+    item = parse_article("content/articles/example.md", source(markdown), static)
+
+    assert item.html.count("<figure>") == 1
+    assert "<figcaption>figure alt</figcaption>" in item.html
+    assert 'title="Figure tooltip"' in item.html
+    assert "<video muted loop playsinline data-autoplay controls" in item.html
+    assert 'aria-label="video alt"' in item.html
+
+
 @pytest.mark.parametrize(
     ("markdown", "message"),
     [

@@ -128,6 +128,8 @@ def test_scan_records_evidence_and_gates_each_digest_without_the_global_trivy_co
     # The evidence export ignores the repository's suppressions; the gate is the task CI runs before a deploy.
     assert evidence[:2] == ("trivy", "image")
     assert evidence[evidence.index("--ignorefile") + 1] == "/dev/null"
+    assert "--disable-telemetry" in evidence
+    assert "--skip-version-check" in evidence
     assert gate == ("mise", "run", "check:image:digest", DIGEST)
     assert runner.envs[2:] == [{"KEEP": "value"}, {"KEEP": "value"}]
 

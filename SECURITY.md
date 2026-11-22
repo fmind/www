@@ -8,7 +8,7 @@ CI deployment and manual `mise run deploy` enforce identical gates before Cloud 
 
 Weekly [`security.yml`](.github/workflows/security.yml) scans every serving or tagged revision digest via a separate read-only identity and retains unfiltered advisory artifacts for 30 days. Passing the fixable gate does not imply zero advisories.
 
-Trivy may warn about [fallback severity sources](https://trivy.dev/docs/v0.76/guide/scanner/vulnerability/#severity-selection). `trivy.yaml` and `mise.toml` skip only pip's vendored SBOM (absent from the runtime image) and local tooling directories. Review full findings and package inventory; never add ignores, narrow severity sources, or silence scanners merely to quiet logs.
+Trivy may warn about [fallback severity sources](https://trivy.dev/docs/v0.76/guide/scanner/vulnerability/#severity-selection). `trivy.yaml` sets `ignore-unfixed: true` for blocking gates (while `scripts/scan_deployed.py` exports unfiltered HIGH/CRITICAL evidence with `--config /dev/null --ignorefile /dev/null`), `mise.toml` skips only pip's vendored SBOM (absent from the runtime image) and local tooling directories, and `.trivyignore` records the single reviewed Cloud Run exception (`DS-0026`: Dockerfile `HEALTHCHECK` is ignored by Cloud Run, which probes `/health` via `infra/cloud_run.tf`). Review full findings and package inventory; never add unexplained ignores, narrow severity sources, or silence scanners merely to quiet logs.
 
 ## Current advisory review
 

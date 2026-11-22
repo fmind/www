@@ -43,6 +43,7 @@
 | [google_monitoring_alert_policy.cloudrun_5xx_errors](https://registry.terraform.io/providers/hashicorp/google/8.10.0/docs/resources/monitoring_alert_policy) | resource |
 | [google_monitoring_alert_policy.error_logs](https://registry.terraform.io/providers/hashicorp/google/8.10.0/docs/resources/monitoring_alert_policy) | resource |
 | [google_monitoring_alert_policy.instance_saturation](https://registry.terraform.io/providers/hashicorp/google/8.10.0/docs/resources/monitoring_alert_policy) | resource |
+| [google_monitoring_alert_policy.request_latency](https://registry.terraform.io/providers/hashicorp/google/8.10.0/docs/resources/monitoring_alert_policy) | resource |
 | [google_monitoring_alert_policy.tls_expiry](https://registry.terraform.io/providers/hashicorp/google/8.10.0/docs/resources/monitoring_alert_policy) | resource |
 | [google_monitoring_alert_policy.uptime_health](https://registry.terraform.io/providers/hashicorp/google/8.10.0/docs/resources/monitoring_alert_policy) | resource |
 | [google_monitoring_notification_channel.email](https://registry.terraform.io/providers/hashicorp/google/8.10.0/docs/resources/monitoring_notification_channel) | resource |

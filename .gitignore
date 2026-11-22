@@ -5,10 +5,12 @@
 *.tfstate.*
 *.tfvars
 .coverage
+.coverage.*
 .env*
 !.env.example
 .pytest_cache/
 .ruff_cache/
+.ty_cache/
 .venv/
 __pycache__/
 static-hashes.json
@@ -16,8 +18,9 @@ gha-creds-*.json
 infra/.terraform/
 static/dist/styles.css
 tmp/
+# Local agent scratch prompts.
+.agents/prompts/
 # Per-host mise overrides such as IMAGE_PLATFORM on arm64 machines.
 mise.local.toml
-# Claude host directory (keeping only the .claude/skills bridge).
-.claude/*
-!.claude/skills
+# Local Claude host state.
+.claude/

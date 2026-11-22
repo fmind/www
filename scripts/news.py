@@ -61,7 +61,7 @@ REASON_WORD_LIMIT = 20
 _UNSAFE_REASON = re.compile(r"[\[\]<>()]|://")
 # Every agy tool kind is denied, so fetched text that carries instructions reaches a model that cannot act on them.
 WRITER_DENY = ("read_file(*)", "write_file(*)", "command(*)", "read_url(*)", "execute_url(*)", "mcp(*)")
-# Link-shared documents need the owner's word that they are public (news skill, "Check each source").
+# Link-shared documents need the owner's word that they are public (news skill, "Check sources").
 SHARED_HOSTS = frozenset(
     {"docs.google.com", "drive.google.com", "dropbox.com", "www.dropbox.com", "notion.so", "www.notion.so"}
 )
@@ -195,7 +195,7 @@ def writer_prompt(
         ),
         "Published lines:\n" + json.dumps(published, ensure_ascii=False, indent=1),
         "<untrusted_source_facts>\n"
-        + json.dumps(sources, ensure_ascii=False, indent=1)
+        + json.dumps(sources, ensure_ascii=False, indent=1).replace("<", "\\u003c")
         + "\n</untrusted_source_facts>",
     ]
     if feedback:

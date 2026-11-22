@@ -5,7 +5,8 @@
 # locations every five minutes, about 104k executions a month for both, inside
 # the free million per project. Alerting charges start no sooner than September
 # 2027 at $0.35 per metric reference a month; uptime-metric policies are exempt,
-# so the 5xx, log-match, and instance-saturation conditions would then cost about $1.05 a month.
+# so the 5xx, log-match, instance-saturation, and latency conditions would then
+# cost about $1.40 a month.
 
 locals {
   # Alert emails link these public runbooks directly on main.
@@ -35,8 +36,9 @@ resource "google_monitoring_notification_channel" "email" {
 # misconfigured) and, with validate_ssl, report each certificate's remaining days.
 resource "google_monitoring_uptime_check_config" "health" {
   display_name = "Uptime - ${var.service_name} /health"
-  timeout      = "10s"
-  period       = "300s" # every 5 minutes
+  # Match Cloud Run's 60s startup probe budget so a scale-to-zero cold start does not page.
+  timeout = "60s"
+  period  = "300s" # every 5 minutes
 
   http_check {
     path         = "/health"
@@ -63,8 +65,9 @@ resource "google_monitoring_uptime_check_config" "health" {
 # probe because the followed hop answers 200).
 resource "google_monitoring_uptime_check_config" "apex" {
   display_name = "Uptime - ${var.service_name} apex redirect"
-  timeout      = "10s"
-  period       = "300s"
+  # Match Cloud Run's 60s startup probe budget (apex also follows a 301 to www).
+  timeout = "60s"
+  period  = "300s"
 
   http_check {
     path         = "/health"
@@ -328,6 +331,55 @@ resource "google_monitoring_alert_policy" "instance_saturation" {
 
       1. Check request rate, top paths, and user agents in Cloud Logging to separate legitimate traffic spikes from scraper bursts.
       2. Confirm latency and 429 aborts in Cloud Monitoring; raising the five-instance cap requires explicit owner approval.
+    EOT
+    links {
+      display_name = "README: Deployment"
+      url          = local.runbook_deployment
+    }
+    links {
+      display_name = "Infra skill"
+      url          = local.runbook_infra
+    }
+  }
+}
+
+# Alert on sustained high request latency (p95 > 2s for 5 minutes) to surface
+# saturation, cold-start loops, or event-loop stalls before requests hit the 30s timeout.
+resource "google_monitoring_alert_policy" "request_latency" {
+  display_name = "Cloud Run High Request Latency - ${var.service_name}"
+  combiner     = "OR"
+  severity     = "WARNING"
+  conditions {
+    display_name = "Request latency p95 > 2s"
+    condition_threshold {
+      filter          = "resource.type = \"cloud_run_revision\" AND resource.labels.service_name = \"${var.service_name}\" AND metric.type = \"run.googleapis.com/request_latencies\""
+      duration        = "300s"
+      comparison      = "COMPARISON_GT"
+      threshold_value = 2000
+      aggregations {
+        alignment_period     = "60s"
+        per_series_aligner   = "ALIGN_PERCENTILE_95"
+        cross_series_reducer = "REDUCE_MAX"
+      }
+    }
+  }
+
+  notification_channels = [
+    google_monitoring_notification_channel.email.name
+  ]
+
+  alert_strategy {
+    auto_close = "172800s"
+  }
+
+  documentation {
+    mime_type = "text/markdown"
+    subject   = "${var.service_name} p95 request latency exceeded 2s for 5 minutes"
+    content   = <<-EOT
+      Cloud Run p95 request latency stayed above 2,000 ms for 5 minutes.
+
+      1. Check `run.googleapis.com/request_latencies`, `container/instance_count`, and cold-start `application startup timed` logs in Cloud Logging.
+      2. Inspect slow paths and concurrency spikes; if a recent revision regressed latency, roll back with `mise run deploy <digest-ref> <commit-sha>` (README, Deployment).
     EOT
     links {
       display_name = "README: Deployment"

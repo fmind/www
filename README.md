@@ -29,7 +29,7 @@ Open `http://localhost:8080` (`PORT=8081` overrides the port; `GRANIAN_HOST=0.0.
 | `mise run check`                               | Offline `check:local` (pre-commit) + network `check:network` (`uv`/npm/Trivy + OpenTofu, pre-push)  |
 | `mise run test`                                | Offline pytest (`≥91%` branch coverage, warnings as errors)                                         |
 | `mise run test:browser` / `test:browser:cross` | Chromium journeys (`:8096`), or Firefox/WebKit smoke (`:8097`, after `install:browser:cross`)       |
-| `mise run test:lighthouse:local`               | 16-audit desktop/mobile Lighthouse matrix (`:8098`, `tmp/lighthouse/`; score `1` in every category) |
+| `mise run test:lighthouse:local`               | 18-audit desktop/mobile Lighthouse matrix (`:8098`, `tmp/lighthouse/`; score `1` in every category) |
 | `mise run check:tofu`                          | Credential-free OpenTofu validation, `tflint`, and mocked plan tests                                |
 | `mise run check:links`                         | Network link check across content, portfolio, and `.agents/skills`                                  |
 | `mise run check:image` / `test:image [digest]` | Build and Trivy-scan `tmp/www-image.tar`, or smoke-test the archive/digest                          |
@@ -38,7 +38,7 @@ Open `http://localhost:8080` (`PORT=8081` overrides the port; `GRANIAN_HOST=0.0.
 Targeting production:
 
 - Set `BROWSER_BASE_URL=https://www.fmind.dev` for browser suites.
-- Run `mise run test:lighthouse -- --base-url <origin>` for the 16-audit portfolio matrix (8 core pages, desktop and mobile, verified against `/sitemap.xml`; performance-only misses retry twice for a median of `1`).
+- Run `mise run test:lighthouse -- --base-url <origin>` for the 18-audit portfolio matrix (9 core pages, desktop and mobile, verified against `/sitemap.xml`; performance-only misses retry twice for a median of `1`).
 - Run `gh workflow run quality.yml -f target=production` ([`quality.yml`](.github/workflows/quality.yml)) for cross-browser and Lighthouse suites on GitHub runners.
 
 ## Deployment
@@ -66,7 +66,7 @@ See [release](.agents/skills/release/SKILL.md) for semver releases and MCP Regis
 - **First-party analytics**: cookieless HTML GET events in BigQuery (180-day expiry; no geography, IPs, raw user agents, full referrers, cookies, sessions, traces, or in-page calculator `fetch()` updates), queried via [website-analytics](.agents/skills/website-analytics/SKILL.md) (`uv run --locked python -m scripts.website_analytics`).
 - **Consented GA4**: `G-Z28QKD99V2` loads only on `www.fmind.dev` after explicit consent; footer **Cookie settings** revokes consent and clears `_ga` cookies.
 - **Logs and tracing**: private Cloud Run logs expire after 30 days; `GOOGLE_CLOUD_PROJECT` adds Cloud Logging request-trace correlation to operational logs.
-- **FinOps**: [finops-analytics](.agents/skills/finops-analytics/SKILL.md) covers cost and budget reviews (`TF_VAR_billing_account` is required for OpenTofu plans and never committed).
+- **FinOps**: [finops-analytics](.agents/skills/finops-analytics/SKILL.md) covers cost and budget reviews (`TF_VAR_billing_account` and `TF_VAR_budget_shared_project_numbers` are required for OpenTofu plans and never committed).
 
 ## License
 

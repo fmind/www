@@ -24,10 +24,8 @@ from scripts._cloud_run import (
 )
 
 _REPOSITORY = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]*/[A-Za-z0-9][A-Za-z0-9_.-]*\Z")
-# The CI deploy action labels revisions `commit-sha=<GITHUB_SHA>`; release
-# verification reads the same label, so a manual rollout must restamp it.
+# Release verification reads the revision's `commit-sha` label, so every rollout stamps it.
 COMMIT_LABEL = "commit-sha"
-MANUAL_TAG = "manual-candidate"
 # One hung gate or gcloud call must fail inside the 20-minute deploy job, leaving time to remove the candidate tag.
 COMMAND_TIMEOUT_SECONDS: float = 600
 TIMEOUT_EXIT = 124  # the exit status coreutils `timeout` uses
@@ -68,14 +66,20 @@ def build_gate_commands(image_reference: str) -> tuple[tuple[str, ...], ...]:
     )
 
 
+def candidate_tag_for_revision(revision_suffix: str) -> str:
+    """Return the unique per-rollout Cloud Run traffic tag for a candidate revision."""
+    return revision_suffix
+
+
 def build_deploy_commands(
     arguments: Sequence[str], target: DeploymentTarget, *, revision_suffix: str
 ) -> tuple[tuple[str, ...], ...]:
     """Validate one digest and its commit, then return the fixed gcloud argv sequence.
 
-    Create a uniquely named no-traffic candidate, then promote only that name.
-    The caller must verify the candidate between these two commands, and run the
-    third, which only removes the manual tag, when the candidate is not promoted.
+    Create a uniquely named no-traffic candidate with its own per-rollout tag,
+    then promote only that name. The caller must verify the candidate between
+    these two commands, and run the third, which removes only this rollout's
+    tag, when the candidate is not promoted.
     """
     if len(arguments) != 2:
         raise DeploymentUsageError("exactly one image reference and one commit SHA are required")
@@ -85,6 +89,7 @@ def build_deploy_commands(
     revision = f"{target.service_name}-{revision_suffix}"
     if not _CONFIG_VALUE.fullmatch(revision_suffix) or len(revision) > 63:
         raise DeploymentUsageError("revision suffix must produce a valid revision name of at most 63 characters")
+    candidate_tag = candidate_tag_for_revision(revision_suffix)
     scope = (
         target.service_name,
         "--project",
@@ -106,7 +111,7 @@ def build_deploy_commands(
             f"--update-labels={COMMIT_LABEL}={commit}",
             f"--revision-suffix={revision_suffix}",
             "--no-traffic",
-            f"--tag={MANUAL_TAG}",
+            f"--tag={candidate_tag}",
             "--quiet",
         ),
         # Drop the candidate tag on promotion: a tagged revision stays publicly reachable after traffic moves on.
@@ -117,21 +122,25 @@ def build_deploy_commands(
             "update-traffic",
             *scope,
             f"--to-revisions={revision}=100",
-            f"--remove-tags={MANUAL_TAG}",
+            f"--remove-tags={candidate_tag}",
             "--quiet",
         ),
-        # Like CI after a failed or cancelled candidate: an unpromoted revision loses its public tag URL now.
-        ("gcloud", "run", "services", "update-traffic", *scope, f"--remove-tags={MANUAL_TAG}", "--quiet"),
+        # Remove only this rollout's tag so a failing rollout never strips a concurrent rollout's candidate.
+        ("gcloud", "run", "services", "update-traffic", *scope, f"--remove-tags={candidate_tag}", "--quiet"),
     )
 
 
 def verify_created_revision(target: DeploymentTarget, image: str, commit: str, expected_revision: str) -> None:
     """Verify the newly created no-traffic candidate revision and probe its tagged URL."""
+    prefix = f"{target.service_name}-"
+    if not expected_revision.startswith(prefix):
+        raise DeploymentUsageError("candidate revision name does not match target service")
+    candidate_tag = candidate_tag_for_revision(expected_revision.removeprefix(prefix))
     revision, url = verify_deployment.verify_candidate(
-        verify_deployment.describe_service(target), image, commit, tag=MANUAL_TAG, service_name=target.service_name
+        verify_deployment.describe_service(target), image, commit, tag=candidate_tag, service_name=target.service_name
     )
     if revision != expected_revision:
-        raise DeploymentUsageError("manual candidate was replaced by another deployment; traffic was not promoted")
+        raise DeploymentUsageError("candidate revision was replaced by another deployment; traffic was not promoted")
     verify_deployment.probe(url, timeout=65)
 
 
@@ -222,12 +231,13 @@ def main(
 
     execute = runner or run_command
     try:
-        # Scan and smoke-test the digest before any Cloud Run change, as CI does:
-        # the registry also holds digests that CI rejected.
+        # Scan and smoke-test the digest before any Cloud Run change:
+        # the registry also holds digests that earlier runs rejected.
         for gate in build_gate_commands(release_arguments[0]):
             if returncode := execute(gate):
                 sys.stderr.write(f"image gate {gate[2]} failed; nothing was deployed\n")
                 return returncode
+        candidate_tag = candidate_tag_for_revision(suffix)
         release = (deployment_target, *release_arguments, f"{deployment_target.service_name}-{suffix}")
         promoted = False
         in_main_thread = threading.current_thread() is threading.main_thread()
@@ -255,7 +265,7 @@ def main(
         if not promoted:
             if execute(commands[2]):
                 sys.stderr.write(
-                    f"removing the {MANUAL_TAG} tag failed; remove it by hand, since its tag URL stays public\n"
+                    f"removing the {candidate_tag} tag failed; remove it by hand, since its tag URL stays public\n"
                 )
             return returncode
         try:

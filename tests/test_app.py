@@ -1281,6 +1281,27 @@ def test_mcp_server_cards_compress_like_other_snapshots(client: AppClient, path:
     assert client.get(path, headers={"if-none-match": response.headers["etag"]}).status_code == 304
 
 
+@pytest.mark.parametrize(
+    ("accept_encoding", "expected"),
+    [
+        ("br, gzip", "br"),
+        ("gzip, br", "br"),
+        ("br;q=0, gzip", "gzip"),
+        ("gzip;q=1.0, br;q=0.5", "gzip"),
+        ("identity", None),
+        ("*", "br"),
+    ],
+)
+def test_precompressed_snapshots_respect_accept_encoding_quality(
+    client: AppClient, accept_encoding: str, expected: str | None
+) -> None:
+    response = client.get("/llms-full.txt", headers={"accept-encoding": accept_encoding})
+
+    assert response.status_code == 200
+    assert response.headers.get("content-encoding") == expected
+    assert "Fmind" in response.text
+
+
 def test_warm_pages_reuse_startup_validated_json_ld(
     client: AppClient,
     snapshots: tuple[ApplicationAssets, ArticleCollection],

@@ -1333,7 +1333,8 @@ test("narrow screens reflow and keep navigation reachable", async ({ page }, tes
   for (
     const [width, wordmarkVisible] of [
       [390, false],
-      [480, true],
+      [430, false],
+      [480, false],
       [540, true],
       [640, false],
       [820, true],
@@ -1352,12 +1353,19 @@ test("narrow screens reflow and keep navigation reachable", async ({ page }, tes
     const linksWidth = last.x + last.width - first.x;
     expect(first.x).toBeGreaterThan(brandBounds.x + brandBounds.width);
     expect(last.x + last.width).toBeLessThan(socials.x);
-    const centered = Math.abs(first.x + linksWidth / 2 - width / 2) < 0.5;
-    if (width === 480 || width === 540 || width >= 840) {
-      expect(first.x + linksWidth / 2).toBeCloseTo(width / 2, 0);
-    } else if (!centered) {
-      // When the social group prevents exact centering, use the nearest free position.
-      expect(socials.x - last.x - last.width).toBeLessThanOrEqual(8);
+    if (width < 540) {
+      // On phones without the wordmark, nav links sit balanced between the logo and socials.
+      const leftGap = first.x - (brandBounds.x + brandBounds.width);
+      const rightGap = socials.x - (last.x + last.width);
+      expect(Math.abs(leftGap - rightGap)).toBeLessThanOrEqual(2);
+    } else {
+      const centered = Math.abs(first.x + linksWidth / 2 - width / 2) < 0.5;
+      if (width === 540 || width >= 840) {
+        expect(first.x + linksWidth / 2).toBeCloseTo(width / 2, 0);
+      } else if (!centered) {
+        // When the social group prevents exact centering, use the nearest free position.
+        expect(socials.x - last.x - last.width).toBeLessThanOrEqual(8);
+      }
     }
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width);
   }

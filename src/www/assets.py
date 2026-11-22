@@ -35,6 +35,8 @@ class ApplicationAssets:
     image_sizes: Mapping[str, tuple[int, int]] = field(default_factory=dict)
     # Pre-resolved regular file paths for every /static/ route (avoids per-request FS I/O).
     files: Mapping[str, Path] = field(default_factory=dict)
+    # Startup-verified byte lengths for every /static/ route (avoids opening FDs on HEAD/pathsend).
+    file_sizes: Mapping[str, int] = field(default_factory=dict)
     # Short content hash that versions the immutable stylesheet URL, computed once.
     stylesheet_digest: str = field(init=False)
 
@@ -44,6 +46,7 @@ class ApplicationAssets:
         object.__setattr__(self, "hashes", MappingProxyType(dict(self.hashes)))
         object.__setattr__(self, "image_sizes", MappingProxyType(dict(self.image_sizes)))
         object.__setattr__(self, "files", MappingProxyType(dict(self.files)))
+        object.__setattr__(self, "file_sizes", MappingProxyType(dict(self.file_sizes)))
         object.__setattr__(self, "stylesheet_digest", sha256(self.stylesheet.encode()).hexdigest()[:8])
 
     @property
@@ -69,22 +72,24 @@ def _validate_required_fonts(static_dir: Path) -> None:
     for relative in _REQUIRED_WOFF2_FILES:
         path = static_dir / relative
         try:
-            font = path.read_bytes()
+            with path.open("rb") as stream:
+                file_size = os.fstat(stream.fileno()).st_size
+                header = stream.read(_WOFF2_HEADER_SIZE)
         except OSError as error:
             msg = f"read required WOFF2 font {path}: {error}"
             raise RuntimeError(msg) from error
 
-        # WOFF2 has a fixed 48-byte big-endian header. Checking its signature,
-        # declared length, table count, and sizes catches truncation or a wrong
-        # file without pulling a font parser into the application runtime.
+        # WOFF2 has a fixed 48-byte big-endian header. Reading only those bytes
+        # plus fstat catches truncation or a wrong file without pulling a font
+        # parser or full font payload into cold-start I/O.
         valid_header = (
-            len(font) >= _WOFF2_HEADER_SIZE
-            and font[:4] == b"wOF2"
-            and int.from_bytes(font[8:12], "big") == len(font)
-            and int.from_bytes(font[12:14], "big") > 0
-            and font[14:16] == b"\x00\x00"
-            and int.from_bytes(font[16:20], "big") > 0
-            and int.from_bytes(font[20:24], "big") > 0
+            len(header) == _WOFF2_HEADER_SIZE
+            and header[:4] == b"wOF2"
+            and int.from_bytes(header[8:12], "big") == file_size
+            and int.from_bytes(header[12:14], "big") > 0
+            and header[14:16] == b"\x00\x00"
+            and int.from_bytes(header[16:20], "big") > 0
+            and int.from_bytes(header[20:24], "big") > 0
         )
         if not valid_header:
             msg = f"invalid WOFF2 font {path}: malformed fixed header"
@@ -318,12 +323,12 @@ def _positive(value: object) -> bool:
 
 def _static_inventory(
     static_dir: Path, manifest: Path
-) -> tuple[dict[str, str], dict[str, tuple[int, int]], dict[str, Path]]:
+) -> tuple[dict[str, str], dict[str, tuple[int, int]], dict[str, Path], dict[str, int]]:
     """Use the build manifest when present, failing closed if the files differ from it."""
     files = _static_files(static_dir)
     if not manifest.is_file():
-        hashes, dimensions = _split_inventory(hash_static_files(static_dir))
-        return hashes, dimensions, files
+        hashes, dimensions, file_sizes = _split_inventory(hash_static_files(static_dir))
+        return hashes, dimensions, files, file_sizes
     try:
         entries = json.loads(manifest.read_text(encoding="utf-8"))
         sizes = {route: path.stat().st_size for route, path in files.items()}
@@ -344,14 +349,17 @@ def _static_inventory(
     if not valid or entries.keys() != sizes.keys():
         msg = f"static manifest {manifest} does not match {static_dir}; rebuild the image or delete the manifest"
         raise RuntimeError(msg)
-    hashes, dimensions = _split_inventory(entries)
-    return hashes, dimensions, files
+    hashes, dimensions, file_sizes = _split_inventory(entries)
+    return hashes, dimensions, files, file_sizes
 
 
-def _split_inventory(entries: Mapping[str, Mapping[str, Any]]) -> tuple[dict[str, str], dict[str, tuple[int, int]]]:
+def _split_inventory(
+    entries: Mapping[str, Mapping[str, Any]],
+) -> tuple[dict[str, str], dict[str, tuple[int, int]], dict[str, int]]:
     hashes = {route: entry["hash"] for route, entry in entries.items()}
     dimensions = {route: (entry["width"], entry["height"]) for route, entry in entries.items() if "width" in entry}
-    return hashes, dimensions
+    file_sizes = {route: int(entry["size"]) for route, entry in entries.items()}
+    return hashes, dimensions, file_sizes
 
 
 def load_application_assets(static_dir: Path = Path("static")) -> ApplicationAssets:
@@ -365,7 +373,7 @@ def load_application_assets(static_dir: Path = Path("static")) -> ApplicationAss
 
     _validate_required_fonts(static_dir)
 
-    hashes, image_sizes, files = _static_inventory(static_dir, static_dir.parent / STATIC_MANIFEST)
+    hashes, image_sizes, files, file_sizes = _static_inventory(static_dir, static_dir.parent / STATIC_MANIFEST)
 
     root_files: dict[str, StaticResponse] = {}
     for route, (relative, content_type) in ROOT_FILE_SOURCES.items():
@@ -382,6 +390,7 @@ def load_application_assets(static_dir: Path = Path("static")) -> ApplicationAss
         stylesheet=_version_font_urls(stylesheet, hashes) + highlight_css(),
         image_sizes=image_sizes,
         files=files,
+        file_sizes=file_sizes,
     )
 
 

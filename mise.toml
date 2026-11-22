@@ -1,3 +1,4 @@
+# :schema https://mise.jdx.dev/schema/mise.json
 # Docs: https://mise.jdx.dev/configuration.html
 min_version = "2026.11.12"
 
@@ -23,17 +24,23 @@ TRIVY_CONFIG = "trivy.yaml"
 
 [vars]
 # One image gate for the local archive and remote digests: fixable HIGH/CRITICAL
-# vulnerabilities and secrets block. Inspect without --ignore-unfixed when reviewing
-# advisories that have no patch yet.
-trivy_image_gate = "--severity HIGH,CRITICAL --scanners vuln,secret"
+# vulnerabilities and secrets block. Pass `--skip-dirs ''` so repository exclusions
+# in trivy.yaml never hide directories inside scanned images. Inspect without
+# --ignore-unfixed when reviewing advisories that have no patch yet.
+trivy_image_gate = "--config trivy.yaml --skip-dirs '' --severity HIGH,CRITICAL --scanners vuln,secret"
 
 [settings]
+locked = true
 lockfile = true
 lockfile_platforms = ["linux-arm64", "linux-x64", "macos-arm64"]
+minimum_release_age = "0d"
 
 [settings.task]
 quiet = true
 run_auto_install = false
+
+[task_config]
+dir = "{{config_root}}"
 
 [tools]
 "aqua:astral-sh/uv" = "0.13.9"
@@ -65,7 +72,7 @@ typos = "1.52.2"
 # MCP Registry publisher for the release skill. The release also ships registry server
 # assets, so select the publisher archive per platform (signature side files excluded).
 [tools."github:modelcontextprotocol/registry"]
-version = "1.8.12"
+version = "1.8.13"
 
 [tools."github:modelcontextprotocol/registry".platforms]
 linux-arm64 = { asset_pattern = "mcp-publisher_linux_arm64.tar.gz" }
@@ -146,6 +153,7 @@ depends = [
   "check:lighthouse",
   "check:links:local",
   "check:lint",
+  "check:tasks",
   "check:types",
   "check:typos",
 ]
@@ -211,9 +219,9 @@ run = "terraform-docs infra --output-check"
 [tasks."check:leaks"]
 alias = "cs"
 description = "Audit recent commits and the working tree for leaked secrets (betterleaks)"
-# The Lighthouse harness test briefly creates and removes fixture directories under tmp/;
-# scanning concurrently logs a spurious lstat error, so let it finish first.
-wait_for = ["check:lighthouse"]
+# The Lighthouse harness test and check:tofu briefly create and remove files under tmp/;
+# scanning concurrently logs a spurious lstat error, so let them finish first when scheduled.
+wait_for = ["check:lighthouse", "check:tofu"]
 run = [
   'betterleaks git --redact=100 --log-opts="--max-count=100" --verbose --no-banner',
   "betterleaks dir . --config assets/betterleaks-dir.toml --redact=100 --verbose --no-banner",
@@ -251,6 +259,10 @@ env.TF_VAR_budget_shared_project_numbers = "[]"
 # Reviewed exceptions live in .trivyignore, which Trivy loads by default.
 run = "trivy config --severity LOW,MEDIUM,HIGH,CRITICAL --skip-dirs .venv,tmp ."
 
+[tasks."check:tasks"]
+description = "Validate the mise task graph and Lefthook configuration"
+run = ["mise tasks validate", "lefthook validate"]
+
 [tasks."check:tofu"]
 description = "Validate, lint, and test the OpenTofu configuration"
 # Backend-free init needs network access for schemas. Isolate its data directory
@@ -273,14 +285,27 @@ run = "uv run --locked ty check"
 description = "Check article, skill, and repository prose for spelling mistakes"
 run = "typos content/articles content/news AGENTS.md README.md SECURITY.md .agents src/www/agent_skills src/www/sites/sources.md src/www/sites/mcp_context_cost/sources.md"
 
+[tasks."check:vale"]
+description = "Check documentation and new drafts for AI slop using the workstation Vale CLI and Fmind ruleset (warnings stay advisory)"
+# Local drafting check (not in check:local): relies on workstation vale + ~/.config/vale/.vale.ini. Pass draft paths explicitly.
+usage = 'arg "[files]..." default="README.md"'
+run = '''
+set -eu
+cfg="${XDG_CONFIG_HOME:-$HOME/.config}/vale/.vale.ini"
+if ! command -v vale >/dev/null 2>&1 || [ ! -f "$cfg" ]; then
+  echo "check:vale: skipping (requires workstation vale and $cfg)"
+  exit 0
+fi
+eval "set -- ${usage_files:-}"
+vale --no-global --config "$cfg" --output=line -- "$@"
+'''
+
 [tasks."check:vuln"]
 alias = "cv"
 description = "Scan Python and mise npm tool dependencies for known vulnerabilities (uv + trivy)"
 run = [
   "uv audit --preview-features audit-command --locked",
   "uv audit --preview-features audit-command --locked --script scripts/build_fonts.py",
-  # Scan the maintained lock, not third-party checkouts under tmp/.
-  "trivy fs --severity HIGH,CRITICAL --scanners vuln --include-dev-deps uv.lock",
   # mise locks npm tools (Lighthouse, Playwright) as pnpm-format aube-lock.yaml (mapped via trivy.yaml).
   "trivy fs --severity HIGH,CRITICAL --scanners vuln .mise/locks",
 ]
@@ -288,7 +313,7 @@ run = [
 [tasks.clean]
 alias = "n"
 description = "Remove build artifacts, caches, and coverage files"
-run = "rm -rf .coverage .pytest_cache/ .ruff_cache/ tmp/ static/dist/styles.css"
+run = "rm -rf .coverage .coverage.* .pytest_cache/ .ruff_cache/ .ty_cache/ tmp/ static/dist/styles.css static-hashes.json"
 
 [tasks.deploy]
 description = "Deploy one immutable Artifact Registry digest and its commit SHA to Cloud Run"
@@ -347,13 +372,14 @@ description = "Install pinned Firefox and WebKit (requires their Linux system li
 run = "playwright install firefox webkit"
 
 [tasks."install:python"]
-description = "Install locked Python dependencies and Git hooks"
-run = ["uv sync --locked --all-groups", "lefthook install"]
+description = "Install locked Python dependencies, refusing known malware, and Git hooks"
+run = ["UV_MALWARE_CHECK=1 uv sync --locked --all-groups --preview-features malware-check", "lefthook install"]
 
 [tasks.test]
 alias = "t"
 description = "Run offline tests with the branch-coverage gate"
 depends = ["build:css"]
+env.TZ = "UTC"
 run = "uv run --locked pytest --cov --cov-fail-under=91"
 
 [tasks."test:browser"]
@@ -387,6 +413,11 @@ description = "Start a temporary server and run the strict portfolio Lighthouse 
 # The Playwright server runs the app from source and needs the stylesheet.
 depends = ["build:css"]
 run = 'NODE_PATH="$(mise where npm:playwright)/node_modules" env -u NO_COLOR playwright test --config tests/playwright.lighthouse.config.cjs'
+
+[tasks.upgrade]
+alias = "u"
+description = "Upgrade Python dependencies within pyproject.toml constraints, refusing known malware"
+run = "UV_MALWARE_CHECK=1 uv sync --all-groups --upgrade --preview-features malware-check"
 
 [tasks.watch]
 alias = "w"

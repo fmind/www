@@ -6,8 +6,7 @@
     ".git",
     ".mise/locks/**",
     "infra/README.md",
-    "tmp/",
-    "static/dist/**"
+    "tmp/"
   ],
   "markdown": {
     "textWrap": "never"

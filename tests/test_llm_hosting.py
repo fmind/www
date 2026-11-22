@@ -1489,6 +1489,21 @@ def test_optional_advanced_flags_select_advanced_mode_and_are_rejected_in_simple
         compare_hosting(parameters | {"mode": "simple"})
 
 
+def test_compare_hosting_rejects_unmeasured_or_mismatched_pilot_tokens() -> None:
+    baseline = compare_hosting({"mode": "advanced", "measured-concurrency": "10"})
+    valid = baseline.pilot_configuration
+    assert valid
+
+    with pytest.raises(ValueError, match="require recorded latency measurements"):
+        compare_hosting({"mode": "advanced", "measured-concurrency": "0", "confirm-pilot": "invalid"})
+    for bad in (
+        {"mode": "advanced", "measured-concurrency": "10", "pilot": valid, "confirm-pilot": "invalid"},
+        {"mode": "advanced", "measured-concurrency": "10", "pilot": "invalid", "confirm-pilot": valid},
+    ):
+        with pytest.raises(ValueError, match="must match the current pilot_configuration"):
+            compare_hosting(bad)
+
+
 def test_daily_capacity_gate_reaches_charts_and_break_even() -> None:
     result = build_llm_self_hosting_view({"requests": "100000", "days": "1", "tokens": "600"})
     assert not result.estimate.daily_demand_fits

@@ -18,6 +18,6 @@ metadata:
 1. **Check tags and code fences**: use unique tags from `src/www/tags.py` (new tags need a matching CSS rule and ≥1 article) and language-tagged code fences.
 1. **Build and verify media**: keep source images near 2.4MP, upright without EXIF rotation, with case-insensitively unique stems per folder (`<stem>-<width>.webp`). Covers are static `cover.{webp,gif,png,jpg,jpeg}`; other animated sources are ≤800px wide. Body images and MP4s live under `/static/img/articles/` with non-empty alt text. Run `mise run build:images` and commit derivatives plus `assets/image-derivatives.json` (`check:images` verifies hashes and recipes read-only).
 1. **Inspect layout and diagrams**: check desktop and mobile; figures must fit the 1280px column without horizontal scroll, with diagram labels ≥12px and height ≤1300px (fix unreadable diagrams at source).
-1. **Run gates**: pass `mise run all` and `mise run check:links` (only legitimate exceptions in `typos.toml`). Follow [release](../release/SKILL.md) when authorized.
+1. **Run gates**: pass `mise run all`, `mise run check:links`, and `mise run check:vale content/articles/<slug>.md` locally (only legitimate exceptions in `typos.toml`). Follow [release](../release/SKILL.md) when authorized.
 
 `src/www/content.py` disables raw HTML, normalizes section anchors, folds a following paragraph into `<figcaption>` only when it matches image alt text, keeps `FIGURE_SIZES` aligned with CSS, and exposes H2 rail navigation at ≥1920px when ≥2 H2s exist (verify long labels and no-JS links).

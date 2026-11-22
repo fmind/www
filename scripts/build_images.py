@@ -193,6 +193,7 @@ def _encode(decoded: Image.Image, target: Path, width: int) -> bytes:
 
 def _write_atomically(target: Path, data: bytes) -> None:
     temporary: Path | None = None
+    primary_error: BaseException | None = None
     try:
         try:
             with NamedTemporaryFile(
@@ -217,12 +218,18 @@ def _write_atomically(target: Path, data: bytes) -> None:
         except OSError as error:
             raise ImageDerivativeError(f'replace "{target}": {error}') from error
         temporary = None
+    except BaseException as error:
+        primary_error = error
+        raise
     finally:
         if temporary is not None:
             try:
                 temporary.unlink(missing_ok=True)
             except OSError as error:
-                raise ImageDerivativeError(f'clean temporary for "{target}": {error}') from error
+                if primary_error is not None:
+                    primary_error.add_note(f'clean temporary for "{target}": {error}')
+                else:
+                    raise ImageDerivativeError(f'clean temporary for "{target}": {error}') from error
 
 
 def _set_generated_mode(path: Path) -> bool:

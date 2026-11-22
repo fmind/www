@@ -68,4 +68,10 @@ async def static_asset_response(
     content_type = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
     if content_type.startswith("text/"):
         content_type += "; charset=utf-8"
-    return range_file_response(path, content_type=content_type, cache_control=cache_control, etag=etag)
+    return range_file_response(
+        path,
+        content_type=content_type,
+        cache_control=cache_control,
+        etag=etag,
+        size=application_assets.file_sizes.get(asset_url),
+    )

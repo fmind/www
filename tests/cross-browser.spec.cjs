@@ -7,7 +7,7 @@ const imageLoadTimeout = process.env.BROWSER_BASE_URL ? 15000 : 5000;
 test("portfolio and contact pages render and reflow", async ({ page }) => {
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
-  for (const path of ["/", "/connect", "/scan", "/privacy"]) {
+  for (const path of ["/", "/connect", "/scan", "/privacy", "/agents", "/news/", "/sites/"]) {
     const response = await page.goto(path);
     expect(response.status()).toBe(200);
     await expect(page.locator("h1")).toHaveCount(1);
@@ -127,6 +127,32 @@ test(
         await expect(page.locator("#node")).toHaveValue("g2-standard-12");
         await page.reload();
         await expect(page.locator("#requests")).toHaveValue("200");
+      } finally {
+        await context.close();
+      }
+    }
+  },
+);
+
+test(
+  "MCP context-cost calculator updates totals with or without JavaScript",
+  async ({ browser, baseURL }, testInfo) => {
+    for (const javaScriptEnabled of [true, false]) {
+      const context = await browser.newContext({ ...testInfo.project.use, baseURL, javaScriptEnabled });
+      try {
+        const page = await context.newPage();
+        await page.goto("/sites/mcp-context-cost/");
+        await expect(page.locator("h1")).toHaveCount(1);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+        const filesystem = page.getByRole("checkbox", { name: /Filesystem/ });
+        await expect(filesystem).toBeChecked();
+        await filesystem.uncheck();
+        await page.locator("#requests").fill("2500");
+        await page.getByRole("button", { name: "Update estimate" }).click();
+        await expect(page).toHaveURL(/requests=2500/);
+        await expect(page.locator("main")).toContainText("2,500");
+        await expect(filesystem).not.toBeChecked();
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
       } finally {
         await context.close();
       }

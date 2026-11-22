@@ -1,5 +1,6 @@
 """Server-side, class-based syntax highlighting with the Fmind light palette."""
 
+from functools import lru_cache
 from html import escape
 from typing import Final
 
@@ -84,6 +85,7 @@ _STYLED_CLASSES: Final = frozenset(STANDARD_TYPES.values()) & {
 }
 
 
+@lru_cache(maxsize=64)
 def _lexer(language: str) -> Lexer:
     if not language:
         return TextLexer(stripnl=False, ensurenl=False)
@@ -123,6 +125,7 @@ def _split_lines(tokens: list[tuple[_TokenType, str]]) -> list[list[tuple[_Token
     return lines
 
 
+@lru_cache(maxsize=256)
 def _token_class(token_type: _TokenType) -> str:
     current: _TokenType | None = token_type
     while current is not None:

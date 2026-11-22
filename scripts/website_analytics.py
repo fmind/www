@@ -4,6 +4,7 @@ import argparse
 import http.client
 import json
 import os
+import ssl
 import subprocess
 import sys
 from collections import Counter
@@ -11,10 +12,10 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal, InvalidOperation
-from typing import Annotated, NamedTuple
+from typing import IO, Annotated, Any, NamedTuple
 from urllib.error import HTTPError
 from urllib.parse import urlencode, urlsplit
-from urllib.request import Request, urlopen
+from urllib.request import HTTPRedirectHandler, HTTPSHandler, ProxyHandler, Request, build_opener
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError
@@ -41,6 +42,38 @@ BURST_PER_HOUR = 60
 
 class AnalyticsError(RuntimeError):
     """Evidence could not be collected completely and safely."""
+
+
+class _NoRedirectHandler(HTTPRedirectHandler):
+    """Refuse HTTP redirects so live GCP OAuth2 Bearer tokens are never forwarded."""
+
+    def redirect_request(
+        self,
+        req: Request,
+        fp: IO[bytes],
+        code: int,
+        msg: str,
+        headers: http.client.HTTPMessage,
+        newurl: str,
+    ) -> None:
+        del req, msg, headers, newurl
+        fp.close()
+        raise AnalyticsError(f"BigQuery returned unexpected HTTP {code} redirect; no report produced.")
+
+
+def _tls_context() -> ssl.SSLContext:
+    context = ssl.create_default_context()
+    context.minimum_version = ssl.TLSVersion.TLSv1_2
+    return context
+
+
+# Disable ambient proxies and redirects so workstation OAuth2 credentials talk only to BigQuery over TLS 1.2+.
+_OPENER = build_opener(ProxyHandler({}), _NoRedirectHandler(), HTTPSHandler(context=_tls_context()))
+
+
+def urlopen(request: Request, *, timeout: float) -> Any:
+    """Send one direct, redirect-free HTTPS request through the hardened opener."""
+    return _OPENER.open(request, timeout=timeout)
 
 
 class SchemaField(BaseModel):
@@ -156,7 +189,7 @@ class Reader:
             method="GET",
         )
         try:
-            with urlopen(request, timeout=30) as response:  # noqa: S310 - fixed first-party HTTPS endpoint.
+            with urlopen(request, timeout=30) as response:
                 body = response.read(MAX_BYTES - self.downloaded + 1)
         except HTTPError as exc:
             exc.close()
@@ -303,10 +336,16 @@ def human_events(events: Sequence[Event]) -> tuple[list[Event], list[Event]]:
     return humans, bursts
 
 
-def breakdown(events: Sequence[Event], start: date, days: int, zone: ZoneInfo) -> dict[str, object]:
-    """Aggregate one complete calendar window with explicit denominators."""
-    humans, bursts = human_events(events)
-    views = [event for event in humans if 200 <= event.status < 300]
+def _breakdown_window(
+    events: Sequence[Event],
+    humans: Sequence[Event],
+    bursts: Sequence[Event],
+    views: Sequence[Event],
+    start: date,
+    days: int,
+    zone: ZoneInfo,
+) -> dict[str, object]:
+    """Aggregate one pre-classified calendar window with explicit denominators."""
     daily = Counter(event.timestamp.astimezone(zone).date().isoformat() for event in views)
     event_days = {event.timestamp.astimezone(zone).date() for event in events}
     referrers: Counter[str] = Counter()
@@ -344,6 +383,13 @@ def breakdown(events: Sequence[Event], start: date, days: int, zone: ZoneInfo) -
     }
 
 
+def breakdown(events: Sequence[Event], start: date, days: int, zone: ZoneInfo) -> dict[str, object]:
+    """Aggregate one complete calendar window with explicit denominators."""
+    humans, bursts = human_events(events)
+    views = [event for event in humans if 200 <= event.status < 300]
+    return _breakdown_window(events, humans, bursts, views, start, days, zone)
+
+
 def summarize(
     events: Sequence[Event], *, end: date, days: int, zone: ZoneInfo, duplicates: int = 0
 ) -> dict[str, object]:
@@ -352,10 +398,12 @@ def summarize(
     previous_start = start - timedelta(days=days)
     current = [event for event in events if boundary(start, zone) <= event.timestamp < boundary(end, zone)]
     previous = [event for event in events if boundary(previous_start, zone) <= event.timestamp < boundary(start, zone)]
-    current_humans, _ = human_events(current)
-    previous_humans, _ = human_events(previous)
-    current_pages = Counter(event.path for event in current_humans if 200 <= event.status < 300)
-    previous_pages = Counter(event.path for event in previous_humans if 200 <= event.status < 300)
+    current_humans, current_bursts = human_events(current)
+    previous_humans, previous_bursts = human_events(previous)
+    current_views = [event for event in current_humans if 200 <= event.status < 300]
+    previous_views = [event for event in previous_humans if 200 <= event.status < 300]
+    current_pages = Counter(event.path for event in current_views)
+    previous_pages = Counter(event.path for event in previous_views)
     paths = sorted(
         current_pages.keys() | previous_pages.keys(),
         key=lambda path: (-abs(current_pages[path] - previous_pages[path]), path),
@@ -382,8 +430,10 @@ def summarize(
         "first_retained_event": first.isoformat() if first else None,
         "latest_retained_event": max(event.timestamp for event in events).isoformat() if events else None,
         "history_starts_after_comparison_start": first is None or first > boundary(previous_start, zone),
-        "current": breakdown(current, start, days, zone),
-        "previous": breakdown(previous, previous_start, days, zone),
+        "current": _breakdown_window(current, current_humans, current_bursts, current_views, start, days, zone),
+        "previous": _breakdown_window(
+            previous, previous_humans, previous_bursts, previous_views, previous_start, days, zone
+        ),
         "largest_page_changes": changes,
     }
 

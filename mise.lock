@@ -117,46 +117,46 @@ url = "https://github.com/dobicinaitis/tailwind-cli-extra/releases/download/v2.1
 url_api = "https://api.github.com/repos/dobicinaitis/tailwind-cli-extra/releases/assets/711018667"
 
 [[tools."github:modelcontextprotocol/registry"]]
-version = "1.8.12"
+version = "1.8.13"
 backend = "github:modelcontextprotocol/registry"
-specifiers = ["1.8.12"]
+specifiers = ["1.8.13"]
 
 [tools."github:modelcontextprotocol/registry".options]
 asset_pattern = "mcp-publisher_linux_arm64.tar.gz"
 
 [tools."github:modelcontextprotocol/registry"."platforms.linux-arm64"]
-checksum = "sha256:58fc45f441a059343b689edb1bd05b8c8669cf09ec6ebe192787873ee8c57011"
+checksum = "sha256:874bade6a8c2eb0b6466f5bee62ced0472f9055d58867d3a9f2e097968a1022b"
 checksum_source = "mise-versions"
-url = "https://github.com/modelcontextprotocol/registry/releases/download/v1.8.12/mcp-publisher_linux_arm64.tar.gz"
-url_api = "https://api.github.com/repos/modelcontextprotocol/registry/releases/assets/778431116"
+url = "https://github.com/modelcontextprotocol/registry/releases/download/v1.8.13/mcp-publisher_linux_arm64.tar.gz"
+url_api = "https://api.github.com/repos/modelcontextprotocol/registry/releases/assets/779702301"
 
 [[tools."github:modelcontextprotocol/registry"]]
-version = "1.8.12"
+version = "1.8.13"
 backend = "github:modelcontextprotocol/registry"
-specifiers = ["1.8.12"]
+specifiers = ["1.8.13"]
 
 [tools."github:modelcontextprotocol/registry".options]
 asset_pattern = "mcp-publisher_linux_amd64.tar.gz"
 
 [tools."github:modelcontextprotocol/registry"."platforms.linux-x64"]
-checksum = "sha256:ed3446e4caf067764cc13d35208b73ed68869958e32bc3842d0a863102912dcb"
+checksum = "sha256:7a708f418788d962a1ca3d6744d4cf86ed95f790d33c7abf562916ff83be61d2"
 checksum_source = "mise-versions"
-url = "https://github.com/modelcontextprotocol/registry/releases/download/v1.8.12/mcp-publisher_linux_amd64.tar.gz"
-url_api = "https://api.github.com/repos/modelcontextprotocol/registry/releases/assets/778431113"
+url = "https://github.com/modelcontextprotocol/registry/releases/download/v1.8.13/mcp-publisher_linux_amd64.tar.gz"
+url_api = "https://api.github.com/repos/modelcontextprotocol/registry/releases/assets/779702307"
 
 [[tools."github:modelcontextprotocol/registry"]]
-version = "1.8.12"
+version = "1.8.13"
 backend = "github:modelcontextprotocol/registry"
-specifiers = ["1.8.12"]
+specifiers = ["1.8.13"]
 
 [tools."github:modelcontextprotocol/registry".options]
 asset_pattern = "mcp-publisher_darwin_arm64.tar.gz"
 
 [tools."github:modelcontextprotocol/registry"."platforms.macos-arm64"]
-checksum = "sha256:1aa2bffbdfa6165a530cf89aab211441b5a4024d711cd4b5a92e525e876efd79"
+checksum = "sha256:dab49bf17ebda29f387f071532c6ba388bcc66f59494bfbc421a4295b8bd0f65"
 checksum_source = "mise-versions"
-url = "https://github.com/modelcontextprotocol/registry/releases/download/v1.8.12/mcp-publisher_darwin_arm64.tar.gz"
-url_api = "https://api.github.com/repos/modelcontextprotocol/registry/releases/assets/778431145"
+url = "https://github.com/modelcontextprotocol/registry/releases/download/v1.8.13/mcp-publisher_darwin_arm64.tar.gz"
+url_api = "https://api.github.com/repos/modelcontextprotocol/registry/releases/assets/779702321"
 
 [[tools.hadolint]]
 version = "2.15.1"

@@ -353,6 +353,29 @@ def test_reader_caps_bytes_and_does_not_echo_http_error_body(monkeypatch: pytest
         analytics.Reader("secret-token", downloaded=analytics.MAX_BYTES - 10)("$20260909/data", {})
 
 
+def test_opener_disables_proxies_and_refuses_redirects_over_tls_1_2() -> None:
+    import io
+    import urllib.request
+
+    # ProxyHandler({}) suppresses build_opener's default ambient-proxy handler.
+    handlers: list[object] = vars(analytics._OPENER)["handlers"]  # noqa: SLF001
+    assert not any(isinstance(h, urllib.request.ProxyHandler) for h in handlers)
+    assert analytics._tls_context().minimum_version >= ssl.TLSVersion.TLSv1_2  # noqa: SLF001
+
+    redirect_handler = analytics._NoRedirectHandler()  # noqa: SLF001
+    fp = io.BytesIO(b"moved")
+    with pytest.raises(analytics.AnalyticsError, match="unexpected HTTP 302 redirect"):
+        redirect_handler.redirect_request(
+            urllib.request.Request(analytics.ENDPOINT),  # noqa: S310 - fixed HTTPS endpoint
+            fp,
+            302,
+            "Found",
+            http.client.HTTPMessage(),
+            "https://evil.example/",
+        )
+    assert fp.closed
+
+
 @pytest.mark.parametrize(
     "failure",
     [

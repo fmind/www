@@ -69,10 +69,15 @@ def public_skill() -> tuple[bytes, bytes]:
     text = body.decode()
     if not text.startswith("---\n") or (closing := text.find("\n---\n", 4)) < 0:
         raise ValueError("public skill is missing YAML frontmatter")
-    description = next(
+    raw_description = next(
         line.removeprefix("description: ").strip()
         for line in text[4:closing].splitlines()
         if line.startswith("description: ")
+    )
+    description = (
+        raw_description[1:-1]
+        if len(raw_description) >= 2 and raw_description[0] == raw_description[-1] and raw_description[0] in {"'", '"'}
+        else raw_description
     )
     index = {
         "$schema": "https://schemas.agentskills.io/discovery/0.2.0/schema.json",

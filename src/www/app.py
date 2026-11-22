@@ -1,13 +1,16 @@
 """Litestar application assembly for every human and machine surface."""
 
+import gzip
 import hashlib
 from collections.abc import AsyncGenerator, Callable, Generator
 from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from io import BytesIO
 from pathlib import Path
+from re import fullmatch
 from time import perf_counter
-from typing import Any
+from typing import Any, Literal
 from urllib.parse import quote
 
 from litestar import Litestar, Request, asgi, route
@@ -15,6 +18,7 @@ from litestar.concurrency import sync_to_thread
 from litestar.config.compression import CompressionConfig
 from litestar.enums import HttpMethod
 from litestar.handlers import HTTPRouteHandler
+from litestar.middleware.compression.brotli_facade import BrotliCompression
 from litestar.params import FromPath
 from litestar.response import Redirect, Response
 from litestar.types import ASGIApp, Scope
@@ -100,6 +104,18 @@ _NO_CACHE = "no-cache"
 # The MCP endpoint answers single JSON bodies (json_response=True, no subscriptions/listen),
 # so it compresses like other responses.
 _COMPRESSION_EXCLUDE = r"^/(?:static/|(?:(?:logo|banner)\.png|portrait\.jpg)$)"
+_SKIP_COMPRESSION_OPT = {"skip_compression": True}
+_PRECOMPRESS_MIN_BYTES = 500
+# Lower dynamic compression levels (default gzip=9, brotli=5) avoid stalling the
+# single asyncio event loop on 1-vCPU Cloud Run; immutable snapshot routes serve
+# pre-compressed bytes directly and opt out of per-request compression.
+_COMPRESSION_CONFIG = CompressionConfig(
+    backend="brotli",
+    brotli_quality=4,
+    gzip_compress_level=4,
+    exclude=_COMPRESSION_EXCLUDE,
+    exclude_opt_key="skip_compression",
+)
 _READ_METHODS = (HttpMethod.GET, HttpMethod.HEAD)
 
 # A plain alias, not a `type` statement: Litestar 2.25+ must resolve handler
@@ -138,17 +154,70 @@ def _static_response(
     return Response(body, headers=headers, status_code=status_code)
 
 
+def _compress_brotli(body: bytes) -> bytes:
+    buffer = BytesIO()
+    facade = BrotliCompression(buffer, "br", _COMPRESSION_CONFIG)
+    facade.write(body)
+    facade.close()
+    return buffer.getvalue()
+
+
+def _preferred_encoding(accept_encoding: str) -> Literal["br", "gzip", ""]:
+    """Select the highest-priority supported encoding per RFC 9110 §12.5.3."""
+    if not accept_encoding:
+        return ""
+    qualities: dict[str, float] = {}
+    wildcard: float | None = None
+    for raw_entry in accept_encoding.lower().split(","):
+        coding, *params = (part.strip() for part in raw_entry.split(";"))
+        if not coding:
+            continue
+        quality = 1.0
+        valid = True
+        for param in params:
+            key, sep, value = param.partition("=")
+            if sep and key.strip() == "q":
+                raw_q = value.strip()
+                if fullmatch(r"(?:0(?:\.[0-9]{0,3})?|1(?:\.0{0,3})?)", raw_q) is None:
+                    valid = False
+                    break
+                quality = float(raw_q)
+        if not valid:
+            continue
+        if coding == "*":
+            wildcard = quality
+        elif coding in ("br", "gzip"):
+            qualities[coding] = max(qualities.get(coding, 0.0), quality)
+    br_q = qualities.get("br", wildcard or 0.0)
+    gzip_q = qualities.get("gzip", wildcard or 0.0)
+    if br_q > 0.0 and br_q >= gzip_q:
+        return "br"
+    if gzip_q > 0.0:
+        return "gzip"
+    return ""
+
+
 @dataclass(frozen=True, slots=True)
 class _Snapshot:
-    """An immutable startup body with its validator, hashed once instead of per request."""
+    """An immutable startup body with its validator and optional pre-compressed representations."""
 
     body: bytes
     etag: str
+    brotli: bytes | None = None
+    gzip: bytes | None = None
 
     @classmethod
-    def of(cls, body: bytes) -> _Snapshot:
+    def of(cls, body: bytes, *, etag: str | None = None, precompress: bool = False) -> _Snapshot:
         # Weak: compression may re-encode the body, but the content is identical.
-        return cls(body, f'W/"{hashlib.sha256(body).hexdigest()}"')
+        validator = etag or f'W/"{hashlib.sha256(body).hexdigest()}"'
+        if precompress and len(body) >= _PRECOMPRESS_MIN_BYTES:
+            return cls(
+                body,
+                validator,
+                brotli=_compress_brotli(body),
+                gzip=gzip.compress(body, compresslevel=4),
+            )
+        return cls(body, validator)
 
 
 def _snapshot_response(
@@ -159,6 +228,7 @@ def _snapshot_response(
     *,
     cors: bool = False,
     extra_headers: dict[str, str] | None = None,
+    precompressed: bool = False,
 ) -> Response[bytes]:
     """Serve a snapshot, or a 304 that keeps the 200's validator, cache, Vary, and CORS fields."""
     headers = {**(extra_headers or {}), "etag": snapshot.etag}
@@ -167,7 +237,16 @@ def _snapshot_response(
         if cors:
             headers["access-control-allow-origin"] = "*"
         return Response(b"", headers=headers, status_code=304)
-    return _static_response(snapshot.body, content_type, cache_control, cors=cors, extra_headers=headers)
+    body = snapshot.body
+    if precompressed and (snapshot.brotli is not None or snapshot.gzip is not None):
+        encoding = _preferred_encoding(request.headers.get("accept-encoding", ""))
+        if encoding == "br" and snapshot.brotli is not None:
+            body = snapshot.brotli
+            headers["content-encoding"] = "br"
+        elif encoding == "gzip" and snapshot.gzip is not None:
+            body = snapshot.gzip
+            headers["content-encoding"] = "gzip"
+    return _static_response(body, content_type, cache_control, cors=cors, extra_headers=headers)
 
 
 def _snapshot_route(
@@ -181,10 +260,16 @@ def _snapshot_route(
 ) -> HTTPRouteHandler:
     """Route one startup snapshot; these routes differ only by their arguments."""
 
-    @route(path, http_method=_READ_METHODS, sync_to_thread=False)
+    @route(path, http_method=_READ_METHODS, sync_to_thread=False, opt=_SKIP_COMPRESSION_OPT)
     def snapshot_route(request: AppRequest) -> Response[bytes]:
         return _snapshot_response(
-            request, snapshot, content_type, cache_control, cors=cors, extra_headers=extra_headers
+            request,
+            snapshot,
+            content_type,
+            cache_control,
+            cors=cors,
+            extra_headers=extra_headers,
+            precompressed=True,
         )
 
     return snapshot_route
@@ -279,7 +364,10 @@ def create_app(
     with _timed(phases, "assets"):
         application_assets = assets or load_application_assets()
     with _timed(phases, "articles"):
-        article_collection = collection or load_articles(image_sizes=application_assets.image_sizes)
+        article_collection = collection or load_articles(
+            image_sizes=application_assets.image_sizes,
+            static_files=application_assets.files or None,
+        )
     with _timed(phases, "news"):
         editions = load_news() if news is None else news
 
@@ -300,27 +388,32 @@ def create_app(
         related = related_article_index(page_articles)
         markdown_by_slug = article_markdown_index(article_collection.all)
         markdown_snapshots = {slug: _Snapshot.of(text.encode()) for slug, text in markdown_by_slug.items()}
-        profile = _Snapshot.of(render_profile_json(summaries))
-        profile_schema = _Snapshot.of(render_profile_schema())
-        feed = _Snapshot.of(render_atom_feed(public_articles).encode())
+        profile = _Snapshot.of(render_profile_json(summaries), precompress=True)
+        profile_schema = _Snapshot.of(render_profile_schema(), precompress=True)
+        feed = _Snapshot.of(render_atom_feed(public_articles).encode(), precompress=True)
         news_modified = max((edition.modified() for edition in editions), default=None)
-        sitemap = _Snapshot.of(render_sitemap(public_articles, news_modified).encode())
+        sitemap = _Snapshot.of(render_sitemap(public_articles, news_modified).encode(), precompress=True)
         llms = render_llms_txt(public_articles)
-        llms_full = _Snapshot.of(render_llms_full(llms, public_articles, markdown_by_slug).encode())
-        llms_index_snapshot = _Snapshot.of(llms.encode())
+        llms_full = _Snapshot.of(render_llms_full(llms, public_articles, markdown_by_slug).encode(), precompress=True)
+        llms_index_snapshot = _Snapshot.of(llms.encode(), precompress=True)
         home_markdown = _Snapshot.of(render_home_markdown(summaries))
-        api_catalog = _Snapshot.of(render_api_catalog())
-        skill_body, skill_index = (_Snapshot.of(body) for body in public_skill())
-        root_files = {path: _Snapshot.of(response.body) for path, response in application_assets.root_files.items()}
-        news_api = _Snapshot.of(render_news_json(editions))
-        news_schema = _Snapshot.of(render_news_schema())
+        api_catalog = _Snapshot.of(render_api_catalog(), precompress=True)
+        skill_body, skill_index = (_Snapshot.of(body, precompress=True) for body in public_skill())
+        root_files = {
+            path: _Snapshot.of(response.body, precompress=True)
+            for path, response in application_assets.root_files.items()
+        }
+        news_api = _Snapshot.of(render_news_json(editions), precompress=True)
+        news_schema = _Snapshot.of(render_news_schema(), precompress=True)
         news_index_markdown = _Snapshot.of(render_news_index_markdown(editions).encode())
         news_markdown_by_slug = {edition.slug: render_news_markdown(edition) for edition in editions}
         news_markdown = {slug: _Snapshot.of(text.encode()) for slug, text in news_markdown_by_slug.items()}
-        news_feed = _Snapshot.of(render_news_feed(editions).encode())
+        news_feed = _Snapshot.of(render_news_feed(editions).encode(), precompress=True)
         # Weak: compression may re-encode the body, but the CSS it carries is identical.
-        stylesheet_snapshot = _Snapshot(
-            application_assets.stylesheet.encode(), f'W/"{application_assets.stylesheet_digest}"'
+        stylesheet_snapshot = _Snapshot.of(
+            application_assets.stylesheet.encode(),
+            etag=f'W/"{application_assets.stylesheet_digest}"',
+            precompress=True,
         )
     server_card: _Snapshot | None = None
 
@@ -332,7 +425,7 @@ def create_app(
     home_page = home_metadata(home_structured_data)
     connect_page = connect_metadata(image_sizes)
     scan_page = scan_metadata(image_sizes)
-    contact_card = _Snapshot.of(render_contact_card())
+    contact_card = _Snapshot.of(render_contact_card(), precompress=True)
     not_found_page = not_found_metadata()
     agents_page = agents_metadata(image_sizes)
     privacy_page = privacy_metadata(image_sizes)
@@ -420,23 +513,27 @@ def create_app(
     def static_root() -> Response[bytes]:
         return _static_response(b"404 page not found\n", "text/plain; charset=utf-8", _NO_CACHE, status_code=404)
 
-    @route(STYLESHEET_PATH, http_method=_READ_METHODS, sync_to_thread=False)
+    @route(STYLESHEET_PATH, http_method=_READ_METHODS, sync_to_thread=False, opt=_SKIP_COMPRESSION_OPT)
     def stylesheet(request: AppRequest) -> Response[bytes]:
         # Only the current content-addressed URL is immutable; any other version revalidates.
         immutable = request.query_params.getall("v", []) == [application_assets.stylesheet_digest]
         cache_control = "public, max-age=31536000, immutable" if immutable else _DAY_CACHE
-        return _snapshot_response(request, stylesheet_snapshot, "text/css; charset=utf-8", cache_control)
+        return _snapshot_response(
+            request, stylesheet_snapshot, "text/css; charset=utf-8", cache_control, precompressed=True
+        )
 
     # Cloud Run reserves some paths ending in "z"; keep one portable probe URL.
     @route("/health", http_method=_READ_METHODS, sync_to_thread=False)
     def health() -> Response[bytes]:
         return _static_response(b'{"status":"ok"}', "application/json; charset=utf-8", "no-store")
 
-    @route(list(application_assets.root_files), http_method=_READ_METHODS, sync_to_thread=False)
+    @route(
+        list(application_assets.root_files), http_method=_READ_METHODS, sync_to_thread=False, opt=_SKIP_COMPRESSION_OPT
+    )
     def root_file(request: AppRequest) -> Response[bytes]:
         path = request.scope["path"]
         response: StaticResponse = application_assets.root_files[path]
-        return _snapshot_response(request, root_files[path], response.content_type, _DAY_CACHE)
+        return _snapshot_response(request, root_files[path], response.content_type, _DAY_CACHE, precompressed=True)
 
     @route(["/security.txt", "/.well-known/security.txt"], http_method=_READ_METHODS, sync_to_thread=False)
     def security_policy() -> Response[bytes]:
@@ -492,6 +589,7 @@ def create_app(
         ["/mcp/server-card", "/.well-known/mcp/server-card.json"],
         http_method=_READ_METHODS,
         sync_to_thread=False,
+        opt=_SKIP_COMPRESSION_OPT,
     )
     def mcp_server_card(request: AppRequest) -> Response[bytes]:
         if server_card is None:
@@ -502,6 +600,7 @@ def create_app(
             "application/mcp-server-card+json; charset=utf-8",
             _HOUR_CACHE,
             cors=True,
+            precompressed=True,
         )
 
     @route("/news", http_method=_READ_METHODS, sync_to_thread=True)
@@ -687,12 +786,12 @@ def create_app(
     @asynccontextmanager
     async def lifespan(_: Litestar) -> AsyncGenerator[None]:
         nonlocal server_card
-        server_card = _Snapshot.of(await render_mcp_server_card(mcp_server))
+        server_card = _Snapshot.of(await render_mcp_server_card(mcp_server), precompress=True)
         async with mcp_app.router.lifespan_context(mcp_app):
             yield
 
     def method_not_allowed(request: AppRequest, _: Exception) -> Response[str]:
-        # Keep unsupported methods on the same noindex 404 surface as unknown paths.
+        # Litestar exception handlers are synchronous; keep unsupported methods on the noindex 404 surface.
         return render_not_found(request)
 
     def internal_server_error(_: AppRequest, __: Exception) -> Response[bytes]:
@@ -741,7 +840,7 @@ def create_app(
             mcp_route,
             not_found,
         ],
-        compression_config=CompressionConfig(backend="brotli", exclude=_COMPRESSION_EXCLUDE),
+        compression_config=_COMPRESSION_CONFIG,
         exception_handlers={405: method_not_allowed, 500: internal_server_error},
         after_exception=[record_exception],
         lifespan=[lifespan],

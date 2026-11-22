@@ -23,13 +23,9 @@ def tag_names() -> tuple[str, ...]:
     return tuple(tag.name for tag in TAGS)
 
 
-def tag_order(name: str) -> int:
-    return _TAG_ORDER.get(name, len(TAGS))
-
-
 def is_tag(name: str) -> bool:
     return name in _TAG_ORDER
 
 
 def sort_tags(tags: Iterable[str]) -> tuple[str, ...]:
-    return tuple(sorted(tags, key=lambda name: (tag_order(name), name)))
+    return tuple(sorted(tags, key=lambda name: (_TAG_ORDER.get(name, len(TAGS)), name)))

@@ -4,11 +4,18 @@ import json
 import logging
 import sys
 import traceback
+from contextvars import ContextVar
 from datetime import UTC, datetime
 from typing import Any, TextIO
 
 from www.config import Config, Environment
 from www.models import utc_stamp
+
+# Cloud Logging joins a log entry to its request log through this special field.
+CLOUD_TRACE_LOG_KEY = "logging.googleapis.com/trace"
+# Request-scoped Cloud Logging trace path set by SiteMiddleware so stdlib warnings
+# from Granian or MCP correlate with the active Cloud Run request log.
+CURRENT_CLOUD_TRACE: ContextVar[str] = ContextVar("www_cloud_trace", default="")
 
 
 def _utc_millis(timestamp: float | None = None) -> str:
@@ -27,6 +34,8 @@ class CloudJSONFormatter(logging.Formatter):
             "msg": record.getMessage(),
             "logger": record.name,
         }
+        if cloud_trace := CURRENT_CLOUD_TRACE.get():
+            payload[CLOUD_TRACE_LOG_KEY] = cloud_trace
         if record.exc_info:
             payload["exception"] = self.formatException(record.exc_info)
         if record.stack_info:
@@ -43,21 +52,15 @@ class StructuredLogger:
         self._json_mode = json_mode
         self._stream = stream
 
-    def debug(self, event: str, **values: Any) -> None:
-        self._emit("DEBUG", event, values)
-
     def info(self, event: str, **values: Any) -> None:
         self._emit("INFO", event, values)
-
-    def warning(self, event: str, **values: Any) -> None:
-        self._emit("WARNING", event, values)
 
     def error(self, event: str, **values: Any) -> None:
         self._emit("ERROR", event, values)
 
     def _emit(self, severity: str, event: str, values: dict[str, Any]) -> None:
         exc_info = values.pop("exc_info", None)
-        exception_text = _format_exc(exc_info) if exc_info else ""
+        exception_text = _format_exc(exc_info) if isinstance(exc_info, BaseException) else ""
         if self._json_mode:
             payload: dict[str, Any] = {
                 "time": utc_stamp(datetime.now(UTC)),
@@ -78,12 +81,8 @@ class StructuredLogger:
         self._stream.flush()
 
 
-def _format_exc(exc_info: object) -> str:
-    if isinstance(exc_info, BaseException):
-        return "".join(traceback.format_exception(type(exc_info), exc_info, exc_info.__traceback__)).rstrip()
-    if exc_info is True:
-        return traceback.format_exc().rstrip()
-    return str(exc_info)
+def _format_exc(exc_info: BaseException) -> str:
+    return "".join(traceback.format_exception(type(exc_info), exc_info, exc_info.__traceback__)).rstrip()
 
 
 def stdlib_logging_config(

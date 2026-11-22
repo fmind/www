@@ -182,10 +182,10 @@ test("requireSitemapPaths reports an unavailable sitemap", async () => {
 
 test("the portfolio plan audits every page and both calculators on desktop and mobile", () => {
   const portfolio = harness.buildAuditPlan(BASE_URL);
-  assert.equal(portfolio.length, 16);
+  assert.equal(portfolio.length, 18);
   assert.deepEqual([...new Set(portfolio.map((audit) => audit.path))], PORTFOLIO_PATHS);
   assert.deepEqual(new Set(portfolio.map((audit) => audit.formFactor)), new Set(["desktop", "mobile"]));
-  assert.equal(new Set(portfolio.map((audit) => audit.artifact)).size, 16);
+  assert.equal(new Set(portfolio.map((audit) => audit.artifact)).size, 18);
   assert.deepEqual(portfolio[0], {
     artifact: "reports/001-home-desktop.json",
     formFactor: "desktop",

@@ -29,23 +29,34 @@ def test_empty_and_unchanged_markdown_round_trip_verbatim() -> None:
 def test_inline_angle_bracket_and_reference_links_preserve_surrounding_syntax() -> None:
     source = (
         'Read [angle]( </articles/one/> ) and [plain](/articles/two/ "Title").\n\n'
-        "Reference [untitled][ref1] and [titled][ref2] and ![cover [v2]](/static/cover.webp).\n\n"
+        "Reference [untitled][ref1], [titled][ref2], [trailing][ref3], and ![cover [v2]](/static/cover.webp).\n\n"
         "[ref1]: /sites/\n"
         '[ref2]: /privacy "Say \\"hi\\" and \\path"\n'
+        '[ref3]: /agents "C:\\\\"\n'
     )
     rewritten = _rewrite(source)
 
     assert "[angle]( <https://www.fmind.dev/articles/one/> )" in rewritten
     assert '[plain](https://www.fmind.dev/articles/two/ "Title")' in rewritten
     assert "[untitled](https://www.fmind.dev/sites/)" in rewritten
-    assert '[titled](https://www.fmind.dev/privacy "Say \\"hi\\" and \\path")' in rewritten
+    assert '[titled](https://www.fmind.dev/privacy "Say \\"hi\\" and \\\\path")' in rewritten
+    assert '[trailing](https://www.fmind.dev/agents "C:\\\\")' in rewritten
     assert "![cover [v2]](https://www.fmind.dev/static/cover.webp)" in rewritten
 
+    # Re-parsing the exported Markdown must recover every original link title losslessly.
+    parser = MarkdownIt("commonmark", {"html": False}).use(footnote_plugin)
+    parsed_titles = [
+        (token.attrGet("href"), token.attrGet("title"))
+        for block in parser.parse(rewritten)
+        for token in (block.children or ())
+        if token.type == "link_open" and token.attrGet("title")
+    ]
+    assert ("https://www.fmind.dev/privacy", 'Say "hi" and \\path') in parsed_titles
+    assert ("https://www.fmind.dev/agents", "C:\\") in parsed_titles
 
-def test_quote_link_title_escapes_only_unescaped_double_quotes() -> None:
-    assert _quote_link_title('plain "quoted" \\"already\\" \\\\"after-slash') == (
-        'plain \\"quoted\\" \\"already\\" \\\\\\"after-slash'
-    )
+
+def test_quote_link_title_escapes_backslashes_and_double_quotes() -> None:
+    assert _quote_link_title('plain "quoted" \\"already\\" C:\\') == ('plain \\"quoted\\" \\\\\\"already\\\\\\" C:\\\\')
 
 
 def test_table_cells_and_unmatched_backticks_stay_isolated_per_block() -> None:

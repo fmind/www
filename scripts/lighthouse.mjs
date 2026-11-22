@@ -27,6 +27,7 @@ const PORTFOLIO_PATHS = [
   "/",
   "/connect",
   "/privacy",
+  "/agents",
   "/articles/",
   "/news/",
   "/sites/",
@@ -43,8 +44,8 @@ Options:
   --base-url <origin>  Candidate origin to audit.
   -h, --help           Show this help.
 
-Audits the homepage, contact and privacy pages, archive indexes, and both calculators
-in desktop and mobile (16 audits); each page must be listed in the origin's sitemap.
+Audits the homepage, contact, privacy, and agent-guide pages, archive indexes, and both calculators
+in desktop and mobile (18 audits); each page must be listed in the origin's sitemap.
 Reports go to tmp/lighthouse/.
 Every returned category score must be exactly 1; missing expected categories also fail.
 When only performance misses, the audit runs ${PERFORMANCE_RUNS - 1} more times and passes only if the median

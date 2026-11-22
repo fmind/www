@@ -129,7 +129,7 @@ def _read_bounded_json(response: httpx2.Response, label: str) -> Any:
 
 def probe(origin: str, *, timeout: float) -> None:
     """Require JSON health, profile, and MCP server card responses from one origin."""
-    with httpx2.Client(timeout=timeout, follow_redirects=False) as client:
+    with httpx2.Client(timeout=timeout, follow_redirects=False, trust_env=False) as client:
         for path in PROBE_PATHS:
             with client.stream("GET", origin + path) as response:
                 document = _read_bounded_json(response, path)
@@ -143,7 +143,7 @@ def probe(origin: str, *, timeout: float) -> None:
 def probe_mcp(origin: str, *, timeout: float) -> None:
     """POST one finite MCP initialize with the public Host and Origin that real clients use."""
     with (
-        httpx2.Client(timeout=timeout, follow_redirects=False) as client,
+        httpx2.Client(timeout=timeout, follow_redirects=False, trust_env=False) as client,
         client.stream(
             "POST",
             origin + MCP_PATH,

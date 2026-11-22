@@ -5,7 +5,13 @@ import logging
 from io import StringIO
 
 from www.config import Config, Environment
-from www.log import CloudJSONFormatter, configure_logging, stdlib_logging_config
+from www.log import (
+    CLOUD_TRACE_LOG_KEY,
+    CURRENT_CLOUD_TRACE,
+    CloudJSONFormatter,
+    configure_logging,
+    stdlib_logging_config,
+)
 
 
 def test_production_logging_is_cloud_parseable_json() -> None:
@@ -28,10 +34,13 @@ def test_development_logging_is_human_readable() -> None:
     output = StringIO()
     logger = configure_logging(Config(), output)
 
-    logger.debug("server listening", port=8080)
+    logger.info("server listening", port=8080)
+    logger.error("boom", exc_info=RuntimeError("failed"))
 
-    assert "server listening" in output.getvalue()
-    assert "port=8080" in output.getvalue()
+    rendered = output.getvalue()
+    assert "server listening" in rendered
+    assert "port=8080" in rendered
+    assert "RuntimeError: failed" in rendered
 
 
 def test_standard_library_production_logs_are_cloud_parseable() -> None:
@@ -54,6 +63,15 @@ def test_standard_library_production_logs_are_cloud_parseable() -> None:
         "logger": "_granian",
     }
     assert payload["time"].endswith("Z")
+
+    trace = "projects/www-fmind-dev/traces/0123456789abcdef0123456789abcdef"
+    token = CURRENT_CLOUD_TRACE.set(trace)
+    try:
+        correlated = json.loads(CloudJSONFormatter().format(record))
+    finally:
+        CURRENT_CLOUD_TRACE.reset(token)
+    assert correlated[CLOUD_TRACE_LOG_KEY] == trace
+    assert CLOUD_TRACE_LOG_KEY not in json.loads(CloudJSONFormatter().format(record))
 
 
 def test_granian_logging_config_uses_one_process_sink() -> None:

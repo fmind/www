@@ -40,8 +40,29 @@ def normalized_host(url: str) -> str:
     return (urlparse(url).hostname or "").rstrip(".").lower()
 
 
+def _validate_https_url(url: str, *, context: str = "refusing") -> None:
+    """Require plain HTTPS on the default port with no embedded credentials."""
+    parsed = urlparse(url)
+    if parsed.scheme != "https":
+        raise ValueError(f"{context} non-HTTPS {url}")
+    if parsed.port not in (None, 443):
+        raise ValueError(f"{context} non-443 port in {url}")
+    if parsed.username is not None or parsed.password is not None:
+        raise ValueError(f"{context} URL credentials in {url}")
+
+
+class _DeadlineRequest(urllib.request.Request):
+    """HTTPS request carrying an end-to-end monotonic deadline across redirect hops."""
+
+    def __init__(self, url: str, *, headers: dict[str, str], deadline: float) -> None:
+        super().__init__(url, headers=headers)
+        self.deadline = deadline
+
+
 class HttpsOnlyRedirect(urllib.request.HTTPRedirectHandler):
-    """Refuse a redirect off HTTPS before urllib sends the next request (its default follows http and ftp)."""
+    """Refuse redirects off HTTPS/443, with credentials, or past the request deadline."""
+
+    max_redirections = 3
 
     def redirect_request(
         self,
@@ -52,10 +73,19 @@ class HttpsOnlyRedirect(urllib.request.HTTPRedirectHandler):
         headers: http.client.HTTPMessage,
         newurl: str,
     ) -> urllib.request.Request | None:
-        if urlparse(newurl).scheme != "https":
+        deadline = req.deadline if isinstance(req, _DeadlineRequest) else None
+        if deadline is not None and time.monotonic() > deadline:
             fp.close()
-            raise ValueError(f"{req.full_url} redirected to non-HTTPS {newurl}")
-        return super().redirect_request(req, fp, code, msg, headers, newurl)
+            raise TimeoutError(f"{req.full_url}: read exceeded {DEADLINE_SECONDS:g} s")
+        try:
+            _validate_https_url(newurl, context=f"{req.full_url} redirected to")
+        except ValueError:
+            fp.close()
+            raise
+        next_req = super().redirect_request(req, fp, code, msg, headers, newurl)
+        if next_req is not None and deadline is not None:
+            return _DeadlineRequest(next_req.full_url, headers=dict(next_req.header_items()), deadline=deadline)
+        return next_req
 
 
 def _tls_context() -> ssl.SSLContext:
@@ -71,7 +101,7 @@ _RFC6052_NAT64 = ipaddress.IPv6Network("64:ff9b::/96")
 
 
 class PublicHTTPSConnection(http.client.HTTPSConnection):
-    """Connect only to globally routable IPs, binding socket and TLS SNI without re-resolving DNS."""
+    """Connect only to globally routable unicast IPs, binding socket and TLS SNI without re-resolving DNS."""
 
     def connect(self) -> None:
         infos = socket.getaddrinfo(self.host, self.port, type=socket.SOCK_STREAM)
@@ -79,7 +109,14 @@ class PublicHTTPSConnection(http.client.HTTPSConnection):
             raise OSError(f"{self.host}: no address found")
         for _, _, _, _, sockaddr in infos:
             address = ipaddress.ip_address(sockaddr[0])
-            if not address.is_global or (isinstance(address, ipaddress.IPv6Address) and address in _RFC6052_NAT64):
+            effective = (
+                address.ipv4_mapped if isinstance(address, ipaddress.IPv6Address) and address.ipv4_mapped else address
+            )
+            if (
+                not effective.is_global
+                or effective.is_multicast
+                or (isinstance(address, ipaddress.IPv6Address) and address in _RFC6052_NAT64)
+            ):
                 raise ValueError(f"refusing non-global address {address} for {self.host}")
         last_error: OSError | None = None
         for family, socktype, proto, _, sockaddr in infos:
@@ -95,6 +132,10 @@ class PublicHTTPSConnection(http.client.HTTPSConnection):
                 if raw is not None:
                     raw.close()
                 last_error = error
+            except BaseException:
+                if raw is not None:
+                    raw.close()
+                raise
         if last_error is not None:
             raise last_error
 
@@ -106,7 +147,8 @@ class PublicHTTPSHandler(urllib.request.HTTPSHandler):
         return self.do_open(PublicHTTPSConnection, req, context=_TLS_CONTEXT)
 
 
-OPENER = urllib.request.build_opener(HttpsOnlyRedirect, PublicHTTPSHandler)
+# Disable ambient proxy handlers so HTTPS_PROXY/ALL_PROXY cannot bypass direct IP validation.
+OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}), HttpsOnlyRedirect, PublicHTTPSHandler)
 
 
 def _decompress(url: str, body: bytes, encoding: str, max_bytes: int) -> bytes:
@@ -131,11 +173,10 @@ def _decompress(url: str, body: bytes, encoding: str, max_bytes: int) -> bytes:
 
 def fetch_text(url: str, max_bytes: int = MAX_BYTES) -> tuple[str, str]:
     """Return the final URL and decoded body of one bounded, deadline-limited HTTPS read."""
-    if urlparse(url).scheme != "https":
-        raise ValueError(f"refusing non-HTTPS URL {url!r}")
+    _validate_https_url(url, context="refusing")
     deadline = time.monotonic() + DEADLINE_SECONDS
     headers = {"User-Agent": USER_AGENT, "Accept": ACCEPT_HEADER, "Accept-Encoding": "gzip, deflate"}
-    request = urllib.request.Request(url, headers=headers)  # noqa: S310
+    request = _DeadlineRequest(url, headers=headers, deadline=deadline)
     body = bytearray()
     try:
         with OPENER.open(request, timeout=TIMEOUT_SECONDS) as response:

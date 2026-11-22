@@ -25,7 +25,7 @@ env:
 jobs:
   browsers:
     name: Cross-browser journeys
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 15
     steps:
       - name: Git Checkout
@@ -45,10 +45,10 @@ jobs:
           restore-keys: uv-${{ runner.os }}-
       - name: Install Python dependencies
         if: ${{ inputs.target != 'production' }}
-        run: uv sync --locked --no-dev
+        run: UV_MALWARE_CHECK=1 uv sync --locked --no-dev --preview-features malware-check
       - name: Install browser binaries and ephemeral runner libraries
         run: |
-          # GitHub Ubuntu 24.04 runners list cleartext http://azure.archive.ubuntu.com first;
+          # GitHub Ubuntu runners may list cleartext http://azure.archive.ubuntu.com first;
           # drop http:// entries when https:// mirrors exist so port-80 stalls cannot hang apt.
           if [ -f /etc/apt/apt-mirrors.txt ] && grep -q '^https://' /etc/apt/apt-mirrors.txt; then
             sudo sed -i '/^http:\/\//d' /etc/apt/apt-mirrors.txt
@@ -82,7 +82,7 @@ jobs:
           if-no-files-found: ignore
   lighthouse:
     name: Lighthouse portfolio matrix
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 30
     steps:
       - name: Git Checkout
@@ -102,7 +102,7 @@ jobs:
           restore-keys: uv-${{ runner.os }}-
       - name: Install Python dependencies
         if: ${{ inputs.target != 'production' }}
-        run: uv sync --locked --no-dev
+        run: UV_MALWARE_CHECK=1 uv sync --locked --no-dev --preview-features malware-check
       - name: Install Chromium
         run: mise run install:browser
       - name: Allow the pinned Chromium sandbox
