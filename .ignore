@@ -1,9 +1,20 @@
 # Docs: https://github.com/BurntSushi/ripgrep/blob/master/GUIDE.md#automatic-filtering
-# Exclude tracked lockfiles and generated manifests from interactive code search (rg, fd).
+# Exclude tracked lockfiles, generated files, and binary assets from interactive search and file pickers (rg, fd).
+
+# Lockfiles and generated files
 uv.lock
 mise.lock
 .mise/locks/
 infra/.terraform.lock.hcl
+infra/README.md
 scripts/build_fonts.py.lock
 assets/image-derivatives.json
 scripts/mcp_context_cost/measurement-package-lock.json
+src/www/sites/mcp_context_cost/measurements.json
+
+# Binary images, video, icons, and fonts (keep static/humans.txt and static/robots.txt visible)
+static/fonts/
+static/img/
+*.ico
+*.jpg
+*.png

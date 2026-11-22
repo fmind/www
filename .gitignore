@@ -16,7 +16,7 @@ __pycache__/
 static-hashes.json
 gha-creds-*.json
 infra/.terraform/
-static/dist/styles.css
+static/dist/
 tmp/
 # Local agent scratch prompts.
 .agents/prompts/
