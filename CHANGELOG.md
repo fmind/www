@@ -2,6 +2,30 @@
 
 All notable changes to this project are documented in this file.
 
+## [2.12.0] - 2026-11-23
+
+### 🚀 Features
+
+- _(news)_ Add 2026-11-12 edition
+- _(news)_ Add 2026-11-13 edition
+- _(news)_ Add 2026-11-16 edition
+- _(news)_ Add 2026-11-17 edition
+- _(news)_ Add 2026-11-18 edition
+- _(news)_ Add 2026-11-19 edition
+- _(news)_ Add 2026-11-20 edition
+
+### 🐛 Bug Fixes
+
+- _(www)_ Redact changelog, harden infra, and sync skills
+- _(news)_ Decompress gzipped responses and read AI Studio guides
+- _(news)_ Strip extra URL trackers and Blogger mobile flags
+- _(www)_ Harden app, CI/CD, OpenTofu, and calculator a11y
+- _(www)_ Harden runtime, mobile nav, observability, and CI gates
+
+### 🧹 Miscellaneous
+
+- _(repo)_ Exclude binary assets and generated files from search
+
 ## [2.11.0] - 2026-11-11
 
 ### 🚀 Features
